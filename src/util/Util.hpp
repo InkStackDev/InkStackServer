@@ -39,9 +39,9 @@ bool VerifyPassword(const std::string& password, const std::string& stored);
 bool IsLegacyPasswordHash(const std::string& stored);
 
 struct DiskUsage {
-    int64_t totalSize;
-    int64_t usedSize;
-    int64_t availableSize;
+    int64_t total_size;
+    int64_t used_size;
+    int64_t available_size;
 };
 
 /**
@@ -78,9 +78,9 @@ inline DiskUsage GetDiskUsage(const std::string& path = ".")
     DiskUsage du = {0, 0, 0};
     struct statvfs vfs;
     if (statvfs(path.c_str(), &vfs) == 0) {
-        du.totalSize = vfs.f_frsize * vfs.f_blocks;
-        du.availableSize = vfs.f_frsize * vfs.f_bavail;
-        du.usedSize = du.totalSize - du.availableSize;
+        du.total_size = vfs.f_frsize * vfs.f_blocks;
+        du.available_size = vfs.f_frsize * vfs.f_bavail;
+        du.used_size = du.total_size - du.available_size;
     }
     return du;
 }
@@ -122,7 +122,7 @@ inline bool IsValidAccount(const std::string& str)
     return std::regex_match(str, s_account_regex);
 }
 
-static const std::string s_api_key_secret = "BlogServer!2025$%^APIKey#@!SecretKey";
+static const std::string kApiKeySecret = "BlogServer!2025$%^APIKey#@!SecretKey";
 
 inline std::string EncryptApiKey(const std::string& api_key)
 {
@@ -131,7 +131,7 @@ inline std::string EncryptApiKey(const std::string& api_key)
     }
     std::string data = api_key;
     for (size_t i = 0; i < data.size(); i++) {
-        data[i] ^= s_api_key_secret[i % s_api_key_secret.size()];
+        data[i] ^= kApiKeySecret[i % kApiKeySecret.size()];
     }
     return chen::StringUtil::Base64Encode(data);
 }
@@ -146,7 +146,7 @@ inline std::string DecryptApiKey(const std::string& encrypted)
         return "";
     }
     for (size_t i = 0; i < data.size(); i++) {
-        data[i] ^= s_api_key_secret[i % s_api_key_secret.size()];
+        data[i] ^= kApiKeySecret[i % kApiKeySecret.size()];
     }
     return data;
 }

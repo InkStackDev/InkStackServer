@@ -89,20 +89,20 @@ private:
     void ackDirty(uint64_t article_id, const DirtyEntry& entry);
 
 private:
-    std::atomic<bool> m_enabled{false};
-    std::atomic<bool> m_stopped{false};
-    std::atomic<bool> m_sync_scheduled{false};
-    std::atomic<bool> m_syncing{false};
-    std::atomic<uint64_t> m_last_stats_ms{0};
-    std::atomic<uint64_t> m_last_connect_ms{0};
+    std::atomic<bool> enabled_{false};
+    std::atomic<bool> stopped_{false};
+    std::atomic<bool> sync_scheduled_{false};
+    std::atomic<bool> syncing_{false};
+    std::atomic<uint64_t> last_stats_ms_{0};
+    std::atomic<uint64_t> last_connect_ms_{0};
 
-    std::mutex m_client_mutex;
-    chen::rpc::RpcClient::ptr m_client;
+    std::mutex client_mutex_;
+    chen::rpc::RpcClient::ptr client_;
 
-    std::mutex m_dirty_mutex;
-    std::map<uint64_t, DirtyEntry> m_local_dirty;
+    std::mutex dirty_mutex_;
+    std::map<uint64_t, DirtyEntry> local_dirty_;
 
-    chen::Timer::ptr m_timer;
+    chen::Timer::ptr timer_;
 };
 
 typedef chen::LeakySingleton<SearchSync> SearchSyncMgr;

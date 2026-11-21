@@ -66,29 +66,29 @@ static bool ParseDirtyValue(const std::string& value, int32_t& op, int64_t& ts)
 
 bool SearchSync::init()
 {
-    m_enabled.store(g_enabled->getValue());
-    if (!m_enabled.load()) {
+    enabled_.store(g_enabled->getValue());
+    if (!enabled_.load()) {
         INFO(logger) << "search client disabled";
         return true;
     }
 
-    m_stopped.store(false);
+    stopped_.store(false);
     auto iom = chen::IOManager::GetThis();
     if (!iom) {
         ERROR(logger) << "search client init failed: no IOManager";
-        m_enabled.store(false);
+        enabled_.store(false);
         return false;
     }
 
-    if (m_timer) {
-        m_timer->cancel();
-        m_timer.reset();
+    if (timer_) {
+        timer_->cancel();
+        timer_.reset();
     }
     uint64_t interval = g_flush_interval_ms->getValue();
     if (interval == 0) {
         interval = 1000;
     }
-    m_timer = iom->addTimer(
+    timer_ = iom->addTimer(
         interval,
         [this]() {
             wake();
@@ -101,46 +101,46 @@ bool SearchSync::init()
 
 void SearchSync::stop()
 {
-    m_stopped.store(true);
-    if (m_timer) {
-        m_timer->cancel();
-        m_timer.reset();
+    stopped_.store(true);
+    if (timer_) {
+        timer_->cancel();
+        timer_.reset();
     }
     invalidateClient();
 }
 
 void SearchSync::invalidateClient()
 {
-    std::lock_guard<std::mutex> lock(m_client_mutex);
-    if (m_client) {
-        m_client->close();
-        m_client.reset();
+    std::lock_guard<std::mutex> lock(client_mutex_);
+    if (client_) {
+        client_->close();
+        client_.reset();
     }
-    m_last_stats_ms.store(0);
+    last_stats_ms_.store(0);
 }
 
 bool SearchSync::ensureConnected()
 {
-    if (!m_enabled.load() || m_stopped.load()) {
+    if (!enabled_.load() || stopped_.load()) {
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(m_client_mutex);
-    if (m_client && m_client->isConnected()) {
+    std::lock_guard<std::mutex> lock(client_mutex_);
+    if (client_ && client_->isConnected()) {
         return true;
     }
 
-    if (m_client) {
-        m_client->close();
-        m_client.reset();
+    if (client_) {
+        client_->close();
+        client_.reset();
     }
 
     uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
     uint64_t reconnect_interval = g_reconnect_interval_ms->getValue();
-    if (reconnect_interval > 0 && now_ms < m_last_connect_ms.load() + reconnect_interval) {
+    if (reconnect_interval > 0 && now_ms < last_connect_ms_.load() + reconnect_interval) {
         return false;
     }
-    m_last_connect_ms.store(now_ms);
+    last_connect_ms_.store(now_ms);
 
     auto addr = chen::Address::LookupAny(g_hub_address->getValue());
     if (!addr) {
@@ -153,56 +153,56 @@ bool SearchSync::ensureConnected()
         DEBUG(logger) << "connect search hub failed: " << g_hub_address->getValue();
         return false;
     }
-    m_client = client;
-    m_last_stats_ms.store(0);
+    client_ = client;
+    last_stats_ms_.store(0);
     INFO(logger) << "connected search hub: " << g_hub_address->getValue();
     return true;
 }
 
 void SearchSync::wake()
 {
-    if (!m_enabled.load() || m_stopped.load()) {
+    if (!enabled_.load() || stopped_.load()) {
         return;
     }
-    if (m_sync_scheduled.exchange(true)) {
+    if (sync_scheduled_.exchange(true)) {
         return;
     }
 
     auto iom = chen::IOManager::GetThis();
     if (!iom) {
-        m_sync_scheduled.store(false);
+        sync_scheduled_.store(false);
         return;
     }
     iom->schedule([this]() {
-        m_sync_scheduled.store(false);
+        sync_scheduled_.store(false);
         syncLoop();
     });
 }
 
 void SearchSync::syncLoop()
 {
-    if (!m_enabled.load() || m_stopped.load()) {
+    if (!enabled_.load() || stopped_.load()) {
         return;
     }
-    if (m_syncing.exchange(true)) {
+    if (syncing_.exchange(true)) {
         return;
     }
 
     try {
         do {
             uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
-            bool need_stats = now_ms >= m_last_stats_ms.load() + g_stats_interval_ms->getValue();
+            bool need_stats = now_ms >= last_stats_ms_.load() + g_stats_interval_ms->getValue();
             if (need_stats) {
-                m_last_stats_ms.store(now_ms);
+                last_stats_ms_.store(now_ms);
             }
 
             if (!ensureConnected()) {
                 break;
             }
             // 新建连接后强制做一次 stats，避免 SearchServer 重启后长时间返回未就绪
-            if (m_last_stats_ms.load() == 0) {
+            if (last_stats_ms_.load() == 0) {
                 need_stats = true;
-                m_last_stats_ms.store(now_ms);
+                last_stats_ms_.store(now_ms);
             }
 
             if (need_stats) {
@@ -213,10 +213,10 @@ void SearchSync::syncLoop()
                 if (!stats.Ready || stats.IndexVersion != SS_SEARCH_INDEX_VERSION) {
                     INFO(logger) << "search index not ready, ready=" << stats.Ready << " version=" << stats.IndexVersion << ", start snapshot";
                     if (!runSnapshot()) {
-                        m_last_stats_ms.store(0);
+                        last_stats_ms_.store(0);
                         break;
                     }
-                    m_last_stats_ms.store(chen::TimeUtil::GetCurrentMs());
+                    last_stats_ms_.store(chen::TimeUtil::GetCurrentMs());
                 }
             }
 
@@ -224,23 +224,23 @@ void SearchSync::syncLoop()
         } while (0);
     } catch (const std::exception& e) {
         ERROR(logger) << "search sync loop failed: " << e.what();
-        m_last_stats_ms.store(0);
+        last_stats_ms_.store(0);
         invalidateClient();
     } catch (...) {
         ERROR(logger) << "search sync loop failed: unknown error";
-        m_last_stats_ms.store(0);
+        last_stats_ms_.store(0);
         invalidateClient();
     }
 
-    m_syncing.store(false);
+    syncing_.store(false);
 }
 
 bool SearchSync::checkStats(tagSearchStats& stats)
 {
     chen::rpc::RpcClient::ptr client;
     {
-        std::lock_guard<std::mutex> lock(m_client_mutex);
-        client = m_client;
+        std::lock_guard<std::mutex> lock(client_mutex_);
+        client = client_;
     }
     if (!client || !client->isConnected()) {
         return false;
@@ -258,7 +258,7 @@ bool SearchSync::checkStats(tagSearchStats& stats)
 
 bool SearchSync::query(const tagSearchQuery& query, tagSearchResult& result)
 {
-    if (!m_enabled.load() || m_stopped.load()) {
+    if (!enabled_.load() || stopped_.load()) {
         return false;
     }
     if (!ensureConnected()) {
@@ -267,8 +267,8 @@ bool SearchSync::query(const tagSearchQuery& query, tagSearchResult& result)
 
     chen::rpc::RpcClient::ptr client;
     {
-        std::lock_guard<std::mutex> lock(m_client_mutex);
-        client = m_client;
+        std::lock_guard<std::mutex> lock(client_mutex_);
+        client = client_;
     }
     if (!client || !client->isConnected()) {
         return false;
@@ -290,7 +290,7 @@ bool SearchSync::query(const tagSearchQuery& query, tagSearchResult& result)
 
 void SearchSync::markDirty(uint64_t article_id, int32_t op)
 {
-    if (!m_enabled.load() || m_stopped.load() || article_id == 0) {
+    if (!enabled_.load() || stopped_.load() || article_id == 0) {
         return;
     }
 
@@ -299,10 +299,10 @@ void SearchSync::markDirty(uint64_t article_id, int32_t op)
     entry.ts = static_cast<int64_t>(chen::TimeUtil::GetCurrentMs());
 
     {
-        std::lock_guard<std::mutex> lock(m_dirty_mutex);
-        auto it = m_local_dirty.find(article_id);
-        if (it == m_local_dirty.end() || entry.ts >= it->second.ts) {
-            m_local_dirty[article_id] = entry;
+        std::lock_guard<std::mutex> lock(dirty_mutex_);
+        auto it = local_dirty_.find(article_id);
+        if (it == local_dirty_.end() || entry.ts >= it->second.ts) {
+            local_dirty_[article_id] = entry;
         }
     }
     cacheDirty(article_id, entry);
@@ -333,8 +333,8 @@ std::map<uint64_t, SearchSync::DirtyEntry> SearchSync::loadDirty()
 {
     std::map<uint64_t, DirtyEntry> dirty;
     {
-        std::lock_guard<std::mutex> lock(m_dirty_mutex);
-        dirty = m_local_dirty;
+        std::lock_guard<std::mutex> lock(dirty_mutex_);
+        dirty = local_dirty_;
     }
 
     auto rpy = chen::RedisUtil::Cmd(g_redis_name->getValue(), "hgetall %s", g_dirty_key->getValue().c_str());
@@ -358,10 +358,10 @@ std::map<uint64_t, SearchSync::DirtyEntry> SearchSync::loadDirty()
 void SearchSync::ackDirty(uint64_t article_id, const DirtyEntry& entry)
 {
     {
-        std::lock_guard<std::mutex> lock(m_dirty_mutex);
-        auto it = m_local_dirty.find(article_id);
-        if (it != m_local_dirty.end() && it->second.ts <= entry.ts) {
-            m_local_dirty.erase(it);
+        std::lock_guard<std::mutex> lock(dirty_mutex_);
+        auto it = local_dirty_.find(article_id);
+        if (it != local_dirty_.end() && it->second.ts <= entry.ts) {
+            local_dirty_.erase(it);
         }
     }
 
@@ -419,8 +419,8 @@ bool SearchSync::sendUpsert(const tagSearchDoc& doc)
 {
     chen::rpc::RpcClient::ptr client;
     {
-        std::lock_guard<std::mutex> lock(m_client_mutex);
-        client = m_client;
+        std::lock_guard<std::mutex> lock(client_mutex_);
+        client = client_;
     }
     if (!client || !client->isConnected()) {
         return false;
@@ -431,7 +431,7 @@ bool SearchSync::sendUpsert(const tagSearchDoc& doc)
         if (rt != SEARCH_OK) {
             WARN(logger) << "upsert search doc rejected, article_id=" << doc.ArticleId << ", code=" << rt;
             if (rt == SEARCH_NOT_READY) {
-                m_last_stats_ms.store(0);
+                last_stats_ms_.store(0);
             }
             return false;
         }
@@ -447,8 +447,8 @@ bool SearchSync::sendRemove(uint64_t article_id, int64_t update_time)
 {
     chen::rpc::RpcClient::ptr client;
     {
-        std::lock_guard<std::mutex> lock(m_client_mutex);
-        client = m_client;
+        std::lock_guard<std::mutex> lock(client_mutex_);
+        client = client_;
     }
     if (!client || !client->isConnected()) {
         return false;
@@ -460,7 +460,7 @@ bool SearchSync::sendRemove(uint64_t article_id, int64_t update_time)
         if (rt != SEARCH_OK) {
             WARN(logger) << "remove search article rejected, article_id=" << article_id << ", code=" << rt;
             if (rt == SEARCH_NOT_READY) {
-                m_last_stats_ms.store(0);
+                last_stats_ms_.store(0);
             }
             return false;
         }
@@ -502,7 +502,7 @@ bool SearchSync::flushDirty()
         if (handled >= limit) {
             break;
         }
-        if (m_stopped.load()) {
+        if (stopped_.load()) {
             break;
         }
 
@@ -540,8 +540,8 @@ bool SearchSync::runSnapshot()
 
     chen::rpc::RpcClient::ptr client;
     {
-        std::lock_guard<std::mutex> lock(m_client_mutex);
-        client = m_client;
+        std::lock_guard<std::mutex> lock(client_mutex_);
+        client = client_;
     }
     if (!client || !client->isConnected()) {
         return false;
@@ -588,7 +588,7 @@ bool SearchSync::runSnapshot()
         }
 
         while (true) {
-            if (m_stopped.load()) {
+            if (stopped_.load()) {
                 WARN(logger) << "search snapshot aborted: client stopped";
                 return false;
             }

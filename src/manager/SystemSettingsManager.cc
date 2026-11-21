@@ -10,16 +10,16 @@ static chen::Logger::ptr logger = LOG_ROOT();
 
 void SystemSettingsManager::add(blog::data::SystemSettingsInfo::ptr info)
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
-    m_data = info;
+    std::unique_lock<std::mutex> lock(mutex_);
+    data_ = info;
 }
 
 blog::data::SystemSettingsInfo::ptr SystemSettingsManager::get()
 {
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        if (m_data) {
-            return m_data;
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (data_) {
+            return data_;
         }
     }
     auto db = GetDB();
@@ -37,8 +37,8 @@ blog::data::SystemSettingsInfo::ptr SystemSettingsManager::get()
             return info;
         }
     }
-    std::unique_lock<std::mutex> lock(m_mutex);
-    m_data = info;
+    std::unique_lock<std::mutex> lock(mutex_);
+    data_ = info;
     return info;
 }
 
@@ -63,7 +63,7 @@ bool SystemSettingsManager::update(blog::data::SystemSettingsInfo::ptr info)
         ERROR(logger) << "SystemSettingsManager update fail";
         return false;
     }
-    std::unique_lock<std::mutex> lock(m_mutex);
-    m_data = info;
+    std::unique_lock<std::mutex> lock(mutex_);
+    data_ = info;
     return true;
 }

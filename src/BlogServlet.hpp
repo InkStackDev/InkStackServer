@@ -46,7 +46,7 @@ private:
         chen::http::HttpResponse::ptr response);
 
 private:
-    chen::metrics::Counter* m_requests_metric = nullptr;
-    chen::metrics::Counter* m_errors_metric = nullptr;
-    chen::metrics::Histogram* m_duration_metric = nullptr;
+    chen::metrics::Counter* requests_metric_ = nullptr;
+    chen::metrics::Counter* errors_metric_ = nullptr;
+    chen::metrics::Histogram* duration_metric_ = nullptr;
 };

@@ -15,9 +15,9 @@ void BlogServlet::setRoute(const std::string& route)
 {
     const RouteMetrics& route_metrics = GetRouteMetrics(route);
 
-    m_requests_metric = route_metrics.requests;
-    m_errors_metric = route_metrics.errors;
-    m_duration_metric = route_metrics.duration;
+    requests_metric_ = route_metrics.requests;
+    errors_metric_ = route_metrics.errors;
+    duration_metric_ = route_metrics.duration;
 }
 
 int32_t BlogServlet::handle(
@@ -64,7 +64,7 @@ int32_t BlogServlet::handle(
         }
     }
 
-    const RouteMetrics route_metrics = {m_requests_metric, m_errors_metric, m_duration_metric};
+    const RouteMetrics route_metrics = {requests_metric_, errors_metric_, duration_metric_};
     RecordRequest(route_metrics, used, result->getErrno());
 
     return 0;
@@ -76,7 +76,7 @@ bool BlogServlet::handlePre(
     chen::http::HttpSession::ptr session,
     Result::ptr result)
 {
-    if (!request->getCookie(CookieKey::SESSION_KEY).empty()) {
+    if (!request->getCookie(CookieKey::kSessionKey).empty()) {
         initLogin(request, response);
     }
     return true;
@@ -92,7 +92,7 @@ bool BlogServlet::handlePost(
     if (!response->checkGetHeaderAs<std::string>("Content-Type", val, "application/json")) {
         response->setHeader("Content-Type", val);
     }
-    INFO(g_session_logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::SESSION_KEY, "-")
+    INFO(g_session_logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::kSessionKey, "-")
                            << "\t" << getUserId(request) << "\t" << result->getErrno() << "\t" << result->getMessage() << "\t"
                  << request->getPath() << "\t" << (!request->getQuery().empty() ? request->getQuery() : "-");
     return true;
@@ -108,11 +108,11 @@ chen::http::SessionData::ptr BlogServlet::getSessionData(
     chen::http::HttpRequest::ptr request,
     chen::http::HttpResponse::ptr response)
 {
-    std::string sid = request->getCookie(CookieKey::SESSION_KEY);
+    std::string sid = request->getCookie(CookieKey::kSessionKey);
     if (!sid.empty()) {
         auto data = chen::http::SessionDataMgr::GetInstance()->get(sid);
         if (data) {
-            int64_t uid = data->getData<int64_t>(SessionDataKey::USER_ID);
+            int64_t uid = data->getData<int64_t>(SessionDataKey::kUserId);
             if (!uid) {
                 // 匿名会话不参与认证
                 return data;
@@ -137,10 +137,10 @@ chen::http::SessionData::ptr BlogServlet::getSessionData(
 
     // 没有就创建一个匿名会话
     chen::http::SessionData::ptr data(new chen::http::SessionData(true));
-    data->setData(SessionDataKey::ANONYMOUS, 1);
+    data->setData(SessionDataKey::kAnonymous, 1);
     chen::http::SessionDataMgr::GetInstance()->add(data);
     AuthService::SetSessionCookie(response, data->getId(), 0);
-    request->setCookie(CookieKey::SESSION_KEY, data->getId());
+    request->setCookie(CookieKey::kSessionKey, data->getId());
     return data;
 }
 

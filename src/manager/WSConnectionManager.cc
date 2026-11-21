@@ -37,10 +37,10 @@ WSConnectionManager::AddResult WSConnectionManager::addConnection(
     bool old_user_became_offline = false;
 
     {
-        std::unique_lock lock(m_mutex);
+        std::unique_lock lock(mutex_);
 
-        auto dit = m_devices.find(device_id);
-        if (dit != m_devices.end()) {
+        auto dit = devices_.find(device_id);
+        if (dit != devices_.end()) {
             auto old_conn = dit->second;
             if (old_conn && old_conn->session == session) {
                 // 同一个连接重复注册，直接返回
@@ -50,16 +50,16 @@ WSConnectionManager::AddResult WSConnectionManager::addConnection(
                 result.replaced_session = old_conn->session;
                 // 暂不移除旧 session 映射，Gateway 还需要通过它发送 replaced 帧；
                 // 旧连接 onClose 时 removeConnection 会清理。
-                auto old_uit = m_userDevices.find(old_conn->user_id);
-                if (old_uit != m_userDevices.end()) {
+                auto old_uit = user_devices_.find(old_conn->user_id);
+                if (old_uit != user_devices_.end()) {
                     old_uit->second.erase(device_id);
                     if (old_uit->second.empty()) {
-                        m_userDevices.erase(old_uit);
+                        user_devices_.erase(old_uit);
                         old_user_became_offline = true;
                     }
                 }
             }
-            m_devices.erase(dit);
+            devices_.erase(dit);
         }
 
         auto conn = std::make_shared<Connection>();
@@ -67,11 +67,11 @@ WSConnectionManager::AddResult WSConnectionManager::addConnection(
         conn->device_id = device_id;
         conn->session = session;
 
-        auto& devices = m_userDevices[user_id];
+        auto& devices = user_devices_[user_id];
         user_became_online = devices.empty();
         devices.insert(device_id);
-        m_devices[device_id] = conn;
-        m_sessionDevices[session.get()] = conn;
+        devices_[device_id] = conn;
+        session_devices_[session.get()] = conn;
     }
 
     if (user_became_online || old_user_became_offline) {
@@ -98,37 +98,37 @@ WSConnectionManager::RemoveResult WSConnectionManager::removeConnection(chen::ht
     }
 
     {
-        std::unique_lock lock(m_mutex);
+        std::unique_lock lock(mutex_);
 
-        auto sit = m_sessionDevices.find(session.get());
-        if (sit == m_sessionDevices.end()) {
+        auto sit = session_devices_.find(session.get());
+        if (sit == session_devices_.end()) {
             return result;
         }
 
         auto conn = sit->second;
         if (!conn) {
-            m_sessionDevices.erase(sit);
+            session_devices_.erase(sit);
             return result;
         }
 
-        auto dit = m_devices.find(conn->device_id);
-        if (dit == m_devices.end() || dit->second != conn) {
+        auto dit = devices_.find(conn->device_id);
+        if (dit == devices_.end() || dit->second != conn) {
             // 该连接已被同设备的新连接顶掉，只清理旧 session 映射
-            m_sessionDevices.erase(sit);
+            session_devices_.erase(sit);
             return result;
         }
 
-        m_sessionDevices.erase(sit);
-        m_devices.erase(dit);
+        session_devices_.erase(sit);
+        devices_.erase(dit);
 
         result.removed = true;
         result.user_id = conn->user_id;
 
-        auto uit = m_userDevices.find(conn->user_id);
-        if (uit != m_userDevices.end()) {
+        auto uit = user_devices_.find(conn->user_id);
+        if (uit != user_devices_.end()) {
             uit->second.erase(conn->device_id);
             if (uit->second.empty()) {
-                m_userDevices.erase(uit);
+                user_devices_.erase(uit);
                 result.user_became_offline = true;
             }
         }
@@ -148,15 +148,15 @@ bool WSConnectionManager::getIdentity(chen::http::WSSession::ptr session, int64_
         return false;
     }
 
-    std::shared_lock lock(m_mutex);
-    auto sit = m_sessionDevices.find(session.get());
-    if (sit == m_sessionDevices.end() || !sit->second) {
+    std::shared_lock lock(mutex_);
+    auto sit = session_devices_.find(session.get());
+    if (sit == session_devices_.end() || !sit->second) {
         return false;
     }
 
     auto conn = sit->second;
-    auto dit = m_devices.find(conn->device_id);
-    if (dit == m_devices.end() || dit->second != conn) {
+    auto dit = devices_.find(conn->device_id);
+    if (dit == devices_.end() || dit->second != conn) {
         return false;
     }
 
@@ -169,16 +169,16 @@ int32_t WSConnectionManager::sendToUser(int64_t user_id, const std::string& mess
 {
     std::vector<Connection::ptr> conns;
     {
-        std::shared_lock lock(m_mutex);
-        auto uit = m_userDevices.find(user_id);
-        if (uit == m_userDevices.end()) {
+        std::shared_lock lock(mutex_);
+        auto uit = user_devices_.find(user_id);
+        if (uit == user_devices_.end()) {
             return -1;
         }
 
         conns.reserve(uit->second.size());
         for (const auto& device_id : uit->second) {
-            auto dit = m_devices.find(device_id);
-            if (dit != m_devices.end() && dit->second) {
+            auto dit = devices_.find(device_id);
+            if (dit != devices_.end() && dit->second) {
                 conns.push_back(dit->second);
             }
         }
@@ -201,9 +201,9 @@ int32_t WSConnectionManager::sendToSession(chen::http::WSSession::ptr session, c
 
     Connection::ptr conn;
     {
-        std::shared_lock lock(m_mutex);
-        auto sit = m_sessionDevices.find(session.get());
-        if (sit == m_sessionDevices.end() || !sit->second) {
+        std::shared_lock lock(mutex_);
+        auto sit = session_devices_.find(session.get());
+        if (sit == session_devices_.end() || !sit->second) {
             return -1;
         }
         conn = sit->second;
@@ -216,9 +216,9 @@ int32_t WSConnectionManager::sendToDevice(const std::string& device_id, const st
 {
     Connection::ptr conn;
     {
-        std::shared_lock lock(m_mutex);
-        auto dit = m_devices.find(device_id);
-        if (dit == m_devices.end() || !dit->second) {
+        std::shared_lock lock(mutex_);
+        auto dit = devices_.find(device_id);
+        if (dit == devices_.end() || !dit->second) {
             return -1;
         }
         conn = dit->second;
@@ -231,9 +231,9 @@ void WSConnectionManager::broadcast(const std::string& message)
 {
     std::vector<Connection::ptr> conns;
     {
-        std::shared_lock lock(m_mutex);
-        conns.reserve(m_devices.size());
-        for (const auto& item : m_devices) {
+        std::shared_lock lock(mutex_);
+        conns.reserve(devices_.size());
+        for (const auto& item : devices_) {
             if (item.second) {
                 conns.push_back(item.second);
             }
@@ -251,15 +251,15 @@ bool WSConnectionManager::isUserOnline(int64_t user_id) const
         return false;
     }
 
-    std::shared_lock lock(m_mutex);
-    auto uit = m_userDevices.find(user_id);
-    if (uit == m_userDevices.end()) {
+    std::shared_lock lock(mutex_);
+    auto uit = user_devices_.find(user_id);
+    if (uit == user_devices_.end()) {
         return false;
     }
 
     for (const auto& device_id : uit->second) {
-        auto dit = m_devices.find(device_id);
-        if (dit != m_devices.end() && dit->second && dit->second->session && dit->second->session->isConnected()) {
+        auto dit = devices_.find(device_id);
+        if (dit != devices_.end() && dit->second && dit->second->session && dit->second->session->isConnected()) {
             return true;
         }
     }
@@ -272,21 +272,21 @@ bool WSConnectionManager::isDeviceOnline(const std::string& device_id) const
         return false;
     }
 
-    std::shared_lock lock(m_mutex);
-    auto dit = m_devices.find(device_id);
-    return dit != m_devices.end() && dit->second && dit->second->session && dit->second->session->isConnected();
+    std::shared_lock lock(mutex_);
+    auto dit = devices_.find(device_id);
+    return dit != devices_.end() && dit->second && dit->second->session && dit->second->session->isConnected();
 }
 
 int32_t WSConnectionManager::onlineUserCount() const
 {
-    std::shared_lock lock(m_mutex);
-    return static_cast<int32_t>(m_userDevices.size());
+    std::shared_lock lock(mutex_);
+    return static_cast<int32_t>(user_devices_.size());
 }
 
 int32_t WSConnectionManager::connectionCount() const
 {
-    std::shared_lock lock(m_mutex);
-    return static_cast<int32_t>(m_devices.size());
+    std::shared_lock lock(mutex_);
+    return static_cast<int32_t>(devices_.size());
 }
 
 bool WSConnectionManager::closeSession(chen::http::WSSession::ptr session, const std::string& notify_message)
@@ -297,9 +297,9 @@ bool WSConnectionManager::closeSession(chen::http::WSSession::ptr session, const
 
     Connection::ptr conn;
     {
-        std::shared_lock lock(m_mutex);
-        auto sit = m_sessionDevices.find(session.get());
-        if (sit == m_sessionDevices.end() || !sit->second) {
+        std::shared_lock lock(mutex_);
+        auto sit = session_devices_.find(session.get());
+        if (sit == session_devices_.end() || !sit->second) {
             return false;
         }
         conn = sit->second;
@@ -318,23 +318,23 @@ bool WSConnectionManager::closeDevice(const std::string& device_id, const std::s
     Connection::ptr conn;
     bool user_became_offline = false;
     {
-        std::unique_lock lock(m_mutex);
-        auto dit = m_devices.find(device_id);
-        if (dit == m_devices.end()) {
+        std::unique_lock lock(mutex_);
+        auto dit = devices_.find(device_id);
+        if (dit == devices_.end()) {
             return false;
         }
 
         conn = dit->second;
-        m_devices.erase(dit);
+        devices_.erase(dit);
         if (conn && conn->session) {
-            m_sessionDevices.erase(conn->session.get());
+            session_devices_.erase(conn->session.get());
         }
         if (conn) {
-            auto uit = m_userDevices.find(conn->user_id);
-            if (uit != m_userDevices.end()) {
+            auto uit = user_devices_.find(conn->user_id);
+            if (uit != user_devices_.end()) {
                 uit->second.erase(device_id);
                 if (uit->second.empty()) {
-                    m_userDevices.erase(uit);
+                    user_devices_.erase(uit);
                     user_became_offline = true;
                 }
             }
@@ -359,25 +359,25 @@ bool WSConnectionManager::closeUser(int64_t user_id, const std::string& notify_m
 
     std::vector<Connection::ptr> conns;
     {
-        std::unique_lock lock(m_mutex);
-        auto uit = m_userDevices.find(user_id);
-        if (uit == m_userDevices.end()) {
+        std::unique_lock lock(mutex_);
+        auto uit = user_devices_.find(user_id);
+        if (uit == user_devices_.end()) {
             return false;
         }
 
         for (const auto& device_id : uit->second) {
-            auto dit = m_devices.find(device_id);
-            if (dit == m_devices.end() || !dit->second) {
+            auto dit = devices_.find(device_id);
+            if (dit == devices_.end() || !dit->second) {
                 continue;
             }
             auto conn = dit->second;
             if (conn->session) {
-                m_sessionDevices.erase(conn->session.get());
+                session_devices_.erase(conn->session.get());
             }
             conns.push_back(conn);
-            m_devices.erase(dit);
+            devices_.erase(dit);
         }
-        m_userDevices.erase(uit);
+        user_devices_.erase(uit);
     }
 
     for (const auto& conn : conns) {
@@ -396,16 +396,16 @@ int32_t WSConnectionManager::closeAllConnections(const std::string& notify_messa
 {
     std::vector<Connection::ptr> conns;
     {
-        std::unique_lock lock(m_mutex);
-        conns.reserve(m_devices.size());
-        for (const auto& item : m_devices) {
+        std::unique_lock lock(mutex_);
+        conns.reserve(devices_.size());
+        for (const auto& item : devices_) {
             if (item.second) {
                 conns.push_back(item.second);
             }
         }
-        m_devices.clear();
-        m_userDevices.clear();
-        m_sessionDevices.clear();
+        devices_.clear();
+        user_devices_.clear();
+        session_devices_.clear();
     }
 
     for (const auto& conn : conns) {

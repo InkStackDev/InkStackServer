@@ -154,11 +154,11 @@ private:
 
 private:
     /// 待更新到 DB 的文章 ID 集合锁
-    std::shared_mutex m_updatesMutex;
+    std::shared_mutex updates_mutex_;
     /// 文章计数（浏览/点赞/收藏）读改写锁，避免 Redis 缓存下的并发丢更新
-    std::mutex m_counterMutex;
+    std::mutex counter_mutex_;
     /// 待更新到 DB 的文章 ID 集合
-    std::set<int64_t> m_updates;
+    std::set<int64_t> updates_;
 };
 
 typedef chen::Singleton<ArticleManager> ArticleMgr;

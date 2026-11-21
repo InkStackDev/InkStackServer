@@ -11,5 +11,5 @@ public:
     void addServlet(const std::string& uri, chen::http::Servlet::ptr servlet);
 
 private:
-    chen::http::ServletDispatch::ptr m_dispatch;
+    chen::http::ServletDispatch::ptr dispatch_;
 };

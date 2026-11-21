@@ -59,8 +59,8 @@ void AuthService::MirrorSessionData(const std::string& session_id, int64_t uid)
         data = std::make_shared<chen::http::SessionData>(false);
         data->setId(session_id);
     }
-    data->setData(SessionDataKey::USER_ID, uid);
-    data->setData(SessionDataKey::ANONYMOUS, 0);
+    data->setData(SessionDataKey::kUserId, uid);
+    data->setData(SessionDataKey::kAnonymous, 0);
     manager->add(data);
 }
 
@@ -71,23 +71,23 @@ AuthContext AuthService::Resolve(chen::http::HttpRequest::ptr request, chen::htt
         return ctx;
     }
 
-    std::string session_id = request->getCookie(CookieKey::SESSION_KEY);
+    std::string session_id = request->getCookie(CookieKey::kSessionKey);
     if (session_id.empty()) {
         return ctx;
     }
 
     // 匿名会话不参与认证，也不要清除 Cookie（公共接口会用到）。
     auto sdata = chen::http::SessionDataMgr::GetInstance()->get(session_id);
-    if (sdata && sdata->getData<int64_t>(SessionDataKey::ANONYMOUS) == 1) {
+    if (sdata && sdata->getData<int64_t>(SessionDataKey::kAnonymous) == 1) {
         return ctx;
     }
     // 内存 SessionData 可能落后于 Redis 中的 SessionStore，需以 SessionStore 为准再判断匿名。
     SessionInfo info;
     bool info_loaded = false;
-    if (sdata && sdata->getData<int64_t>(SessionDataKey::USER_ID) == 0) {
+    if (sdata && sdata->getData<int64_t>(SessionDataKey::kUserId) == 0) {
         if (!SessionStore::Get(session_id, info)) {
             CloseWsForSession(session_id, "session_expired");
-            sdata->setData(SessionDataKey::ANONYMOUS, 1);
+            sdata->setData(SessionDataKey::kAnonymous, 1);
             return ctx;
         }
         info_loaded = true;
@@ -160,7 +160,7 @@ int32_t AuthService::IssueSession(
         ip = request->getHeader("X-Real-IP");
     }
     std::string user_agent = request->getHeader("User-Agent");
-    std::string old_session_id = request->getCookie(CookieKey::SESSION_KEY);
+    std::string old_session_id = request->getCookie(CookieKey::kSessionKey);
 
     std::string session_id = SessionStore::Create(user->getId(), ip, user_agent, idle_ttl, absolute_ttl);
     if (session_id.empty()) {
@@ -176,7 +176,7 @@ int32_t AuthService::IssueSession(
     MirrorSessionData(session_id, user->getId());
     int64_t cookie_max_age = absolute_ttl > 0 ? absolute_ttl : 0;
     SetSessionCookie(response, session_id, cookie_max_age);
-    request->setCookie(CookieKey::SESSION_KEY, session_id);
+    request->setCookie(CookieKey::kSessionKey, session_id);
 
     if (options.update_login_time) {
         user->setLoginTime(chen::TimeUtil::GetCurrentSec());
@@ -196,7 +196,7 @@ void AuthService::RevokeSession(chen::http::HttpRequest::ptr request, chen::http
 {
     std::string session_id = ctx.session_id;
     if (session_id.empty() && request) {
-        session_id = request->getCookie(CookieKey::SESSION_KEY);
+        session_id = request->getCookie(CookieKey::kSessionKey);
     }
 
     if (!session_id.empty()) {
@@ -245,7 +245,8 @@ void AuthService::SetSessionCookie(chen::http::HttpResponse::ptr response, const
     }
 
     // SDK 的 setCookie 不支持 HttpOnly/SameSite，这里直接写入 Set-Cookie。
-    std::string cookie = CookieKey::SESSION_KEY + "=" + session_id + "; Path=/; HttpOnly; SameSite=" + NormalizeSameSite();
+    std::string cookie =
+        CookieKey::kSessionKey + "=" + session_id + "; Path=/; HttpOnly; SameSite=" + NormalizeSameSite();
     if (UseSecureCookie()) {
         cookie += "; Secure";
     }
@@ -261,7 +262,8 @@ void AuthService::ClearSessionCookie(chen::http::HttpResponse::ptr response)
         return;
     }
 
-    std::string cookie = CookieKey::SESSION_KEY + "=; Path=/; HttpOnly; SameSite=" + NormalizeSameSite() + "; Max-Age=0";
+    std::string cookie =
+        CookieKey::kSessionKey + "=; Path=/; HttpOnly; SameSite=" + NormalizeSameSite() + "; Max-Age=0";
     if (UseSecureCookie()) {
         cookie += "; Secure";
     }

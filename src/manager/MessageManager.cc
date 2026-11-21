@@ -106,7 +106,7 @@ data::ConversationInfo::ptr MessageManager::getByUsers(int64_t uid_a, int64_t ui
 
 data::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t uid_b)
 {
-    std::lock_guard<std::mutex> lock(m_convMutex);
+    std::lock_guard<std::mutex> lock(conv_mutex_);
     auto conv = getByUsers(uid_a, uid_b);
     if (conv) {
         // 本端曾隐藏过该会话，重新发起时复活
@@ -227,7 +227,7 @@ void MessageManager::listMessages(std::vector<data::ConversationMessageInfo::ptr
 
 data::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversation_id, int64_t sender_id, const std::string& text)
 {
-    std::lock_guard<std::mutex> lock(m_convMutex);
+    std::lock_guard<std::mutex> lock(conv_mutex_);
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
@@ -279,7 +279,7 @@ data::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversat
 
 bool MessageManager::markRead(int64_t conversation_id, int64_t uid)
 {
-    std::lock_guard<std::mutex> lock(m_convMutex);
+    std::lock_guard<std::mutex> lock(conv_mutex_);
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
@@ -327,7 +327,7 @@ bool MessageManager::markRead(int64_t conversation_id, int64_t uid)
 
 bool MessageManager::deleteForUser(int64_t conversation_id, int64_t uid)
 {
-    std::lock_guard<std::mutex> lock(m_convMutex);
+    std::lock_guard<std::mutex> lock(conv_mutex_);
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";

@@ -53,7 +53,7 @@ public:
 
 private:
     /// 会话状态读改写锁（未读数、隐藏标志），避免 Redis 反序列化后并发丢更新
-    std::mutex m_convMutex;
+    std::mutex conv_mutex_;
 };
 
 typedef chen::Singleton<MessageManager> MessageMgr;

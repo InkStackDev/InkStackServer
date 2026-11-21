@@ -174,13 +174,13 @@ private:
 
 private:
     /// device_id -> connection
-    std::unordered_map<std::string, Connection::ptr> m_devices;
+    std::unordered_map<std::string, Connection::ptr> devices_;
     /// user_id -> device_ids
-    std::unordered_map<int64_t, std::unordered_set<std::string>> m_userDevices;
+    std::unordered_map<int64_t, std::unordered_set<std::string>> user_devices_;
     /// session -> connection（被顶掉的旧连接保留到 onClose，便于发送 replaced 帧）
-    std::unordered_map<const chen::http::WSSession*, Connection::ptr> m_sessionDevices;
+    std::unordered_map<const chen::http::WSSession*, Connection::ptr> session_devices_;
 
-    mutable std::shared_mutex m_mutex;
+    mutable std::shared_mutex mutex_;
 };
 
 /**

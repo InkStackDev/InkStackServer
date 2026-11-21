@@ -16,7 +16,7 @@ ErrorCodeManager::ErrorCodeManager()
 
 bool ErrorCodeManager::load(const std::string& config_path)
 {
-    m_configPath = config_path;
+    config_path_ = config_path;
 
     std::ifstream ifs(config_path);
     if (!ifs.is_open()) {
@@ -33,11 +33,11 @@ bool ErrorCodeManager::load(const std::string& config_path)
     }
     ifs.close();
 
-    m_version = root.get("version", "unknown").asString();
+    version_ = root.get("version", "unknown").asString();
 
-    m_keys.clear();
-    m_zhMessages.clear();
-    m_enMessages.clear();
+    keys_.clear();
+    zh_messages_.clear();
+    en_messages_.clear();
 
     const Json::Value& errors = root["errors"];
     if (!errors.isArray()) {
@@ -52,24 +52,24 @@ bool ErrorCodeManager::load(const std::string& config_path)
         std::string en = item.get("en", "").asString();
 
         if (!key.empty()) {
-            m_keys[code] = key;
+            keys_[code] = key;
         }
-        m_zhMessages[code] = zh;
-        m_enMessages[code] = en;
+        zh_messages_[code] = zh;
+        en_messages_[code] = en;
     }
 
-    INFO(logger) << "ErrorCodeManager loaded " << m_zhMessages.size() << " error codes from " << config_path
-                 << " (version: " << m_version << ")";
+    INFO(logger) << "ErrorCodeManager loaded " << zh_messages_.size() << " error codes from " << config_path
+                 << " (version: " << version_ << ")";
     return true;
 }
 
 bool ErrorCodeManager::reload()
 {
-    if (m_configPath.empty()) {
+    if (config_path_.empty()) {
         ERROR(logger) << "ErrorCodeManager: no config path, cannot reload";
         return false;
     }
-    return load(m_configPath);
+    return load(config_path_);
 }
 
 std::string ErrorCodeManager::getMessage(int32_t err_code) const
@@ -83,15 +83,15 @@ std::string ErrorCodeManager::getMessage(int32_t err_code, const std::string& la
     const std::string normalized = I18n::NormalizeLanguage(lang);
     const bool english = normalized == "en";
 
-    auto keyIt = m_keys.find(err_code);
-    if (keyIt != m_keys.end() && !keyIt->second.empty()) {
+    auto keyIt = keys_.find(err_code);
+    if (keyIt != keys_.end() && !keyIt->second.empty()) {
         const std::string translated = I18n::Translate(keyIt->second, normalized.empty() ? I18n::DefaultLanguage() : normalized);
         if (!translated.empty() && translated != keyIt->second) {
             return translated;
         }
     }
 
-    const auto& messages = english ? m_enMessages : m_zhMessages;
+    const auto& messages = english ? en_messages_ : zh_messages_;
     auto it = messages.find(err_code);
     if (it != messages.end()) {
         return it->second;
@@ -102,7 +102,7 @@ std::string ErrorCodeManager::getMessage(int32_t err_code, const std::string& la
 std::map<int32_t, std::string> ErrorCodeManager::getAllMessages(const std::string& lang) const
 {
     std::map<int32_t, std::string> result;
-    for (const auto& entry : m_zhMessages) {
+    for (const auto& entry : zh_messages_) {
         result[entry.first] = getMessage(entry.first, lang);
     }
     return result;

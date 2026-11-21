@@ -47,7 +47,7 @@ int32_t WSGatewayServlet::onConnect(chen::http::HttpRequest::ptr header, chen::h
         return -1;
     }
 
-    std::string session_id = header->getCookie(CookieKey::SESSION_KEY);
+    std::string session_id = header->getCookie(CookieKey::kSessionKey);
     if (session_id.empty()) {
         INFO(logger) << "[WS] onConnect FAIL: no session cookie";
         SendError(session, NOT_LOGIN, "Please login first");

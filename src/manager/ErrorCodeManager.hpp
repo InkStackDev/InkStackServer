@@ -63,19 +63,19 @@ public:
     /**
      * @brief 获取配置版本号
      */
-    const std::string& getVersion() const { return m_version; }
+    const std::string& getVersion() const { return version_; }
 
     /**
      * @brief 获取错误码总数
      */
-    size_t getCount() const { return m_zhMessages.size(); }
+    size_t getCount() const { return zh_messages_.size(); }
 
 private:
-    std::string m_configPath;
-    std::string m_version;
-    std::map<int32_t, std::string> m_keys;       // errno → 翻译 key
-    std::map<int32_t, std::string> m_zhMessages; // errno → 中文消息
-    std::map<int32_t, std::string> m_enMessages; // errno → 英文消息
+    std::string config_path_;
+    std::string version_;
+    std::map<int32_t, std::string> keys_;        // errno → 翻译 key
+    std::map<int32_t, std::string> zh_messages_; // errno → 中文消息
+    std::map<int32_t, std::string> en_messages_; // errno → 英文消息
 };
 
 typedef chen::Singleton<ErrorCodeManager> ErrorCodeMgr;

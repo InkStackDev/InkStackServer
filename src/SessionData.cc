@@ -8,9 +8,9 @@
 #include "metrics/MetricsService.hpp"
 #include "util/Util.hpp"
 
-const std::string CookieKey::SESSION_KEY = "SESSIONID";
-const std::string SessionDataKey::USER_ID = "user_id";
-const std::string SessionDataKey::ANONYMOUS = "anonymous";
+const std::string CookieKey::kSessionKey = "SESSIONID";
+const std::string SessionDataKey::kUserId = "user_id";
+const std::string SessionDataKey::kAnonymous = "anonymous";
 
 Result::Result(int32_t code, const std::string& m)
     : code_(code)

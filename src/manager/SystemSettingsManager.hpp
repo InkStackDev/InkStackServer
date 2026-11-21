@@ -26,8 +26,8 @@ public:
     bool update(blog::data::SystemSettingsInfo::ptr info);
 
 private:
-    std::mutex m_mutex;
-    blog::data::SystemSettingsInfo::ptr m_data;
+    std::mutex mutex_;
+    blog::data::SystemSettingsInfo::ptr data_;
 };
 
 typedef chen::Singleton<SystemSettingsManager> SystemSettingsMgr;

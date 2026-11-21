@@ -12,12 +12,12 @@
 inline static chen::Logger::ptr g_session_logger = LOG_ROOT();
 
 struct CookieKey {
-    static const std::string SESSION_KEY;
+    static const std::string kSessionKey;
 };
 
 struct SessionDataKey {
-    static const std::string USER_ID;
-    static const std::string ANONYMOUS;
+    static const std::string kUserId;
+    static const std::string kAnonymous;
 };
 
 struct Result {

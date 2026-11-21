@@ -22,7 +22,7 @@ int32_t UserDeviceListServlet::handle(
         }
 
         std::string current_hash;
-        std::string current_session = request->getCookie(CookieKey::SESSION_KEY);
+        std::string current_session = request->getCookie(CookieKey::kSessionKey);
         if (!current_session.empty()) {
             current_hash = SessionStore::HashId(current_session);
         }

@@ -466,8 +466,8 @@ void ArticleManager::flushDirty()
 {
     std::set<int64_t> updates;
     {
-        std::unique_lock<std::shared_mutex> lock(m_updatesMutex);
-        updates.swap(m_updates);
+        std::unique_lock<std::shared_mutex> lock(updates_mutex_);
+        updates.swap(updates_);
     }
 
     if (updates.empty()) {
@@ -477,18 +477,18 @@ void ArticleManager::flushDirty()
     if (!conn) {
         ERROR(logger) << "flushDirty: get db connect fail";
 
-        std::unique_lock<std::shared_mutex> lock(m_updatesMutex);
+        std::unique_lock<std::shared_mutex> lock(updates_mutex_);
         for (auto& i : updates) {
-            m_updates.insert(i);
+            updates_.insert(i);
         }
         return;
     }
     auto trans = conn->openTransaction();
     if (!trans) {
         ERROR(logger) << "flushDirty: open transaction failed";
-        std::unique_lock<std::shared_mutex> lock(m_updatesMutex);
+        std::unique_lock<std::shared_mutex> lock(updates_mutex_);
         for (auto& i : updates) {
-            m_updates.insert(i);
+            updates_.insert(i);
         }
         return;
     }
@@ -509,9 +509,9 @@ void ArticleManager::flushDirty()
     }
     if (!trans->commit()) {
         ERROR(logger) << "flushDirty: commit failed";
-        std::unique_lock<std::shared_mutex> lock(m_updatesMutex);
+        std::unique_lock<std::shared_mutex> lock(updates_mutex_);
         for (auto& i : updates) {
-            m_updates.insert(i);
+            updates_.insert(i);
         }
         return;
     }
@@ -520,7 +520,7 @@ void ArticleManager::flushDirty()
 
 bool ArticleManager::incViews(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return false;
@@ -546,7 +546,7 @@ bool ArticleManager::incViews(uint64_t id, const std::string& cookie_id, uint64_
 
 bool ArticleManager::incPraise(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return false;
@@ -576,7 +576,7 @@ bool ArticleManager::incPraise(uint64_t id, const std::string& cookie_id, uint64
 
 bool ArticleManager::incFavorites(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return false;
@@ -606,7 +606,7 @@ bool ArticleManager::incFavorites(uint64_t id, const std::string& cookie_id, uin
 
 bool ArticleManager::decPraise(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return false;
@@ -639,7 +639,7 @@ bool ArticleManager::decPraise(uint64_t id, const std::string& cookie_id, uint64
 
 bool ArticleManager::decFavorites(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return false;
@@ -723,7 +723,7 @@ void ArticleManager::onTick()
 
 bool ArticleManager::addViews(uint64_t id, const std::string& cookie_id)
 {
-    // 用 Redis SET NX EX 做 10 分钟去重，避免进程内 m_viewsCache 无界增长
+    // 用 Redis SET NX EX 做 10 分钟去重，避免进程内缓存无界增长
     std::string key = "art:view:" + std::to_string(id) + ":" + cookie_id;
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "set %s 1 ex %d nx", key.c_str(), kViewDedupTTL);
     if (!rpy) {
@@ -736,13 +736,13 @@ bool ArticleManager::addViews(uint64_t id, const std::string& cookie_id)
 
 void ArticleManager::addUpdate(int64_t id)
 {
-    std::unique_lock<std::shared_mutex> lock(m_updatesMutex);
-    m_updates.insert(id);
+    std::unique_lock<std::shared_mutex> lock(updates_mutex_);
+    updates_.insert(id);
 }
 
 void ArticleManager::incPraiseCount(int64_t id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return;
@@ -754,7 +754,7 @@ void ArticleManager::incPraiseCount(int64_t id)
 
 void ArticleManager::decPraiseCount(int64_t id)
 {
-    std::lock_guard<std::mutex> lock(m_counterMutex);
+    std::lock_guard<std::mutex> lock(counter_mutex_);
     auto info = get(id);
     if (!info) {
         return;

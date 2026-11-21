@@ -62,9 +62,9 @@ int32_t DatabaseStatsServlet::handle(
 
         auto du = GetDiskUsage();
 
-        result->set("total_size", du.totalSize);
-        result->set("used_size", du.usedSize);
-        result->set("available_size", du.availableSize);
+        result->set("total_size", du.total_size);
+        result->set("used_size", du.used_size);
+        result->set("available_size", du.available_size);
         result->set("total_records", astats.total + total_users + cstats.total + total_categories + total_labels);
         result->set("articles", astats.total);
         result->set("users", total_users);

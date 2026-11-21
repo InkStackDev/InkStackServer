@@ -11,7 +11,7 @@ bool BlogLoginedServlet::handlePre(
     chen::http::HttpSession::ptr session,
     Result::ptr result)
 {
-    if (!request->getCookie(CookieKey::SESSION_KEY).empty()) {
+    if (!request->getCookie(CookieKey::kSessionKey).empty()) {
         result->setErrno(NOT_LOGIN);
         return false;
     }
