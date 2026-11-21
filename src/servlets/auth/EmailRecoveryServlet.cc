@@ -7,10 +7,9 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 /// 账号恢复验证码 Redis key 前缀（type=5）
 static const char* kRecoveryCodePrefix = "email:verify:5:";
@@ -50,7 +49,7 @@ int32_t EmailRecoveryServlet::handle(
         }
 
         std::string fail_key = std::string(kRecoveryFailPrefix) + email;
-        auto fail_rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", fail_key.c_str());
+        auto fail_rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", fail_key.c_str());
         if (fail_rpy && fail_rpy->type == REDIS_REPLY_STRING && fail_rpy->str) {
             int64_t failures = 0;
             try {
@@ -65,20 +64,20 @@ int32_t EmailRecoveryServlet::handle(
         }
 
         std::string code_key = std::string(kRecoveryCodePrefix) + email;
-        auto code_rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", code_key.c_str());
+        auto code_rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", code_key.c_str());
         bool matched = code_rpy && code_rpy->type == REDIS_REPLY_STRING && code_rpy->str && auth_code == std::string(code_rpy->str, code_rpy->len);
         if (!matched) {
-            auto inc_rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "incr %s", fail_key.c_str());
+            auto inc_rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "incr %s", fail_key.c_str());
             if (inc_rpy && inc_rpy->integer == 1) {
-                chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "expire %s 600", fail_key.c_str());
+                chen::RedisUtil::Cmd(GetRedisPoolName(), "expire %s 600", fail_key.c_str());
             }
             result->setErrno(errcode::AUTH_CODE_INVALID);
             break;
         }
 
         // 验证码一次性使用。
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", code_key.c_str());
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", fail_key.c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", code_key.c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", fail_key.c_str());
 
         // 账号恢复属于敏感操作，撤销全部旧会话后重新签发。
         AuthService::RevokeAllSessions(user->getId());

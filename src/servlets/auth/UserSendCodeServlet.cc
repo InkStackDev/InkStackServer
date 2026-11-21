@@ -8,10 +8,9 @@
 #include "../../Manager/SystemSettingsManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 UserSendCodeServlet::UserSendCodeServlet()
     : BlogServlet("UserSendCodeServlet")
@@ -65,9 +64,9 @@ int32_t UserSendCodeServlet::handle(
                     ip = ip.substr(0, pos);
                 }
             }
-            auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "INCR code_limit:ip:%s", ip.c_str());
+            auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "INCR code_limit:ip:%s", ip.c_str());
             if (rpy && rpy->integer == 1) {
-                chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "EXPIRE code_limit:ip:%s 3600", ip.c_str());
+                chen::RedisUtil::Cmd(GetRedisPoolName(), "EXPIRE code_limit:ip:%s 3600", ip.c_str());
             }
             if (rpy && rpy->integer > 5) {
                 result->setErrno(errcode::SEND_CODE_FREQUENT);
@@ -90,7 +89,8 @@ int32_t UserSendCodeServlet::handle(
 
         // 生成验证码并写入 Redis，10分钟过期
         std::string code = chen::RandomUtil::RandString(6);
-        auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "SETEX email:verify:%s:%s 600 %s", type.c_str(), email.c_str(), code.c_str());
+        auto rpy = chen::RedisUtil::Cmd(
+            GetRedisPoolName(), "SETEX email:verify:%s:%s 600 %s", type.c_str(), email.c_str(), code.c_str());
         if (!rpy) {
             result->setErrno(errcode::REDIS_OPERATION_FAILED);
             break;

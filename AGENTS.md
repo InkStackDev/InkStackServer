@@ -212,7 +212,7 @@ When adding a new feature:
 1. **XML table** (`dbproxy/xml/`) — define table schema, then `make orm`
 2. **Manager** (`src/Manager/`) — singleton + LRU cache + CRUD methods + null checks
 3. **Servlet** (`src/Servlets/<Domain>/`) — follow handler pattern above
-4. **Includes** — update `src/Include/Managers.hpp`, `src/Include/Servlets.hpp`
+4. **Includes** — update `src/Include/Managers.hpp`, `src/Servlets/Servlets.hpp`
 5. **Registration** — `BlogModule.cc`: table create, migrate, servlet route
 6. **Error codes** — `src/ErrorCodes.hpp` + `errors.json`
 

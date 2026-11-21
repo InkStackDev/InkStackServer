@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Chen/Rpc/RpcServer.hpp>
+#include <Chen/Rpc/RpcClient.hpp>
 
 #include "protocol_ss_github.h" // IWYU pragma: keep
 
-void BlogMsgFromBotInit(chen::rpc::RpcServer::ptr server);
+bool BlogMsgFromBotInit(chen::rpc::RpcClient::ptr client);

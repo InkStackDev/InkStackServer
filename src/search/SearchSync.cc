@@ -22,34 +22,11 @@
 #include "../Manager/ArticleCategoryRelManager.hpp"
 #include "../Manager/ArticleLabelRelManager.hpp"
 #include "../Manager/ArticleManager.hpp"
+#include "../Config/AppConfig.hpp"
+#include "../Config/SearchConfig.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<bool>::ptr g_enabled = chen::Config::Lookup("search.enabled", true, "enable search service client");
-static chen::ConfigVar<std::string>::ptr g_hub_address =
-    chen::Config::Lookup("search.hub_address", std::string("127.0.0.1:9010"), "search RPC hub address");
-static chen::ConfigVar<uint64_t>::ptr g_timeout_ms = chen::Config::Lookup("search.timeout_ms", (uint64_t)1500, "search query RPC timeout ms");
-static chen::ConfigVar<uint64_t>::ptr g_update_timeout_ms =
-    chen::Config::Lookup("search.update_timeout_ms", (uint64_t)5000, "search update RPC timeout ms");
-static chen::ConfigVar<uint64_t>::ptr g_connect_timeout_ms =
-    chen::Config::Lookup("search.connect_timeout_ms", (uint64_t)1000, "search RPC connect timeout ms");
-static chen::ConfigVar<uint64_t>::ptr g_reconnect_interval_ms =
-    chen::Config::Lookup("search.reconnect_interval_ms", (uint64_t)5000, "search RPC reconnect interval ms");
-static chen::ConfigVar<uint64_t>::ptr g_flush_interval_ms =
-    chen::Config::Lookup("search.flush_interval_ms", (uint64_t)1000, "dirty sync interval ms");
-static chen::ConfigVar<uint64_t>::ptr g_stats_interval_ms =
-    chen::Config::Lookup("search.stats_interval_ms", (uint64_t)30000, "search server stats check interval ms");
-static chen::ConfigVar<int32_t>::ptr g_flush_batch_size = chen::Config::Lookup("search.flush_batch_size", (int32_t)200, "dirty ids per flush");
-static chen::ConfigVar<int32_t>::ptr g_snapshot_page_size =
-    chen::Config::Lookup("search.snapshot_page_size", (int32_t)200, "articles per snapshot page");
-static chen::ConfigVar<uint64_t>::ptr g_snapshot_batch_bytes =
-    chen::Config::Lookup("search.snapshot_batch_bytes", (uint64_t)524288, "snapshot docs batch bytes");
-static chen::ConfigVar<uint64_t>::ptr g_snapshot_rpc_timeout_ms =
-    chen::Config::Lookup("search.snapshot_rpc_timeout_ms", (uint64_t)10000, "snapshot RPC timeout ms");
-static chen::ConfigVar<std::string>::ptr g_dirty_key =
-    chen::Config::Lookup("search.dirty_key", std::string("search:dirty"), "redis dirty article hash key");
-static chen::ConfigVar<std::string>::ptr g_redis_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 static bool ParseDirtyValue(const std::string& value, int32_t& op, int64_t& ts)
 {
@@ -66,7 +43,8 @@ static bool ParseDirtyValue(const std::string& value, int32_t& op, int64_t& ts)
 
 bool SearchSync::init()
 {
-    enabled_.store(g_enabled->getValue());
+    const SearchConf conf = GetSearchConf();
+    enabled_.store(conf.enabled);
     if (!enabled_.load()) {
         INFO(logger) << "search client disabled";
         return true;
@@ -84,7 +62,7 @@ bool SearchSync::init()
         timer_->cancel();
         timer_.reset();
     }
-    uint64_t interval = g_flush_interval_ms->getValue();
+    uint64_t interval = conf.flush_interval_ms;
     if (interval == 0) {
         interval = 1000;
     }
@@ -95,7 +73,7 @@ bool SearchSync::init()
         },
         true);
     wake();
-    INFO(logger) << "search client initialized, hub=" << g_hub_address->getValue();
+    INFO(logger) << "search client initialized, hub=" << conf.hub_address;
     return true;
 }
 
@@ -125,6 +103,7 @@ bool SearchSync::ensureConnected()
         return false;
     }
 
+    const SearchConf conf = GetSearchConf();
     std::lock_guard<std::mutex> lock(client_mutex_);
     if (client_ && client_->isConnected()) {
         return true;
@@ -136,26 +115,26 @@ bool SearchSync::ensureConnected()
     }
 
     uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
-    uint64_t reconnect_interval = g_reconnect_interval_ms->getValue();
+    uint64_t reconnect_interval = conf.reconnect_interval_ms;
     if (reconnect_interval > 0 && now_ms < last_connect_ms_.load() + reconnect_interval) {
         return false;
     }
     last_connect_ms_.store(now_ms);
 
-    auto addr = chen::Address::LookupAny(g_hub_address->getValue());
+    auto addr = chen::Address::LookupAny(conf.hub_address);
     if (!addr) {
-        ERROR(logger) << "invalid search hub address: " << g_hub_address->getValue();
+        ERROR(logger) << "invalid search hub address: " << conf.hub_address;
         return false;
     }
 
     auto client = std::make_shared<chen::rpc::RpcClient>();
-    if (!client->connect(addr, g_connect_timeout_ms->getValue())) {
-        DEBUG(logger) << "connect search hub failed: " << g_hub_address->getValue();
+    if (!client->connect(addr, conf.connect_timeout_ms)) {
+        DEBUG(logger) << "connect search hub failed: " << conf.hub_address;
         return false;
     }
     client_ = client;
     last_stats_ms_.store(0);
-    INFO(logger) << "connected search hub: " << g_hub_address->getValue();
+    INFO(logger) << "connected search hub: " << conf.hub_address;
     return true;
 }
 
@@ -188,10 +167,12 @@ void SearchSync::syncLoop()
         return;
     }
 
+    const SearchConf conf = GetSearchConf();
+
     try {
         do {
             uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
-            bool need_stats = now_ms >= last_stats_ms_.load() + g_stats_interval_ms->getValue();
+            bool need_stats = now_ms >= last_stats_ms_.load() + conf.stats_interval_ms;
             if (need_stats) {
                 last_stats_ms_.store(now_ms);
             }
@@ -247,7 +228,8 @@ bool SearchSync::checkStats(tagSearchStats& stats)
     }
 
     try {
-        stats = client->callWithTimeout<tagSearchStats>(g_timeout_ms->getValue(), static_cast<uint32_t>(SS_CMD_SEARCH_GET_STATS));
+        stats = client->callWithTimeout<tagSearchStats>(
+            GetSearchConf().timeout_ms, static_cast<uint32_t>(SS_CMD_SEARCH_GET_STATS));
         return stats.Code == SEARCH_OK;
     } catch (const std::exception& e) {
         WARN(logger) << "search stats failed: " << e.what();
@@ -275,7 +257,8 @@ bool SearchSync::query(const tagSearchQuery& query, tagSearchResult& result)
     }
 
     try {
-        result = client->callWithTimeout<tagSearchResult>(g_timeout_ms->getValue(), static_cast<uint32_t>(SS_CMD_SEARCH_ARTICLES), query);
+        result = client->callWithTimeout<tagSearchResult>(
+            GetSearchConf().timeout_ms, static_cast<uint32_t>(SS_CMD_SEARCH_ARTICLES), query);
         if (result.Code != SEARCH_OK) {
             WARN(logger) << "search query rejected, code=" << result.Code;
             return false;
@@ -320,10 +303,10 @@ void SearchSync::cacheDirty(uint64_t article_id, const DirtyEntry& entry)
                                       "  end "
                                       "end "
                                       "return redis.call('hset', KEYS[1], ARGV[1], ARGV[3])";
+    const SearchConf conf = GetSearchConf();
     std::string value = std::to_string(entry.op) + ":" + std::to_string(entry.ts);
-    auto rpy = chen::RedisUtil::Cmd(
-        g_redis_name->getValue(), "eval %s 1 %s %llu %lld %s", kCacheScript, g_dirty_key->getValue().c_str(), (unsigned long long)article_id,
-        (long long)entry.ts, value.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "eval %s 1 %s %llu %lld %s", kCacheScript,
+        conf.dirty_key.c_str(), (unsigned long long)article_id, (long long)entry.ts, value.c_str());
     if (!rpy) {
         WARN(logger) << "cache dirty article to redis failed, article_id=" << article_id;
     }
@@ -337,7 +320,8 @@ std::map<uint64_t, SearchSync::DirtyEntry> SearchSync::loadDirty()
         dirty = local_dirty_;
     }
 
-    auto rpy = chen::RedisUtil::Cmd(g_redis_name->getValue(), "hgetall %s", g_dirty_key->getValue().c_str());
+    const SearchConf conf = GetSearchConf();
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "hgetall %s", conf.dirty_key.c_str());
     if (rpy && rpy->type == REDIS_REPLY_ARRAY) {
         for (size_t i = 0; i + 1 < rpy->elements; i += 2) {
             if (!rpy->element[i] || !rpy->element[i + 1] || !rpy->element[i]->str || !rpy->element[i + 1]->str) {
@@ -367,9 +351,9 @@ void SearchSync::ackDirty(uint64_t article_id, const DirtyEntry& entry)
 
     static const char* kAckScript = "if redis.call('hget', KEYS[1], ARGV[1]) == ARGV[2] then "
                                     "return redis.call('hdel', KEYS[1], ARGV[1]) end return 0";
-    chen::RedisUtil::Cmd(
-        g_redis_name->getValue(), "eval %s 1 %s %llu %d:%lld", kAckScript, g_dirty_key->getValue().c_str(), (unsigned long long)article_id, entry.op,
-        (long long)entry.ts);
+    const SearchConf conf = GetSearchConf();
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "eval %s 1 %s %llu %d:%lld", kAckScript, conf.dirty_key.c_str(),
+        (unsigned long long)article_id, entry.op, (long long)entry.ts);
 }
 
 bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc& doc, bool& missing)
@@ -427,7 +411,8 @@ bool SearchSync::sendUpsert(const tagSearchDoc& doc)
     }
 
     try {
-        int32_t rt = client->callWithTimeout<int32_t>(g_update_timeout_ms->getValue(), static_cast<uint32_t>(SS_CMD_SEARCH_UPSERT_DOC), doc);
+        int32_t rt = client->callWithTimeout<int32_t>(
+            GetSearchConf().update_timeout_ms, static_cast<uint32_t>(SS_CMD_SEARCH_UPSERT_DOC), doc);
         if (rt != SEARCH_OK) {
             WARN(logger) << "upsert search doc rejected, article_id=" << doc.ArticleId << ", code=" << rt;
             if (rt == SEARCH_NOT_READY) {
@@ -455,8 +440,8 @@ bool SearchSync::sendRemove(uint64_t article_id, int64_t update_time)
     }
 
     try {
-        int32_t rt = client->callWithTimeout<int32_t>(
-            g_update_timeout_ms->getValue(), static_cast<uint32_t>(SS_CMD_SEARCH_REMOVE_ARTICLE), article_id, update_time);
+        int32_t rt = client->callWithTimeout<int32_t>(GetSearchConf().update_timeout_ms,
+            static_cast<uint32_t>(SS_CMD_SEARCH_REMOVE_ARTICLE), article_id, update_time);
         if (rt != SEARCH_OK) {
             WARN(logger) << "remove search article rejected, article_id=" << article_id << ", code=" << rt;
             if (rt == SEARCH_NOT_READY) {
@@ -491,7 +476,7 @@ bool SearchSync::flushDirty()
     }
     std::sort(order.begin(), order.end());
 
-    int32_t limit = g_flush_batch_size->getValue();
+    int32_t limit = GetSearchConf().flush_batch_size;
     if (limit <= 0) {
         limit = 200;
     }
@@ -548,7 +533,8 @@ bool SearchSync::runSnapshot()
     }
 
     uint64_t snapshot_id = (chen::TimeUtil::GetCurrentMs() << 8) ^ (static_cast<uint64_t>(::getpid()) & 0xff);
-    uint64_t rpc_timeout = g_snapshot_rpc_timeout_ms->getValue();
+    const SearchConf conf = GetSearchConf();
+    uint64_t rpc_timeout = conf.snapshot_rpc_timeout_ms;
 
     try {
         int64_t started_at = static_cast<int64_t>(chen::TimeUtil::GetCurrentMs());
@@ -578,11 +564,11 @@ bool SearchSync::runSnapshot()
             return true;
         };
 
-        int32_t page_size = g_snapshot_page_size->getValue();
+        int32_t page_size = conf.snapshot_page_size;
         if (page_size <= 0) {
             page_size = 200;
         }
-        size_t batch_limit = g_snapshot_batch_bytes->getValue();
+        size_t batch_limit = conf.snapshot_batch_bytes;
         if (batch_limit == 0) {
             batch_limit = 524288;
         }

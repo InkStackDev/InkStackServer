@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../SessionData.hpp"
+#include "../BlogAdminServlet.hpp"
 
 class UserListServlet : public BlogAdminServlet {
 public:

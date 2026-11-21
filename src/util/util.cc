@@ -5,10 +5,9 @@
 #include <Chen/Util/FSUtil.hpp>
 #include <Chen/Util/StringUtil.hpp>
 
-static chen::Logger::ptr g_logger = LOG_ROOT();
+#include "../Config/AppConfig.hpp"
 
-static chen::ConfigVar<std::map<std::string, std::map<std::string, std::string>>>::ptr g_mysql_dbs =
-    chen::Config::Lookup("mysql.dbs", std::map<std::string, std::map<std::string, std::string>>(), "mysql dbs");
+static chen::Logger::ptr g_logger = LOG_ROOT();
 
 /// 解析 /proc 文件中形如 `Key:  12345 kB` 的整数值
 static int64_t ParseProcValue(const std::string& content, const std::string& key)
@@ -56,7 +55,7 @@ SystemMemoryInfo GetSystemMemoryInfo()
 
 chen::IDB::ptr GetDB()
 {
-    const auto& dbs = g_mysql_dbs->getValue();
+    const auto dbs = GetMysqlDbs();
     if (dbs.empty()) {
         ERROR(g_logger) << "mysql.dbs is empty";
         return nullptr;

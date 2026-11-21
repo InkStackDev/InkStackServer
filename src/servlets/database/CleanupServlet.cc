@@ -8,9 +8,9 @@
 #include "../../Util/Util.hpp"
 #include "blog/data/backup_record_info.h"
 #include "blog/data/export_record_info.h"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
 CleanupServlet::CleanupServlet()
     : BlogLoginedServlet("CleanupServlet")
@@ -60,7 +60,7 @@ int32_t CleanupServlet::handle(
             if (!b->getFilePath().empty()) {
                 std::string fp = b->getFilePath();
                 if (fp[0] != '/') {
-                    fp = server_work_path->getValue() + "/" + fp;
+                    fp = GetServerWorkPath() + "/" + fp;
                 }
                 int64_t sz = b->getSize();
                 if (chen::FSUtil::Unlink(fp, true) == 0) {
@@ -81,7 +81,7 @@ int32_t CleanupServlet::handle(
             if (!e->getFilePath().empty()) {
                 std::string fp = e->getFilePath();
                 if (fp[0] != '/') {
-                    fp = server_work_path->getValue() + "/" + fp;
+                    fp = GetServerWorkPath() + "/" + fp;
                 }
                 int64_t sz = e->getSize();
                 if (chen::FSUtil::Unlink(fp, true) == 0) {

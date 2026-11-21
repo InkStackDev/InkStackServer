@@ -10,6 +10,7 @@
 
 #include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
+#include "../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -70,8 +71,6 @@ static void DelOrgRepoCache(int64_t id)
 {
     RedisCacheDel(OrgRepoCacheKey(id));
 }
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 data::OrganizationReposInfo::ptr OrganizationRepoManager::ParseRow(chen::ISQLData::ptr rt)
 {
@@ -197,12 +196,12 @@ void OrganizationRepoManager::invalidateCountCache(int64_t org_id)
     {
         std::stringstream key;
         key << "cache:count:org_repo:count:" << org_id;
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", key.str().c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.str().c_str());
     }
     {
         std::stringstream key;
         key << "cache:count:org_repo:list:" << org_id;
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", key.str().c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.str().c_str());
     }
 }
 

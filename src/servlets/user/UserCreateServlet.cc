@@ -7,10 +7,9 @@
 #include "../../Manager/SystemSettingsManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 UserCreateServlet::UserCreateServlet()
     : BlogServlet("UserCreateServlet")
@@ -99,7 +98,7 @@ int32_t UserCreateServlet::handle(
 
 bool UserCreateServlet::verificationEmailCode(const std::string& email, const std::string& code)
 {
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "GET email:verify:1:%s", email.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "GET email:verify:1:%s", email.c_str());
     if (!rpy || rpy->type != REDIS_REPLY_STRING) {
         return false;
     }
@@ -107,6 +106,6 @@ bool UserCreateServlet::verificationEmailCode(const std::string& email, const st
         return false;
     }
     // 一次性使用，校验通过后删除
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "DEL email:verify:1:%s", email.c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "DEL email:verify:1:%s", email.c_str());
     return true;
 }

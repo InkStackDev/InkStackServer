@@ -18,9 +18,9 @@
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/ResourceManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
 ChunkUploadServlet::ChunkUploadServlet()
     : BlogLoginedServlet("ChunkUploadServlet")
@@ -162,7 +162,7 @@ int32_t ChunkUploadServlet::handleComplete(
         std::string subject_name = assignment->getSubjectName();
         std::string user_name = uploader->getName();
         std::string dir_name = upload_session->biz_type + "/" + subject_name + "/" + upload_session->dir_name + "/" + user_name;
-        std::string save_dir = server_work_path->getValue() + "/uploads/" + dir_name;
+        std::string save_dir = GetServerWorkPath() + "/uploads/" + dir_name;
 
         INFO(logger) << "File upload save dir: " << save_dir;
 
@@ -380,7 +380,7 @@ int32_t ChunkUploadServlet::handleUpload(
             break;
         }
         // 确保临时目录存在
-        std::string temp_dir = server_work_path->getValue() + "/temp";
+        std::string temp_dir = GetServerWorkPath() + "/temp";
         if (!chen::FSUtil::Mkdir(temp_dir)) {
             ERROR(logger) << "Failed to create temp directory: " << temp_dir;
             result->setErrno(errcode::UPLOAD_TEMP_DIR_FAILED);

@@ -61,21 +61,4 @@ public:
      * @return bool
      */
     bool onDeactivate() override;
-
-private:
-
-    /**
-     * @brief 注册Servlet
-     */
-    void registerServlets();
-
-    /**
-     * @brief 注册WebSocket Servlet
-     */
-    void registerWSServlets();
-
-    /**
-     * @brief 注册RPC方法
-     */
-    void registerRPCMethods();
 };

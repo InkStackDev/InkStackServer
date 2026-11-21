@@ -4,7 +4,7 @@
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Metrics/Metrics.hpp>
 
-#include "SessionData.hpp"
+#include "../SessionData.hpp"
 
 class BlogServlet : public chen::http::Servlet {
 public:

@@ -14,63 +14,10 @@
 #include <Chen/Http/Http.hpp>
 #include <Chen/Http/HttpSession.hpp>
 
+#include "db/UserInfo.hpp"
+
 #include "AuthContext.hpp"
-
-struct AuthConf {
-    bool cookie_secure = false;
-    std::string cookie_same_site = "Lax";
-    // 会话绝对有效期（秒），<=0 表示不限制
-    int64_t session_absolute_ttl = 604800;
-
-    bool operator==(const AuthConf& oth) const
-    {
-        return cookie_secure == oth.cookie_secure && cookie_same_site == oth.cookie_same_site
-            && session_absolute_ttl == oth.session_absolute_ttl;
-    }
-};
-
-namespace chen {
-
-template <>
-class LexicalCast<std::string, AuthConf> {
-public:
-    AuthConf operator()(const std::string& value)
-    {
-        AuthConf conf;
-        YAML::Node node = YAML::Load(value);
-        if (!node.IsMap()) {
-            return conf;
-        }
-        if (node["cookie_secure"]) {
-            conf.cookie_secure = LexicalCast<std::string, bool>()(node["cookie_secure"].Scalar());
-        }
-        if (node["cookie_same_site"]) {
-            conf.cookie_same_site = node["cookie_same_site"].as<std::string>();
-        }
-        if (node["session_absolute_ttl"]) {
-            conf.session_absolute_ttl = node["session_absolute_ttl"].as<int64_t>();
-        }
-        return conf;
-    }
-};
-
-template <>
-class LexicalCast<AuthConf, std::string> {
-public:
-    std::string operator()(const AuthConf& cfg)
-    {
-        YAML::Node node = {};
-        node["cookie_secure"] = cfg.cookie_secure;
-        node["cookie_same_site"] = cfg.cookie_same_site;
-        node["session_absolute_ttl"] = cfg.session_absolute_ttl;
-
-        std::stringstream ss;
-        ss << node;
-        return ss.str();
-    }
-};
-
-} // namespace chen
+#include "../Config/AuthConfig.hpp"
 
 /**
  * @brief 会话签发选项
@@ -113,7 +60,7 @@ public:
     /**
      * @brief WebSocket 握手认证：仅使用握手 Cookie 中的服务端会话
      */
-    static bool ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, data::UserInfo::ptr& user);
+    static bool ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, db::UserInfo::ptr& user);
 
     /**
      * @brief 写入 SESSIONID Cookie（HttpOnly / SameSite）

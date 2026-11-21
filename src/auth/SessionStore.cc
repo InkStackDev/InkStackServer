@@ -8,11 +8,12 @@
 #include <Chen/Util/TimeUtil.hpp>
 #include <Chen/Util/TypeUtil.hpp>
 
+#include "../Config/AppConfig.hpp"
+
 // SDK 的 SessionDataMgr 只做进程内缓存，不提供 Redis 持久化；
 // 这里用 Redis 保存服务端会话，Cookie 只保存随机 SESSIONID。
-static chen::Logger::ptr logger = LOG_ROOT();
 
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
+static chen::Logger::ptr logger = LOG_ROOT();
 
 /// 会话 key 前缀
 static const char* kSessionKeyPrefix = "auth:sess:";
@@ -98,8 +99,8 @@ std::string SessionStore::Create(int64_t uid, const std::string& ip, const std::
     std::string key = SessionKey(hash);
     std::string user_key = UserSessionKey(uid);
 
-    auto rpy = chen::RedisUtil::Cmd(
-        g_redis_pool_name->getValue(), "hmset %s uid %lld ip %s ua %s created_at %lld last_seen %lld expires_at %lld", key.c_str(), uid, ip.c_str(),
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(),
+        "hmset %s uid %lld ip %s ua %s created_at %lld last_seen %lld expires_at %lld", key.c_str(), uid, ip.c_str(),
         user_agent.c_str(), now, now, expires_at);
     if (!rpy) {
         ERROR(logger) << "create session failed uid=" << uid;
@@ -107,9 +108,10 @@ std::string SessionStore::Create(int64_t uid, const std::string& ip, const std::
     }
 
     int64_t ttl = expires_at - now;
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "expire %s %lld", key.c_str(), ttl);
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zadd %s %lld %s", user_key.c_str(), expires_at, hash.c_str());
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "expire %s %lld", user_key.c_str(), (absolute_ttl > 0 ? absolute_ttl : idle));
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "expire %s %lld", key.c_str(), ttl);
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "zadd %s %lld %s", user_key.c_str(), expires_at, hash.c_str());
+    chen::RedisUtil::Cmd(
+        GetRedisPoolName(), "expire %s %lld", user_key.c_str(), (absolute_ttl > 0 ? absolute_ttl : idle));
 
     return session_id;
 }
@@ -121,7 +123,7 @@ bool SessionStore::Get(const std::string& session_id, SessionInfo& info)
     }
 
     std::string hash = HashId(session_id);
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "hgetall %s", SessionKey(hash).c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "hgetall %s", SessionKey(hash).c_str());
     if (!rpy || rpy->type != REDIS_REPLY_ARRAY || rpy->elements == 0) {
         return false;
     }
@@ -162,10 +164,11 @@ bool SessionStore::Touch(const std::string& session_id, const SessionInfo& info,
     std::string user_key = UserSessionKey(info.uid);
     int64_t ttl = expires_at - now;
 
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "hmset %s last_seen %lld expires_at %lld", key.c_str(), now, expires_at);
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "expire %s %lld", key.c_str(), ttl);
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zadd %s %lld %s", user_key.c_str(), expires_at, hash.c_str());
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "expire %s %lld", user_key.c_str(), (absolute_ttl > 0 ? absolute_ttl : idle));
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "hmset %s last_seen %lld expires_at %lld", key.c_str(), now, expires_at);
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "expire %s %lld", key.c_str(), ttl);
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "zadd %s %lld %s", user_key.c_str(), expires_at, hash.c_str());
+    chen::RedisUtil::Cmd(
+        GetRedisPoolName(), "expire %s %lld", user_key.c_str(), (absolute_ttl > 0 ? absolute_ttl : idle));
     return true;
 }
 
@@ -181,7 +184,7 @@ void SessionStore::Destroy(const std::string& session_id)
         DestroyByHash(hash, info.uid);
         return;
     }
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", SessionKey(hash).c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", SessionKey(hash).c_str());
 }
 
 void SessionStore::DestroyByHash(const std::string& hash, int64_t uid)
@@ -190,9 +193,9 @@ void SessionStore::DestroyByHash(const std::string& hash, int64_t uid)
         return;
     }
 
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", SessionKey(hash).c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", SessionKey(hash).c_str());
     if (uid > 0) {
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zrem %s %s", UserSessionKey(uid).c_str(), hash.c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "zrem %s %s", UserSessionKey(uid).c_str(), hash.c_str());
     }
 }
 
@@ -203,7 +206,7 @@ void SessionStore::DestroyAll(int64_t uid)
     }
 
     std::string user_key = UserSessionKey(uid);
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zrange %s 0 -1", user_key.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "zrange %s 0 -1", user_key.c_str());
     if (rpy && rpy->type == REDIS_REPLY_ARRAY) {
         for (size_t i = 0; i < rpy->elements; ++i) {
             const redisReply* item = rpy->element[i];
@@ -211,10 +214,10 @@ void SessionStore::DestroyAll(int64_t uid)
                 continue;
             }
             std::string hash(item->str, item->len);
-            chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", SessionKey(hash).c_str());
+            chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", SessionKey(hash).c_str());
         }
     }
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", user_key.c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", user_key.c_str());
 }
 
 bool SessionStore::DestroyForUser(int64_t uid, const std::string& hash)
@@ -224,13 +227,13 @@ bool SessionStore::DestroyForUser(int64_t uid, const std::string& hash)
     }
 
     std::string user_key = UserSessionKey(uid);
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zscore %s %s", user_key.c_str(), hash.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "zscore %s %s", user_key.c_str(), hash.c_str());
     if (!rpy || rpy->type != REDIS_REPLY_STRING) {
         return false;
     }
 
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", SessionKey(hash).c_str());
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zrem %s %s", user_key.c_str(), hash.c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", SessionKey(hash).c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "zrem %s %s", user_key.c_str(), hash.c_str());
     return true;
 }
 
@@ -243,9 +246,9 @@ void SessionStore::List(int64_t uid, std::vector<SessionInfo>& sessions)
 
     std::string user_key = UserSessionKey(uid);
     int64_t now = chen::TimeUtil::GetCurrentSec();
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zremrangebyscore %s 0 %lld", user_key.c_str(), now);
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "zremrangebyscore %s 0 %lld", user_key.c_str(), now);
 
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zrange %s 0 -1", user_key.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "zrange %s 0 -1", user_key.c_str());
     if (!rpy || rpy->type != REDIS_REPLY_ARRAY) {
         return;
     }
@@ -256,9 +259,9 @@ void SessionStore::List(int64_t uid, std::vector<SessionInfo>& sessions)
             continue;
         }
         std::string hash(item->str, item->len);
-        auto detail = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "hgetall %s", SessionKey(hash).c_str());
+        auto detail = chen::RedisUtil::Cmd(GetRedisPoolName(), "hgetall %s", SessionKey(hash).c_str());
         if (!detail || detail->type != REDIS_REPLY_ARRAY || detail->elements == 0) {
-            chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "zrem %s %s", user_key.c_str(), hash.c_str());
+            chen::RedisUtil::Cmd(GetRedisPoolName(), "zrem %s %s", user_key.c_str(), hash.c_str());
             continue;
         }
         SessionInfo info;

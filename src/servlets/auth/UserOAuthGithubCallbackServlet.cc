@@ -16,21 +16,10 @@
 #include "../../Manager/UserManager.hpp"
 #include "../../Manager/UserOAuthManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
+#include "../../Config/AuthConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
-
-static chen::ConfigVar<std::string>::ptr g_github_client_id =
-    chen::Config::Lookup("oauth.github.client_id", std::string(""), "GitHub OAuth client id");
-
-static chen::ConfigVar<std::string>::ptr g_github_client_secret =
-    chen::Config::Lookup("oauth.github.client_secret", std::string(""), "GitHub OAuth client secret");
-
-static chen::ConfigVar<std::string>::ptr g_github_callback_url =
-    chen::Config::Lookup("oauth.github.callback_url", std::string(""), "GitHub OAuth callback url");
-
-static chen::ConfigVar<std::string>::ptr g_frontend_base = chen::Config::Lookup("oauth.github.frontend_base", std::string(""), "Frontend base url");
 
 /// Redis state key 前缀（与入口 servlet 保持一致）
 static const char* kOAuthStatePrefix = "oauth:github:state:";
@@ -290,10 +279,11 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
     chen::http::HttpSession::ptr session,
     Result::ptr result)
 {
-    std::string client_id = g_github_client_id->getValue();
-    std::string client_secret = g_github_client_secret->getValue();
-    std::string callback_url = g_github_callback_url->getValue();
-    std::string frontend_base = g_frontend_base->getValue();
+    const GithubOAuthConf oauth = GetGithubOAuth();
+    std::string client_id = oauth.client_id;
+    std::string client_secret = oauth.client_secret;
+    std::string callback_url = oauth.callback_url;
+    std::string frontend_base = oauth.frontend_base;
 
     if (client_id.empty() || client_secret.empty() || callback_url.empty() || frontend_base.empty()) {
         result->setErrno(errcode::GITHUB_OAUTH_FAILED, "GitHub OAuth 未配置");
@@ -318,13 +308,13 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
 
         // 校验并一次性消费 state
         std::string stateKey = std::string(kOAuthStatePrefix) + state;
-        auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", stateKey.c_str());
+        auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", stateKey.c_str());
         if (!rpy || rpy->type != REDIS_REPLY_STRING || !rpy->str) {
             error = errcode::GITHUB_STATE_INVALID;
             break;
         }
         redirect = NormalizeRedirect(std::string(rpy->str, rpy->len));
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", stateKey.c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", stateKey.c_str());
 
         // 换取 GitHub 身份
         std::string access_token;

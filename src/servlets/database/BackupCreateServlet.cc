@@ -10,13 +10,9 @@
 
 #include <sys/stat.h>
 
+#include "../../Config/AppConfig.hpp"
+
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_data_path =
-    chen::Config::Lookup<std::string>("server.data_path", std::string(""), "server data storage path");
-
-static chen::ConfigVar<std::map<std::string, std::map<std::string, std::string>>>::ptr g_mysql_dbs =
-    chen::Config::Lookup("mysql.dbs", std::map<std::string, std::map<std::string, std::string>>(), "mysql dbs");
 
 BackupCreateServlet::BackupCreateServlet()
     : BlogLoginedServlet("BackupCreateServlet")
@@ -64,7 +60,7 @@ int32_t BackupCreateServlet::handle(
             break;
         }
 
-        std::string storage_path = g_data_path->getValue();
+        std::string storage_path = GetServerDataPath();
         if (storage_path.empty()) {
             ERROR(logger) << "storage_path is empty";
             result->setErrno(errcode::INTERNAL_ERROR);
@@ -72,7 +68,7 @@ int32_t BackupCreateServlet::handle(
         }
 
         int64_t backup_id = info->getId();
-        auto mysql_dbs = g_mysql_dbs->getValue();
+        auto mysql_dbs = GetMysqlDbs();
 
         // Trigger async backup via event bus
         {

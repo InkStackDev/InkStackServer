@@ -11,11 +11,10 @@
 #include "../../ErrorCodes.hpp"
 #include "Cbor.hpp"
 #include "Cose.hpp"
+#include "../../Config/AppConfig.hpp"
+#include "../../Config/AuthConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
-static chen::ConfigVar<WebAuthnConf>::ptr g_webauthn = chen::Config::Lookup("webauthn", WebAuthnConf(), "WebAuthn configuration");
 
 namespace {
 
@@ -54,14 +53,14 @@ std::string ChallengeKey(const std::string& prefix, int64_t uid, const std::stri
 
 bool StoreChallenge(const std::string& prefix, int64_t uid, const std::string& challenge, const std::string& value)
 {
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
 
     int64_t ttl = conf.challenge_ttl;
     if (ttl <= 0) {
         ttl = 300;
     }
-    auto rpy = chen::RedisUtil::Cmd(
-        g_redis_pool_name->getValue(), "setex %s %lld %s", ChallengeKey(prefix, uid, challenge).c_str(), (long long)ttl, value.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %lld %s",
+        ChallengeKey(prefix, uid, challenge).c_str(), (long long)ttl, value.c_str());
     return rpy != nullptr;
 }
 
@@ -73,12 +72,12 @@ bool ConsumeChallenge(const std::string& prefix, int64_t uid, const std::string&
     }
 
     std::string key = ChallengeKey(prefix, uid, challenge);
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", key.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", key.c_str());
     bool found = rpy && rpy->type == REDIS_REPLY_STRING && rpy->str;
     if (found) {
         value.assign(rpy->str, rpy->len);
     }
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", key.c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.c_str());
     return found;
 }
 
@@ -151,25 +150,25 @@ bool ParseRegistrationData(const std::string& data, AuthData& out)
 
 bool WebAuthnService::IsConfigured()
 {
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
     return !chen::StringUtil::Trim(conf.rp_id, kTrimChars).empty() && !chen::StringUtil::Trim(conf.origin, kTrimChars).empty();
 }
 
 std::string WebAuthnService::RpId()
 {
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
     return chen::StringUtil::Trim(conf.rp_id, kTrimChars);
 }
 
 std::string WebAuthnService::RpName()
 {
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
     return conf.rp_name.empty() ? "InkStack" : conf.rp_name;
 }
 
 std::string WebAuthnService::Origin()
 {
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
     return chen::StringUtil::Trim(conf.origin, kTrimChars);
 }
 
@@ -179,7 +178,7 @@ std::string WebAuthnService::UserHandle(int64_t uid)
         return "";
     }
 
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
     std::string secret = conf.user_handle_secret;
     if (secret.empty()) {
         secret = "inkstack-webauthn-default";
@@ -199,7 +198,7 @@ int32_t WebAuthnService::CreateRegistrationOptions(
     const std::vector<std::string>& exclude_credential_ids,
     Json::Value& options)
 {
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
 
     if (!IsConfigured()) {
         return errcode::WEBAUTHN_NOT_CONFIGURED;
@@ -355,7 +354,7 @@ int32_t WebAuthnService::VerifyRegistration(int64_t uid, const Json::Value& cred
         return errcode::WEBAUTHN_VERIFY_FAILED;
     }
 
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
 
     if (conf.user_verification == "required" && !(auth_data.flags & kFlagUv)) {
         return errcode::WEBAUTHN_VERIFY_FAILED;
@@ -450,7 +449,7 @@ int32_t WebAuthnService::CreateAuthenticationOptions(int64_t uid, const std::vec
         return errcode::REDIS_OPERATION_FAILED;
     }
 
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
 
     options = Json::Value(Json::objectValue);
     options["challenge"] = challenge;
@@ -575,7 +574,7 @@ int32_t WebAuthnService::VerifyAuthentication(
         return errcode::WEBAUTHN_VERIFY_FAILED;
     }
 
-    const WebAuthnConf& conf = g_webauthn->getValue();
+    const WebAuthnConf conf = GetWebAuthnConf();
     if (conf.user_verification == "required" && !(auth_data.flags & kFlagUv)) {
         return errcode::WEBAUTHN_VERIFY_FAILED;
     }

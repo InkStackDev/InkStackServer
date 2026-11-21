@@ -8,10 +8,9 @@
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/TotpUtil.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 /// Redis 2FA 临时凭证 key 前缀（5分钟有效）
 static const char* k2faPendingPrefix = "2fa_pending:";
@@ -32,7 +31,7 @@ int32_t User2FAVerifyServlet::handle(chen::http::HttpRequest::ptr request,
 
         // 从Redis获取临时凭证对应的用户ID
         std::string key = std::string(k2faPendingPrefix) + tempToken;
-        auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", key.c_str());
+        auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", key.c_str());
         int64_t uid = 0;
         if (rpy && rpy->type == REDIS_REPLY_STRING && rpy->str) {
             try {
@@ -47,7 +46,7 @@ int32_t User2FAVerifyServlet::handle(chen::http::HttpRequest::ptr request,
         }
 
         // 删除临时凭证（一次性）
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", key.c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.c_str());
 
         auto info = UserMgr::GetInstance()->get(uid);
         if (!info) {

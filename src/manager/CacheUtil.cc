@@ -7,15 +7,12 @@
 #include <Chen/Util/TypeUtil.hpp>
 #include <Chen/Util/Util.hpp>
 
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
-
-/// 对象缓存开关：Redis 故障或本地调试时可通过 cache.obj.enabled=false 关闭
-static chen::ConfigVar<bool>::ptr g_obj_cache_enabled = chen::Config::Lookup("cache.obj.enabled", true, "enable redis object cache");
+#include "../Config/AppConfig.hpp"
 
 int64_t ExecuteCountCached(chen::QueryBuilder::ptr qb, chen::IDB::ptr conn, const std::string& cache_key, int ttl_sec)
 {
     std::string redisKey = "cache:count:" + cache_key;
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", redisKey.c_str());
     if (rpy && rpy->str) {
         return chen::TypeUtil::Atoi(rpy->str);
     }
@@ -23,7 +20,7 @@ int64_t ExecuteCountCached(chen::QueryBuilder::ptr qb, chen::IDB::ptr conn, cons
     if (qb->executeCount(total, conn)) {
         return 0;
     }
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %lld", redisKey.c_str(), ttl_sec, total);
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %lld", redisKey.c_str(), ttl_sec, total);
     return total;
 }
 
@@ -40,13 +37,13 @@ void CacheListResult(const std::string& cache_key, const std::vector<int64_t>& i
         ss << ids[i];
     }
     std::string redisKey = "cache:list:" + cache_key;
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %s", redisKey.c_str(), ttl_sec, ss.str().c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %s", redisKey.c_str(), ttl_sec, ss.str().c_str());
 }
 
 bool GetCachedListResult(const std::string& cache_key, std::vector<int64_t>& ids)
 {
     std::string redisKey = "cache:list:" + cache_key;
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", redisKey.c_str());
     if (!rpy || !rpy->str) {
         return false;
     }
@@ -66,13 +63,13 @@ bool GetCachedListResult(const std::string& cache_key, std::vector<int64_t>& ids
 void CacheStringResult(const std::string& cache_key, const std::string& value, int ttl_sec)
 {
     std::string redisKey = "cache:str:" + cache_key;
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %s", redisKey.c_str(), ttl_sec, value.c_str());
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %s", redisKey.c_str(), ttl_sec, value.c_str());
 }
 
 bool GetCachedStringResult(const std::string& cache_key, std::string& value)
 {
     std::string redisKey = "cache:str:" + cache_key;
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", redisKey.c_str());
     if (!rpy || !rpy->str) {
         return false;
     }
@@ -83,13 +80,13 @@ bool GetCachedStringResult(const std::string& cache_key, std::string& value)
 void CacheIdMapping(const std::string& cache_key, int64_t id, int ttl_sec)
 {
     std::string redisKey = "cache:map:" + cache_key;
-    chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %lld", redisKey.c_str(), ttl_sec, id);
+    chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %lld", redisKey.c_str(), ttl_sec, id);
 }
 
 int64_t GetCachedIdMapping(const std::string& cache_key)
 {
     std::string redisKey = "cache:map:" + cache_key;
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", redisKey.c_str());
     if (rpy && rpy->str) {
         return chen::TypeUtil::Atoi(rpy->str);
     }
@@ -98,7 +95,7 @@ int64_t GetCachedIdMapping(const std::string& cache_key)
 
 bool IsObjectCacheEnabled()
 {
-    return g_obj_cache_enabled && g_obj_cache_enabled->getValue();
+    return GetObjCacheEnabled();
 }
 
 std::string RedisCacheGet(const std::string& key)
@@ -106,7 +103,7 @@ std::string RedisCacheGet(const std::string& key)
     if (!IsObjectCacheEnabled()) {
         return std::string();
     }
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", key.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", key.c_str());
     if (!rpy || rpy->type != REDIS_REPLY_STRING || !rpy->str) {
         return std::string();
     }
@@ -120,10 +117,9 @@ bool RedisCacheSetex(const std::string& key, const std::string& value, int ttl_s
     }
     chen::ReplyPtr rpy;
     if (ttl_sec > 0) {
-        rpy =
-            chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %s", key.c_str(), ttl_sec, value.c_str());
+        rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %s", key.c_str(), ttl_sec, value.c_str());
     } else {
-        rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "set %s %s", key.c_str(), value.c_str());
+        rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "set %s %s", key.c_str(), value.c_str());
     }
     return rpy && rpy->type == REDIS_REPLY_STATUS;
 }
@@ -133,7 +129,7 @@ bool RedisCacheDel(const std::string& key)
     if (!IsObjectCacheEnabled()) {
         return false;
     }
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", key.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.c_str());
     return rpy && rpy->type == REDIS_REPLY_INTEGER && rpy->integer > 0;
 }
 
@@ -142,7 +138,7 @@ bool RedisCacheExists(const std::string& key)
     if (!IsObjectCacheEnabled()) {
         return false;
     }
-    auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "exists %s", key.c_str());
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "exists %s", key.c_str());
     return rpy && rpy->type == REDIS_REPLY_INTEGER && rpy->integer > 0;
 }
 

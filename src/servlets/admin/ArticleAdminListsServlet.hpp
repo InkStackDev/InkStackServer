@@ -1,10 +1,12 @@
 #pragma once
 
 #include "../../SessionData.hpp"
+#include "../BlogLoginedServlet.hpp"
 
 class ArticleAdminListsServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<ArticleAdminListsServlet> ptr;
+
     ArticleAdminListsServlet();
 
 protected:

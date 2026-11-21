@@ -9,16 +9,10 @@
 
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
+#include "../../Config/AuthConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
-
-static chen::ConfigVar<std::string>::ptr g_github_client_id =
-    chen::Config::Lookup("oauth.github.client_id", std::string(""), "GitHub OAuth client id");
-
-static chen::ConfigVar<std::string>::ptr g_github_callback_url =
-    chen::Config::Lookup("oauth.github.callback_url", std::string(""), "GitHub OAuth callback url");
 
 /// state 有效期（秒）
 static const int kOAuthStateTTL = 600;
@@ -49,8 +43,9 @@ int32_t UserOAuthGithubServlet::handle(chen::http::HttpRequest::ptr request,
     Result::ptr result)
 {
     do {
-        std::string client_id = g_github_client_id->getValue();
-        std::string callback_url = g_github_callback_url->getValue();
+        const GithubOAuthConf oauth = GetGithubOAuth();
+        std::string client_id = oauth.client_id;
+        std::string callback_url = oauth.callback_url;
         if (client_id.empty() || callback_url.empty()) {
             result->setErrno(errcode::GITHUB_OAUTH_FAILED, "GitHub OAuth 未配置");
             break;
@@ -60,7 +55,7 @@ int32_t UserOAuthGithubServlet::handle(chen::http::HttpRequest::ptr request,
 
         std::string state = UserManager::GenerateToken();
         std::string redisKey = std::string(kOAuthStatePrefix) + state;
-        chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %s", redisKey.c_str(), kOAuthStateTTL, redirect.c_str());
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %s", redisKey.c_str(), kOAuthStateTTL, redirect.c_str());
 
         std::string authorize_url = "https://github.com/login/oauth/authorize?client_id=" + client_id
             + "&redirect_uri=" + chen::StringUtil::UrlEncode(callback_url, false)

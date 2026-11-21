@@ -11,8 +11,6 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
-
 User2FAConfirmServlet::User2FAConfirmServlet()
     : BlogLoginedServlet("User2FAConfirmServlet")
 {

@@ -1,6 +1,6 @@
 #include "BlogAdminServlet.hpp"
 
-#include "./Manager/UserManager.hpp"
+#include "../Manager/UserManager.hpp"
 
 BlogAdminServlet::BlogAdminServlet(const std::string& name)
     : BlogLoginedServlet(name)

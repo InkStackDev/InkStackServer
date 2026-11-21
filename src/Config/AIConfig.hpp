@@ -1,0 +1,78 @@
+/**
+ * @file AIConfig.hpp
+ * @brief 系统默认 AI 配置（用户未配置个人 AI 设置时的兜底）
+ * @author Christins
+ * @date 2026-11-22
+ * @copyright Apache 2.0
+ */
+#pragma once
+
+#include <Chen/Config/Config.hpp>
+
+#include <sstream>
+#include <string>
+
+/**
+ * @brief 系统默认 AI 配置（ai 节点）
+ */
+struct AIConf {
+    /// 厂商类型，如 glm / openai / claude
+    std::string type;
+    /// 默认模型
+    std::string model;
+    /// 默认 API key（明文）
+    std::string api_key;
+
+    bool operator==(const AIConf& other) const
+    {
+        return type == other.type && model == other.model && api_key == other.api_key;
+    }
+};
+
+namespace chen {
+
+template <>
+class LexicalCast<std::string, AIConf> {
+public:
+    AIConf operator()(const std::string& value)
+    {
+        AIConf conf;
+        const YAML::Node node = YAML::Load(value);
+        if (!node.IsMap()) {
+            return conf;
+        }
+        if (node["type"].IsScalar()) {
+            conf.type = node["type"].Scalar();
+        }
+        if (node["model"].IsScalar()) {
+            conf.model = node["model"].Scalar();
+        }
+        if (node["api_key"].IsScalar()) {
+            conf.api_key = node["api_key"].Scalar();
+        }
+        return conf;
+    }
+};
+
+template <>
+class LexicalCast<AIConf, std::string> {
+public:
+    std::string operator()(const AIConf& conf)
+    {
+        YAML::Node node;
+        node["type"] = conf.type;
+        node["model"] = conf.model;
+        node["api_key"] = conf.api_key;
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
+} // namespace chen
+
+/**
+ * @brief 系统默认 AI 配置快照（ai）
+ * @note 每次调用都会读取当前值；热加载后下一次读取即生效
+ */
+AIConf GetAIConf();

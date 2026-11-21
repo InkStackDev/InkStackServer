@@ -10,15 +10,14 @@
 
 #include "../SessionData.hpp"
 #include "../Manager/WSConnectionManager.hpp"
+#include "../Config/AuthConfig.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static chen::ConfigVar<AuthConf>::ptr g_auth_conf = chen::Config::Lookup("auth", AuthConf(), "Auth Configuration");
-
 static std::string NormalizeSameSite()
 {
-    const AuthConf& conf = g_auth_conf->getValue();
+    const AuthConf conf = GetAuthConf();
     std::string value = conf.cookie_same_site;
     if (value != "Lax" && value != "Strict" && value != "None") {
         return "Lax";
@@ -28,7 +27,7 @@ static std::string NormalizeSameSite()
 
 static bool UseSecureCookie()
 {
-    const AuthConf& conf = g_auth_conf->getValue();
+    const AuthConf conf = GetAuthConf();
     return conf.cookie_secure || NormalizeSameSite() == "None";
 }
 
@@ -113,7 +112,7 @@ AuthContext AuthService::Resolve(chen::http::HttpRequest::ptr request, chen::htt
         return ctx;
     }
 
-    const AuthConf& conf = g_auth_conf->getValue();
+    const AuthConf conf = GetAuthConf();
 
     int64_t now = chen::TimeUtil::GetCurrentSec();
     if (touch && now - info.last_seen >= 60) {
@@ -148,7 +147,7 @@ int32_t AuthService::IssueSession(
         return errcode::ACCOUNT_INVALID;
     }
 
-    const AuthConf& conf = g_auth_conf->getValue();
+    const AuthConf conf = GetAuthConf();
 
     int64_t idle_ttl = GetSessionTTL();
     int64_t absolute_ttl = conf.session_absolute_ttl;
@@ -222,7 +221,7 @@ void AuthService::RevokeAllSessions(int64_t uid)
     INFO(logger) << "revoked all sessions uid=" << uid;
 }
 
-bool AuthService::ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, data::UserInfo::ptr& user)
+bool AuthService::ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, db::UserInfo::ptr& user)
 {
     if (!request) {
         return false;

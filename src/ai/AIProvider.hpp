@@ -18,6 +18,7 @@
 class AIProvider {
 public:
     typedef std::shared_ptr<AIProvider> ptr;
+
     virtual ~AIProvider() = default;
 
     /**

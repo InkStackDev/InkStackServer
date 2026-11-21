@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。
 - 新增 `blog_ws_online_devices` 指标，统计 WebSocket 连接数。
+- 新增 RPC Hub 客户端配置（`rpc.enabled` / `hub_address` / `bus_id` / 超时），并集中到 `src/Config/RpcConfig.hpp`；
+  `bus_id` 为 `<zone>.<group>.<service>.<instance>` 四段位，用于推导 hub 侧的 `peer_id` 与 `func_id`。
+  本轮只落配置与解析，连接/注册逻辑后续实现。
 
 ### 变更
 
@@ -20,6 +23,8 @@ All notable changes to this project will be documented in this file.
 - 普通用户可连接统一网关接收通知与在线人数，但私信帧返回 `ACCESS_DENIED`。
 - 登出、踢设备、撤销单会话、撤销全部会话、重新签发会话时联动关闭对应 WebSocket。
 - `blog_online_users` 改为按 `uid` 去重的在线用户数。
+- 业务侧配置统一收敛到 `src/Config/`（`AppConfig` / `AuthConfig` / `SearchConfig` / `AIConfig`），各模块不再各自声明
+  `Config::Lookup`；新增配置项需在该目录登记并更新 key 对照表。
 
 ### 修复
 
@@ -30,6 +35,8 @@ All notable changes to this project will be documented in this file.
 - 崩溃日志现在记录崩溃时间、线程 ID、`si_code`、出错 PC/SP/FP、模块基址与 PC 偏移、栈内容，可在帧丢失时仍用 `addr2line` 定位。
 - 系统设置的写路径（保存设置、上传站点图片）改为先复制再整体替换，避免与 `/api/v1/site/settings` 等读请求并发改写同一个
   `std::string`。
+- 修复 `server.work_path` / `server.data_path` 使用单参 `Config::Lookup`（只查不注册）时，依赖跨编译单元静态初始化顺序、
+  顺序不利会拿到空指针并崩溃的隐患；现在统一由 `src/Config/AppConfig.cc` 带默认值注册。
 
 ### 移除
 

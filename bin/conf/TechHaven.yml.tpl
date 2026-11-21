@@ -67,6 +67,23 @@ server:
   work_path: ${WORK_PATH}
   data_path: ${DATA_PATH}
   pid_file: server.pid
+  # 部署实例编号（日志 / 指标用）；与 rpc.bus_id 第 4 段保持一致
+  instance_id: ${INSTANCE_ID}
+
+# RPC Hub 客户端配置：App 主动连接 hub，当前 hub 由 InkStackSearchServer 提供（默认 9010）
+rpc:
+  enabled: true
+  hub_address: ${RPC_HUB_ADDRESS}
+  # bus_id = <zone>.<group>.<service>.<instance>，每段 1..255
+  #   peer_id = zone<<24 | group<<16 | service<<8 | instance（hub 全局唯一）
+  #   func_id = group<<8 | service（同一服务所有实例共享）
+  # 服务段参考：1=Search，2=App，3=Bot
+  bus_id: ${RPC_BUS_ID}
+  # 请求超时 / 连接超时 / 重连间隔 / 心跳间隔（毫秒）
+  timeout_ms: 3000
+  connect_timeout_ms: 1000
+  reconnect_interval_ms: 5000
+  heartbeat_interval_ms: 30000
 
 # Redis object cache. Set enabled=false to bypass all entity caches and fall back to DB.
 cache:

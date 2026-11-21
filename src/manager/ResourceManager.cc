@@ -9,7 +9,6 @@
 #include <Chen/Util/Util.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
-static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
 static const int kCacheTTL = 300;
 static const char* kCachePrefix = "cache:obj:res:";

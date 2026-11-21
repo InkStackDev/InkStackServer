@@ -7,6 +7,8 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
 
+#include "../Config/AppConfig.hpp"
+
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 120;
@@ -66,12 +68,6 @@ static void SetUserCache(const data::UserInfo::ptr& info)
     }
     RedisCacheSetex(UserCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
-
-static chen::ConfigVar<std::string>::ptr g_admin_account = chen::Config::Lookup("admin.account", std::string("admin"), "default super admin account");
-static chen::ConfigVar<std::string>::ptr g_admin_passwd =
-    chen::Config::Lookup("admin.passwd", std::string(""), "bootstrap super admin password (required only on first seed)");
-static chen::ConfigVar<std::string>::ptr g_admin_email =
-    chen::Config::Lookup("admin.email", std::string("admin@example.com"), "default super admin email");
 
 data::UserInfo::ptr UserManager::ParseRow(chen::ISQLData::ptr rt)
 {
@@ -201,9 +197,10 @@ void UserManager::ensureSuperAdmin()
         return;
     }
 
-    std::string account = g_admin_account->getValue();
-    std::string passwd = g_admin_passwd->getValue();
-    std::string email = g_admin_email->getValue();
+    const AdminConf admin = GetAdminConf();
+    std::string account = admin.account;
+    std::string passwd = admin.passwd;
+    std::string email = admin.email;
     if (email.empty()) {
         ERROR(logger) << "admin.email empty, skip seeding super admin";
         return;

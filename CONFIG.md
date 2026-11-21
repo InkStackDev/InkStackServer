@@ -78,18 +78,32 @@ UPLOAD_DIR=/data/techhaven/uploads
 
 ## 4. 在 C++ 代码中读取
 
-用 `chen::Config::Lookup` 声明配置项，key 用 `.` 对应 YAML 层级（`upload.dir` ↔ `upload: dir:`），并提供默认值。
+业务代码统一通过 `src/Config/` 提供的方法读取配置，不要在业务文件里各自写 `chen::Config::Lookup`：
 
 ```cpp
-#include <Chen/Config/Config.hpp>
+#include "../Config/AppConfig.hpp"
 
-// 声明（一般放在源文件顶部，作为 static 全局变量，前缀 g_）
+std::string dir = GetServerWorkPath() + "/uploads";
+std::string pool = GetRedisPoolName();
+auto search = GetSearchConf();
+```
+
+可用方法与 key 对照表见 [`src/Config/README.md`](src/Config/README.md)。
+
+确实需要新增配置项时，在 `src/Config/` 对应文件里声明：
+
+```cpp
+// .cc：必须放在文件级 static 上，在模块 dlopen 时完成注册
 static chen::ConfigVar<std::string>::ptr g_upload_dir =
     chen::Config::Lookup("upload.dir", std::string("uploads"), "上传目录");
 
-// 使用
-std::string dir = g_upload_dir->getValue();
+// .hpp
+std::string GetUploadDir();
 ```
+
+key 用 `.` 对应 YAML 层级（`upload.dir` ↔ `upload: dir:`），并提供默认值。 **不要在函数内用 `static` 做懒注册**：框架在
+`dlopen` 之后会立刻重新加载配置，
+晚于这个时点注册的 key 只会拿到默认值。
 
 ### 4.1 支持的配置类型
 
@@ -103,8 +117,8 @@ std::string dir = g_upload_dir->getValue();
 | `std::set<T>` / `std::unordered_set<T>` | 集合 |
 | `std::map<std::string, T>` | 键值表（对应 YAML 嵌套映射） |
 
-> 参考现有用法：`src/BlogModule.cc` 中的 `mysql.dbs`、`src/Search/SearchSync.cc` 中的 `search.hub_address`、
-> `src/Manager/UserManager.cc` 中的 `admin.account`。
+> 参考现有用法：`src/Config/AppConfig.cc` 中的 `mysql.dbs`、`src/Config/SearchConfig.cc` 中的 `search` 结构体、
+> `src/Config/AppConfig.cc` 中的 `admin` 结构体。
 
 ### 4.2 配置变更监听（热重载）
 
@@ -213,7 +227,50 @@ SMTP 配置不走 `bin/conf/`，而是在管理后台「系统设置 → 邮件�
 > 用 587 会在握手阶段报 `SSL routines::wrong version number`；用 `tls` 配置调用发信接口会直接返回
 > `9019 SMTP_ENCRYPTION_UNSUPPORTED`，请把端口改成 `465`、加密方式改成 `ssl`。
 
-## 9. 注意事项
+## 9. RPC Hub（客户端）
+
+分布式部署时，每个 App 实例都作为客户端**主动连接** RPC Hub 并注册自己；实例之间不互连。
+当前 hub 由 InkStackSearchServer 进程提供（`9010` + `args.relay: "1"`），App 只需配置 hub 地址与自身身份。
+
+```yaml
+server:
+  instance_id: ${INSTANCE_ID}
+
+rpc:
+  enabled: true
+  hub_address: ${RPC_HUB_ADDRESS}
+  bus_id: ${RPC_BUS_ID}
+  timeout_ms: 3000
+  connect_timeout_ms: 1000
+  reconnect_interval_ms: 5000
+  heartbeat_interval_ms: 30000
+```
+
+| 配置                        | 说明                                                         |
+|-----------------------------|--------------------------------------------------------------|
+| `rpc.enabled`               | 是否启用 hub 客户端                                          |
+| `rpc.hub_address`           | hub 地址（默认与 `SEARCH_HUB_ADDRESS` 相同）；留空视为未配置 |
+| `rpc.bus_id`                | 总线身份，`<zone>.<group>.<service>.<instance>`，每段 1..255 |
+| `rpc.timeout_ms`            | 经 hub 转发的请求级超时                                      |
+| `rpc.connect_timeout_ms`    | 连接 hub 超时                                                |
+| `rpc.reconnect_interval_ms` | 断线重连间隔                                                 |
+| `rpc.heartbeat_interval_ms` | 心跳间隔（SDK 默认连续 3 次无响应断开）                      |
+
+`bus_id` 的映射规则（代码见 `src/Config/RpcConfig.hpp`）：
+
+- `peer_id = zone<<24 | group<<16 | service<<8 | instance`，按 hub **全局唯一**
+- `func_id = group<<8 | service`，同一服务的所有实例共享，供 `GROUPID` / `BROADCAST` 路由
+- `instance_id` 取第 4 段，与 `server.instance_id` 保持一致
+- `service` 段约定：`1` = Search，`2` = App，`3` = Bot
+
+> **多实例部署**：每起一个实例都必须让 `bus_id` 的第 4 段（以及 `INSTANCE_ID`）唯一，否则 hub 会拒绝重复注册。
+> **独立 hub**：以后把 hub 拆成独立进程时，只需要改 `RPC_HUB_ADDRESS`，App 侧不用改代码。
+
+> 当前只落了配置与解析（`GetRpcConf()`），连接/注册（`RpcHubMgr`、`registerService`）尚未实现，因此这一节暂不影响运行行为。
+
+> 升级后已有 `prod.env` 需要补充 `INSTANCE_ID` / `RPC_HUB_ADDRESS` / `RPC_BUS_ID`，否则 `switch-env.sh` 会因缺少占位符而失败。
+
+## 10. 注意事项
 
 1. **占位符命名**：统一用大写 snake_case（如 `MYSQL_HOST`、`UPLOAD_DIR`），并在 `dev.env` 与 `prod.env.example` 中保持一致。
 2. **密钥不入库**：生产密码、密钥只写在 `bin/conf/prod.env`（已被 `.gitignore` 忽略），不要写进 `prod.env.example` 或提交。

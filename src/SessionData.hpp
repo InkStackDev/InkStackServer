@@ -3,13 +3,12 @@
 #include <memory>
 #include <string>
 
-#include <Chen/Http/Servlet.hpp>
 #include <Chen/Log/Log.hpp>
 #include <json/json.h>
 
 #include "ErrorCodes.hpp"
 
-inline static chen::Logger::ptr g_session_logger = LOG_ROOT();
+inline static chen::Logger::ptr logger = LOG_ROOT();
 
 struct CookieKey {
     static const std::string kSessionKey;

@@ -9,8 +9,9 @@
 
 #include <fstream>
 
+#include "../../Config/AppConfig.hpp"
+
 static chen::Logger::ptr logger = LOG_ROOT();
-static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 static const int64_t MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB文件大小限制
 
 // 安全处理文件名，移除危险字符
@@ -115,7 +116,7 @@ int32_t FileDownloadServlet::handle(
         response->setHeader("Pragma", "no-cache");
         response->setHeader("Expires", "0");
 
-        std::string filepath = server_work_path->getValue() + res_info->getPath();
+        std::string filepath = GetServerWorkPath() + res_info->getPath();
 
         // 使用流式读取，避免内存问题
         std::ifstream ifs(filepath, std::ios::binary);

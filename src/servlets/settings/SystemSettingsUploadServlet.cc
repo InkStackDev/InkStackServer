@@ -8,8 +8,9 @@
 #include <Chen/Parser/MultipartParser.hpp>
 #include <Chen/Util/Util.hpp>
 
+#include "../../Config/AppConfig.hpp"
+
 static chen::Logger::ptr logger = LOG_ROOT();
-static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
 SystemSettingsUploadServlet::SystemSettingsUploadServlet()
     : BlogLoginedServlet("SystemSettingsUploadServlet")
@@ -54,7 +55,7 @@ int32_t SystemSettingsUploadServlet::handle(
             break;
         }
 
-        std::string save_dir = server_work_path->getValue() + "/uploads/settings";
+        std::string save_dir = GetServerWorkPath() + "/uploads/settings";
         std::string filename = type + "_" + std::to_string(time(0));
         if (!data[1].filename.empty()) {
             std::string ext;

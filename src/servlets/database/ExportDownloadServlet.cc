@@ -9,8 +9,9 @@
 
 #include <fstream>
 
+#include "../../Config/AppConfig.hpp"
+
 static chen::Logger::ptr logger = LOG_ROOT();
-static chen::ConfigVar<std::string>::ptr server_data_path = chen::Config::Lookup<std::string>("server.data_path");
 
 ExportDownloadServlet::ExportDownloadServlet()
     : BlogLoginedServlet("ExportDownloadServlet")
@@ -64,7 +65,7 @@ int32_t ExportDownloadServlet::handle(
         }
 
         if (filepath[0] != '/') {
-            filepath = server_data_path->getValue() + "/" + filepath;
+            filepath = GetServerDataPath() + "/" + filepath;
         }
 
         std::ifstream ifs(filepath, std::ios::binary);

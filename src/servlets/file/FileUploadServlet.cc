@@ -9,10 +9,9 @@
 #include "../../Manager/AssignmentUserRelManager.hpp"
 #include "../../Manager/ResourceManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
 FileUploadServlet::FileUploadServlet()
     : BlogLoginedServlet("FileUploadServlet")
@@ -61,7 +60,7 @@ int32_t FileUploadServlet::handle(
         std::string subject_name = assignment->getSubjectName();
         std::string user_name = uploader->getName();
         std::string dir_name = biz_type + "/" + subject_name + "/" + data[0].content + "/" + user_name;
-        std::string save_dir = server_work_path->getValue() + "/uploads/" + dir_name;
+        std::string save_dir = GetServerWorkPath() + "/uploads/" + dir_name;
 
         INFO(logger) << "File upload save dir: " << save_dir;
 

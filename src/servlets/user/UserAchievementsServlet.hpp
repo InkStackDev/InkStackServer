@@ -8,6 +8,7 @@
 #pragma once
 
 #include "../../SessionData.hpp"
+#include "../BlogLoginedServlet.hpp"
 
 class UserAchievementsServlet : public BlogLoginedServlet {
 public:

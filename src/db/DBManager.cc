@@ -43,15 +43,13 @@
 #include "db/user_oauth_info.h"
 #include "db/user_passkey_info.h"
 #include "db/user_recovery_code_info.h"
+#include "../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static chen::ConfigVar<std::map<std::string, std::map<std::string, std::string>>>::ptr g_mysql_dbs =
-    chen::Config::Lookup("mysql.dbs", std::map<std::string, std::map<std::string, std::string>>(), "mysql dbs");
-
 bool DBManager::CreateAllTables()
 {
-    const auto& mysql_dbs = g_mysql_dbs->getValue();
+    const auto mysql_dbs = GetMysqlDbs();
     for (const auto& params : mysql_dbs | std::views::values) {
         auto mysql = std::make_shared<chen::MySQL>(params);
         if (!mysql->connect()) {
@@ -112,7 +110,7 @@ bool DBManager::MigrateAllTables()
 {
     INFO(logger) << "migrate database begin";
 
-    const auto& mysql_dbs = g_mysql_dbs->getValue();
+    const auto mysql_dbs = GetMysqlDbs();
     for (const auto& params : mysql_dbs | std::views::values) {
         auto mysql = std::make_shared<chen::MySQL>(params);
         if (!mysql->connect()) {

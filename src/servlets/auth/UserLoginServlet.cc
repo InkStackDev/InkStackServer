@@ -7,10 +7,9 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 /// Redis 2FA 临时凭证 key 前缀（5分钟有效）
 static const char* k2faPendingPrefix = "2fa_pending:";
@@ -82,7 +81,8 @@ int32_t UserLoginServlet::handle(
         if (info->getTotpEnabled()) {
             std::string tempToken = UserManager::GenerateToken();
             std::string redisKey = std::string(k2faPendingPrefix) + tempToken;
-            chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %lld", redisKey.c_str(), k2faPendingTTL, (long long)info->getId());
+            chen::RedisUtil::Cmd(
+                GetRedisPoolName(), "setex %s %d %lld", redisKey.c_str(), k2faPendingTTL, (long long)info->getId());
             result->set("require_2fa", true);
             result->set("temp_token", tempToken);
             INFO(logger) << "login user=" << info->getId() << " require 2fa verification";

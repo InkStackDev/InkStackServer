@@ -11,12 +11,9 @@
 #include <Chen/Http/HttpConnection.hpp>
 #include <Chen/Log/Log.hpp>
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include "../../Config/AIConfig.hpp"
 
-// 系统默认 AI 配置 — 用户未配置时的兜底
-static chen::ConfigVar<std::string>::ptr g_ai_type = chen::Config::Lookup("ai.type", std::string(""), "default AI provider type");
-static chen::ConfigVar<std::string>::ptr g_ai_model = chen::Config::Lookup("ai.model", std::string(""), "default AI model");
-static chen::ConfigVar<std::string>::ptr g_ai_api_key = chen::Config::Lookup("ai.api_key", std::string(""), "default AI API key");
+static chen::Logger::ptr logger = LOG_ROOT();
 
 static const char* SYSTEM_PROMPT = "你是一个专业的文章总结助手。";
 
@@ -89,9 +86,10 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
             }
         } else {
             // 系统默认配置：API key 是明文，无需解密
-            ai_type = g_ai_type->getValue();
-            ai_model = g_ai_model->getValue();
-            ai_key = g_ai_api_key->getValue();
+            const AIConf system_conf = GetAIConf();
+            ai_type = system_conf.type;
+            ai_model = system_conf.model;
+            ai_key = system_conf.api_key;
 
             INFO(logger) << "AI config source=system, type=" << ai_type << ", model=" << ai_model << ", key_len=" << ai_key.size();
         }

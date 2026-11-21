@@ -185,8 +185,17 @@ static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
     return 0;
 }
 
-void BlogMsgFromBotInit(chen::rpc::RpcServer::ptr server)
+bool BlogMsgFromBotInit(chen::rpc::RpcClient::ptr client)
 {
-    server->registerMethod(SS_CMD_GET_GITHUB_PR_INFO, HandlePRWebhook);
-    server->registerMethod(SS_CMD_GET_GITHUB_PR_REVIEW_INFO, HandlePRReviewWebhook);
+    ASSERT_RET(client, false);
+
+    if (!client->isConnected()) {
+        ERROR(logger) << "RpcClient Connect failed";
+        return false;
+    }
+
+    client->registerMethod(SS_CMD_GET_GITHUB_PR_INFO, HandlePRWebhook);
+    client->registerMethod(SS_CMD_GET_GITHUB_PR_REVIEW_INFO, HandlePRReviewWebhook);
+
+    return true;
 }
