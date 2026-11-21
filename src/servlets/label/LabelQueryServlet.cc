@@ -1,10 +1,10 @@
 #include "LabelQueryServlet.hpp"
 
-#include "../../include/Managers.hpp"
-#include "../../util/Util.hpp"
+#include "../../Include/Managers.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/article_label_rel_info.h"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 #include <map>
 

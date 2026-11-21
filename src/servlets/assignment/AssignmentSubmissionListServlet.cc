@@ -1,12 +1,12 @@
 #include "AssignmentSubmissionListServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/AssignmentManager.hpp"
-#include "../../manager/AssignmentUserRelManager.hpp"
-#include "../../manager/ResourceManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/AssignmentManager.hpp"
+#include "../../Manager/AssignmentUserRelManager.hpp"
+#include "../../Manager/ResourceManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

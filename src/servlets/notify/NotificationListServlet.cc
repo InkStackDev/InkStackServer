@@ -1,6 +1,6 @@
 #include "NotificationListServlet.hpp"
 
-#include "../../manager/NotificationManager.hpp"
+#include "../../Manager/NotificationManager.hpp"
 
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")

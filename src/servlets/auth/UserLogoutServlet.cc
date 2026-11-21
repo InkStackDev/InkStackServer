@@ -1,6 +1,6 @@
 #include "UserLogoutServlet.hpp"
 
-#include "../../auth/AuthService.hpp"
+#include "../../Auth/AuthService.hpp"
 
 UserLogoutServlet::UserLogoutServlet()
     : BlogServlet("UserLogoutServlet")

@@ -1,10 +1,10 @@
 #include "ArticleDeleteServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../search/SearchSync.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Search/SearchSync.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/article_info.h"
 
 static chen::Logger::ptr logger = LOG_ROOT();

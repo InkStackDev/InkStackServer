@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chen/rpc/rpc_server.h>
+#include <Chen/Rpc/RpcServer.hpp>
 
 #include "protocol_ss_github.h" // IWYU pragma: keep
 

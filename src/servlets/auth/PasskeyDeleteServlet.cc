@@ -1,6 +1,6 @@
 #include "PasskeyDeleteServlet.hpp"
 
-#include "../../manager/PasskeyManager.hpp"
+#include "../../Manager/PasskeyManager.hpp"
 
 PasskeyDeleteServlet::PasskeyDeleteServlet()
     : BlogLoginedServlet("PasskeyDeleteServlet")

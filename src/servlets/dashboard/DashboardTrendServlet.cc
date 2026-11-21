@@ -1,8 +1,8 @@
 #include "DashboardTrendServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/CommentManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/CommentManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 #include <ctime>
 

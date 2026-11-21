@@ -1,7 +1,7 @@
 #pragma once
 
-#include <chen/db/query_builder.h>
-#include <chen/util/singleton.h>
+#include <Chen/DB/QueryBuilder.hpp>
+#include <Chen/Util/Singleton.hpp>
 
 #include <cstdint>
 #include <string>

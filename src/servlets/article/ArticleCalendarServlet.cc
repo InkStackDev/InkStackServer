@@ -7,9 +7,9 @@
  */
 #include "ArticleCalendarServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ArticleManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

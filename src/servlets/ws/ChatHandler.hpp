@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <chen/http/ws_session.h>
+#include <Chen/Http/WSSession.hpp>
 
 /**
  * @brief 私信 WebSocket 帧处理器

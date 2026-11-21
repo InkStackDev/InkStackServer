@@ -1,7 +1,7 @@
 #include "ErrorCodesServlet.hpp"
 
-#include "../../i18n/I18n.hpp"
-#include "../../manager/ErrorCodeManager.hpp"
+#include "../../I18n/I18n.hpp"
+#include "../../Manager/ErrorCodeManager.hpp"
 
 ErrorCodesServlet::ErrorCodesServlet()
     : BlogServlet("ErrorCodesServlet")

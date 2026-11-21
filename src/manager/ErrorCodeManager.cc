@@ -2,11 +2,11 @@
 
 #include <fstream>
 
-#include <chen/config/config.h>
-#include <chen/log/log.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/Log/Log.hpp>
 #include <json/json.h>
 
-#include "../i18n/I18n.hpp"
+#include "../I18n/I18n.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

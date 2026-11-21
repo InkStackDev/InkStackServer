@@ -1,10 +1,10 @@
 #include "PasskeyRegisterFinishServlet.hpp"
 
-#include <chen/util/json_util.h>
-#include <chen/util/time_util.h>
+#include <Chen/Util/JsonUtil.hpp>
+#include <Chen/Util/TimeUtil.hpp>
 
-#include "../../auth/webauthn/WebAuthn.hpp"
-#include "../../manager/PasskeyManager.hpp"
+#include "../../Auth/WebAuthn/WebAuthn.hpp"
+#include "../../Manager/PasskeyManager.hpp"
 
 PasskeyRegisterFinishServlet::PasskeyRegisterFinishServlet()
     : BlogLoginedServlet("PasskeyRegisterFinishServlet")

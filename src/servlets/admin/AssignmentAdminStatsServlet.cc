@@ -1,7 +1,7 @@
 #include "AssignmentAdminStatsServlet.hpp"
 
-#include "../../manager/AssignmentManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/AssignmentManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 AssignmentAdminStatsServlet::AssignmentAdminStatsServlet()
     : BlogLoginedServlet("AssignmentAdminStatsServlet")

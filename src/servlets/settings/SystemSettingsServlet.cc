@@ -1,9 +1,9 @@
 #include "SystemSettingsServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/SystemSettingsManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/SystemSettingsManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

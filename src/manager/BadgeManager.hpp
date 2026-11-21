@@ -9,8 +9,8 @@
 
 #include "blog/data/badge_info.h"
 
-#include <chen/db/query_builder.h>
-#include <chen/util/singleton.h>
+#include <Chen/DB/QueryBuilder.hpp>
+#include <Chen/Util/Singleton.hpp>
 
 class BadgeManager {
 public:

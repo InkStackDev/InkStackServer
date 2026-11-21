@@ -1,9 +1,9 @@
 #include "AdminFeedbackDeleteServlet.hpp"
 
-#include "../../include/Managers.hpp"
-#include "../../util/Util.hpp"
+#include "../../Include/Managers.hpp"
+#include "../../Util/Util.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

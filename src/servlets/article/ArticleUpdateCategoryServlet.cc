@@ -1,12 +1,12 @@
 #include "ArticleUpdateCategoryServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ArticleCategoryRelManager.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/CategoryManager.hpp"
-#include "../../search/SearchSync.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleCategoryRelManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/CategoryManager.hpp"
+#include "../../Search/SearchSync.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

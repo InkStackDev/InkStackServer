@@ -4,7 +4,7 @@
 
 #include <mutex>
 
-#include <chen/util/singleton.h>
+#include <Chen/Util/Singleton.hpp>
 
 class SystemSettingsManager {
 public:

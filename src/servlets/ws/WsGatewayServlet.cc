@@ -2,13 +2,13 @@
 
 #include "../../ErrorCodes.hpp"
 #include "../../SessionData.hpp"
-#include "../../auth/AuthService.hpp"
-#include "../../auth/SessionStore.hpp"
-#include "../../manager/WSConnectionManager.hpp"
+#include "../../Auth/AuthService.hpp"
+#include "../../Auth/SessionStore.hpp"
+#include "../../Manager/WSConnectionManager.hpp"
 #include "ChatHandler.hpp"
 
-#include <chen/log/log.h>
-#include <chen/util/json_util.h>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

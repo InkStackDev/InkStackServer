@@ -1,9 +1,9 @@
 #include "PasskeyRegisterBeginServlet.hpp"
 
-#include "../../auth/webauthn/WebAuthn.hpp"
-#include "../../manager/PasskeyManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/UaParser.hpp"
+#include "../../Auth/WebAuthn/WebAuthn.hpp"
+#include "../../Manager/PasskeyManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/UaParser.hpp"
 
 PasskeyRegisterBeginServlet::PasskeyRegisterBeginServlet()
     : BlogLoginedServlet("PasskeyRegisterBeginServlet")

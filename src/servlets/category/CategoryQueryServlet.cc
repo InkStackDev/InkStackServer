@@ -1,12 +1,12 @@
 #include "CategoryQueryServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../manager/ArticleCategoryRelManager.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/CategoryManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ArticleCategoryRelManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/CategoryManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <chen/db/query_builder.h>
+#include <Chen/DB/QueryBuilder.hpp>
 
 #include <json/json.h>
 

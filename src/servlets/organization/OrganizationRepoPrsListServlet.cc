@@ -7,12 +7,12 @@
  */
 #include "OrganizationRepoPrsListServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/OrganizationRepoManager.hpp"
-#include "../../manager/OrganizationRepoPrManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/OrganizationRepoManager.hpp"
+#include "../../Manager/OrganizationRepoPrManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

@@ -1,11 +1,11 @@
 #include "FileDownloadServlet.hpp"
 
-#include <chen/config/config.h>
-#include <chen/log/log.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ResourceManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ResourceManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 #include <fstream>
 

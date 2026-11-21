@@ -1,10 +1,10 @@
 #include "User2FAEnableServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/UserManager.hpp"
-#include "../../util/TotpUtil.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/TotpUtil.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

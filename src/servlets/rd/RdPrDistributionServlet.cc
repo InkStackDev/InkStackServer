@@ -1,8 +1,8 @@
 #include "RdPrDistributionServlet.hpp"
 
-#include <chen/db/query_builder.h>
-#include <chen/log/log.h>
-#include <chen/util/time_util.h>
+#include <Chen/DB/QueryBuilder.hpp>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
 
 #include <cmath>
 #include <ctime>
@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
 #include "blog/data/organization_repo_prs_info.h"
 #include "RdHelper.hpp"
 

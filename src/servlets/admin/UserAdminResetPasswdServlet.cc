@@ -1,11 +1,11 @@
 #include "UserAdminResetPasswdServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../auth/AuthService.hpp"
-#include "../../event/EventDefine.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Auth/AuthService.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

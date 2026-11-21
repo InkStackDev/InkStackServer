@@ -1,6 +1,6 @@
 #include "ConversationDeleteServlet.hpp"
 
-#include "../../manager/MessageManager.hpp"
+#include "../../Manager/MessageManager.hpp"
 #include "MessageJson.hpp"
 
 ConversationDeleteServlet::ConversationDeleteServlet()

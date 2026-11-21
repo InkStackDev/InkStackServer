@@ -1,11 +1,11 @@
 #include "UserOrganizationListServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 #include <algorithm>
 
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

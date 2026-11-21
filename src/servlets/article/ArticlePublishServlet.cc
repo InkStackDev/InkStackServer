@@ -1,13 +1,13 @@
 #include "ArticlePublishServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 #include "../../Permission.hpp"
-#include "../../event/EventDefine.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../search/SearchSync.hpp"
-#include "../../util/Util.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Search/SearchSync.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

@@ -2,11 +2,11 @@
 
 #include <cstdarg>
 
-#include "auth/AuthService.hpp"
-#include "i18n/I18n.hpp"
-#include "manager/ErrorCodeManager.hpp"
-#include "metrics/MetricsService.hpp"
-#include "util/Util.hpp"
+#include "Auth/AuthService.hpp"
+#include "I18n/I18n.hpp"
+#include "Manager/ErrorCodeManager.hpp"
+#include "Metrics/MetricsService.hpp"
+#include "Util/Util.hpp"
 
 const std::string CookieKey::kSessionKey = "SESSIONID";
 const std::string SessionDataKey::kUserId = "user_id";

@@ -12,9 +12,9 @@
 #include <map>
 #include <mutex>
 
-#include <chen/rpc/rpc_client.h>
-#include <chen/timer/timer.h>
-#include <chen/util/singleton.h>
+#include <Chen/Rpc/RpcClient.hpp>
+#include <Chen/Timer/Timer.hpp>
+#include <Chen/Util/Singleton.hpp>
 
 #include "protocol_ss_search.h" // IWYU pragma: keep
 

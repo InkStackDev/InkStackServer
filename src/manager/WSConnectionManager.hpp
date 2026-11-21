@@ -7,8 +7,8 @@
  */
 #pragma once
 
-#include <chen/http/ws_session.h>
-#include <chen/util/singleton.h>
+#include <Chen/Http/WSSession.hpp>
+#include <Chen/Util/Singleton.hpp>
 
 #include <memory>
 #include <mutex>

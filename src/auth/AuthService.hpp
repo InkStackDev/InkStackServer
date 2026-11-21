@@ -10,9 +10,9 @@
 #include <sstream>
 #include <string>
 
-#include <chen/config/config.h>
-#include <chen/http/http.h>
-#include <chen/http/http_session.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/Http/Http.hpp>
+#include <Chen/Http/HttpSession.hpp>
 
 #include "AuthContext.hpp"
 

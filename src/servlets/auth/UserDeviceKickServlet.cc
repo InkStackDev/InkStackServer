@@ -1,10 +1,10 @@
 #include "UserDeviceKickServlet.hpp"
 
-#include "../../auth/SessionStore.hpp"
-#include "../../manager/WSConnectionManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Auth/SessionStore.hpp"
+#include "../../Manager/WSConnectionManager.hpp"
+#include "../../Util/Util.hpp"
 
-#include <chen/util/json_util.h>
+#include <Chen/Util/JsonUtil.hpp>
 
 #include <json/json.h>
 

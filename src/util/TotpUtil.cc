@@ -1,7 +1,7 @@
 #include "TotpUtil.hpp"
 
-#include <chen/util/encryptor_util.h>
-#include <chen/util/string_util.h>
+#include <Chen/Util/EncryptorUtil.hpp>
+#include <Chen/Util/StringUtil.hpp>
 
 #include <algorithm>
 #include <cstring>

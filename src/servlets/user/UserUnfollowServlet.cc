@@ -1,7 +1,7 @@
 #include "UserUnfollowServlet.hpp"
 
-#include "../../manager/UserFollowRelManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/UserFollowRelManager.hpp"
+#include "../../Util/Util.hpp"
 
 UserUnfollowServlet::UserUnfollowServlet()
     : BlogLoginedServlet("UserUnfollowServlet")

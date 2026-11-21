@@ -71,8 +71,5 @@ AlignTrailingComments: true
 # 启用注释前空格
 SpacesBeforeTrailingComments: 1
 
-# 对齐转义的换行符到左侧
-AlignEscapedNewlinesLeft: true
-
 # 枚举禁止单行
 AllowShortEnumsOnASingleLine: false

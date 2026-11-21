@@ -1,9 +1,9 @@
 #include "RdRequirementDetailServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/RequirementManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/RequirementManager.hpp"
+#include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 
 RdRequirementDetailServlet::RdRequirementDetailServlet()

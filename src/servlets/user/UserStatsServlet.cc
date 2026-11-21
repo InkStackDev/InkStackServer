@@ -1,9 +1,9 @@
 #include "UserStatsServlet.hpp"
 
-#include "../../include/Managers.hpp"
-#include "../../util/Util.hpp"
+#include "../../Include/Managers.hpp"
+#include "../../Util/Util.hpp"
 
-#include <chen/db/query_builder.h>
+#include <Chen/DB/QueryBuilder.hpp>
 
 #include <set>
 

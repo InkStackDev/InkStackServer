@@ -1,7 +1,7 @@
 #include "DBManager.hpp"
 
-#include <chen/config/config.h>
-#include <chen/db/mysql.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/DB/MySQL.hpp>
 
 #include <ranges>
 

@@ -1,6 +1,6 @@
 #include "ServletRegistrar.hpp"
 
-#include <chen/http/servlet.h>
+#include <Chen/Http/Servlet.hpp>
 
 #include "BlogServlet.hpp"
 

@@ -1,7 +1,7 @@
 #include "CommentDeleteServlet.hpp"
 
-#include "../../manager/CommentManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/CommentManager.hpp"
+#include "../../Util/Util.hpp"
 
 CommentDeleteServlet::CommentDeleteServlet()
     : BlogLoginedServlet("CommentDeleteServlet")

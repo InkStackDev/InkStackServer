@@ -1,10 +1,10 @@
 #include "RdBugEditServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../event/EventDefine.hpp"
-#include "../../manager/BugManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/BugManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
 RdBugEditServlet::RdBugEditServlet()

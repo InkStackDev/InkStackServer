@@ -1,12 +1,12 @@
 #include "ArticleQueryServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ArticleCategoryRelManager.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/CategoryManager.hpp"
-#include "../../manager/CommentManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ArticleCategoryRelManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/CategoryManager.hpp"
+#include "../../Manager/CommentManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

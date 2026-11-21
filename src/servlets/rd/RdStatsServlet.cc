@@ -1,10 +1,10 @@
 #include "RdStatsServlet.hpp"
 
-#include "../../manager/BugManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/RequirementManager.hpp"
-#include "../../manager/TaskManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/BugManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/RequirementManager.hpp"
+#include "../../Manager/TaskManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 RdStatsServlet::RdStatsServlet()
     : BlogLoginedServlet("RdStatsServlet")

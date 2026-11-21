@@ -9,8 +9,8 @@
 #pragma once
 
 #include "ErrorCodes.hpp"
-#include "manager/OrganizationManager.hpp"
-#include "manager/UserManager.hpp"
+#include "Manager/OrganizationManager.hpp"
+#include "Manager/UserManager.hpp"
 
 using OrgRole = OrganizationManager::Role;
 

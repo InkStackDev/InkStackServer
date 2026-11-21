@@ -1,9 +1,9 @@
 #include "UserQueryServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/user_info.h"
 
 static chen::Logger::ptr logger = LOG_ROOT();

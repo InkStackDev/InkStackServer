@@ -10,7 +10,7 @@
 POST /api/v1/user/send_code        type=5
   └─ 发送 6 位验证码到邮箱，Redis 有效期 10 分钟
 
-POST /api/v1/auth/email/recovery
+POST /api/v1/Auth/email/recovery
   ├─ 校验 email + auth_code
   ├─ 撤销该用户全部旧会话
   └─ 签发新的 SESSIONID
@@ -32,7 +32,7 @@ POST /api/v1/auth/email/recovery
 
 ## 恢复登录
 
-`POST /api/v1/auth/email/recovery`
+`POST /api/v1/Auth/email/recovery`
 
 请求参数：
 
@@ -94,7 +94,7 @@ await fetch('/api/v1/user/send_code', {
     body: JSON.stringify({email, type: '5', agent: 'web'})
 });
 
-const result = await fetch('/api/v1/auth/email/recovery', {
+const result = await fetch('/api/v1/Auth/email/recovery', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},

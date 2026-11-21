@@ -1,9 +1,9 @@
 #include "LabelDeleteServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/LabelManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/LabelManager.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/label_info.h"
 
 #include <set>

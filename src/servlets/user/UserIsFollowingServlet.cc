@@ -1,7 +1,7 @@
 #include "UserIsFollowingServlet.hpp"
 
-#include "../../manager/UserFollowRelManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/UserFollowRelManager.hpp"
+#include "../../Util/Util.hpp"
 
 UserIsFollowingServlet::UserIsFollowingServlet()
     : BlogLoginedServlet("UserIsFollowingServlet")

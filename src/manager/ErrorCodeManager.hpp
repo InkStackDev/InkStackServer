@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 
-#include <chen/util/singleton.h>
+#include <Chen/Util/Singleton.hpp>
 
 class ErrorCodeManager {
 public:

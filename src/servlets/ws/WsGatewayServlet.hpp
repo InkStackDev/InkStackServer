@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <chen/http/ws_servlet.h>
+#include <Chen/Http/WSServlet.hpp>
 
 /**
  * @brief 统一 WebSocket Gateway

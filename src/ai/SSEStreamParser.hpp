@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-#include <chen/http/sse_session.h>
+#include <Chen/Http/SSESession.hpp>
 
 #include "AIProvider.hpp"
 

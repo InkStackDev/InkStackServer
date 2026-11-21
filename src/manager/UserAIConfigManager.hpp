@@ -9,7 +9,7 @@
 
 #include "blog/data/user_ai_config_info.h"
 
-#include <chen/util/singleton.h>
+#include <Chen/Util/Singleton.hpp>
 
 class UserAIConfigManager {
 public:

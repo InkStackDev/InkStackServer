@@ -1,7 +1,7 @@
 #include "BackupListServlet.hpp"
 
-#include "../../manager/BackupRecordManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/BackupRecordManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 BackupListServlet::BackupListServlet()
     : BlogLoginedServlet("BackupListServlet")

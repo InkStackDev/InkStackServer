@@ -9,10 +9,10 @@
 #include <libintl.h>
 #include <locale.h>
 
-#include <chen/log/log.h>
-#include <chen/util/string_util.h>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/StringUtil.hpp>
 
-#include "../manager/SystemSettingsManager.hpp"
+#include "../Manager/SystemSettingsManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

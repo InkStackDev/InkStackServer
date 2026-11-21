@@ -1,6 +1,6 @@
 #include "ConversationReadServlet.hpp"
 
-#include "../../manager/MessageManager.hpp"
+#include "../../Manager/MessageManager.hpp"
 #include "MessageJson.hpp"
 
 ConversationReadServlet::ConversationReadServlet()

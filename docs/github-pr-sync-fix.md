@@ -16,9 +16,9 @@
 
 ### 改动
 
-- `src/manager/OrganizationRepoPrManager.hpp`
+- `src/Manager/OrganizationRepoPrManager.hpp`
   - `SyncFromGitHub` 新增参数 `int max_prs = 0`（`0` 表示全量）。
-- `src/manager/OrganizationRepoPrManager.cc`
+- `src/Manager/OrganizationRepoPrManager.cc`
   - `per_page` 改为 `max_prs > 0 ? max_prs : 50`。
   - 当 `max_prs > 0` 时只取第一页，不再翻页。
 - `../src/BlogModule.cc`
@@ -49,7 +49,7 @@ merged_at = '1970-01-01 08:00:00'   -- epoch 0，超出 TIMESTAMP 范围
 
 ### 修复（代码层）
 
-在 `src/manager/OrganizationRepoPrManager.cc`：
+在 `src/Manager/OrganizationRepoPrManager.cc`：
 
 1. 空时间哨兵处理：GitHub 无对应时间时写入安全默认值
    `'1980-01-01 00:00:00'`（与所有 TIMESTAMP 列的 DB 默认值一致）。
@@ -82,8 +82,8 @@ sql_mode = "ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_B
 | 文件                                        | 改动                                                              |
 |---------------------------------------------|-------------------------------------------------------------------|
 | `../src/BlogModule.cc`                      | 定时同步传 `max_prs = 20`                                         |
-| `src/manager/OrganizationRepoPrManager.hpp` | `SyncFromGitHub` 新增 `max_prs` 参数                              |
-| `src/manager/OrganizationRepoPrManager.cc`  | `per_page` 逻辑 + 单页截断 + 空时间哨兵 + 同步/webhook 空时间处理 |
+| `src/Manager/OrganizationRepoPrManager.hpp` | `SyncFromGitHub` 新增 `max_prs` 参数                              |
+| `src/Manager/OrganizationRepoPrManager.cc`  | `per_page` 逻辑 + 单页截断 + 空时间哨兵 + 同步/webhook 空时间处理 |
 
 ## 部署注意
 

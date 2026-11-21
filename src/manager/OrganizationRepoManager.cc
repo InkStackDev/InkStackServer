@@ -1,14 +1,14 @@
 #include "OrganizationRepoManager.hpp"
 
-#include <chen/config/config.h>
-#include <chen/db/redis.h>
-#include <chen/http/http_connection.h>
-#include <chen/http/uri.h>
-#include <chen/log/log.h>
-#include <chen/util/json_util.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/DB/Redis.hpp>
+#include <Chen/Http/HttpConnection.hpp>
+#include <Chen/Http/Uri.hpp>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 #include <json/json.h>
 
-#include "../util/Util.hpp"
+#include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();

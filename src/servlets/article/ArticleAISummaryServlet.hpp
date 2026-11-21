@@ -7,8 +7,8 @@
  */
 #pragma once
 
-#include <chen/http/sse_servlet.h>
-#include <chen/http/sse_session.h>
+#include <Chen/Http/SSEServlet.hpp>
+#include <Chen/Http/SSESession.hpp>
 
 class ArticleAISummaryServlet : public chen::http::SSEServlet {
 public:

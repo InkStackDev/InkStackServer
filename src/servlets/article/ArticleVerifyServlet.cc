@@ -1,14 +1,14 @@
 #include "ArticleVerifyServlet.hpp"
 
-#include <chen/iomanager/iomanager.h>
-#include <chen/log/log.h>
+#include <Chen/IOManager/IOManager.hpp>
+#include <Chen/Log/Log.hpp>
 #include <json/json.h>
 
-#include "../../event/EventDefine.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../search/SearchSync.hpp"
-#include "../../util/Util.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Search/SearchSync.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

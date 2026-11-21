@@ -1,8 +1,8 @@
 #include "ArticlePraiseListServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/ArticlePraiseRelManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/ArticlePraiseRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 #include <json/json.h>
 

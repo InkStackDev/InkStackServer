@@ -2,11 +2,11 @@
 
 #include <vector>
 
-#include "../../auth/AuthService.hpp"
-#include "../../auth/webauthn/WebAuthn.hpp"
-#include "../../manager/PasskeyManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Auth/AuthService.hpp"
+#include "../../Auth/WebAuthn/WebAuthn.hpp"
+#include "../../Manager/PasskeyManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 PasskeyLoginBeginServlet::PasskeyLoginBeginServlet()
     : BlogServlet("PasskeyLoginBeginServlet")

@@ -1,10 +1,10 @@
 #include "RdRequirementEditServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../event/EventDefine.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/RequirementManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/RequirementManager.hpp"
+#include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
 RdRequirementEditServlet::RdRequirementEditServlet()

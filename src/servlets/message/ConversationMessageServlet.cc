@@ -1,9 +1,9 @@
 #include "ConversationMessageServlet.hpp"
 
-#include <chen/http/http.h>
+#include <Chen/Http/Http.hpp>
 #include <json/json.h>
 
-#include "../../manager/MessageManager.hpp"
+#include "../../Manager/MessageManager.hpp"
 #include "MessageJson.hpp"
 
 ConversationMessageServlet::ConversationMessageServlet()

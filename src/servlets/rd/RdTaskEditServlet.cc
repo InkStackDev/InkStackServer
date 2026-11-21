@@ -1,10 +1,10 @@
 #include "RdTaskEditServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../event/EventDefine.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/TaskManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/TaskManager.hpp"
+#include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
 RdTaskEditServlet::RdTaskEditServlet()

@@ -1,6 +1,6 @@
 #include "SSEStreamParser.hpp"
 
-#include "../util/Util.hpp"
+#include "../Util/Util.hpp"
 
 SSEStreamParser::SSEStreamParser(chen::http::SSESession::ptr session, AIProvider::ptr provider)
     : session_(session)

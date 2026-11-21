@@ -1,7 +1,7 @@
 #include "BackupDeleteServlet.hpp"
 
-#include "../../manager/BackupRecordManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/BackupRecordManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 BackupDeleteServlet::BackupDeleteServlet()
     : BlogLoginedServlet("BackupDeleteServlet")

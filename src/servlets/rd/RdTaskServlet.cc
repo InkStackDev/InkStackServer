@@ -1,9 +1,9 @@
 #include "RdTaskServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/TaskManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/TaskManager.hpp"
+#include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 
 RdTaskServlet::RdTaskServlet()

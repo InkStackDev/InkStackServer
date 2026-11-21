@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <chen/util/singleton.h>
+#include <Chen/Util/Singleton.hpp>
 
 #include "blog/data/conversation_info.h"
 #include "blog/data/conversation_message_info.h"

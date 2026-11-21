@@ -1,7 +1,7 @@
 #include "MessageJson.hpp"
 
-#include "../../manager/MessageManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/MessageManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 void BuildMessageJson(Json::Value& json, data::ConversationMessageInfo::ptr msg, int64_t uid)
 {

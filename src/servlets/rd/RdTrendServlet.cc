@@ -1,13 +1,13 @@
 #include "RdTrendServlet.hpp"
 
-#include <chen/db/query_builder.h>
-#include <chen/log/log.h>
+#include <Chen/DB/QueryBuilder.hpp>
+#include <Chen/Log/Log.hpp>
 
 #include <cmath>
 
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
 #include "blog/data/organization_repo_prs_info.h"
 #include "blog/data/task_info.h"
 #include "RdHelper.hpp"

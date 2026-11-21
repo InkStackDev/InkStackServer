@@ -1,12 +1,12 @@
 #include "User2FAConfirmServlet.hpp"
 
-#include <chen/config/config.h>
-#include <chen/db/redis.h>
-#include <chen/log/log.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/DB/Redis.hpp>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/UserManager.hpp"
-#include "../../util/TotpUtil.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/TotpUtil.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/user_recovery_code_info.h"
 
 static chen::Logger::ptr logger = LOG_ROOT();

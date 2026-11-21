@@ -1,7 +1,7 @@
 #include "AdminCommentStatsServlet.hpp"
 
-#include "../../manager/CommentManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/CommentManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 AdminCommentStatsServlet::AdminCommentStatsServlet()
     : BlogLoginedServlet("AdminCommentStatsServlet")

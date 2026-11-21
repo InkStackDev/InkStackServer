@@ -1,7 +1,7 @@
 #include "OrganizationAdminStatsServlet.hpp"
 
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 OrganizationAdminStatsServlet::OrganizationAdminStatsServlet()
     : BlogLoginedServlet("OrganizationAdminStatsServlet")

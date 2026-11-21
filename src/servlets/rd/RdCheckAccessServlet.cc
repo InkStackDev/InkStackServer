@@ -1,8 +1,8 @@
 #include "RdCheckAccessServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 RdCheckAccessServlet::RdCheckAccessServlet()
     : BlogLoginedServlet("RdCheckAccessServlet")

@@ -1,9 +1,9 @@
 #include "StatsServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/NotificationManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/NotificationManager.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

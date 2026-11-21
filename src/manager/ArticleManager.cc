@@ -1,14 +1,14 @@
 #include "ArticleManager.hpp"
 
-#include "../search/SearchSync.hpp"
-#include "../util/Util.hpp"
+#include "../Search/SearchSync.hpp"
+#include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
 
-#include <chen/config/config.h>
-#include <chen/db/redis.h>
-#include <chen/iomanager/iomanager.h>
-#include <chen/log/log.h>
-#include <chen/util/json_util.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/DB/Redis.hpp>
+#include <Chen/IOManager/IOManager.hpp>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 #include <ctime>
 #include <set>

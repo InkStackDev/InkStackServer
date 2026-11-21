@@ -1,7 +1,7 @@
 #include "MetricsServlet.hpp"
 
-#include <chen/metrics/metrics.h>
-#include <chen/util/json_util.h>
+#include <Chen/Metrics/Metrics.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 MetricsAdminServlet::MetricsAdminServlet()
     : BlogAdminServlet("MetricsAdminServlet")

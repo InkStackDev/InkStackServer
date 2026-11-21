@@ -12,7 +12,7 @@
 #include <vector>
 
 #include <json/json.h>
-#include <chen/config/config.h>
+#include <Chen/Config/Config.hpp>
 
 struct WebAuthnConf {
     std::string rp_id;

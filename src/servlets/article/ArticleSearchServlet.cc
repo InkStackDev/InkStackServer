@@ -1,10 +1,10 @@
 #include "ArticleSearchServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../search/SearchSync.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Search/SearchSync.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

@@ -1,9 +1,9 @@
 #include "ArticleAdminListsServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/CommentManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/CommentManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 ArticleAdminListsServlet::ArticleAdminListsServlet()
     : BlogLoginedServlet("ArticleAdminListsServlet")

@@ -2,7 +2,7 @@
 
 #include "blog/data/help_faqs_info.h"
 
-#include <chen/util/singleton.h>
+#include <Chen/Util/Singleton.hpp>
 
 class FaqManager {
 public:

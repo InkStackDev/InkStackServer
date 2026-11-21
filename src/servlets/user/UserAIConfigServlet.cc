@@ -1,9 +1,9 @@
 #include "UserAIConfigServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/UserAIConfigManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/UserAIConfigManager.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

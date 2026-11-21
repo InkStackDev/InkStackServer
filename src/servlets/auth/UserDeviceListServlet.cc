@@ -1,7 +1,7 @@
 #include "UserDeviceListServlet.hpp"
 
-#include "../../auth/SessionStore.hpp"
-#include "../../util/UaParser.hpp"
+#include "../../Auth/SessionStore.hpp"
+#include "../../Util/UaParser.hpp"
 
 UserDeviceListServlet::UserDeviceListServlet()
     : BlogLoginedServlet("UserDeviceListServlet")

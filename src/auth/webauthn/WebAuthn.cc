@@ -1,12 +1,12 @@
 #include "WebAuthn.hpp"
 
-#include <chen/config/config.h>
-#include <chen/db/redis.h>
-#include <chen/log/log.h>
-#include <chen/util/encryptor_util.h>
-#include <chen/util/json_util.h>
-#include <chen/util/string_util.h>
-#include <chen/util/type_util.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/DB/Redis.hpp>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/EncryptorUtil.hpp>
+#include <Chen/Util/JsonUtil.hpp>
+#include <Chen/Util/StringUtil.hpp>
+#include <Chen/Util/TypeUtil.hpp>
 
 #include "../../ErrorCodes.hpp"
 #include "Cbor.hpp"

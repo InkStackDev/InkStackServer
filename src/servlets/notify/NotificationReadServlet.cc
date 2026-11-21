@@ -1,8 +1,8 @@
 #include "NotificationReadServlet.hpp"
 
-#include "../../util/Util.hpp"
+#include "../../Util/Util.hpp"
 
-#include "../../manager/NotificationManager.hpp"
+#include "../../Manager/NotificationManager.hpp"
 
 #include <vector>
 

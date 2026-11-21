@@ -1,11 +1,11 @@
 #include "DatabaseStatsServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/BackupRecordManager.hpp"
-#include "../../manager/CategoryManager.hpp"
-#include "../../manager/CommentManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/BackupRecordManager.hpp"
+#include "../../Manager/CategoryManager.hpp"
+#include "../../Manager/CommentManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/label_info.h"
 
 DatabaseStatsServlet::DatabaseStatsServlet()

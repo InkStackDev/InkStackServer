@@ -1,8 +1,8 @@
 #include "SiteStatusServlet.hpp"
 
-#include "../../manager/SystemSettingsManager.hpp"
+#include "../../Manager/SystemSettingsManager.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

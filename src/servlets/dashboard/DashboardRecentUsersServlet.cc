@@ -1,6 +1,6 @@
 #include "DashboardRecentUsersServlet.hpp"
 
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 DashboardRecentUsersServlet::DashboardRecentUsersServlet()
     : BlogLoginedServlet("DashboardRecentUsersServlet")

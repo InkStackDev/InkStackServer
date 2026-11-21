@@ -1,10 +1,10 @@
 #include "BlogServlet.hpp"
 
-#include "./auth/AuthService.hpp"
-#include "./auth/SessionStore.hpp"
-#include "./i18n/I18n.hpp"
-#include "./metrics/MetricsService.hpp"
-#include "util/Util.hpp"
+#include "./Auth/AuthService.hpp"
+#include "./Auth/SessionStore.hpp"
+#include "./I18n/I18n.hpp"
+#include "./Metrics/MetricsService.hpp"
+#include "Util/Util.hpp"
 
 BlogServlet::BlogServlet(const std::string& name)
     : Servlet(name)

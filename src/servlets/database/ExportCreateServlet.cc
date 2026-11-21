@@ -1,7 +1,7 @@
 #include "ExportCreateServlet.hpp"
 
-#include "../../manager/ExportRecordManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ExportRecordManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 ExportCreateServlet::ExportCreateServlet()
     : BlogLoginedServlet("ExportCreateServlet")

@@ -1,10 +1,10 @@
 #include "RdBugDeleteServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../manager/BugManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/BugManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 RdBugDeleteServlet::RdBugDeleteServlet()
     : BlogLoginedServlet("RdBugDeleteServlet")

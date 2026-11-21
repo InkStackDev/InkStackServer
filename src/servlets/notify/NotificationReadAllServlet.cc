@@ -1,6 +1,6 @@
 #include "NotificationReadAllServlet.hpp"
 
-#include "../../manager/NotificationManager.hpp"
+#include "../../Manager/NotificationManager.hpp"
 
 NotificationReadAllServlet::NotificationReadAllServlet()
     : BlogLoginedServlet("NotificationReadAllServlet")

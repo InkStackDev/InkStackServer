@@ -1,7 +1,7 @@
 #include "ArticleViewServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Util/Util.hpp"
 
 ArticleViewServlet::ArticleViewServlet()
     : BlogLoginedServlet("ArticleViewServlet")

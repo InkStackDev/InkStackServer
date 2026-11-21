@@ -1,11 +1,11 @@
 #include "NotificationManager.hpp"
 
-#include "../util/Util.hpp"
+#include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
 #include "WSConnectionManager.hpp"
 
-#include <chen/log/log.h>
-#include <chen/util/json_util.h>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

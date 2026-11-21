@@ -1,15 +1,15 @@
 #include "ArticleAISummaryServlet.hpp"
 
-#include "../../ai/AIProvider.hpp"
-#include "../../ai/SSEStreamParser.hpp"
-#include "../../auth/AuthService.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/UserAIConfigManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../AI/AIProvider.hpp"
+#include "../../AI/SSEStreamParser.hpp"
+#include "../../Auth/AuthService.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/UserAIConfigManager.hpp"
+#include "../../Util/Util.hpp"
 
-#include <chen/config/config.h>
-#include <chen/http/http_connection.h>
-#include <chen/log/log.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/Http/HttpConnection.hpp>
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

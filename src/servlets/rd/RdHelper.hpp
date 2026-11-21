@@ -7,17 +7,17 @@
  */
 #pragma once
 
-#include "../../manager/BugManager.hpp"
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/RequirementManager.hpp"
-#include "../../manager/TaskManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/BugManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/RequirementManager.hpp"
+#include "../../Manager/TaskManager.hpp"
+#include "../../Manager/UserManager.hpp"
 #include "blog/data/bug_info.h"
 #include "blog/data/requirement_info.h"
 #include "blog/data/task_info.h"
 
-#include <chen/http/http.h>
-#include <chen/util/time_util.h>
+#include <Chen/Http/Http.hpp>
+#include <Chen/Util/TimeUtil.hpp>
 #include <json/json.h>
 
 #include <ctime>

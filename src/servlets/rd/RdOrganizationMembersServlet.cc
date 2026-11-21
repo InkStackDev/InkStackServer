@@ -1,7 +1,7 @@
 #include "RdOrganizationMembersServlet.hpp"
 
-#include "../../manager/OrganizationUserRelManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
 RdOrganizationMembersServlet::RdOrganizationMembersServlet()

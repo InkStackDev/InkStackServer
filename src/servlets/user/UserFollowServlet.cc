@@ -1,9 +1,9 @@
 #include "UserFollowServlet.hpp"
 
-#include "../../event/EventDefine.hpp"
-#include "../../manager/UserFollowRelManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Event/EventDefine.hpp"
+#include "../../Manager/UserFollowRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 #include <json/json.h>
 

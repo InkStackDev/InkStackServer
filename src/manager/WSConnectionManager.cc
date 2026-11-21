@@ -1,7 +1,7 @@
 #include "WSConnectionManager.hpp"
 
-#include <chen/log/log.h>
-#include <chen/util/json_util.h>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 #include <json/json.h>
 

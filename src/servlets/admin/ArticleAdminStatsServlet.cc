@@ -1,7 +1,7 @@
 #include "ArticleAdminStatsServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 ArticleAdminStatsServlet::ArticleAdminStatsServlet()
     : BlogLoginedServlet("ArticleAdminStatsServlet")

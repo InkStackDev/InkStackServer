@@ -1,6 +1,6 @@
 #include "UserAdminStatsServlet.hpp"
 
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 UserAdminStatsServlet::UserAdminStatsServlet()
     : BlogAdminServlet("UserAdminStatsServlet")

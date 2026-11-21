@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <chen/module/module.h>
+#include <Chen/Module/Module.hpp>
 
 class BlogModule : public chen::Module {
 public:

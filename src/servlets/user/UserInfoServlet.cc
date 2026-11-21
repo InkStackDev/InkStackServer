@@ -1,7 +1,7 @@
 #include "UserInfoServlet.hpp"
 
-#include "../../manager/UserFollowRelManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/UserFollowRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 UserInfoServlet::UserInfoServlet()
     : BlogServlet("UserInfoServlet")

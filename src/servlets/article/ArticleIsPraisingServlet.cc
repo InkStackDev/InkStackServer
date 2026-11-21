@@ -1,7 +1,7 @@
 #include "ArticleIsPraisingServlet.hpp"
 
-#include "../../manager/ArticlePraiseRelManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticlePraiseRelManager.hpp"
+#include "../../Util/Util.hpp"
 
 ArticleIsPraisingServlet::ArticleIsPraisingServlet()
     : BlogLoginedServlet("ArticleIsPraisingServlet")

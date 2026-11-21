@@ -1,11 +1,11 @@
 #include "CacheUtil.hpp"
 
-#include <chen/config/config.h>
-#include <chen/db/query_builder.h>
-#include <chen/db/redis.h>
-#include <chen/util/time_util.h>
-#include <chen/util/type_util.h>
-#include <chen/util/util.h>
+#include <Chen/Config/Config.hpp>
+#include <Chen/DB/QueryBuilder.hpp>
+#include <Chen/DB/Redis.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+#include <Chen/Util/TypeUtil.hpp>
+#include <Chen/Util/Util.hpp>
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 

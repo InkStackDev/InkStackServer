@@ -10,7 +10,7 @@
 #include "db/organization_repo_prs_info.h"
 #include "db/organization_repos_info.h"
 
-#include <chen/util/singleton.h>
+#include <Chen/Util/Singleton.hpp>
 
 // 前置声明 RPC 协议结构体，避免在 header 中引入 protocol 头文件
 struct tagGithubPRInfo;

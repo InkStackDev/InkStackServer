@@ -1,12 +1,12 @@
 #include "ChatHandler.hpp"
 
-#include "../../manager/MessageManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../manager/WSConnectionManager.hpp"
+#include "../../Manager/MessageManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Manager/WSConnectionManager.hpp"
 #include "../message/MessageJson.hpp"
 
-#include <chen/log/log.h>
-#include <chen/util/json_util.h>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 static void SendChatError(chen::http::WSSession::ptr session,
     int32_t errno_,

@@ -1,11 +1,11 @@
 #include "UserMutualFollowingListServlet.hpp"
 
-#include <chen/util/string_util.h>
+#include <Chen/Util/StringUtil.hpp>
 
 #include <algorithm>
 
-#include "../../manager/UserFollowRelManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/UserFollowRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 UserMutualFollowingListServlet::UserMutualFollowingListServlet()
     : BlogLoginedServlet("UserMutualFollowingListServlet")

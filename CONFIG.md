@@ -81,7 +81,7 @@ UPLOAD_DIR=/data/techhaven/uploads
 用 `chen::Config::Lookup` 声明配置项，key 用 `.` 对应 YAML 层级（`upload.dir` ↔ `upload: dir:`），并提供默认值。
 
 ```cpp
-#include <chen/config/config.h>
+#include <Chen/Config/Config.hpp>
 
 // 声明（一般放在源文件顶部，作为 static 全局变量，前缀 g_）
 static chen::ConfigVar<std::string>::ptr g_upload_dir =
@@ -103,8 +103,8 @@ std::string dir = g_upload_dir->getValue();
 | `std::set<T>` / `std::unordered_set<T>` | 集合 |
 | `std::map<std::string, T>` | 键值表（对应 YAML 嵌套映射） |
 
-> 参考现有用法：`src/BlogModule.cc` 中的 `mysql.dbs`、`src/search/SearchSync.cc` 中的 `search.hub_address`、
-> `src/manager/UserManager.cc` 中的 `admin.account`。
+> 参考现有用法：`src/BlogModule.cc` 中的 `mysql.dbs`、`src/Search/SearchSync.cc` 中的 `search.hub_address`、
+> `src/Manager/UserManager.cc` 中的 `admin.account`。
 
 ### 4.2 配置变更监听（热重载）
 

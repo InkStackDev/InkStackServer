@@ -1,10 +1,10 @@
 #include "BroadcastCloseServlet.hpp"
 
-#include "../../manager/NotificationManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/NotificationManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

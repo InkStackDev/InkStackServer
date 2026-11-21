@@ -1,7 +1,7 @@
 #include "RdOrganizationsServlet.hpp"
 
-#include "../../manager/OrganizationManager.hpp"
-#include "../../manager/OrganizationUserRelManager.hpp"
+#include "../../Manager/OrganizationManager.hpp"
+#include "../../Manager/OrganizationUserRelManager.hpp"
 
 RdOrganizationsServlet::RdOrganizationsServlet()
     : BlogLoginedServlet("RdOrganizationsServlet")

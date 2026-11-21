@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../../manager/PasskeyManager.hpp"
+#include "../../Manager/PasskeyManager.hpp"
 
 PasskeyListServlet::PasskeyListServlet()
     : BlogLoginedServlet("PasskeyListServlet")

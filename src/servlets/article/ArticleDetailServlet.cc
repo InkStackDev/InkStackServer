@@ -1,15 +1,15 @@
 #include "ArticleDetailServlet.hpp"
 
-#include <chen/log/log.h>
+#include <Chen/Log/Log.hpp>
 
-#include "../../manager/ArticleCategoryRelManager.hpp"
-#include "../../manager/ArticleLabelRelManager.hpp"
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/CategoryManager.hpp"
-#include "../../manager/LabelManager.hpp"
-#include "../../manager/UserFollowRelManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleCategoryRelManager.hpp"
+#include "../../Manager/ArticleLabelRelManager.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/CategoryManager.hpp"
+#include "../../Manager/LabelManager.hpp"
+#include "../../Manager/UserFollowRelManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

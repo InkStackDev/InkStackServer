@@ -1,7 +1,7 @@
 #include "ExportDeleteServlet.hpp"
 
-#include "../../manager/ExportRecordManager.hpp"
-#include "../../manager/UserManager.hpp"
+#include "../../Manager/ExportRecordManager.hpp"
+#include "../../Manager/UserManager.hpp"
 
 ExportDeleteServlet::ExportDeleteServlet()
     : BlogLoginedServlet("ExportDeleteServlet")

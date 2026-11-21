@@ -1,8 +1,8 @@
 #include "UserAdminDetailServlet.hpp"
 
-#include "../../manager/ArticleManager.hpp"
-#include "../../manager/UserManager.hpp"
-#include "../../util/Util.hpp"
+#include "../../Manager/ArticleManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Util/Util.hpp"
 #include "blog/data/comment_info.h"
 
 UserAdminDetailServlet::UserAdminDetailServlet()
