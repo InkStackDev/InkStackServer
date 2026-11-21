@@ -12,7 +12,7 @@
 #include <chen/util/string_util.h>
 #include <chen/util/time_util.h>
 
-#include "../../auth/auth_service.h"
+#include "../../auth/AuthService.hpp"
 #include "../../manager/user_manager.h"
 #include "../../manager/user_oauth_manager.h"
 #include "../../util.h"

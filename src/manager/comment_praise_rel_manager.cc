@@ -1,7 +1,7 @@
 #include "comment_praise_rel_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
@@ -21,12 +21,12 @@ static std::string commentPraiseRelCacheKey(int64_t id)
 static data::CommentPraiseRelInfo::ptr parseCommentPraiseRelCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::CommentPraiseRelInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setCommentId(cacheJsonInt64(v, "comment_id"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setCommentId(CacheJsonInt64(v, "comment_id"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -34,13 +34,13 @@ static data::CommentPraiseRelInfo::ptr parseCommentPraiseRelCache(const Json::Va
 static data::CommentPraiseRelInfo::ptr getCommentPraiseRelCache(int64_t id)
 {
     std::string key = commentPraiseRelCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseCommentPraiseRelCache(v);
@@ -51,7 +51,7 @@ static void setCommentPraiseRelCache(const data::CommentPraiseRelInfo::ptr& info
     if (!info) {
         return;
     }
-    redisCacheSetex(commentPraiseRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(commentPraiseRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::CommentPraiseRelInfo::ptr CommentPraiseRelManager::parseRow(chen::ISQLData::ptr rt)
@@ -85,7 +85,7 @@ data::CommentPraiseRelInfo::ptr CommentPraiseRelManager::get(int64_t id)
 data::CommentPraiseRelInfo::ptr CommentPraiseRelManager::getByUserAndComment(int64_t user_id, int64_t comment_id)
 {
     std::string ck = "cpra:" + std::to_string(user_id) + ":" + std::to_string(comment_id);
-    int64_t cachedId = getCachedIdMapping(ck);
+    int64_t cachedId = GetCachedIdMapping(ck);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -97,7 +97,7 @@ data::CommentPraiseRelInfo::ptr CommentPraiseRelManager::getByUserAndComment(int
     auto info = data::CommentPraiseRelInfoDao::QueryByUserIdCommentId(user_id, comment_id, db);
     if (info) {
         setCommentPraiseRelCache(info);
-        cacheIdMapping(ck, info->getId());
+        CacheIdMapping(ck, info->getId());
     }
     return info;
 }

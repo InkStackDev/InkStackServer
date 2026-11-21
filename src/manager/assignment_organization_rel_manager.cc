@@ -3,7 +3,7 @@
 #include <chen/log/log.h>
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 namespace blog {
 
@@ -26,7 +26,7 @@ blog::data::AssignmentOrganizationRelInfo::ptr AssignmentOrganizationRelManager:
 
 blog::data::AssignmentOrganizationRelInfo::ptr AssignmentOrganizationRelManager::getByOrgAndAssign(int64_t org_id, int64_t assign_id)
 {
-    int64_t cachedId = getCachedIdMapping("assign_org:" + std::to_string(org_id) + ":" + std::to_string(assign_id));
+    int64_t cachedId = GetCachedIdMapping("assign_org:" + std::to_string(org_id) + ":" + std::to_string(assign_id));
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -37,7 +37,7 @@ blog::data::AssignmentOrganizationRelInfo::ptr AssignmentOrganizationRelManager:
     }
     auto info = data::AssignmentOrganizationRelInfoDao::QueryByAssignmentIdOrganizationId(assign_id, org_id, db);
     if (info) {
-        cacheIdMapping("assign_org:" + std::to_string(org_id) + ":" + std::to_string(assign_id), info->getId());
+        CacheIdMapping("assign_org:" + std::to_string(org_id) + ":" + std::to_string(assign_id), info->getId());
     }
     return info;
 }

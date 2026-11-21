@@ -1,7 +1,7 @@
 #include "message_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 #include "ws_connection_manager.h"
 
 #include <chen/log/log.h>
@@ -24,20 +24,20 @@ static std::string conversationCacheKey(int64_t id)
 static data::ConversationInfo::ptr parseConversationCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::ConversationInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserAId(cacheJsonInt64(v, "user_a_id"));
-    info->setUserBId(cacheJsonInt64(v, "user_b_id"));
-    info->setLastMessageId(cacheJsonInt64(v, "last_message_id"));
-    info->setLastSenderId(cacheJsonInt64(v, "last_sender_id"));
-    info->setLastMessage(cacheJsonString(v, "last_message"));
-    info->setLastMessageTime(cacheJsonInt64(v, "last_message_time"));
-    info->setUnreadA(cacheJsonInt32(v, "unread_a"));
-    info->setUnreadB(cacheJsonInt32(v, "unread_b"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
-    info->setUserADeleted(cacheJsonInt32(v, "user_a_deleted"));
-    info->setUserBDeleted(cacheJsonInt32(v, "user_b_deleted"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserAId(CacheJsonInt64(v, "user_a_id"));
+    info->setUserBId(CacheJsonInt64(v, "user_b_id"));
+    info->setLastMessageId(CacheJsonInt64(v, "last_message_id"));
+    info->setLastSenderId(CacheJsonInt64(v, "last_sender_id"));
+    info->setLastMessage(CacheJsonString(v, "last_message"));
+    info->setLastMessageTime(CacheJsonInt64(v, "last_message_time"));
+    info->setUnreadA(CacheJsonInt32(v, "unread_a"));
+    info->setUnreadB(CacheJsonInt32(v, "unread_b"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
+    info->setUserADeleted(CacheJsonInt32(v, "user_a_deleted"));
+    info->setUserBDeleted(CacheJsonInt32(v, "user_b_deleted"));
     info->markClean();
     return info;
 }
@@ -45,13 +45,13 @@ static data::ConversationInfo::ptr parseConversationCache(const Json::Value& v)
 static data::ConversationInfo::ptr getConversationCache(int64_t id)
 {
     std::string key = conversationCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseConversationCache(v);
@@ -62,7 +62,7 @@ static void setConversationCache(const data::ConversationInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(conversationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(conversationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::ConversationInfo::ptr MessageManager::get(int64_t id)

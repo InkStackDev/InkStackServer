@@ -2,7 +2,7 @@
 
 #include <chen/log/log.h>
 
-#include "../../auth/auth_service.h"
+#include "../../auth/AuthService.hpp"
 #include "../../event/event_define.h"
 #include "../../manager/user_manager.h"
 #include "../../util.h"

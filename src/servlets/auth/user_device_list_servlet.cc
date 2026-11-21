@@ -1,6 +1,6 @@
 #include "user_device_list_servlet.h"
 
-#include "../../auth/session_store.h"
+#include "../../auth/SessionStore.hpp"
 #include "../../util/ua_parser.h"
 
 namespace blog {

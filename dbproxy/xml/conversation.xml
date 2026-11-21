@@ -1,4 +1,4 @@
-<table name="conversation" namespace="blog.data" desc="私信会话表">
+<table name="conversation" namespace="db" desc="私信会话表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键ID"/>
         <column name="user_a_id" type="int64" desc="参与者A用户ID(较小值)"/>

@@ -9,7 +9,7 @@
 #include <json/json.h>
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 namespace blog {
 
@@ -26,21 +26,21 @@ static std::string orgRepoCacheKey(int64_t id)
 static data::OrganizationReposInfo::ptr parseOrgRepoCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::OrganizationReposInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setOrgId(cacheJsonInt64(v, "org_id"));
-    info->setName(cacheJsonString(v, "name"));
-    info->setDescription(cacheJsonString(v, "description"));
-    info->setUrl(cacheJsonString(v, "url"));
-    info->setLanguage(cacheJsonString(v, "language"));
-    info->setStarsCount(cacheJsonInt32(v, "stars_count"));
-    info->setSortOrder(cacheJsonInt32(v, "sort_order"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
-    info->setToken(cacheJsonString(v, "token"));
-    info->setSyncStatus(cacheJsonString(v, "sync_status"));
-    info->setPrSyncStatus(cacheJsonString(v, "pr_sync_status"));
-    info->setPrSyncedAt(cacheJsonInt64(v, "pr_synced_at"));
-    info->setGithubFullName(cacheJsonString(v, "github_full_name"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setOrgId(CacheJsonInt64(v, "org_id"));
+    info->setName(CacheJsonString(v, "name"));
+    info->setDescription(CacheJsonString(v, "description"));
+    info->setUrl(CacheJsonString(v, "url"));
+    info->setLanguage(CacheJsonString(v, "language"));
+    info->setStarsCount(CacheJsonInt32(v, "stars_count"));
+    info->setSortOrder(CacheJsonInt32(v, "sort_order"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
+    info->setToken(CacheJsonString(v, "token"));
+    info->setSyncStatus(CacheJsonString(v, "sync_status"));
+    info->setPrSyncStatus(CacheJsonString(v, "pr_sync_status"));
+    info->setPrSyncedAt(CacheJsonInt64(v, "pr_synced_at"));
+    info->setGithubFullName(CacheJsonString(v, "github_full_name"));
     info->markClean();
     return info;
 }
@@ -48,13 +48,13 @@ static data::OrganizationReposInfo::ptr parseOrgRepoCache(const Json::Value& v)
 static data::OrganizationReposInfo::ptr getOrgRepoCache(int64_t id)
 {
     std::string key = orgRepoCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseOrgRepoCache(v);
@@ -65,12 +65,12 @@ static void setOrgRepoCache(const data::OrganizationReposInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(orgRepoCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(orgRepoCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 static void delOrgRepoCache(int64_t id)
 {
-    redisCacheDel(orgRepoCacheKey(id));
+    RedisCacheDel(orgRepoCacheKey(id));
 }
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -177,7 +177,7 @@ int64_t OrganizationRepoManager::getCountByOrg(int64_t org_id)
 
     std::stringstream ck;
     ck << "org_repo:count:" << org_id;
-    return executeCountCached(qb, db, ck.str());
+    return ExecuteCountCached(qb, db, ck.str());
 }
 
 void OrganizationRepoManager::getAllWithToken(std::vector<data::OrganizationReposInfo::ptr>& repos)

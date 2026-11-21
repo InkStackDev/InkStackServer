@@ -2,9 +2,9 @@
 
 #include <chen/log/log.h>
 
+#include "../../Permission.hpp"
 #include "../../manager/category_manager.h"
 #include "../../manager/user_manager.h"
-#include "../../permission.h"
 #include "../../util.h"
 #include "blog/data/category_info.h"
 

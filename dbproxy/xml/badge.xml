@@ -1,4 +1,4 @@
-<table name="badge" namespace="blog.data" desc="徽章定义表">
+<table name="badge" namespace="db" desc="徽章定义表">
   <columns>
     <column name="id" type="int64" auto_increment="true" desc="主键ID" />
     <column name="name" type="string" length="50" desc="徽章名称" />

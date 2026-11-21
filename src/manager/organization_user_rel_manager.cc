@@ -1,7 +1,7 @@
 #include "organization_user_rel_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 #include "organization_manager.h"
 
 #include <chen/log/log.h>
@@ -22,14 +22,14 @@ static std::string orgUserRelCacheKey(int64_t id)
 static data::OrganizationUserRelInfo::ptr parseOrgUserRelCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::OrganizationUserRelInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setOrgId(cacheJsonInt64(v, "org_id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setRole(cacheJsonInt32(v, "role"));
-    info->setStatus(cacheJsonInt32(v, "status"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setOrgId(CacheJsonInt64(v, "org_id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setRole(CacheJsonInt32(v, "role"));
+    info->setStatus(CacheJsonInt32(v, "status"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -37,13 +37,13 @@ static data::OrganizationUserRelInfo::ptr parseOrgUserRelCache(const Json::Value
 static data::OrganizationUserRelInfo::ptr getOrgUserRelCache(int64_t id)
 {
     std::string key = orgUserRelCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseOrgUserRelCache(v);
@@ -54,7 +54,7 @@ static void setOrgUserRelCache(const data::OrganizationUserRelInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(orgUserRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(orgUserRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::OrganizationUserRelInfo::ptr OrganizationUserRelManager::parseRow(chen::ISQLData::ptr rt)
@@ -87,7 +87,7 @@ data::OrganizationUserRelInfo::ptr OrganizationUserRelManager::get(int64_t id)
 
 data::OrganizationUserRelInfo::ptr OrganizationUserRelManager::getByOrgAndUser(int64_t o_id, int64_t u_id)
 {
-    int64_t cachedId = getCachedIdMapping("org_usr:" + std::to_string(o_id) + ":" + std::to_string(u_id));
+    int64_t cachedId = GetCachedIdMapping("org_usr:" + std::to_string(o_id) + ":" + std::to_string(u_id));
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -99,7 +99,7 @@ data::OrganizationUserRelInfo::ptr OrganizationUserRelManager::getByOrgAndUser(i
     auto info = data::OrganizationUserRelInfoDao::QueryByOrgIdUserId(o_id, u_id, db);
     if (info) {
         setOrgUserRelCache(info);
-        cacheIdMapping("org_usr:" + std::to_string(o_id) + ":" + std::to_string(u_id), info->getId());
+        CacheIdMapping("org_usr:" + std::to_string(o_id) + ":" + std::to_string(u_id), info->getId());
     }
     return info;
 }

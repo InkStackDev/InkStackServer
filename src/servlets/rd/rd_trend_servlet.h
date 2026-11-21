@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "../../struct.h"
+#include "../../SessionData.hpp"
 #include <ctime>
 #include <json/json.h>
 #include <map>

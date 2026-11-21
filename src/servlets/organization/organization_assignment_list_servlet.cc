@@ -2,11 +2,11 @@
 
 #include <chen/log/log.h>
 
+#include "../../Permission.hpp"
 #include "../../manager/assignment_manager.h"
 #include "../../manager/assignment_organization_rel_manager.h"
 #include "../../manager/organization_user_rel_manager.h"
 #include "../../manager/user_manager.h"
-#include "../../permission.h"
 #include "../../util.h"
 
 namespace blog {

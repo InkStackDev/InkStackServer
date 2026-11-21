@@ -4,7 +4,7 @@
 #include <chen/util/json_util.h>
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 namespace blog {
 
@@ -21,18 +21,18 @@ static std::string categoryCacheKey(int64_t id)
 static data::CategoryInfo::ptr parseCategoryCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::CategoryInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setName(cacheJsonString(v, "name"));
-    info->setColor(cacheJsonString(v, "color"));
-    info->setDescription(cacheJsonString(v, "description"));
-    info->setUrl(cacheJsonString(v, "url"));
-    info->setIcon(cacheJsonString(v, "icon"));
-    info->setParentId(cacheJsonInt64(v, "parent_id"));
-    info->setStatus(cacheJsonInt32(v, "status"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setName(CacheJsonString(v, "name"));
+    info->setColor(CacheJsonString(v, "color"));
+    info->setDescription(CacheJsonString(v, "description"));
+    info->setUrl(CacheJsonString(v, "url"));
+    info->setIcon(CacheJsonString(v, "icon"));
+    info->setParentId(CacheJsonInt64(v, "parent_id"));
+    info->setStatus(CacheJsonInt32(v, "status"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     // 缓存中的数据视为与 DB 一致，避免写回时全字段 UPDATE
     info->markClean();
     return info;
@@ -41,13 +41,13 @@ static data::CategoryInfo::ptr parseCategoryCache(const Json::Value& v)
 static data::CategoryInfo::ptr getCategoryCache(int64_t id)
 {
     std::string key = categoryCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseCategoryCache(v);
@@ -58,7 +58,7 @@ static void setCategoryCache(const data::CategoryInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(categoryCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(categoryCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::CategoryInfo::ptr CategoryManager::parseRow(chen::ISQLData::ptr rt)
@@ -126,7 +126,7 @@ bool CategoryManager::listByUserId(std::vector<blog::data::CategoryInfo::ptr>& i
 blog::data::CategoryInfo::ptr CategoryManager::getByUserIdName(int64_t user_id, const std::string& name)
 {
     std::string cache_key = "cat:uid_name:" + std::to_string(user_id) + ":" + name;
-    int64_t cachedId = getCachedIdMapping(cache_key);
+    int64_t cachedId = GetCachedIdMapping(cache_key);
     if (cachedId > 0) {
         auto cached = get(cachedId);
         // 改名后旧映射可能仍在缓存中，校验归属和名称，避免命中脏数据
@@ -142,7 +142,7 @@ blog::data::CategoryInfo::ptr CategoryManager::getByUserIdName(int64_t user_id, 
     auto info = data::CategoryInfoDao::QueryByUserIdName(user_id, name, db);
     if (info) {
         setCategoryCache(info);
-        cacheIdMapping(cache_key, info->getId());
+        CacheIdMapping(cache_key, info->getId());
     }
     return info;
 }

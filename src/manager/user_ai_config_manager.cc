@@ -11,7 +11,7 @@
 #include <chen/util/json_util.h>
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 namespace blog {
 
@@ -28,15 +28,15 @@ static std::string aiConfigCacheKey(int64_t user_id)
 static data::UserAiConfigInfo::ptr parseAiConfigCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::UserAiConfigInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setType(cacheJsonString(v, "type"));
-    info->setUrl(cacheJsonString(v, "url"));
-    info->setApiKey(cacheJsonString(v, "api_key"));
-    info->setModel(cacheJsonString(v, "model"));
-    info->setMaxTokens(cacheJsonInt32(v, "max_tokens"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setType(CacheJsonString(v, "type"));
+    info->setUrl(CacheJsonString(v, "url"));
+    info->setApiKey(CacheJsonString(v, "api_key"));
+    info->setModel(CacheJsonString(v, "model"));
+    info->setMaxTokens(CacheJsonInt32(v, "max_tokens"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -44,13 +44,13 @@ static data::UserAiConfigInfo::ptr parseAiConfigCache(const Json::Value& v)
 static data::UserAiConfigInfo::ptr getAiConfigCache(int64_t user_id)
 {
     std::string key = aiConfigCacheKey(user_id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseAiConfigCache(v);
@@ -61,7 +61,7 @@ static void setAiConfigCache(const data::UserAiConfigInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(aiConfigCacheKey(info->getUserId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(aiConfigCacheKey(info->getUserId()), info->toJsonString(), kCacheTTL);
 }
 
 blog::data::UserAiConfigInfo::ptr UserAIConfigManager::getByUserId(int64_t user_id)

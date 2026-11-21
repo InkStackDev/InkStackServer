@@ -214,7 +214,7 @@ When adding a new feature:
 3. **Servlet** (`src/servlets/<domain>/`) — follow handler pattern above
 4. **Includes** — update `src/include/tables.h`, `managers.h`, `servlets.h`
 5. **Registration** — `blog_module.cc`: table create, migrate, servlet route
-6. **Error codes** — `src/error_codes.h` + `errors.json`
+6. **Error codes** — `src/ErrorCodes.hpp` + `errors.json`
 
 ## 6. Code Style Quick Reference
 

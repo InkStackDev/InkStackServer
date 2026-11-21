@@ -1,7 +1,7 @@
 #include "article_label_rel_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/log/log.h>
 
@@ -63,7 +63,7 @@ bool ArticleLabelRelManager::listByLabelId(std::vector<data::ArticleLabelRelInfo
 data::ArticleLabelRelInfo::ptr ArticleLabelRelManager::getByArticleIdLabelId(int64_t article_id, int64_t label_id)
 {
     std::string ck = "alr:" + std::to_string(article_id) + ":" + std::to_string(label_id);
-    int64_t cachedId = getCachedIdMapping(ck);
+    int64_t cachedId = GetCachedIdMapping(ck);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -74,7 +74,7 @@ data::ArticleLabelRelInfo::ptr ArticleLabelRelManager::getByArticleIdLabelId(int
     }
     auto info = data::ArticleLabelRelInfoDao::QueryByArticleIdLabelId(article_id, label_id, db);
     if (info) {
-        cacheIdMapping(ck, info->getId());
+        CacheIdMapping(ck, info->getId());
     }
     return info;
 }

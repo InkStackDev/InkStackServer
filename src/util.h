@@ -14,8 +14,6 @@
 #include <regex>
 #include <sys/statvfs.h>
 
-namespace blog {
-
 chen::IDB::ptr GetDB();
 
 /**
@@ -191,4 +189,4 @@ inline void SendSSEJson(chen::http::SSESession::ptr session, const std::string& 
     session->sendEvent(chen::JsonUtil::ToString(obj));
 }
 
-} // namespace blog
+std::string GetRemoteIP(chen::http::HttpRequest::ptr request, chen::http::HttpSession::ptr session);

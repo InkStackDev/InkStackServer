@@ -5,8 +5,6 @@
 #include <chen/util/fs_util.h>
 #include <chen/util/string_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr g_logger = LOG_ROOT();
 
 static chen::ConfigVar<std::map<std::string, std::map<std::string, std::string>>>::ptr g_mysql_dbs =
@@ -100,4 +98,19 @@ bool IsLegacyPasswordHash(const std::string& stored)
     return true;
 }
 
-} // namespace blog
+std::string GetRemoteIP(chen::http::HttpRequest::ptr request, chen::http::HttpSession::ptr session)
+{
+    if (!request) {
+        return "-";
+    }
+    auto rt = request->getHeader("X-Real-IP");
+    if (!rt.empty()) {
+        return rt;
+    }
+    if (!session) {
+        return "-";
+    }
+    rt = session->getRemoteAddressString();
+    auto pos = rt.find(':');
+    return rt.substr(0, pos);
+}

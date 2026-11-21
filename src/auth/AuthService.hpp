@@ -71,8 +71,6 @@ public:
 
 } // namespace chen
 
-namespace blog {
-
 /**
  * @brief 会话签发选项
  */
@@ -132,5 +130,3 @@ public:
      */
     static void MirrorSessionData(const std::string& session_id, int64_t uid);
 };
-
-} // namespace blog

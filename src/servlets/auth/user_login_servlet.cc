@@ -4,7 +4,7 @@
 #include <chen/db/redis.h>
 #include <chen/log/log.h>
 
-#include "../../auth/auth_service.h"
+#include "../../auth/AuthService.hpp"
 #include "../../manager/user_manager.h"
 #include "../../util.h"
 

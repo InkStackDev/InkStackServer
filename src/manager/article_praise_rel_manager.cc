@@ -1,7 +1,7 @@
 #include "article_praise_rel_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
@@ -21,12 +21,12 @@ static std::string articlePraiseRelCacheKey(int64_t id)
 static data::ArticlePraiseRelInfo::ptr parseArticlePraiseRelCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::ArticlePraiseRelInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setArticleId(cacheJsonInt64(v, "article_id"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setArticleId(CacheJsonInt64(v, "article_id"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -34,13 +34,13 @@ static data::ArticlePraiseRelInfo::ptr parseArticlePraiseRelCache(const Json::Va
 static data::ArticlePraiseRelInfo::ptr getArticlePraiseRelCache(int64_t id)
 {
     std::string key = articlePraiseRelCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseArticlePraiseRelCache(v);
@@ -51,7 +51,7 @@ static void setArticlePraiseRelCache(const data::ArticlePraiseRelInfo::ptr& info
     if (!info) {
         return;
     }
-    redisCacheSetex(articlePraiseRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(articlePraiseRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::parseRow(chen::ISQLData::ptr rt)
@@ -85,7 +85,7 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::get(int64_t id)
 data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::getByUserAndArticle(int64_t user_id, int64_t article_id)
 {
     std::string ck = "pra:" + std::to_string(user_id) + ":" + std::to_string(article_id);
-    int64_t cachedId = getCachedIdMapping(ck);
+    int64_t cachedId = GetCachedIdMapping(ck);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -97,7 +97,7 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::getByUserAndArticle(int
     auto info = data::ArticlePraiseRelInfoDao::QueryByUserIdArticleId(user_id, article_id, db);
     if (info) {
         setArticlePraiseRelCache(info);
-        cacheIdMapping(ck, info->getId());
+        CacheIdMapping(ck, info->getId());
     }
     return info;
 }

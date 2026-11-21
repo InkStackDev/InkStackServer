@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../manager/ErrorCodeManager.hpp"                  // IWYU pragma: keep
 #include "../manager/article_category_rel_manager.h"        // IWYU pragma: keep
 #include "../manager/article_label_rel_manager.h"           // IWYU pragma: keep
 #include "../manager/article_manager.h"                     // IWYU pragma: keep
@@ -13,7 +14,6 @@
 #include "../manager/category_manager.h"                    // IWYU pragma: keep
 #include "../manager/comment_manager.h"                     // IWYU pragma: keep
 #include "../manager/comment_praise_rel_manager.h"          // IWYU pragma: keep
-#include "../manager/error_code_manager.h"                  // IWYU pragma: keep
 #include "../manager/export_record_manager.h"               // IWYU pragma: keep
 #include "../manager/faq_manager.h"                         // IWYU pragma: keep
 #include "../manager/feedback_manager.h"                    // IWYU pragma: keep

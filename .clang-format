@@ -32,7 +32,7 @@ AlignAfterOpenBracket: AlwaysBreak
 AllowAllParametersOfDeclarationOnNextLine: false
 
 # 控制行宽，避免行太长
-ColumnLimit: 150
+ColumnLimit: 120
 
 BreakConstructorInitializers: BeforeComma
 

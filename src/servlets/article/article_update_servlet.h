@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../struct.h"
+#include "../../SessionData.hpp"
 #include "blog/data/article_info.h"
 
 namespace blog {

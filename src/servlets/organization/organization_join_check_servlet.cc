@@ -3,11 +3,11 @@
 #include <chen/log/log.h>
 #include <json/json.h>
 
+#include "../../Permission.hpp"
 #include "../../event/event_define.h"
 #include "../../manager/organization_manager.h"
 #include "../../manager/organization_user_rel_manager.h"
 #include "../../manager/user_manager.h"
-#include "../../permission.h"
 #include "../../util.h"
 
 namespace blog {

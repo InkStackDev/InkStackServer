@@ -1,10 +1,10 @@
 #include "ws_gateway_servlet.h"
 
-#include "../../auth/auth_service.h"
-#include "../../auth/session_store.h"
-#include "../../error_codes.h"
+#include "../../ErrorCodes.hpp"
+#include "../../SessionData.hpp"
+#include "../../auth/AuthService.hpp"
+#include "../../auth/SessionStore.hpp"
 #include "../../manager/ws_connection_manager.h"
-#include "../../struct.h"
 #include "chat_handler.h"
 
 #include <chen/log/log.h>

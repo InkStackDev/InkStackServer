@@ -1,4 +1,4 @@
-#include "error_code_manager.h"
+#include "ErrorCodeManager.hpp"
 
 #include <fstream>
 
@@ -6,7 +6,7 @@
 #include <chen/log/log.h>
 #include <json/json.h>
 
-#include "../i18n/i18n.h"
+#include "../i18n/I18n.hpp"
 
 namespace blog {
 

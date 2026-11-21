@@ -2,7 +2,7 @@
 
 #include "../search/search_sync.h"
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/config/config.h>
 #include <chen/db/redis.h>
@@ -32,21 +32,21 @@ static std::string articleCacheKey(int64_t id)
 static data::ArticleInfo::ptr parseArticleCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::ArticleInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setTitle(cacheJsonString(v, "title"));
-    info->setContent(cacheJsonString(v, "content"));
-    info->setType(cacheJsonInt32(v, "type"));
-    info->setState(cacheJsonInt32(v, "state"));
-    info->setChannel(cacheJsonInt64(v, "channel"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setPublishTime(cacheJsonTime(v, "publish_time"));
-    info->setWeight(cacheJsonInt64(v, "weight"));
-    info->setViews(cacheJsonInt64(v, "views"));
-    info->setPraise(cacheJsonInt64(v, "praise"));
-    info->setFavorites(cacheJsonInt64(v, "favorites"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setTitle(CacheJsonString(v, "title"));
+    info->setContent(CacheJsonString(v, "content"));
+    info->setType(CacheJsonInt32(v, "type"));
+    info->setState(CacheJsonInt32(v, "state"));
+    info->setChannel(CacheJsonInt64(v, "channel"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setPublishTime(CacheJsonTime(v, "publish_time"));
+    info->setWeight(CacheJsonInt64(v, "weight"));
+    info->setViews(CacheJsonInt64(v, "views"));
+    info->setPraise(CacheJsonInt64(v, "praise"));
+    info->setFavorites(CacheJsonInt64(v, "favorites"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -54,13 +54,13 @@ static data::ArticleInfo::ptr parseArticleCache(const Json::Value& v)
 static data::ArticleInfo::ptr getArticleCache(int64_t id)
 {
     std::string key = articleCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseArticleCache(v);
@@ -71,12 +71,12 @@ static void setArticleCache(const data::ArticleInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(articleCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(articleCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 static void delArticleCache(int64_t id)
 {
-    redisCacheDel(articleCacheKey(id));
+    RedisCacheDel(articleCacheKey(id));
 }
 
 data::ArticleInfo::ptr ArticleManager::parseRow(chen::ISQLData::ptr rt)
@@ -172,14 +172,14 @@ int64_t ArticleManager::listByLabelPages(std::vector<data::ArticleInfo::ptr>& in
     std::string listKey =
         "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0") + ":" + std::to_string(offset) + ":" + std::to_string(size);
     std::vector<int64_t> cachedIds;
-    if (getCachedListResult(listKey, cachedIds)) {
+    if (GetCachedListResult(listKey, cachedIds)) {
         for (auto id : cachedIds) {
             auto info = get(id);
             if (info) {
                 infos.push_back(info);
             }
         }
-        return executeCountCached(qb, db, "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0"));
+        return ExecuteCountCached(qb, db, "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0"));
     }
 
     int64_t total = 0;
@@ -190,7 +190,7 @@ int64_t ArticleManager::listByLabelPages(std::vector<data::ArticleInfo::ptr>& in
     for (auto& info : infos) {
         ids.push_back(info->getId());
     }
-    cacheListResult(listKey, ids);
+    CacheListResult(listKey, ids);
     return total;
 }
 
@@ -216,14 +216,14 @@ int64_t ArticleManager::listByCategoryPages(std::vector<data::ArticleInfo::ptr>&
     std::string listKey =
         "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0") + ":" + std::to_string(offset) + ":" + std::to_string(size);
     std::vector<int64_t> cachedIds;
-    if (getCachedListResult(listKey, cachedIds)) {
+    if (GetCachedListResult(listKey, cachedIds)) {
         for (auto id : cachedIds) {
             auto info = get(id);
             if (info) {
                 infos.push_back(info);
             }
         }
-        return executeCountCached(qb, db, "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0"));
+        return ExecuteCountCached(qb, db, "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0"));
     }
 
     int64_t total = 0;
@@ -234,7 +234,7 @@ int64_t ArticleManager::listByCategoryPages(std::vector<data::ArticleInfo::ptr>&
     for (auto& info : infos) {
         ids.push_back(info->getId());
     }
-    cacheListResult(listKey, ids);
+    CacheListResult(listKey, ids);
     return total;
 }
 
@@ -370,7 +370,7 @@ ArticleManager::ArticleStats ArticleManager::getStats(int32_t category, int32_t 
     // 无过滤条件时走缓存
     if (category <= 0 && role == -1 && days <= 0 && keyword.empty()) {
         std::string cached;
-        if (getCachedStringResult("art:stats", cached)) {
+        if (GetCachedStringResult("art:stats", cached)) {
             std::stringstream ss(cached);
             std::string token;
             auto next = [&]() -> int64_t {
@@ -440,7 +440,7 @@ ArticleManager::ArticleStats ArticleManager::getStats(int32_t category, int32_t 
     if (category <= 0 && role == -1 && days <= 0 && keyword.empty()) {
         std::stringstream ss;
         ss << stats.total << "|" << stats.pending << "|" << stats.published << "|" << stats.rejected << "|" << stats.reported;
-        cacheStringResult("art:stats", ss.str());
+        CacheStringResult("art:stats", ss.str());
     }
 
     return stats;

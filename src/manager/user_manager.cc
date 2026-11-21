@@ -1,7 +1,7 @@
 #include "user_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/config/config.h>
 #include <chen/log/log.h>
@@ -22,26 +22,26 @@ static std::string userCacheKey(int64_t id)
 static data::UserInfo::ptr parseUserCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::UserInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setName(cacheJsonString(v, "name"));
-    info->setAccount(cacheJsonString(v, "account"));
-    info->setAvatar(cacheJsonString(v, "avatar"));
-    info->setEmail(cacheJsonString(v, "email"));
-    info->setRole(cacheJsonInt32(v, "role"));
-    info->setPasswd(cacheJsonString(v, "passwd"));
-    info->setState(cacheJsonInt32(v, "state"));
-    info->setBio(cacheJsonString(v, "bio"));
-    info->setWebsite(cacheJsonString(v, "website"));
-    info->setGithub(cacheJsonString(v, "github"));
-    info->setLocation(cacheJsonString(v, "location"));
-    info->setToken(cacheJsonString(v, "token"));
-    info->setTokenTime(cacheJsonInt64(v, "token_time"));
-    info->setLoginTime(cacheJsonTime(v, "login_time"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
-    info->setTotpSecret(cacheJsonString(v, "totp_secret"));
-    info->setTotpEnabled(cacheJsonInt32(v, "totp_enabled"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setName(CacheJsonString(v, "name"));
+    info->setAccount(CacheJsonString(v, "account"));
+    info->setAvatar(CacheJsonString(v, "avatar"));
+    info->setEmail(CacheJsonString(v, "email"));
+    info->setRole(CacheJsonInt32(v, "role"));
+    info->setPasswd(CacheJsonString(v, "passwd"));
+    info->setState(CacheJsonInt32(v, "state"));
+    info->setBio(CacheJsonString(v, "bio"));
+    info->setWebsite(CacheJsonString(v, "website"));
+    info->setGithub(CacheJsonString(v, "github"));
+    info->setLocation(CacheJsonString(v, "location"));
+    info->setToken(CacheJsonString(v, "token"));
+    info->setTokenTime(CacheJsonInt64(v, "token_time"));
+    info->setLoginTime(CacheJsonTime(v, "login_time"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
+    info->setTotpSecret(CacheJsonString(v, "totp_secret"));
+    info->setTotpEnabled(CacheJsonInt32(v, "totp_enabled"));
     info->markClean();
     return info;
 }
@@ -49,13 +49,13 @@ static data::UserInfo::ptr parseUserCache(const Json::Value& v)
 static data::UserInfo::ptr getUserCache(int64_t id)
 {
     std::string key = userCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseUserCache(v);
@@ -66,7 +66,7 @@ static void setUserCache(const data::UserInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(userCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(userCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 static chen::ConfigVar<std::string>::ptr g_admin_account = chen::Config::Lookup("admin.account", std::string("admin"), "default super admin account");
@@ -157,7 +157,7 @@ blog::data::UserInfo::ptr UserManager::get(int64_t id)
 
 blog::data::UserInfo::ptr UserManager::getByAccount(const std::string& v)
 {
-    int64_t cachedId = getCachedIdMapping("usr:acct:" + v);
+    int64_t cachedId = GetCachedIdMapping("usr:acct:" + v);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -171,14 +171,14 @@ blog::data::UserInfo::ptr UserManager::getByAccount(const std::string& v)
     auto info = data::UserInfoDao::QueryByAccount(v, db);
     if (info) {
         setUserCache(info);
-        cacheIdMapping("usr:acct:" + v, info->getId());
+        CacheIdMapping("usr:acct:" + v, info->getId());
     }
     return info;
 }
 
 blog::data::UserInfo::ptr UserManager::getByEmail(const std::string& v)
 {
-    int64_t cachedId = getCachedIdMapping("usr:eml:" + v);
+    int64_t cachedId = GetCachedIdMapping("usr:eml:" + v);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -190,7 +190,7 @@ blog::data::UserInfo::ptr UserManager::getByEmail(const std::string& v)
     auto info = data::UserInfoDao::QueryByEmail(v, db);
     if (info) {
         setUserCache(info);
-        cacheIdMapping("usr:eml:" + v, info->getId());
+        CacheIdMapping("usr:eml:" + v, info->getId());
     }
     return info;
 }
@@ -252,7 +252,7 @@ void UserManager::ensureSuperAdmin()
 
 blog::data::UserInfo::ptr UserManager::getByName(const std::string& v)
 {
-    int64_t cachedId = getCachedIdMapping("usr:name:" + v);
+    int64_t cachedId = GetCachedIdMapping("usr:name:" + v);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -264,7 +264,7 @@ blog::data::UserInfo::ptr UserManager::getByName(const std::string& v)
     auto info = data::UserInfoDao::QueryByName(v, db);
     if (info) {
         setUserCache(info);
-        cacheIdMapping("usr:name:" + v, info->getId());
+        CacheIdMapping("usr:name:" + v, info->getId());
     }
     return info;
 }

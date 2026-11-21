@@ -1,7 +1,7 @@
 #include "error_codes_servlet.h"
 
-#include "../../i18n/i18n.h"
-#include "../../manager/error_code_manager.h"
+#include "../../i18n/I18n.hpp"
+#include "../../manager/ErrorCodeManager.hpp"
 
 namespace blog::servlet {
 

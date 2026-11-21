@@ -1,4 +1,4 @@
-<table name="help_faqs" namespace="blog.data" desc="帮助中心常见问题表">
+<table name="help_faqs" namespace="db" desc="帮助中心常见问题表">
   <columns>
     <column name="id" type="int64" auto_increment="true" desc="主键ID" />
     <column name="cat" type="string" length="50" desc="分类名" />

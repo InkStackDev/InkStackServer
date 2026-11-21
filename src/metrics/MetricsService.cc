@@ -1,4 +1,4 @@
-#include "service_metrics.h"
+#include "MetricsService.hpp"
 
 #include <atomic>
 #include <memory>
@@ -13,11 +13,6 @@
 #include "../manager/notification_manager.h"
 #include "../manager/ws_connection_manager.h"
 #include "../util.h"
-
-namespace blog {
-namespace metrics {
-
-namespace {
 
 /**
  * @brief 路由指标运行态
@@ -37,8 +32,6 @@ std::vector<chen::http::HttpServer::ptr> s_http_servers;
 std::vector<chen::http::WSServer::ptr> s_ws_servers;
 uint64_t s_start_ms = 0;
 bool s_inited = false;
-
-} // namespace
 
 void Init(
     const std::string& name,
@@ -217,6 +210,3 @@ void SampleRates()
         state->sampled_at_ms = now;
     }
 }
-
-} // namespace metrics
-} // namespace blog

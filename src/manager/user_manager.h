@@ -1,11 +1,9 @@
 #pragma once
 
-#include "blog/data/user_info.h"
+#include "db/user_info.h"
 
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
-
-namespace blog {
 
 class UserManager {
 public:
@@ -21,9 +19,9 @@ public:
         BANNED = 2
     };
 
-    void add(blog::data::UserInfo::ptr info);
+    void add(db::UserInfo::ptr info);
 
-    void update(blog::data::UserInfo::ptr info);
+    void update(db::UserInfo::ptr info);
 
     void getAllIds(std::vector<int64_t>& ids, bool isValid);
 
@@ -33,7 +31,7 @@ public:
     void ensureSuperAdmin();
 
     uint64_t listByPages(
-        std::vector<blog::data::UserInfo::ptr>& infos,
+        std::vector<db::UserInfo::ptr>& infos,
         uint64_t offset,
         uint64_t size,
         int32_t role,
@@ -41,22 +39,20 @@ public:
         int32_t days,
         bool isValid);
 
-    blog::data::UserInfo::ptr get(int64_t id);
+    db::UserInfo::ptr get(int64_t id);
 
-    blog::data::UserInfo::ptr getByAccount(const std::string& v);
+    db::UserInfo::ptr getByAccount(const std::string& v);
 
-    blog::data::UserInfo::ptr getByEmail(const std::string& v);
+    db::UserInfo::ptr getByEmail(const std::string& v);
 
-    blog::data::UserInfo::ptr getByName(const std::string& v);
+    db::UserInfo::ptr getByName(const std::string& v);
 
-    static std::string GetToken(data::UserInfo::ptr info, int64_t us);
+    static std::string GetToken(db::UserInfo::ptr info, int64_t us);
 
     static std::string generateToken();
 
 private:
-    static data::UserInfo::ptr parseRow(chen::ISQLData::ptr rt);
+    static db::UserInfo::ptr parseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<UserManager> UserMgr;
-
-} // namespace blog

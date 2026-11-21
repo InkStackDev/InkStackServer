@@ -11,8 +11,6 @@
 
 #include "blog/data/user_info.h"
 
-namespace blog {
-
 /**
  * @brief 一次请求解析出的登录上下文
  */
@@ -23,5 +21,3 @@ struct AuthContext {
 
     bool valid() const { return uid > 0 && user != nullptr; }
 };
-
-} // namespace blog

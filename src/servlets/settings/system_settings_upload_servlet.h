@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../struct.h"
+#include "../../SessionData.hpp"
 
 namespace blog::servlet {
 

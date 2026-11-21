@@ -7,17 +7,14 @@
  */
 #pragma once
 
-#include "blog/data/organization_repo_prs_info.h"
-#include "blog/data/organization_repos_info.h"
+#include "db/organization_repo_prs_info.h"
+#include "db/organization_repos_info.h"
 
-#include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
 // 前置声明 RPC 协议结构体，避免在 header 中引入 protocol 头文件
 struct tagGithubPRInfo;
 struct tagGithubPRReviewInfo;
-
-namespace blog {
 
 class OrganizationRepoPrManager {
 public:
@@ -45,18 +42,18 @@ public:
         DB_ERROR,
     };
 
-    void add(data::OrganizationRepoPrsInfo::ptr info);
+    void add(db::OrganizationRepoPrsInfo::ptr info);
 
     void del(int64_t id);
 
     void onTick();
 
-    data::OrganizationRepoPrsInfo::ptr get(int64_t id);
+    db::OrganizationRepoPrsInfo::ptr get(int64_t id);
 
-    data::OrganizationRepoPrsInfo::ptr getByRepoAndPrId(int64_t repo_id, int32_t github_pr_id);
+    db::OrganizationRepoPrsInfo::ptr getByRepoAndPrId(int64_t repo_id, int32_t github_pr_id);
 
     int64_t listByRepoPages(
-        std::vector<data::OrganizationRepoPrsInfo::ptr>& prs,
+        std::vector<db::OrganizationRepoPrsInfo::ptr>& prs,
         int64_t repo_id,
         const std::string& state,
         uint64_t offset,
@@ -65,14 +62,14 @@ public:
     int64_t getCountByRepo(int64_t repo_id);
 
     int64_t listByOrgPages(
-        std::vector<data::OrganizationRepoPrsInfo::ptr>& prs,
+        std::vector<db::OrganizationRepoPrsInfo::ptr>& prs,
         int64_t org_id,
         const std::string& state,
         uint64_t offset,
         uint64_t limit);
 
     int64_t listByUserPages(
-        std::vector<data::OrganizationRepoPrsInfo::ptr>& prs,
+        std::vector<db::OrganizationRepoPrsInfo::ptr>& prs,
         int64_t uid,
         const std::string& state,
         uint64_t offset,
@@ -86,14 +83,12 @@ public:
     /// @param pr_id 本地 organization_repo_prs 记录 id
     /// @param[out] out 同步成功时返回更新后的 PR 对象
     /// @return 同步结果状态
-    static SyncPrStatus SyncPrFromGitHub(int64_t pr_id, data::OrganizationRepoPrsInfo::ptr& out);
+    static SyncPrStatus SyncPrFromGitHub(int64_t pr_id, db::OrganizationRepoPrsInfo::ptr& out);
 
-    static data::OrganizationReposInfo::ptr findRepoByOwnerAndName(const std::string& owner, const std::string& name);
+    static db::OrganizationReposInfo::ptr findRepoByOwnerAndName(const std::string& owner, const std::string& name);
 
 private:
-    static data::OrganizationRepoPrsInfo::ptr parseRow(chen::ISQLData::ptr rt);
+    static db::OrganizationRepoPrsInfo::ptr parseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationRepoPrManager> OrganizationRepoPrMgr;
-
-} // namespace blog

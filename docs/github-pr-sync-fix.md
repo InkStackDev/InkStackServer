@@ -11,7 +11,7 @@
 
 ### 现状
 
-`src/blog_module.cc` 的 `SyncAllReposFromGitHub()` 每 30 分钟调度一次 PR 同步，
+`../src/BlogModule.cc` 的 `SyncAllReposFromGitHub()` 每 30 分钟调度一次 PR 同步，
 原实现分页拉取全部 PR（`per_page=50`，最多 10 页，跟随 `Link` 头翻页）。
 
 ### 改动
@@ -21,7 +21,7 @@
 - `src/manager/organization_repo_pr_manager.cc`
   - `per_page` 改为 `max_prs > 0 ? max_prs : 50`。
   - 当 `max_prs > 0` 时只取第一页，不再翻页。
-- `src/blog_module.cc`
+- `../src/BlogModule.cc`
   - 定时同步调用改为 `SyncFromGitHub(id, url, token, 20)`。
 
 手动全量同步接口 `/api/v1/organization/repos/prs/sync` 保持全量行为不变。
@@ -79,10 +79,10 @@ sql_mode = "ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_B
 
 ## 修改文件清单
 
-| 文件 | 改动 |
-|------|------|
-| `src/blog_module.cc` | 定时同步传 `max_prs = 20` |
-| `src/manager/organization_repo_pr_manager.h` | `SyncFromGitHub` 新增 `max_prs` 参数 |
+| 文件                                          | 改动                                                                           |
+|-----------------------------------------------|--------------------------------------------------------------------------------|
+| `../src/BlogModule.cc`                        | 定时同步传 `max_prs = 20`                                                      |
+| `src/manager/organization_repo_pr_manager.h`  | `SyncFromGitHub` 新增 `max_prs` 参数                                           |
 | `src/manager/organization_repo_pr_manager.cc` | `per_page` 逻辑 + 单页截断 + `emptyTimestamp()` 哨兵 + 同步/webhook 空时间处理 |
 
 ## 部署注意

@@ -1,7 +1,7 @@
 #include "organization_repo_pr_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 #include "organization_repo_manager.h"
 #include "organization_user_rel_manager.h"
 #include "protocol_ss_github.h"
@@ -32,26 +32,26 @@ static std::string orgRepoPrCacheKey(int64_t id)
 static data::OrganizationRepoPrsInfo::ptr parseOrgRepoPrCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::OrganizationRepoPrsInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setRepoId(cacheJsonInt64(v, "repo_id"));
-    info->setGithubPrId(cacheJsonInt32(v, "github_pr_id"));
-    info->setTitle(cacheJsonString(v, "title"));
-    info->setDescription(cacheJsonString(v, "description"));
-    info->setState(cacheJsonString(v, "state"));
-    info->setPriority(cacheJsonString(v, "priority"));
-    info->setAuthor(cacheJsonString(v, "author"));
-    info->setHeadBranch(cacheJsonString(v, "head_branch"));
-    info->setBaseBranch(cacheJsonString(v, "base_branch"));
-    info->setCommitSha(cacheJsonString(v, "commit_sha"));
-    info->setChangedFiles(cacheJsonInt32(v, "changed_files"));
-    info->setAdditions(cacheJsonInt32(v, "additions"));
-    info->setDeletions(cacheJsonInt32(v, "deletions"));
-    info->setReviewers(cacheJsonString(v, "reviewers"));
-    info->setReviewStatus(cacheJsonString(v, "review_status"));
-    info->setClosedAt(cacheJsonTime(v, "closed_at"));
-    info->setMergedAt(cacheJsonTime(v, "merged_at"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setRepoId(CacheJsonInt64(v, "repo_id"));
+    info->setGithubPrId(CacheJsonInt32(v, "github_pr_id"));
+    info->setTitle(CacheJsonString(v, "title"));
+    info->setDescription(CacheJsonString(v, "description"));
+    info->setState(CacheJsonString(v, "state"));
+    info->setPriority(CacheJsonString(v, "priority"));
+    info->setAuthor(CacheJsonString(v, "author"));
+    info->setHeadBranch(CacheJsonString(v, "head_branch"));
+    info->setBaseBranch(CacheJsonString(v, "base_branch"));
+    info->setCommitSha(CacheJsonString(v, "commit_sha"));
+    info->setChangedFiles(CacheJsonInt32(v, "changed_files"));
+    info->setAdditions(CacheJsonInt32(v, "additions"));
+    info->setDeletions(CacheJsonInt32(v, "deletions"));
+    info->setReviewers(CacheJsonString(v, "reviewers"));
+    info->setReviewStatus(CacheJsonString(v, "review_status"));
+    info->setClosedAt(CacheJsonTime(v, "closed_at"));
+    info->setMergedAt(CacheJsonTime(v, "merged_at"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -59,13 +59,13 @@ static data::OrganizationRepoPrsInfo::ptr parseOrgRepoPrCache(const Json::Value&
 static data::OrganizationRepoPrsInfo::ptr getOrgRepoPrCache(int64_t id)
 {
     std::string key = orgRepoPrCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseOrgRepoPrCache(v);
@@ -76,12 +76,12 @@ static void setOrgRepoPrCache(const data::OrganizationRepoPrsInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(orgRepoPrCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(orgRepoPrCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 static void delOrgRepoPrCache(int64_t id)
 {
-    redisCacheDel(orgRepoPrCacheKey(id));
+    RedisCacheDel(orgRepoPrCacheKey(id));
 }
 
 /// 单条 PR 同步互斥锁与进行中集合，避免同一 PR 并发重复请求 GitHub

@@ -1,9 +1,9 @@
 #include "rd_requirement_servlet.h"
 
+#include "../../Permission.hpp"
 #include "../../manager/organization_user_rel_manager.h"
 #include "../../manager/requirement_manager.h"
 #include "../../manager/user_manager.h"
-#include "../../permission.h"
 #include "rd_helper.h"
 
 namespace blog {

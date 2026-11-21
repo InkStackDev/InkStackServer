@@ -8,12 +8,9 @@
 
 #pragma once
 
-#include "error_codes.h"
+#include "ErrorCodes.hpp"
 #include "manager/organization_manager.h"
 #include "manager/user_manager.h"
-
-namespace blog {
-namespace permission {
 
 using OrgRole = OrganizationManager::Role;
 
@@ -199,22 +196,19 @@ inline bool IsAdmin(int32_t system_role)
  * @param user 当前登录用户信息
  * @return 0 表示通过，否则返回需要下发的错误码
  */
-inline int32_t CheckAdminRoute(int64_t uid, const data::UserInfo::ptr& user)
+inline int32_t CheckAdminRoute(int64_t uid, const db::UserInfo::ptr& user)
 {
     if (!uid) {
-        return errcode::NOT_LOGIN;
+        return NOT_LOGIN;
     }
     if (!user) {
-        return errcode::USER_NOT_FOUND;
+        return USER_NOT_FOUND;
     }
     if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
-        return errcode::ACCOUNT_INVALID;
+        return ACCOUNT_INVALID;
     }
     if (!IsAdmin(user->getRole())) {
-        return errcode::ACCESS_DENIED;
+        return ACCESS_DENIED;
     }
     return 0;
 }
-
-} // namespace permission
-} // namespace blog

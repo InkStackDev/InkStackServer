@@ -1,6 +1,6 @@
 #include "user_device_kick_servlet.h"
 
-#include "../../auth/session_store.h"
+#include "../../auth/SessionStore.hpp"
 #include "../../manager/ws_connection_manager.h"
 #include "../../util.h"
 

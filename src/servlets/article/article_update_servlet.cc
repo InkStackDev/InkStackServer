@@ -4,13 +4,13 @@
 
 #include <set>
 
-#include "../../search/search_sync.h"
+#include "../../Permission.hpp"
 #include "../../manager/article_category_rel_manager.h"
 #include "../../manager/article_label_rel_manager.h"
 #include "../../manager/article_manager.h"
 #include "../../manager/category_manager.h"
 #include "../../manager/label_manager.h"
-#include "../../permission.h"
+#include "../../search/search_sync.h"
 #include "../../util.h"
 
 namespace blog {

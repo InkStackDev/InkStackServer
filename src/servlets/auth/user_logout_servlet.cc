@@ -1,6 +1,6 @@
 #include "user_logout_servlet.h"
 
-#include "../../auth/auth_service.h"
+#include "../../auth/AuthService.hpp"
 
 namespace blog {
 namespace servlet {

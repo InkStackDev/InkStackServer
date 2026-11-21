@@ -1,5 +1,5 @@
 /**
- * @file error_code_manager.h
+ * @file ErrorCodeManager.hpp
  * @brief 错误码管理器 - 加载 errors.json 到内存，提供按语言查询
  * @author Christins
  * @date 2026-06-11
@@ -12,8 +12,6 @@
 #include <string>
 
 #include <chen/util/singleton.h>
-
-namespace blog {
 
 class ErrorCodeManager {
 public:
@@ -81,5 +79,3 @@ private:
 };
 
 typedef chen::Singleton<ErrorCodeManager> ErrorCodeMgr;
-
-} // namespace blog

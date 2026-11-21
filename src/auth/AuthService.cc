@@ -1,4 +1,4 @@
-#include "auth_service.h"
+#include "AuthService.hpp"
 
 #include <chen/config/config.h>
 #include <chen/http/session_data.h>
@@ -8,15 +8,9 @@
 
 #include <json/json.h>
 
-#include "../error_codes.h"
-#include "../manager/session_manager.h"
-#include "../manager/user_manager.h"
+#include "../SessionData.hpp"
 #include "../manager/ws_connection_manager.h"
-#include "../struct.h"
 #include "../util.h"
-#include "session_store.h"
-
-namespace blog {
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -273,5 +267,3 @@ void AuthService::ClearSessionCookie(chen::http::HttpResponse::ptr response)
     }
     response->setHeader("Set-Cookie", cookie);
 }
-
-} // namespace blog

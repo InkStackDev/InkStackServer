@@ -1,8 +1,8 @@
 #include "rd_requirement_delete_servlet.h"
-#include "../../manager/user_manager.h"
+#include "../../Permission.hpp"
 #include "../../manager/organization_user_rel_manager.h"
 #include "../../manager/requirement_manager.h"
-#include "../../permission.h"
+#include "../../manager/user_manager.h"
 #include "../../util.h"
 
 #include <chen/log/log.h>

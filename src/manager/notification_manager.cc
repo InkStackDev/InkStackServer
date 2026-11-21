@@ -1,7 +1,7 @@
 #include "notification_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 #include "ws_connection_manager.h"
 
 #include <chen/log/log.h>
@@ -22,23 +22,23 @@ static std::string notificationCacheKey(int64_t id)
 static data::NotificationInfo::ptr parseNotificationCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::NotificationInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setTitle(cacheJsonString(v, "title"));
-    info->setContent(cacheJsonString(v, "content"));
-    info->setType(cacheJsonString(v, "type"));
-    info->setSenderId(cacheJsonInt64(v, "sender_id"));
-    info->setArticleId(cacheJsonInt64(v, "article_id"));
-    info->setCommentId(cacheJsonInt64(v, "comment_id"));
-    info->setIsRead(cacheJsonInt32(v, "is_read"));
-    info->setReadTime(cacheJsonTime(v, "read_time"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
-    info->setIsBroadcast(cacheJsonInt32(v, "is_broadcast"));
-    info->setLevel(cacheJsonString(v, "level"));
-    info->setStartTime(cacheJsonInt64(v, "start_time"));
-    info->setEndTime(cacheJsonInt64(v, "end_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setTitle(CacheJsonString(v, "title"));
+    info->setContent(CacheJsonString(v, "content"));
+    info->setType(CacheJsonString(v, "type"));
+    info->setSenderId(CacheJsonInt64(v, "sender_id"));
+    info->setArticleId(CacheJsonInt64(v, "article_id"));
+    info->setCommentId(CacheJsonInt64(v, "comment_id"));
+    info->setIsRead(CacheJsonInt32(v, "is_read"));
+    info->setReadTime(CacheJsonTime(v, "read_time"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
+    info->setIsBroadcast(CacheJsonInt32(v, "is_broadcast"));
+    info->setLevel(CacheJsonString(v, "level"));
+    info->setStartTime(CacheJsonInt64(v, "start_time"));
+    info->setEndTime(CacheJsonInt64(v, "end_time"));
     info->markClean();
     return info;
 }
@@ -46,13 +46,13 @@ static data::NotificationInfo::ptr parseNotificationCache(const Json::Value& v)
 static data::NotificationInfo::ptr getNotificationCache(int64_t id)
 {
     std::string key = notificationCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseNotificationCache(v);
@@ -63,7 +63,7 @@ static void setNotificationCache(const data::NotificationInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(notificationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(notificationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::NotificationInfo::ptr NotificationManager::parseRow(chen::ISQLData::ptr rt)
@@ -153,7 +153,7 @@ void NotificationManager::listByUser(
     std::string typeKey = type.empty() ? "all" : type;
     std::string listKey = "notif:list:" + std::to_string(user_id) + ":" + typeKey + ":" + std::to_string(offset) + ":" + std::to_string(size);
     std::vector<int64_t> cachedIds;
-    if (getCachedListResult(listKey, cachedIds)) {
+    if (GetCachedListResult(listKey, cachedIds)) {
         for (auto id : cachedIds) {
             auto info = get(id);
             if (info) {
@@ -171,7 +171,7 @@ void NotificationManager::listByUser(
     for (auto& info : results) {
         ids.push_back(info->getId());
     }
-    cacheListResult(listKey, ids);
+    CacheListResult(listKey, ids);
 }
 
 int64_t NotificationManager::countByUser(int64_t user_id, const std::string& type)
@@ -185,7 +185,7 @@ int64_t NotificationManager::countByUser(int64_t user_id, const std::string& typ
     qb->where("user_id", "=", user_id);
     qb->whereIf(!type.empty(), "type", "=", type);
     std::string ck = "notif:cnt:" + std::to_string(user_id) + ":" + (type.empty() ? "all" : type);
-    return executeCountCached(qb, db, ck);
+    return ExecuteCountCached(qb, db, ck);
 }
 
 int64_t NotificationManager::unreadCount(int64_t user_id)
@@ -199,7 +199,7 @@ int64_t NotificationManager::unreadCount(int64_t user_id)
     qb->where("user_id", "=", user_id);
     qb->where("is_read", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
-    return executeCountCached(qb, db, "notif:unread:" + std::to_string(user_id));
+    return ExecuteCountCached(qb, db, "notif:unread:" + std::to_string(user_id));
 }
 
 bool NotificationManager::markRead(int64_t notification_id)

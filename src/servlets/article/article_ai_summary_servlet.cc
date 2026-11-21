@@ -2,7 +2,7 @@
 
 #include "../../ai/ai_provider.h"
 #include "../../ai/sse_stream_parser.h"
-#include "../../auth/auth_service.h"
+#include "../../auth/AuthService.hpp"
 #include "../../manager/article_manager.h"
 #include "../../manager/user_ai_config_manager.h"
 #include "../../util.h"

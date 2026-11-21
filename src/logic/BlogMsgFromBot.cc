@@ -5,8 +5,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
@@ -35,11 +33,11 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
     // 4. 查找已有记录（幂等去重）
     auto existing = OrganizationRepoPrMgr::GetInstance()->getByRepoAndPrId(repo_id, info.Number);
 
-    data::OrganizationRepoPrsInfo::ptr pr;
+    db::OrganizationRepoPrsInfo::ptr pr;
     if (existing) {
         pr = existing;
     } else {
-        pr.reset(new data::OrganizationRepoPrsInfo);
+        pr.reset(new db::OrganizationRepoPrsInfo);
         pr->setRepoId(repo_id);
         pr->setGithubPrId(info.Number);
         if (created_at) {
@@ -81,7 +79,7 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
     pr->setUpdateTime(time(0));
 
     // 6. 写入 DB
-    if (data::OrganizationRepoPrsInfoDao::InsertOrUpdate(pr, db)) {
+    if (db::OrganizationRepoPrsInfoDao::InsertOrUpdate(pr, db)) {
         ERROR(logger) << "HandlePRWebhook: Update failed for repo " << repo_id << " PR #" << info.Number << ", errstr=" << db->getErrStr()
                       << ", errno=" << db->getErrno();
         return GITHUB_DB_OPERATION_FAILED;
@@ -176,7 +174,7 @@ static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
     pr->setUpdateTime(time(0));
 
     // 6. 写入 DB
-    if (data::OrganizationRepoPrsInfoDao::InsertOrUpdate(pr, db)) {
+    if (db::OrganizationRepoPrsInfoDao::InsertOrUpdate(pr, db)) {
         ERROR(logger) << "HandlePRReviewWebhook: Update failed for repo " << repo_id << " PR #" << info.PRNumber << ", errstr=" << db->getErrStr()
                       << ", errno=" << db->getErrno();
         return GITHUB_DB_OPERATION_FAILED;
@@ -193,4 +191,3 @@ void BlogMsgFromBotInit(chen::rpc::RpcServer::ptr server)
     server->registerMethod(SS_CMD_GET_GITHUB_PR_REVIEW_INFO, HandlePRReviewWebhook);
 }
 
-} // namespace blog

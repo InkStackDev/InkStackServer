@@ -1,7 +1,7 @@
 #include "article_category_rel_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/log/log.h>
 
@@ -63,7 +63,7 @@ bool ArticleCategoryRelManager::listByCategoryId(std::vector<data::ArticleCatego
 data::ArticleCategoryRelInfo::ptr ArticleCategoryRelManager::getByArticleIdCategoryId(int64_t article_id, int64_t category_id)
 {
     std::string ck = "acr:" + std::to_string(article_id) + ":" + std::to_string(category_id);
-    int64_t cachedId = getCachedIdMapping(ck);
+    int64_t cachedId = GetCachedIdMapping(ck);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -74,7 +74,7 @@ data::ArticleCategoryRelInfo::ptr ArticleCategoryRelManager::getByArticleIdCateg
     }
     auto info = data::ArticleCategoryRelInfoDao::QueryByArticleIdCategoryId(article_id, category_id, db);
     if (info) {
-        cacheIdMapping(ck, info->getId());
+        CacheIdMapping(ck, info->getId());
     }
     return info;
 }

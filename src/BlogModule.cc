@@ -1,8 +1,7 @@
-#include "blog_module.h"
+#include "BlogModule.hpp"
 
 #include <chen/application.h>
 #include <chen/config/config.h>
-#include <chen/db/mysql.h>
 #include <chen/db/query_builder.h>
 #include <chen/db/redis.h>
 #include <chen/ds/event_bus.h>
@@ -14,62 +13,14 @@
 
 #include <exception>
 #include <memory>
-#include <ranges>
-#include <utility>
 
-#include "./chunk_upload.h"
-#include "./crash_handler.h"
-#include "./event/events.h"
-#include "./i18n/i18n.h"
+#include "./SessionData.hpp"
+#include "./i18n/I18n.hpp"
 #include "./include/managers.h"
-#include "./include/servlets.h"
-#include "./include/tables.h"
 #include "./logic/BlogMsgFromBot.h"
-#include "./metrics/service_metrics.h"
 #include "./search/search_sync.h"
-#include "./struct.h"
-
-namespace blog {
-
-static chen::Logger::ptr logger = LOG_ROOT();
-
-static chen::ConfigVar<std::map<std::string, std::map<std::string, std::string>>>::ptr g_mysql_dbs =
-    chen::Config::Lookup("mysql.dbs", std::map<std::string, std::map<std::string, std::string>>(), "mysql dbs");
 
 static chen::ConfigVar<std::string>::ptr g_work_path = chen::Config::Lookup<std::string>("server.work_path", std::string(""), "server work path");
-
-namespace {
-
-/**
- * @brief ServletDispatch 代理
- * @details 注册路由时把路由模板注入 BlogServlet，用于指标标签；现有注册代码无需改动
- */
-class ServletRegistrar {
-public:
-    explicit ServletRegistrar(chen::http::ServletDispatch::ptr dispatch)
-        : m_dispatch(std::move(dispatch))
-    {
-    }
-
-    ServletRegistrar* operator->() { return this; }
-
-    void addServlet(const std::string& uri, chen::http::Servlet::ptr servlet)
-    {
-        if (!m_dispatch || !servlet) {
-            return;
-        }
-        auto blog_servlet = std::dynamic_pointer_cast<BlogServlet>(servlet);
-        if (blog_servlet) {
-            blog_servlet->setRoute(uri);
-        }
-        m_dispatch->addServlet(uri, servlet);
-    }
-
-private:
-    chen::http::ServletDispatch::ptr m_dispatch;
-};
-
-} // namespace
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -83,13 +34,6 @@ bool BlogModule::onLoad()
     if (g_work_path->getValue().empty()) {
         ERROR(logger) << "work path is empty";
         return false;
-    }
-
-    std::string crash_log = g_work_path->getValue() + "/logs/crash.log";
-    if (InstallCrashHandler(crash_log)) {
-        INFO(logger) << "crash handler installed, path=" << crash_log;
-    } else {
-        WARN(logger) << "install crash handler failed, path=" << crash_log;
     }
 
     if (!I18n::Init(g_work_path->getValue() + "/locale")) {
@@ -146,8 +90,6 @@ void BlogModule::onTick()
 
         NotificationMgr::GetInstance()->cleanupExpiredBroadcasts();
 
-        ChunkUploadMgr::GetInstance()->cleanupExpiredSessions();
-
         if (s_sync_tick % 5 == 0) {
             chen::http::SessionDataMgr::GetInstance()->check(3600);
         }
@@ -178,11 +120,6 @@ bool BlogModule::onServerReady()
     INFO(logger) << "onServerReady";
 
     chen::EventBusMgr::GetInstance()->clearAll();
-
-    if (!initMySQL()) {
-        ERROR(logger) << "initDB failed";
-        return false;
-    }
 
     ArticleMgr::GetInstance()->start();
 
@@ -223,113 +160,6 @@ bool BlogModule::onServerUp()
     UserMgr::GetInstance()->ensureSuperAdmin();
 
     BadgeMgr::GetInstance()->ensureDefaults();
-
-    return true;
-}
-
-bool BlogModule::initMySQL()
-{
-    INFO(logger) << "initMySQL";
-
-    const auto& mysql_dbs = g_mysql_dbs->getValue();
-    for (const auto& params : mysql_dbs | std::views::values) {
-        auto mysql = std::make_shared<chen::MySQL>(params);
-        if (!mysql->connect()) {
-            ERROR(logger) << "connect mysql failed";
-            return false;
-        }
-
-#define XX(class_name, table_name)                             \
-    if (data::class_name::CreateTableMySQL(mysql)) {           \
-        ERROR(logger) << "create " table_name " table failed"; \
-        return false;                                          \
-    }
-        XX(EmailVerificationInfoDao, "email_verification")
-        XX(UserInfoDao, "user")
-        XX(ArticleInfoDao, "article")
-        XX(CategoryInfoDao, "category")
-        XX(LabelInfoDao, "label")
-        XX(ArticleCategoryRelInfoDao, "article_category_rel")
-        XX(ArticleLabelRelInfoDao, "article_label_rel")
-        XX(AssignmentInfoDao, "assignment")
-        XX(OrganizationApplyInfoDao, "organization_apply")
-        XX(OrganizationInfoDao, "organization")
-        XX(OrganizationRepoPrsInfoDao, "organization_repo_prs")
-        XX(OrganizationReposInfoDao, "organization_repos")
-        XX(OrganizationUserRelInfoDao, "organization_user_rel")
-        XX(AssignmentOrganizationRelInfoDao, "assignment_organization_rel")
-        XX(AssignmentUserRelInfoDao, "assignment_user_rel")
-        XX(ResourceInfoDao, "resource")
-        XX(ChunkUploadInfoDao, "chunk_upload")
-        XX(NotificationInfoDao, "notification")
-        XX(UserFollowRelInfoDao, "user_follow_rel")
-        XX(ArticlePraiseRelInfoDao, "article_praise_rel")
-        XX(BackupRecordInfoDao, "backup_record")
-        XX(ExportRecordInfoDao, "export_record")
-        XX(CommentInfoDao, "comment")
-        XX(CommentPraiseRelInfoDao, "comment_praise_rel")
-        XX(ConversationInfoDao, "conversation")
-        XX(ConversationMessageInfoDao, "conversation_message")
-        XX(RequirementInfoDao, "requirement")
-        XX(BugInfoDao, "bug")
-        XX(TaskInfoDao, "task")
-        XX(SystemSettingsInfoDao, "system_settings")
-        XX(BadgeInfoDao, "badge")
-        XX(HelpFaqsInfoDao, "help_faqs")
-        XX(UserFeedbackInfoDao, "user_feedback")
-        XX(UserAiConfigInfoDao, "user_ai_config")
-        XX(UserLoginDeviceInfoDao, "user_login_device")
-        XX(UserOauthInfoDao, "user_oauth")
-        XX(UserPasskeyInfoDao, "user_passkey")
-        XX(UserRecoveryCodeInfoDao, "user_recovery_code")
-#undef XX
-
-        INFO(logger) << "migrate database begin";
-#define XX(clazz)                                           \
-    if (blog::data::clazz::MigrateTableMySQL(mysql) != 0) { \
-        ERROR(logger) << "migrate table mysql failed";      \
-        return false;                                       \
-    }
-        XX(EmailVerificationInfoDao)
-        XX(UserInfoDao)
-        XX(ArticleInfoDao)
-        XX(CategoryInfoDao)
-        XX(LabelInfoDao)
-        XX(ArticleCategoryRelInfoDao)
-        XX(ArticleLabelRelInfoDao)
-        XX(AssignmentInfoDao)
-        XX(OrganizationApplyInfoDao)
-        XX(OrganizationInfoDao)
-        XX(OrganizationRepoPrsInfoDao)
-        XX(OrganizationReposInfoDao)
-        XX(OrganizationUserRelInfoDao)
-        XX(AssignmentOrganizationRelInfoDao)
-        XX(AssignmentUserRelInfoDao)
-        XX(ResourceInfoDao)
-        XX(ChunkUploadInfoDao)
-        XX(NotificationInfoDao)
-        XX(UserFollowRelInfoDao)
-        XX(ArticlePraiseRelInfoDao)
-        XX(CommentInfoDao)
-        XX(CommentPraiseRelInfoDao)
-        XX(ConversationInfoDao)
-        XX(ConversationMessageInfoDao)
-        XX(BackupRecordInfoDao)
-        XX(ExportRecordInfoDao)
-        XX(RequirementInfoDao)
-        XX(BugInfoDao)
-        XX(TaskInfoDao)
-        XX(BadgeInfoDao)
-        XX(HelpFaqsInfoDao)
-        XX(UserFeedbackInfoDao)
-        XX(UserAiConfigInfoDao)
-        XX(UserLoginDeviceInfoDao)
-        XX(UserOauthInfoDao)
-        XX(UserPasskeyInfoDao)
-        XX(UserRecoveryCodeInfoDao)
-#undef XX
-        INFO(logger) << "migrate database end";
-    }
 
     return true;
 }
@@ -615,24 +445,22 @@ void BlogModule::registerRPCMethods()
         if (!server) {
             continue;
         }
-        BlogMsgFromBotInit(server);
+        blog::BlogMsgFromBotInit(server);
     }
 }
-
-} // namespace blog
 
 extern "C" {
 
 chen::Module* CreateModule()
 {
-    chen::Module* module = new blog::BlogModule;
-    INFO(blog::logger) << "BlogModule::CreateModule";
+    chen::Module* module = new BlogModule;
+    INFO(logger) << "BlogModule::CreateModule";
     return module;
 }
 
 void DestroyModule(const chen::Module* module)
 {
-    INFO(blog::logger) << "BlogModule::DestroyModule";
+    INFO(logger) << "BlogModule::DestroyModule";
     delete module;
 }
 }

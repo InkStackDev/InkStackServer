@@ -14,9 +14,6 @@
 #include <chen/http/ws_server.h>
 #include <chen/metrics/metrics.h>
 
-namespace blog {
-namespace metrics {
-
 /**
  * @brief 单个路由的请求指标
  * @note 同时注册 QPS 指标（值为 QPS × 1000）：
@@ -60,6 +57,3 @@ void RecordRequest(const RouteMetrics& route_metrics, uint64_t used_us, int32_t 
  * @brief 采样最近窗口 QPS，由模块定时器周期性调用
  */
 void SampleRates();
-
-} // namespace metrics
-} // namespace blog

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../struct.h"
+#include "../../SessionData.hpp"
 #include <json/json.h>
 
 #include "blog/data/bug_info.h"

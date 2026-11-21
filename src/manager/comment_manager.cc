@@ -4,7 +4,7 @@
 #include <chen/util/json_util.h>
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 namespace blog {
 
@@ -21,19 +21,19 @@ static std::string commentCacheKey(int64_t id)
 static data::CommentInfo::ptr parseCommentCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::CommentInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setArticleId(cacheJsonInt64(v, "article_id"));
-    info->setUserId(cacheJsonInt64(v, "user_id"));
-    info->setParentId(cacheJsonInt64(v, "parent_id"));
-    info->setContent(cacheJsonString(v, "content"));
-    info->setIp(cacheJsonString(v, "ip"));
-    info->setUserAgent(cacheJsonString(v, "user_agent"));
-    info->setStatus(cacheJsonInt32(v, "status"));
-    info->setIsReported(cacheJsonInt32(v, "is_reported"));
-    info->setReportCount(cacheJsonInt32(v, "report_count"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setArticleId(CacheJsonInt64(v, "article_id"));
+    info->setUserId(CacheJsonInt64(v, "user_id"));
+    info->setParentId(CacheJsonInt64(v, "parent_id"));
+    info->setContent(CacheJsonString(v, "content"));
+    info->setIp(CacheJsonString(v, "ip"));
+    info->setUserAgent(CacheJsonString(v, "user_agent"));
+    info->setStatus(CacheJsonInt32(v, "status"));
+    info->setIsReported(CacheJsonInt32(v, "is_reported"));
+    info->setReportCount(CacheJsonInt32(v, "report_count"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -41,13 +41,13 @@ static data::CommentInfo::ptr parseCommentCache(const Json::Value& v)
 static data::CommentInfo::ptr getCommentCache(int64_t id)
 {
     std::string key = commentCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseCommentCache(v);
@@ -58,7 +58,7 @@ static void setCommentCache(const data::CommentInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(commentCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(commentCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::CommentInfo::ptr CommentManager::parseRow(chen::ISQLData::ptr rt)
@@ -209,7 +209,7 @@ void CommentManager::listByArticle(std::vector<data::CommentInfo::ptr>& results,
     // 结果缓存：仅对首页做缓存
     std::string listKey = "cmt:art:" + std::to_string(article_id) + ":" + std::to_string(offset) + ":" + std::to_string(size);
     std::vector<int64_t> cachedIds;
-    if (getCachedListResult(listKey, cachedIds)) {
+    if (GetCachedListResult(listKey, cachedIds)) {
         for (auto id : cachedIds) {
             auto info = get(id);
             if (info) {
@@ -227,7 +227,7 @@ void CommentManager::listByArticle(std::vector<data::CommentInfo::ptr>& results,
     for (auto& info : results) {
         ids.push_back(info->getId());
     }
-    cacheListResult(listKey, ids);
+    CacheListResult(listKey, ids);
 }
 
 void CommentManager::listReplies(std::vector<data::CommentInfo::ptr>& results, int64_t parent_id, uint64_t offset, uint64_t size)
@@ -262,7 +262,7 @@ int64_t CommentManager::countByArticle(int64_t article_id)
     qb->where("parent_id", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("status", "=", (int64_t)APPROVED);
-    return executeCountCached(qb, db, "cmt:cnt:" + std::to_string(article_id));
+    return ExecuteCountCached(qb, db, "cmt:cnt:" + std::to_string(article_id));
 }
 
 int64_t CommentManager::countReplies(int64_t parent_id)
@@ -276,7 +276,7 @@ int64_t CommentManager::countReplies(int64_t parent_id)
     qb->where("parent_id", "=", parent_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("status", "=", (int64_t)APPROVED);
-    return executeCountCached(qb, db, "cmt:reply:" + std::to_string(parent_id));
+    return ExecuteCountCached(qb, db, "cmt:reply:" + std::to_string(parent_id));
 }
 
 int64_t CommentManager::listByAdmin(
@@ -375,7 +375,7 @@ CommentManager::CommentStats CommentManager::getStats()
     CommentStats stats;
 
     std::string cached;
-    if (getCachedStringResult("cmt:stats", cached)) {
+    if (GetCachedStringResult("cmt:stats", cached)) {
         std::stringstream ss(cached);
         std::string token;
         auto next = [&]() -> int64_t {
@@ -436,7 +436,7 @@ CommentManager::CommentStats CommentManager::getStats()
 
     std::stringstream ss;
     ss << stats.total << "|" << stats.pending << "|" << stats.approved << "|" << stats.spam << "|" << stats.reported;
-    cacheStringResult("cmt:stats", ss.str());
+    CacheStringResult("cmt:stats", ss.str());
 
     return stats;
 }

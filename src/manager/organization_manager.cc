@@ -1,12 +1,10 @@
 #include "organization_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
-
-namespace blog {
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -18,18 +16,18 @@ static std::string organizationCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::OrganizationInfo::ptr parseOrganizationCache(const Json::Value& v)
+static db::OrganizationInfo::ptr parseOrganizationCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::OrganizationInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setName(cacheJsonString(v, "name"));
-    info->setType(cacheJsonString(v, "type"));
-    info->setDescription(cacheJsonString(v, "description"));
-    info->setOwnerId(cacheJsonInt64(v, "owner_id"));
-    info->setStatus(cacheJsonInt32(v, "status"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    auto info = std::make_shared<db::OrganizationInfo>();
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setName(CacheJsonString(v, "name"));
+    info->setType(CacheJsonString(v, "type"));
+    info->setDescription(CacheJsonString(v, "description"));
+    info->setOwnerId(CacheJsonInt64(v, "owner_id"));
+    info->setStatus(CacheJsonInt32(v, "status"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -37,13 +35,13 @@ static data::OrganizationInfo::ptr parseOrganizationCache(const Json::Value& v)
 static data::OrganizationInfo::ptr getOrganizationCache(int64_t id)
 {
     std::string key = organizationCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseOrganizationCache(v);
@@ -54,7 +52,7 @@ static void setOrganizationCache(const data::OrganizationInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(organizationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(organizationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::OrganizationInfo::ptr OrganizationManager::parseRow(chen::ISQLData::ptr rt)
@@ -87,7 +85,7 @@ data::OrganizationInfo::ptr OrganizationManager::get(int64_t id)
 
 data::OrganizationInfo::ptr OrganizationManager::getByName(const std::string& name)
 {
-    int64_t cachedId = getCachedIdMapping("org:name:" + name);
+    int64_t cachedId = GetCachedIdMapping("org:name:" + name);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -99,7 +97,7 @@ data::OrganizationInfo::ptr OrganizationManager::getByName(const std::string& na
     auto info = data::OrganizationInfoDao::QueryByName(name, db);
     if (info) {
         setOrganizationCache(info);
-        cacheIdMapping("org:name:" + name, info->getId());
+        CacheIdMapping("org:name:" + name, info->getId());
     }
     return info;
 }
@@ -133,7 +131,7 @@ OrganizationManager::OrganizationStats OrganizationManager::getStats()
     OrganizationStats stats;
 
     std::string cached;
-    if (getCachedStringResult("org:stats", cached)) {
+    if (GetCachedStringResult("org:stats", cached)) {
         std::stringstream ss(cached);
         std::string token;
         auto next = [&]() -> int64_t {
@@ -186,9 +184,7 @@ OrganizationManager::OrganizationStats OrganizationManager::getStats()
 
     std::stringstream ss;
     ss << stats.total << "|" << stats.active << "|" << stats.inactive;
-    cacheStringResult("org:stats", ss.str());
+    CacheStringResult("org:stats", ss.str());
 
     return stats;
 }
-
-} // namespace blog

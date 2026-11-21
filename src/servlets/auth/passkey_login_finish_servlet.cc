@@ -3,7 +3,7 @@
 #include <chen/util/json_util.h>
 #include <chen/util/time_util.h>
 
-#include "../../auth/auth_service.h"
+#include "../../auth/AuthService.hpp"
 #include "../../auth/webauthn/webauthn.h"
 #include "../../manager/passkey_manager.h"
 #include "../../manager/user_manager.h"

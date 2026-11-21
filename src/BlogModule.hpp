@@ -1,5 +1,5 @@
 /**
- * @file blog_module.h
+ * @file BlogModule.hpp
  * @brief 项目模块
  * @author Christins
  * @date 2025-05-10
@@ -9,11 +9,8 @@
 
 #include <chen/module/module.h>
 
-namespace blog {
-
 class BlogModule : public chen::Module {
 public:
-    typedef std::shared_ptr<BlogModule> ptr;
     /**
      * @brief 构造函数
      */
@@ -66,10 +63,6 @@ public:
     bool onDeactivate() override;
 
 private:
-    /**
-     * @brief 初始化数据库
-     */
-    static bool initMySQL();
 
     /**
      * @brief 注册Servlet
@@ -86,5 +79,3 @@ private:
      */
     void registerRPCMethods();
 };
-
-} // namespace blog

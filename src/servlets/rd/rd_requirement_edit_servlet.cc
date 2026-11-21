@@ -1,9 +1,9 @@
 #include "rd_requirement_edit_servlet.h"
 
+#include "../../Permission.hpp"
 #include "../../event/event_define.h"
 #include "../../manager/organization_user_rel_manager.h"
 #include "../../manager/requirement_manager.h"
-#include "../../permission.h"
 #include "../../util.h"
 #include "rd_helper.h"
 

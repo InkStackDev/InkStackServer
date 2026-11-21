@@ -1,4 +1,4 @@
-<table name="user_oauth" namespace="blog.data" desc="第三方登录绑定表">
+<table name="user_oauth" namespace="db" desc="第三方登录绑定表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键"/>
         <column name="user_id" type="int64" desc="关联的本地用户ID"/>

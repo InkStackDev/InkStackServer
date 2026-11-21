@@ -1,10 +1,10 @@
 #include "category_query_servlet.h"
 
+#include "../../Permission.hpp"
 #include "../../manager/article_category_rel_manager.h"
 #include "../../manager/article_manager.h"
 #include "../../manager/category_manager.h"
 #include "../../manager/user_manager.h"
-#include "../../permission.h"
 
 #include <chen/log/log.h>
 

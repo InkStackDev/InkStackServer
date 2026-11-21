@@ -1,6 +1,6 @@
 #include "chat_handler.h"
 
-#include "../../error_codes.h"
+#include "../../ErrorCodes.hpp"
 #include "../../manager/message_manager.h"
 #include "../../manager/user_manager.h"
 #include "../../manager/ws_connection_manager.h"

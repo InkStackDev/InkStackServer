@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-namespace blog {
-
 /**
  * @brief 会话元数据
  */
@@ -86,5 +84,3 @@ public:
 private:
     static void DestroyByHash(const std::string& hash, int64_t uid);
 };
-
-} // namespace blog

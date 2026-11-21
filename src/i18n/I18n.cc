@@ -1,4 +1,4 @@
-#include "i18n.h"
+#include "I18n.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -14,11 +14,7 @@
 
 #include "../manager/system_settings_manager.h"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
-
-namespace {
 
 constexpr const char* kDomainPrefix = "techhaven_";
 constexpr const char* kDefaultLanguage = "zh_CN";
@@ -117,8 +113,6 @@ std::string BestFromAcceptLanguage(const std::string& header)
 
     return candidates.empty() ? "" : candidates.front().language;
 }
-
-} // namespace
 
 const std::vector<std::string>& I18n::SupportedLanguages()
 {
@@ -225,5 +219,3 @@ std::string I18n::ResolveLanguage(chen::http::HttpRequest::ptr request)
 
     return DefaultLanguage();
 }
-
-} // namespace blog

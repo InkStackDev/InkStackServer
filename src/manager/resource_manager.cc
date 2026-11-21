@@ -1,7 +1,7 @@
 #include "resource_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/config/config.h>
 #include <chen/log/log.h>
@@ -24,19 +24,19 @@ static std::string resourceCacheKey(int64_t id)
 static data::ResourceInfo::ptr parseResourceCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::ResourceInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setName(cacheJsonString(v, "name"));
-    info->setPath(cacheJsonString(v, "path"));
-    info->setType(cacheJsonInt32(v, "type"));
-    info->setSize(cacheJsonInt64(v, "size"));
-    info->setHash(cacheJsonString(v, "hash"));
-    info->setOwnerId(cacheJsonInt64(v, "owner_id"));
-    info->setBizType(cacheJsonString(v, "biz_type"));
-    info->setBizId(cacheJsonInt64(v, "biz_id"));
-    info->setStatus(cacheJsonInt32(v, "status"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setName(CacheJsonString(v, "name"));
+    info->setPath(CacheJsonString(v, "path"));
+    info->setType(CacheJsonInt32(v, "type"));
+    info->setSize(CacheJsonInt64(v, "size"));
+    info->setHash(CacheJsonString(v, "hash"));
+    info->setOwnerId(CacheJsonInt64(v, "owner_id"));
+    info->setBizType(CacheJsonString(v, "biz_type"));
+    info->setBizId(CacheJsonInt64(v, "biz_id"));
+    info->setStatus(CacheJsonInt32(v, "status"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -44,13 +44,13 @@ static data::ResourceInfo::ptr parseResourceCache(const Json::Value& v)
 static data::ResourceInfo::ptr getResourceCache(int64_t id)
 {
     std::string key = resourceCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseResourceCache(v);
@@ -61,7 +61,7 @@ static void setResourceCache(const data::ResourceInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(resourceCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(resourceCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 ResourceManager::ResourceType ResourceManager::GetResourceType(const std::string& filename)
@@ -161,7 +161,7 @@ data::ResourceInfo::ptr ResourceManager::getByBizUidName(const std::string& biz_
 data::ResourceInfo::ptr ResourceManager::getByPath(const std::string& path)
 {
     std::string ck = "res:path:" + path;
-    int64_t cachedId = getCachedIdMapping(ck);
+    int64_t cachedId = GetCachedIdMapping(ck);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -179,7 +179,7 @@ data::ResourceInfo::ptr ResourceManager::getByPath(const std::string& path)
     }
     auto info = results[0];
     setResourceCache(info);
-    cacheIdMapping(ck, info->getId());
+    CacheIdMapping(ck, info->getId());
     return info;
 }
 } // namespace blog

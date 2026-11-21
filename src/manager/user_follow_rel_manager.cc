@@ -1,7 +1,7 @@
 #include "user_follow_rel_manager.h"
 
 #include "../util.h"
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
@@ -24,12 +24,12 @@ static std::string userFollowRelCacheKey(int64_t id)
 static data::UserFollowRelInfo::ptr parseUserFollowRelCache(const Json::Value& v)
 {
     auto info = std::make_shared<data::UserFollowRelInfo>();
-    info->setId(cacheJsonInt64(v, "id"));
-    info->setFollowerId(cacheJsonInt64(v, "follower_id"));
-    info->setFollowingId(cacheJsonInt64(v, "following_id"));
-    info->setIsDeleted(cacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(cacheJsonTime(v, "create_time"));
-    info->setUpdateTime(cacheJsonTime(v, "update_time"));
+    info->setId(CacheJsonInt64(v, "id"));
+    info->setFollowerId(CacheJsonInt64(v, "follower_id"));
+    info->setFollowingId(CacheJsonInt64(v, "following_id"));
+    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
+    info->setCreateTime(CacheJsonTime(v, "create_time"));
+    info->setUpdateTime(CacheJsonTime(v, "update_time"));
     info->markClean();
     return info;
 }
@@ -37,13 +37,13 @@ static data::UserFollowRelInfo::ptr parseUserFollowRelCache(const Json::Value& v
 static data::UserFollowRelInfo::ptr getUserFollowRelCache(int64_t id)
 {
     std::string key = userFollowRelCacheKey(id);
-    std::string data = redisCacheGet(key);
+    std::string data = RedisCacheGet(key);
     if (data.empty()) {
         return nullptr;
     }
     Json::Value v;
     if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        redisCacheDel(key);
+        RedisCacheDel(key);
         return nullptr;
     }
     return parseUserFollowRelCache(v);
@@ -54,7 +54,7 @@ static void setUserFollowRelCache(const data::UserFollowRelInfo::ptr& info)
     if (!info) {
         return;
     }
-    redisCacheSetex(userFollowRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
+    RedisCacheSetex(userFollowRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
 data::UserFollowRelInfo::ptr UserFollowRelManager::parseRow(chen::ISQLData::ptr rt)
@@ -88,7 +88,7 @@ data::UserFollowRelInfo::ptr UserFollowRelManager::get(int64_t id)
 data::UserFollowRelInfo::ptr UserFollowRelManager::getByFollowerAndFollowing(int64_t follower_id, int64_t following_id)
 {
     std::string ck = "flw:" + std::to_string(follower_id) + ":" + std::to_string(following_id);
-    int64_t cachedId = getCachedIdMapping(ck);
+    int64_t cachedId = GetCachedIdMapping(ck);
     if (cachedId > 0) {
         return get(cachedId);
     }
@@ -100,7 +100,7 @@ data::UserFollowRelInfo::ptr UserFollowRelManager::getByFollowerAndFollowing(int
     auto info = data::UserFollowRelInfoDao::QueryByFollowerIdFollowingId(follower_id, following_id, db);
     if (info) {
         setUserFollowRelCache(info);
-        cacheIdMapping(ck, info->getId());
+        CacheIdMapping(ck, info->getId());
     }
     return info;
 }

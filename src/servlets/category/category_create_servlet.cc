@@ -1,8 +1,8 @@
 #include "category_create_servlet.h"
 
+#include "../../Permission.hpp"
 #include "../../manager/category_manager.h"
 #include "../../manager/user_manager.h"
-#include "../../permission.h"
 #include "../../util.h"
 
 #include <chen/log/log.h>

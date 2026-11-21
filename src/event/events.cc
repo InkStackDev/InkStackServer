@@ -856,22 +856,22 @@ bool EventMsgsInit()
     auto bus = chen::EventBusMgr::GetInstance();
 
     // Register event handlers
-    bus->on(EVENT_ID_USER_SEND_CODE, EventUserSendCode);
-    bus->on(EVENT_ID_COMMENT, EventComment);
-    bus->on(EVENT_ID_ARTICLE_REVIEW, EventArticleReview);
-    bus->on(EVENT_ID_ARTICLE_STATE_CHANGED, EventArticleStateChanged);
-    bus->on(EVENT_ID_ARTICLE_PRAISE, EventArticlePraise);
-    bus->on(EVENT_ID_COMMENT_CREATED, EventCommentCreated);
-    bus->on(EVENT_ID_COMMENT_PRAISE, EventCommentPraise);
-    bus->on(EVENT_ID_USER_FOLLOW, EventUserFollow);
-    bus->on(EVENT_ID_USER_ADMIN, EventUserAdminAction);
-    bus->on(EVENT_ID_ORG_DELETED, EventOrgDeleted);
-    bus->on(EVENT_ID_ORG_MEMBER, EventOrgMember);
-    bus->on(EVENT_ID_ORG_APPLY, EventOrgApply);
-    bus->on(EVENT_ID_ASSIGNMENT, EventAssignment);
-    bus->on(EVENT_ID_ASSIGNMENT_SUBMITTED, EventAssignmentSubmitted);
-    bus->on(EVENT_ID_RD_ASSIGN, EventRdAssign);
-    bus->on(EVENT_ID_DATABASE_BACKUP, EventDatabaseBackup);
+    bus->on(EVENT_TYPE_USER_SEND_CODE, EventUserSendCode);
+    bus->on(EVENT_TYPE_COMMENT, EventComment);
+    bus->on(EVENT_TYPE_ARTICLE_REVIEW, EventArticleReview);
+    bus->on(EVENT_TYPE_ARTICLE_STATE_CHANGED, EventArticleStateChanged);
+    bus->on(EVENT_TYPE_ARTICLE_PRAISE, EventArticlePraise);
+    bus->on(EVENT_TYPE_COMMENT_CREATED, EventCommentCreated);
+    bus->on(EVENT_TYPE_COMMENT_PRAISE, EventCommentPraise);
+    bus->on(EVENT_TYPE_USER_FOLLOW, EventUserFollow);
+    bus->on(EVENT_TYPE_USER_ADMIN, EventUserAdminAction);
+    bus->on(EVENT_TYPE_ORG_DELETED, EventOrgDeleted);
+    bus->on(EVENT_TYPE_ORG_MEMBER, EventOrgMember);
+    bus->on(EVENT_TYPE_ORG_APPLY, EventOrgApply);
+    bus->on(EVENT_TYPE_ASSIGNMENT, EventAssignment);
+    bus->on(EVENT_TYPE_ASSIGNMENT_SUBMITTED, EventAssignmentSubmitted);
+    bus->on(EVENT_TYPE_RD_ASSIGN, EventRdAssign);
+    bus->on(EVENT_TYPE_DATABASE_BACKUP, EventDatabaseBackup);
 
     return true;
 };

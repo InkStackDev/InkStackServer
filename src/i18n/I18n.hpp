@@ -13,8 +13,6 @@
 
 #include <chen/http/http.h>
 
-namespace blog {
-
 class I18n {
 public:
     static bool Init(const std::string& localeDir);
@@ -29,5 +27,3 @@ public:
 
     static std::string DefaultLanguage();
 };
-
-} // namespace blog

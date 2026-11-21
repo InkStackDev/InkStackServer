@@ -8,7 +8,7 @@
 #include <chen/util/string_util.h>
 #include <chen/util/type_util.h>
 
-#include "../../error_codes.h"
+#include "../../ErrorCodes.hpp"
 #include "cbor.h"
 #include "cose.h"
 

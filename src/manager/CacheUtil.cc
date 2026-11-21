@@ -1,4 +1,4 @@
-#include "cache_util.h"
+#include "CacheUtil.hpp"
 
 #include <chen/config/config.h>
 #include <chen/db/query_builder.h>
@@ -7,14 +7,12 @@
 #include <chen/util/type_util.h>
 #include <chen/util/util.h>
 
-namespace blog {
-
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
 
 /// 对象缓存开关：Redis 故障或本地调试时可通过 cache.obj.enabled=false 关闭
 static chen::ConfigVar<bool>::ptr g_obj_cache_enabled = chen::Config::Lookup("cache.obj.enabled", true, "enable redis object cache");
 
-int64_t executeCountCached(chen::QueryBuilder::ptr qb, chen::IDB::ptr conn, const std::string& cacheKey, int ttlSec)
+int64_t ExecuteCountCached(chen::QueryBuilder::ptr qb, chen::IDB::ptr conn, const std::string& cacheKey, int ttlSec)
 {
     std::string redisKey = "cache:count:" + cacheKey;
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
@@ -29,7 +27,7 @@ int64_t executeCountCached(chen::QueryBuilder::ptr qb, chen::IDB::ptr conn, cons
     return total;
 }
 
-void cacheListResult(const std::string& cacheKey, const std::vector<int64_t>& ids, int ttlSec)
+void CacheListResult(const std::string& cacheKey, const std::vector<int64_t>& ids, int ttlSec)
 {
     if (ids.empty()) {
         return;
@@ -45,7 +43,7 @@ void cacheListResult(const std::string& cacheKey, const std::vector<int64_t>& id
     chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %s", redisKey.c_str(), ttlSec, ss.str().c_str());
 }
 
-bool getCachedListResult(const std::string& cacheKey, std::vector<int64_t>& ids)
+bool GetCachedListResult(const std::string& cacheKey, std::vector<int64_t>& ids)
 {
     std::string redisKey = "cache:list:" + cacheKey;
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
@@ -65,13 +63,13 @@ bool getCachedListResult(const std::string& cacheKey, std::vector<int64_t>& ids)
     return true;
 }
 
-void cacheStringResult(const std::string& cacheKey, const std::string& value, int ttlSec)
+void CacheStringResult(const std::string& cacheKey, const std::string& value, int ttlSec)
 {
     std::string redisKey = "cache:str:" + cacheKey;
     chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %s", redisKey.c_str(), ttlSec, value.c_str());
 }
 
-bool getCachedStringResult(const std::string& cacheKey, std::string& value)
+bool GetCachedStringResult(const std::string& cacheKey, std::string& value)
 {
     std::string redisKey = "cache:str:" + cacheKey;
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
@@ -82,13 +80,13 @@ bool getCachedStringResult(const std::string& cacheKey, std::string& value)
     return true;
 }
 
-void cacheIdMapping(const std::string& cacheKey, int64_t id, int ttlSec)
+void CacheIdMapping(const std::string& cacheKey, int64_t id, int ttlSec)
 {
     std::string redisKey = "cache:map:" + cacheKey;
     chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "setex %s %d %lld", redisKey.c_str(), ttlSec, id);
 }
 
-int64_t getCachedIdMapping(const std::string& cacheKey)
+int64_t GetCachedIdMapping(const std::string& cacheKey)
 {
     std::string redisKey = "cache:map:" + cacheKey;
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", redisKey.c_str());
@@ -98,14 +96,14 @@ int64_t getCachedIdMapping(const std::string& cacheKey)
     return 0;
 }
 
-bool isObjectCacheEnabled()
+bool IsObjectCacheEnabled()
 {
     return g_obj_cache_enabled && g_obj_cache_enabled->getValue();
 }
 
-std::string redisCacheGet(const std::string& key)
+std::string RedisCacheGet(const std::string& key)
 {
-    if (!isObjectCacheEnabled()) {
+    if (!IsObjectCacheEnabled()) {
         return std::string();
     }
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "get %s", key.c_str());
@@ -115,9 +113,9 @@ std::string redisCacheGet(const std::string& key)
     return std::string(rpy->str, rpy->len);
 }
 
-bool redisCacheSetex(const std::string& key, const std::string& value, int ttlSec)
+bool RedisCacheSetex(const std::string& key, const std::string& value, int ttlSec)
 {
-    if (!isObjectCacheEnabled()) {
+    if (!IsObjectCacheEnabled()) {
         return false;
     }
     chen::ReplyPtr rpy;
@@ -129,25 +127,25 @@ bool redisCacheSetex(const std::string& key, const std::string& value, int ttlSe
     return rpy && rpy->type == REDIS_REPLY_STATUS;
 }
 
-bool redisCacheDel(const std::string& key)
+bool RedisCacheDel(const std::string& key)
 {
-    if (!isObjectCacheEnabled()) {
+    if (!IsObjectCacheEnabled()) {
         return false;
     }
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "del %s", key.c_str());
     return rpy && rpy->type == REDIS_REPLY_INTEGER && rpy->integer > 0;
 }
 
-bool redisCacheExists(const std::string& key)
+bool RedisCacheExists(const std::string& key)
 {
-    if (!isObjectCacheEnabled()) {
+    if (!IsObjectCacheEnabled()) {
         return false;
     }
     auto rpy = chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "exists %s", key.c_str());
     return rpy && rpy->type == REDIS_REPLY_INTEGER && rpy->integer > 0;
 }
 
-int64_t cacheJsonInt64(const Json::Value& v, const char* key)
+int64_t CacheJsonInt64(const Json::Value& v, const char* key)
 {
     const Json::Value& field = v[key];
     if (field.isString()) {
@@ -165,12 +163,12 @@ int64_t cacheJsonInt64(const Json::Value& v, const char* key)
     return 0;
 }
 
-int32_t cacheJsonInt32(const Json::Value& v, const char* key)
+int32_t CacheJsonInt32(const Json::Value& v, const char* key)
 {
-    return static_cast<int32_t>(cacheJsonInt64(v, key));
+    return static_cast<int32_t>(CacheJsonInt64(v, key));
 }
 
-std::string cacheJsonString(const Json::Value& v, const char* key)
+std::string CacheJsonString(const Json::Value& v, const char* key)
 {
     const Json::Value& field = v[key];
     if (field.isString()) {
@@ -185,13 +183,11 @@ std::string cacheJsonString(const Json::Value& v, const char* key)
     return std::string();
 }
 
-int64_t cacheJsonTime(const Json::Value& v, const char* key)
+int64_t CacheJsonTime(const Json::Value& v, const char* key)
 {
     const Json::Value& field = v[key];
     if (field.isString()) {
         return chen::TimeUtil::Str2Time(field.asString());
     }
-    return cacheJsonInt64(v, key);
+    return CacheJsonInt64(v, key);
 }
-
-} // namespace blog

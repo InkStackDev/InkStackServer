@@ -1,4 +1,4 @@
-<table name="chunk_upload" namespace="blog.data" desc="分片上传任务表">
+<table name="chunk_upload" namespace="db" desc="分片上传任务表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键ID"/>
         <column name="upload_id" type="string" length="64" desc="上传任务唯一ID"/>
