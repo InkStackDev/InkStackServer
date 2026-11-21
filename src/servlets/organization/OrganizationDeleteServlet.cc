@@ -8,9 +8,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationDeleteServlet::OrganizationDeleteServlet()
@@ -139,6 +136,3 @@ int32_t OrganizationDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

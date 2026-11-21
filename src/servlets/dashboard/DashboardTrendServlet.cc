@@ -6,15 +6,12 @@
 
 #include <ctime>
 
-namespace blog {
-namespace servlet {
-
 DashboardTrendServlet::DashboardTrendServlet()
     : BlogLoginedServlet("DashboardTrendServlet")
 {
 }
 
-static std::string FormatDate(int64_t ts)
+static std::string FormatBucketDate(int64_t ts)
 {
     struct tm t;
     localtime_r(&ts, &t);
@@ -135,17 +132,17 @@ int32_t DashboardTrendServlet::handle(
             Json::Value item;
             if (period == 7) {
                 item["label"] = WeekdayName(bucket_ts);
-                item["date"] = FormatDate(bucket_ts);
+                item["date"] = FormatBucketDate(bucket_ts);
             } else if (period == 30) {
-                item["label"] = FormatDate(bucket_ts);
-                item["date"] = FormatDate(bucket_ts);
+                item["label"] = FormatBucketDate(bucket_ts);
+                item["date"] = FormatBucketDate(bucket_ts);
             } else {
                 int64_t week_end = bucket_ts + bucket_sec - 1;
                 if (week_end > now) {
                     week_end = now;
                 }
                 item["label"] = "第" + std::to_string(i + 1) + "周";
-                item["date"] = FormatDate(bucket_ts) + " ~ " + FormatDate(week_end);
+                item["date"] = FormatBucketDate(bucket_ts) + " ~ " + FormatBucketDate(week_end);
             }
             item["visits"] = visits;
             list.append(item);
@@ -160,6 +157,3 @@ int32_t DashboardTrendServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

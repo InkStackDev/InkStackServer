@@ -3,9 +3,6 @@
 #include "../../auth/SessionStore.hpp"
 #include "../../util/UaParser.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserDeviceListServlet::UserDeviceListServlet()
     : BlogLoginedServlet("UserDeviceListServlet")
 {
@@ -54,6 +51,3 @@ int32_t UserDeviceListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

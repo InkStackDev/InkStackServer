@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 BadgeManager::BadgeManager()
@@ -85,5 +83,3 @@ void BadgeManager::listAll(std::vector<data::BadgeInfo::ptr>& badges)
         ERROR(logger) << "QueryByBuilder failed";
     }
 }
-
-} // namespace blog

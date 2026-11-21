@@ -10,9 +10,6 @@
 #include "../../manager/ResourceManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
@@ -174,6 +171,3 @@ bool FileUploadServlet::dumpToResource(
     ResourceMgr::GetInstance()->add(resource_info);
     return true;
 }
-
-} // namespace servlet
-} // namespace blog

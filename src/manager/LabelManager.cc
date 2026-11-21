@@ -6,8 +6,6 @@
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -120,5 +118,3 @@ bool LabelManager::listByUserId(std::vector<data::LabelInfo::ptr>& infos, int64_
     }
     return true;
 }
-
-} // namespace blog

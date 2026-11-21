@@ -16,9 +16,6 @@
 #include "blog/data/organization_repo_prs_info.h"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 /// 为 PR 查询添加仓库关联、组织和时间范围条件
@@ -66,7 +63,7 @@ static bool AddPrSeries(
     for (auto& [d, cnt] : rows) {
         std::string key = d;
         if (granularity == "week") {
-            key = rd::FormatGroupKey(rd::ParseDate(d), "week");
+            key = FormatGroupKey(ParseDate(d), "week");
         } else if (granularity == "month") {
             key = d.substr(0, 7);
         }
@@ -192,7 +189,7 @@ int32_t RdPrDistributionServlet::handle(
 
         std::map<std::string, Json::Value> series;
         for (auto t : date_points) {
-            std::string key = rd::FormatGroupKey(t, granularity);
+            std::string key = FormatGroupKey(t, granularity);
             Json::Value point;
             point["date"] = key;
             if (is_15d) {
@@ -202,7 +199,7 @@ int32_t RdPrDistributionServlet::handle(
                 if (week_end > today_start) {
                     week_end = today_start;
                 }
-                point["end_date"] = rd::FormatDate(week_end);
+                point["end_date"] = FormatDate(week_end);
             }
             point["total"] = 0;
             point["merged"] = 0;
@@ -219,7 +216,7 @@ int32_t RdPrDistributionServlet::handle(
         int64_t total_sum = 0;
         int64_t merged_sum = 0;
         for (auto t : date_points) {
-            std::string key = rd::FormatGroupKey(t, granularity);
+            std::string key = FormatGroupKey(t, granularity);
             auto it = series.find(key);
             if (it == series.end()) {
                 continue;
@@ -247,6 +244,3 @@ int32_t RdPrDistributionServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

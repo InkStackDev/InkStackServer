@@ -18,8 +18,6 @@
 #include "../util/Util.hpp"
 #include "EventDefine.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static void EventUserSendCode(const std::any& d)
@@ -875,5 +873,3 @@ bool EventMsgsInit()
 
     return true;
 };
-
-} // namespace blog

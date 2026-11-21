@@ -9,9 +9,6 @@
 
 #include <sstream>
 
-namespace blog {
-namespace servlet {
-
 AdminCommentApproveServlet::AdminCommentApproveServlet()
     : BlogLoginedServlet("AdminCommentApproveServlet")
 {
@@ -88,6 +85,3 @@ int32_t AdminCommentApproveServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

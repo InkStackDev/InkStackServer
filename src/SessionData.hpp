@@ -9,7 +9,7 @@
 
 #include "ErrorCodes.hpp"
 
-inline static chen::Logger::ptr logger = LOG_ROOT();
+inline static chen::Logger::ptr g_session_logger = LOG_ROOT();
 
 struct CookieKey {
     static const std::string SESSION_KEY;

@@ -10,9 +10,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationUserKickServlet::OrganizationUserKickServlet()
@@ -37,14 +34,14 @@ int32_t OrganizationUserKickServlet::handle(
             result->setErrno(errcode::NOT_LOGIN);
             break;
         }
-        auto user = blog::UserMgr::GetInstance()->get(uid);
+        auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
             result->setErrno(errcode::USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
 
-        auto rel = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel) {
             result->setErrno(errcode::ORG_NOT_MEMBER);
             break;
@@ -57,7 +54,7 @@ int32_t OrganizationUserKickServlet::handle(
         }
 
         // 踢出用户
-        rel = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, user_id);
+        rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, user_id);
         if (!rel) {
             result->setErrno(errcode::ARTICLE_INVALID_ID);
             break;
@@ -106,6 +103,3 @@ int32_t OrganizationUserKickServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

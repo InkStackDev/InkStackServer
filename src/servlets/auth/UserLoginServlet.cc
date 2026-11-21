@@ -8,9 +8,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -103,6 +100,3 @@ int32_t UserLoginServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -6,9 +6,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 BroadcastListServlet::BroadcastListServlet()
@@ -72,6 +69,3 @@ int32_t BroadcastListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

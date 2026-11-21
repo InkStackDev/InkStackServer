@@ -4,8 +4,6 @@
 
 #include "../util/Util.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::BugInfo::ptr BugManager::ParseRow(chen::ISQLData::ptr rt)
@@ -61,5 +59,3 @@ uint64_t BugManager::listByOrg(std::vector<data::BugInfo::ptr>& infos, int64_t o
     }
     return total;
 }
-
-} // namespace blog

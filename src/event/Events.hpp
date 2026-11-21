@@ -7,8 +7,4 @@
  */
 #pragma once
 
-namespace blog {
-
 bool EventMsgsInit();
-
-} // namespace blog

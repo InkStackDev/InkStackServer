@@ -5,9 +5,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 UserAdminCreateServlet::UserAdminCreateServlet()
@@ -36,11 +33,11 @@ int32_t UserAdminCreateServlet::handle(
             result->setErrno(errcode::USER_INVALID_PASSWORD);
             break;
         }
-        if (blog::UserMgr::GetInstance()->getByAccount(account)) {
+        if (UserMgr::GetInstance()->getByAccount(account)) {
             result->setErrno(errcode::USER_ACCOUNT_EXISTS);
             break;
         }
-        if (blog::UserMgr::GetInstance()->getByEmail(email)) {
+        if (UserMgr::GetInstance()->getByEmail(email)) {
             result->setErrno(errcode::USER_EMAIL_EXISTS);
             break;
         }
@@ -100,6 +97,3 @@ int32_t UserAdminCreateServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

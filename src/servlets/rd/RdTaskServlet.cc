@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdTaskServlet::RdTaskServlet()
     : BlogLoginedServlet("RdTaskServlet")
 {
@@ -56,7 +53,7 @@ int32_t RdTaskServlet::handle(
                 }
             }
             Json::Value data;
-            rd::BuildTaskJson(data, info);
+            BuildTaskJson(data, info);
             result->set("data", data);
             break;
         }
@@ -64,7 +61,7 @@ int32_t RdTaskServlet::handle(
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
         uint64_t offset, size;
-        rd::ParsePagination(page, page_size, offset, size);
+        ParsePagination(page, page_size, offset, size);
 
         std::string search = request->getParam("search");
         std::string status_str = request->getParam("status");
@@ -96,10 +93,10 @@ int32_t RdTaskServlet::handle(
 
         std::vector<data::TaskInfo::ptr> filtered;
         for (auto& info : all) {
-            if (!status_str.empty() && rd::StringToTaskStatus(status_str) != info->getStatus()) {
+            if (!status_str.empty() && StringToTaskStatus(status_str) != info->getStatus()) {
                 continue;
             }
-            if (!priority_str.empty() && rd::StringToPriority(priority_str) != info->getPriority()) {
+            if (!priority_str.empty() && StringToPriority(priority_str) != info->getPriority()) {
                 continue;
             }
             if (filter_assignee_id && info->getAssigneeId() != filter_assignee_id) {
@@ -118,7 +115,7 @@ int32_t RdTaskServlet::handle(
         Json::Value arr(Json::arrayValue);
         for (uint64_t i = offset; i < filtered.size() && arr.size() < size; ++i) {
             Json::Value item;
-            rd::BuildTaskJson(item, filtered[i]);
+            BuildTaskJson(item, filtered[i]);
             arr.append(item);
         }
         result->set("total", total);
@@ -128,6 +125,3 @@ int32_t RdTaskServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

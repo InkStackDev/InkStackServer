@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class NotificationReadServlet : public BlogLoginedServlet {
 public:
     NotificationReadServlet();
@@ -16,6 +13,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace servlet
-} // namespace blog

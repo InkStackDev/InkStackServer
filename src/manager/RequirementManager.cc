@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::RequirementInfo::ptr RequirementManager::ParseRow(chen::ISQLData::ptr rt)
@@ -67,4 +65,3 @@ uint64_t RequirementManager::listByOrg(
     }
     return total;
 }
-} // namespace blog

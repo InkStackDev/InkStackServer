@@ -7,9 +7,6 @@
 #include "../../util/Util.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdRequirementEditServlet::RdRequirementEditServlet()
     : BlogLoginedServlet("RdRequirementEditServlet")
 {
@@ -73,7 +70,7 @@ int32_t RdRequirementEditServlet::handle(
 
         std::string priority_str = request->getParam("priority");
         if (!priority_str.empty()) {
-            int32_t p = rd::StringToPriority(priority_str);
+            int32_t p = StringToPriority(priority_str);
             if (p >= 0) {
                 info->setPriority(p);
             }
@@ -81,7 +78,7 @@ int32_t RdRequirementEditServlet::handle(
 
         std::string status_str = request->getParam("status");
         if (!status_str.empty()) {
-            int32_t s = rd::StringToRequirementStatus(status_str);
+            int32_t s = StringToRequirementStatus(status_str);
             if (s >= 0) {
                 info->setStatus(s);
             }
@@ -127,7 +124,7 @@ int32_t RdRequirementEditServlet::handle(
         }
 
         Json::Value data;
-        rd::BuildRequirementJson(data, info);
+        BuildRequirementJson(data, info);
         result->setData(data);
 
         notifyAssignee(assignee_id, info);
@@ -151,6 +148,3 @@ void RdRequirementEditServlet::notifyAssignee(int64_t assignee_id, data::Require
 
     chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_RD_ASSIGN, std::move(data));
 }
-
-} // namespace servlet
-} // namespace blog

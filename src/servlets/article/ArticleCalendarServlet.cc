@@ -11,9 +11,6 @@
 
 #include "../../manager/ArticleManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleCalendarServlet::ArticleCalendarServlet()
@@ -52,6 +49,3 @@ int32_t ArticleCalendarServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

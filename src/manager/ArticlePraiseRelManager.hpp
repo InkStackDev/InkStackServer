@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class ArticlePraiseRelManager {
 public:
     void add(data::ArticlePraiseRelInfo::ptr info);
@@ -36,5 +34,3 @@ private:
 };
 
 typedef chen::Singleton<ArticlePraiseRelManager> ArticlePraiseRelMgr;
-
-} // namespace blog

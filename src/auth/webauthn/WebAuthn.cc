@@ -12,9 +12,6 @@
 #include "Cbor.hpp"
 #include "Cose.hpp"
 
-namespace blog {
-namespace webauthn {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -656,6 +653,3 @@ int32_t WebAuthnService::VerifyAuthentication(
     INFO(logger) << "webauthn assertion verified uid=" << uid << " credential=" << result.credential_id;
     return 0;
 }
-
-} // namespace webauthn
-} // namespace blog

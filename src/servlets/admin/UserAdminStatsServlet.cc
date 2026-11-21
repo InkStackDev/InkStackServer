@@ -2,9 +2,6 @@
 
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserAdminStatsServlet::UserAdminStatsServlet()
     : BlogAdminServlet("UserAdminStatsServlet")
 {
@@ -50,6 +47,3 @@ int32_t UserAdminStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

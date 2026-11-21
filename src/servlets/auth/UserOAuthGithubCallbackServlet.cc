@@ -17,9 +17,6 @@
 #include "../../manager/UserOAuthManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -429,6 +426,3 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
     response->setRedirect(frontend_base + redirect + sep + "oauth=1");
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

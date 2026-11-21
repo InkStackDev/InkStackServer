@@ -8,9 +8,6 @@
 #include "../../search/SearchSync.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleUpdateCategoryServlet::ArticleUpdateCategoryServlet()
@@ -163,6 +160,3 @@ int32_t ArticleUpdateCategoryServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

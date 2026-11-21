@@ -2,9 +2,6 @@
 
 #include <chen/util/json_util.h>
 
-namespace blog {
-namespace ai {
-
 std::string OpenAIProvider::buildRequest(
     const std::string& model,
     int32_t maxTokens,
@@ -85,6 +82,3 @@ bool OpenAIProvider::isDoneMarker(const std::string& rawData)
 {
     return rawData == "[DONE]";
 }
-
-} // namespace ai
-} // namespace blog

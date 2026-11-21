@@ -9,9 +9,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class PasskeyDeleteServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<PasskeyDeleteServlet> ptr;
@@ -24,6 +21,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace servlet
-} // namespace blog

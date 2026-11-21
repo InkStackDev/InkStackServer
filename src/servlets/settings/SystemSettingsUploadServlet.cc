@@ -8,8 +8,6 @@
 #include <chen/parser/multi_part_parser.h>
 #include <chen/util/util.h>
 
-namespace blog::servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
@@ -104,5 +102,3 @@ int32_t SystemSettingsUploadServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace blog::servlet

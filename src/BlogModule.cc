@@ -29,15 +29,15 @@ BlogModule::BlogModule()
 
 bool BlogModule::onLoad()
 {
-    INFO(logger) << "onLoad version=" << getVersion();
+    INFO(g_session_logger) << "onLoad version=" << getVersion();
 
     if (g_work_path->getValue().empty()) {
-        ERROR(logger) << "work path is empty";
+        ERROR(g_session_logger) << "work path is empty";
         return false;
     }
 
     if (!I18n::Init(g_work_path->getValue() + "/locale")) {
-        WARN(logger) << "i18n unavailable, error messages will fall back to errors.json";
+        WARN(g_session_logger) << "i18n unavailable, error messages will fall back to errors.json";
     }
 
     chen::FoxThreadMgr::GetInstance()->init();
@@ -51,7 +51,7 @@ bool BlogModule::onLoad()
 
 bool BlogModule::onUnload()
 {
-    INFO(logger) << "onUnload";
+    INFO(g_session_logger) << "onUnload";
 
     chen::EventBusMgr::GetInstance()->clearAll();
 
@@ -68,7 +68,7 @@ bool BlogModule::onUnload()
 
 bool BlogModule::onDeactivate()
 {
-    INFO(logger) << "onDeactivate";
+    INFO(g_session_logger) << "onDeactivate";
 
     ArticleMgr::GetInstance()->stop();
 
@@ -103,9 +103,9 @@ void BlogModule::onTick()
             OrganizationRepoPrMgr::GetInstance()->onTick();
         }
     } catch (const std::exception& e) {
-        ERROR(logger) << "onTick exception: " << e.what();
+        ERROR(g_session_logger) << "onTick exception: " << e.what();
     } catch (...) {
-        ERROR(logger) << "onTick unknown exception";
+        ERROR(g_session_logger) << "onTick unknown exception";
     }
 }
 
@@ -117,19 +117,19 @@ uint64_t BlogModule::getTickIntervalMs()
 
 bool BlogModule::onServerReady()
 {
-    INFO(logger) << "onServerReady";
+    INFO(g_session_logger) << "onServerReady";
 
     chen::EventBusMgr::GetInstance()->clearAll();
 
     ArticleMgr::GetInstance()->start();
 
     if (!SearchSyncMgr::GetInstance()->init()) {
-        ERROR(logger) << "search sync init failed, search will be unavailable";
+        ERROR(g_session_logger) << "search sync init failed, search will be unavailable";
     }
 
     std::string errorsPath = g_work_path->getValue() + "/errors.json";
     if (!ErrorCodeMgr::GetInstance()->load(errorsPath)) {
-        ERROR(logger) << "Failed to load error codes from " << errorsPath;
+        ERROR(g_session_logger) << "Failed to load error codes from " << errorsPath;
         return false;
     }
 
@@ -146,7 +146,7 @@ bool BlogModule::onServerReady()
     registerRPCMethods();
 
     if (!EventMsgsInit()) {
-        ERROR(logger) << "EventMsgsInit failed";
+        ERROR(g_session_logger) << "EventMsgsInit failed";
         return false;
     }
 
@@ -155,7 +155,7 @@ bool BlogModule::onServerReady()
 
 bool BlogModule::onServerUp()
 {
-    INFO(logger) << "onServerUp";
+    INFO(g_session_logger) << "onServerUp";
 
     UserMgr::GetInstance()->ensureSuperAdmin();
 
@@ -166,13 +166,13 @@ bool BlogModule::onServerUp()
 
 void BlogModule::registerServlets()
 {
-    INFO(logger) << "registerServlets";
+    INFO(g_session_logger) << "registerServlets";
 
     std::vector<chen::http::HttpServer::ptr> http_servers;
     getAllHttpServer(http_servers);
 
     if (http_servers.empty()) {
-        ERROR(logger) << "No HTTP server found";
+        ERROR(g_session_logger) << "No HTTP server found";
         return;
     }
 
@@ -186,7 +186,7 @@ void BlogModule::registerServlets()
         // 代理 addServlet：注册路由时自动注入指标标签
         ServletRegistrar dp(dispatch);
 
-#define XX(clazz) std::make_shared<servlet::clazz>()
+#define XX(clazz) std::make_shared<clazz>()
         // 用户相关
         dp->addServlet("/api/v1/user/send_code", XX(UserSendCodeServlet));
         dp->addServlet("/api/v1/user/create", XX(UserCreateServlet));
@@ -406,13 +406,13 @@ void BlogModule::registerServlets()
 
 void BlogModule::registerWSServlets()
 {
-    INFO(logger) << "registerWSServlets";
+    INFO(g_session_logger) << "registerWSServlets";
 
     std::vector<chen::http::WSServer::ptr> ws_servers;
     getAllWSServer(ws_servers);
 
     if (ws_servers.empty()) {
-        ERROR(logger) << "No WS server found";
+        ERROR(g_session_logger) << "No WS server found";
         return;
     }
 
@@ -423,7 +423,7 @@ void BlogModule::registerWSServlets()
         chen::http::ServletDispatch::ptr dp = ws->getWSServletDispatch();
         ASSERT_RET(dp != nullptr);
 
-#define XX(clazz) std::make_shared<servlet::clazz>()
+#define XX(clazz) std::make_shared<clazz>()
         dp->addServlet("/ws/v1/session", XX(WSGatewayServlet));
 #undef XX
     }
@@ -431,13 +431,13 @@ void BlogModule::registerWSServlets()
 
 void BlogModule::registerRPCMethods()
 {
-    INFO(logger) << "registerRPCMethods";
+    INFO(g_session_logger) << "registerRPCMethods";
 
     std::vector<chen::rpc::RpcServer::ptr> rpc_servers;
     getAllRpcServer(rpc_servers);
 
     if (rpc_servers.empty()) {
-        ERROR(logger) << "No RPC server found";
+        ERROR(g_session_logger) << "No RPC server found";
         return;
     }
 
@@ -445,7 +445,7 @@ void BlogModule::registerRPCMethods()
         if (!server) {
             continue;
         }
-        blog::BlogMsgFromBotInit(server);
+        BlogMsgFromBotInit(server);
     }
 }
 
@@ -454,13 +454,13 @@ extern "C" {
 chen::Module* CreateModule()
 {
     chen::Module* module = new BlogModule;
-    INFO(logger) << "BlogModule::CreateModule";
+    INFO(g_session_logger) << "BlogModule::CreateModule";
     return module;
 }
 
 void DestroyModule(const chen::Module* module)
 {
-    INFO(logger) << "BlogModule::DestroyModule";
+    INFO(g_session_logger) << "BlogModule::DestroyModule";
     delete module;
 }
 }

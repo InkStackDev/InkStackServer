@@ -13,8 +13,6 @@
 #include <ctime>
 #include <set>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -950,5 +948,3 @@ void ArticleManager::doArticlePublishSchedule()
         SearchSyncMgr::GetInstance()->markDirty(id, SearchSync::OP_UPSERT);
     }
 }
-
-} // namespace blog

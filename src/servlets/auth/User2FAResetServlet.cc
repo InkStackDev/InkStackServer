@@ -7,9 +7,6 @@
 #include "../../util/Util.hpp"
 #include "blog/data/user_recovery_code_info.h"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 User2FAResetServlet::User2FAResetServlet()
@@ -101,6 +98,3 @@ int32_t User2FAResetServlet::handle(chen::http::HttpRequest::ptr request,
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

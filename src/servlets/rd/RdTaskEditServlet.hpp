@@ -5,9 +5,6 @@
 
 #include "blog/data/task_info.h"
 
-namespace blog {
-namespace servlet {
-
 class RdTaskEditServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<RdTaskEditServlet> ptr;
@@ -23,6 +20,3 @@ protected:
 private:
     void notifyAssignee(int64_t assignee_id, data::TaskInfo::ptr task);
 };
-
-} // namespace servlet
-} // namespace blog

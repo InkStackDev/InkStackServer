@@ -10,9 +10,6 @@
 #include <string>
 #include <vector>
 
-namespace blog {
-namespace webauthn {
-
 enum class CborType {
     Invalid = 0,
     Unsigned,
@@ -65,6 +62,3 @@ bool DecodeCbor(const std::string& data, CborValue& out, size_t& consumed);
  * @brief 解码一段 CBOR，要求全部消费
  */
 bool DecodeCbor(const std::string& data, CborValue& out);
-
-} // namespace webauthn
-} // namespace blog

@@ -9,9 +9,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class BroadcastCloseServlet : public BlogLoginedServlet {
 public:
     BroadcastCloseServlet();
@@ -23,6 +20,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace servlet
-} // namespace blog

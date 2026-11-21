@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 UserOAuthManager::UserOAuthManager()
@@ -86,5 +84,3 @@ int UserOAuthManager::bind(int64_t user_id, const std::string& provider, const s
     }
     return 0;
 }
-
-} // namespace blog

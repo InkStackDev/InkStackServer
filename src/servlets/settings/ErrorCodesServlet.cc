@@ -3,8 +3,6 @@
 #include "../../i18n/I18n.hpp"
 #include "../../manager/ErrorCodeManager.hpp"
 
-namespace blog::servlet {
-
 ErrorCodesServlet::ErrorCodesServlet()
     : BlogServlet("ErrorCodesServlet")
 {
@@ -33,5 +31,3 @@ int32_t ErrorCodesServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace blog::servlet

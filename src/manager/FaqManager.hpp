@@ -4,8 +4,6 @@
 
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class FaqManager {
 public:
     FaqManager();
@@ -33,5 +31,3 @@ public:
 };
 
 typedef chen::Singleton<FaqManager> FaqMgr;
-
-} // namespace blog

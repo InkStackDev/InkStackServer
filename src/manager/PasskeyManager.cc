@@ -5,8 +5,6 @@
 #include <chen/log/log.h>
 #include <chen/util/time_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::UserPasskeyInfo::ptr PasskeyManager::getByCredentialId(const std::string& credential_id)
@@ -139,5 +137,3 @@ int PasskeyManager::remove(int64_t id)
     info->setLastUsedAt(chen::TimeUtil::GetCurrentSec());
     return update(info);
 }
-
-} // namespace blog

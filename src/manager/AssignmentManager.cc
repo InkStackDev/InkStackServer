@@ -6,8 +6,6 @@
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 120;
@@ -169,5 +167,3 @@ AssignmentManager::AssignmentStats AssignmentManager::getStats()
 
     return stats;
 }
-
-} // namespace blog

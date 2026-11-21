@@ -12,9 +12,6 @@
 
 #include <openssl/evp.h>
 
-namespace blog {
-namespace webauthn {
-
 /**
  * @brief 解析后的 COSE 公钥
  */
@@ -41,6 +38,3 @@ bool ParseCoseKey(const std::string& cbor, CoseKey& out);
  * @return 签名是否有效
  */
 bool VerifySignature(const CoseKey& key, const std::string& data, const std::string& signature);
-
-} // namespace webauthn
-} // namespace blog

@@ -4,9 +4,6 @@
 #include "../../util/Util.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdOrganizationMembersServlet::RdOrganizationMembersServlet()
     : BlogLoginedServlet("RdOrganizationMembersServlet")
 {
@@ -38,9 +35,9 @@ int32_t RdOrganizationMembersServlet::handle(
             }
             Json::Value item;
             item["user_id"] = m->getUserId();
-            item["name"] = rd::GetUserName(m->getUserId());
-            item["role"] = rd::OrgRoleToFrontend(m->getRole());
-            item["avatar"] = rd::GetUserAvatar(m->getUserId());
+            item["name"] = GetUserName(m->getUserId());
+            item["role"] = OrgRoleToFrontend(m->getRole());
+            item["avatar"] = GetUserAvatar(m->getUserId());
             arr.append(item);
         }
 
@@ -49,6 +46,3 @@ int32_t RdOrganizationMembersServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -4,9 +4,6 @@
 
 #include "../../manager/PasskeyManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 PasskeyListServlet::PasskeyListServlet()
     : BlogLoginedServlet("PasskeyListServlet")
 {
@@ -55,6 +52,3 @@ int32_t PasskeyListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

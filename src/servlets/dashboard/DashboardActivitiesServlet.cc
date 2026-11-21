@@ -4,9 +4,6 @@
 #include "../../manager/CommentManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 DashboardActivitiesServlet::DashboardActivitiesServlet()
     : BlogLoginedServlet("DashboardActivitiesServlet")
 {
@@ -153,6 +150,3 @@ int32_t DashboardActivitiesServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

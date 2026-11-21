@@ -5,8 +5,6 @@
 #include "../util/Util.hpp"
 #include "CacheUtil.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::AssignmentUserRelInfo::ptr AssignmentUserRelManager::ParseRow(chen::ISQLData::ptr rt)
@@ -41,5 +39,3 @@ blog::data::AssignmentUserRelInfo::ptr AssignmentUserRelManager::getByAssignAndU
     }
     return info;
 }
-
-} // namespace blog

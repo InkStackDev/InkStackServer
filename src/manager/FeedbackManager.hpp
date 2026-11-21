@@ -12,8 +12,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class FeedbackManager {
 public:
     FeedbackManager();
@@ -50,5 +48,3 @@ public:
 };
 
 typedef chen::Singleton<FeedbackManager> FeedbackMgr;
-
-} // namespace blog

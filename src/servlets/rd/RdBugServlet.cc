@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdBugServlet::RdBugServlet()
     : BlogLoginedServlet("RdBugServlet")
 {
@@ -55,7 +52,7 @@ int32_t RdBugServlet::handle(
                 }
             }
             Json::Value data;
-            rd::BuildBugJson(data, info);
+            BuildBugJson(data, info);
             result->set("data", data);
             break;
         }
@@ -63,7 +60,7 @@ int32_t RdBugServlet::handle(
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
         uint64_t offset, size;
-        rd::ParsePagination(page, page_size, offset, size);
+        ParsePagination(page, page_size, offset, size);
 
         std::string search = request->getParam("search");
         std::string status_str = request->getParam("status");
@@ -94,13 +91,13 @@ int32_t RdBugServlet::handle(
 
         std::vector<data::BugInfo::ptr> filtered;
         for (auto& info : all) {
-            if (!status_str.empty() && rd::StringToBugStatus(status_str) != info->getStatus()) {
+            if (!status_str.empty() && StringToBugStatus(status_str) != info->getStatus()) {
                 continue;
             }
-            if (!priority_str.empty() && rd::StringToPriority(priority_str) != info->getPriority()) {
+            if (!priority_str.empty() && StringToPriority(priority_str) != info->getPriority()) {
                 continue;
             }
-            if (!severity_str.empty() && rd::StringToSeverity(severity_str) != info->getSeverity()) {
+            if (!severity_str.empty() && StringToSeverity(severity_str) != info->getSeverity()) {
                 continue;
             }
             if (!search.empty()) {
@@ -117,7 +114,7 @@ int32_t RdBugServlet::handle(
         Json::Value arr(Json::arrayValue);
         for (uint64_t i = offset; i < filtered.size() && arr.size() < size; ++i) {
             Json::Value item;
-            rd::BuildBugJson(item, filtered[i]);
+            BuildBugJson(item, filtered[i]);
             arr.append(item);
         }
         result->set("total", total);
@@ -127,6 +124,3 @@ int32_t RdBugServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

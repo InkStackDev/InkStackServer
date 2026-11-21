@@ -2,9 +2,6 @@
 
 #include "../../auth/AuthService.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserLogoutServlet::UserLogoutServlet()
     : BlogServlet("UserLogoutServlet")
 {
@@ -25,6 +22,3 @@ int32_t UserLogoutServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

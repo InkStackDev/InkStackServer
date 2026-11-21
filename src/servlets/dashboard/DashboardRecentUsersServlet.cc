@@ -2,9 +2,6 @@
 
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 DashboardRecentUsersServlet::DashboardRecentUsersServlet()
     : BlogLoginedServlet("DashboardRecentUsersServlet")
 {
@@ -103,6 +100,3 @@ int32_t DashboardRecentUsersServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

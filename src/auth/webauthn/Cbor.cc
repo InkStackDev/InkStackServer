@@ -6,8 +6,6 @@
 
 // SDK 没有 WebAuthn 使用的 CBOR 解码器；这里只实现 attestationObject/authData
 // 需要的最小子集，遇到不支持的容器会直接拒绝。
-namespace blog {
-namespace webauthn {
 
 namespace {
 
@@ -243,6 +241,3 @@ bool DecodeCbor(const std::string& data, CborValue& out)
     }
     return consumed == data.size();
 }
-
-} // namespace webauthn
-} // namespace blog

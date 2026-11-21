@@ -17,8 +17,6 @@
 #include <mutex>
 #include <set>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -838,5 +836,3 @@ data::OrganizationReposInfo::ptr OrganizationRepoPrManager::FindRepoByOwnerAndNa
     }
     return OrganizationRepoMgr::GetInstance()->get(repoId);
 }
-
-} // namespace blog

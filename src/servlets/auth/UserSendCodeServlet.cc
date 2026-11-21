@@ -9,9 +9,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -42,12 +39,12 @@ int32_t UserSendCodeServlet::handle(
             break;
         }
 
-        if (type == "1" && blog::UserMgr::GetInstance()->getByEmail(email)) {
+        if (type == "1" && UserMgr::GetInstance()->getByEmail(email)) {
             result->setErrno(errcode::USER_EMAIL_EXISTS);
             break;
         }
         if (type == "5") {
-            auto recovery_user = blog::UserMgr::GetInstance()->getByEmail(email);
+            auto recovery_user = UserMgr::GetInstance()->getByEmail(email);
             if (!recovery_user) {
                 result->setErrno(errcode::USER_EMAIL_NOT_REGISTER);
                 break;
@@ -144,6 +141,3 @@ int32_t UserSendCodeServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

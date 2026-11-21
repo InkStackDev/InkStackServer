@@ -6,8 +6,6 @@
 #include "../util/Util.hpp"
 #include "CacheUtil.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -146,5 +144,3 @@ blog::data::CategoryInfo::ptr CategoryManager::getByUserIdName(int64_t user_id, 
     }
     return info;
 }
-
-} // namespace blog

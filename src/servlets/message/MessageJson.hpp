@@ -14,9 +14,6 @@
 #include "blog/data/conversation_info.h"
 #include "blog/data/conversation_message_info.h"
 
-namespace blog {
-namespace servlet {
-
 /**
  * @brief 组装单条消息 JSON（供消息列表/发送接口使用）
  * @param json 输出 JSON 对象
@@ -40,6 +37,3 @@ void BuildConversationJson(Json::Value& json, data::ConversationInfo::ptr conv, 
  * @return errcode::SUCCESS 有权限；否则为错误码
  */
 int32_t CheckChatPermission(Result::ptr result, int64_t uid);
-
-} // namespace servlet
-} // namespace blog

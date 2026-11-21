@@ -8,9 +8,6 @@
 #include "../../manager/PasskeyManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 PasskeyLoginFinishServlet::PasskeyLoginFinishServlet()
     : BlogServlet("PasskeyLoginFinishServlet")
 {
@@ -36,7 +33,7 @@ int32_t PasskeyLoginFinishServlet::handle(
         }
 
         std::string credential_id;
-        if (!webauthn::WebAuthnService::ExtractCredentialId(credential, credential_id)) {
+        if (!WebAuthnService::ExtractCredentialId(credential, credential_id)) {
             result->setErrno(errcode::WEBAUTHN_INVALID_CREDENTIAL);
             break;
         }
@@ -57,8 +54,8 @@ int32_t PasskeyLoginFinishServlet::handle(
             break;
         }
 
-        webauthn::AuthenticationResult auth_result;
-        int32_t ret = webauthn::WebAuthnService::VerifyAuthentication(
+        AuthenticationResult auth_result;
+        int32_t ret = WebAuthnService::VerifyAuthentication(
             passkey->getUserId(), passkey->getPublicKey(), passkey->getSignCount(), credential, auth_result);
         if (ret != 0) {
             result->setErrno(ret);
@@ -96,6 +93,3 @@ int32_t PasskeyLoginFinishServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

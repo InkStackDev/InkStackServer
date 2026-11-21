@@ -6,8 +6,6 @@
 #include "../util/Util.hpp"
 #include "CacheUtil.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -440,5 +438,3 @@ CommentManager::CommentStats CommentManager::getStats()
 
     return stats;
 }
-
-} // namespace blog

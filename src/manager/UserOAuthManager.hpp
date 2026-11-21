@@ -12,8 +12,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class UserOAuthManager {
 public:
     UserOAuthManager();
@@ -38,5 +36,3 @@ public:
 };
 
 typedef chen::Singleton<UserOAuthManager> UserOAuthMgr;
-
-} // namespace blog

@@ -9,9 +9,6 @@
 #include "../../util/Util.hpp"
 #include "blog/data/user_recovery_code_info.h"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -116,6 +113,3 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -9,8 +9,6 @@
 #include <algorithm>
 #include <unordered_set>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -293,5 +291,3 @@ void UserFollowRelManager::listMutualFollowing(std::vector<int64_t>& user_ids, i
         }
     }
 }
-
-} // namespace blog

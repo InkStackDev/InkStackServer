@@ -3,9 +3,6 @@
 #include "../../manager/AssignmentManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 AssignmentAdminStatsServlet::AssignmentAdminStatsServlet()
     : BlogLoginedServlet("AssignmentAdminStatsServlet")
 {
@@ -44,6 +41,3 @@ int32_t AssignmentAdminStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

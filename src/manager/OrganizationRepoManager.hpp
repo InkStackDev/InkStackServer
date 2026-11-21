@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class OrganizationRepoManager {
 public:
     void add(data::OrganizationReposInfo::ptr info);
@@ -38,5 +36,3 @@ private:
 };
 
 typedef chen::Singleton<OrganizationRepoManager> OrganizationRepoMgr;
-
-} // namespace blog

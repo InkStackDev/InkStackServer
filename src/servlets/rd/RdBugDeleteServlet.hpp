@@ -3,9 +3,6 @@
 #include "../../SessionData.hpp"
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 class RdBugDeleteServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<RdBugDeleteServlet> ptr;
@@ -18,6 +15,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace servlet
-} // namespace blog

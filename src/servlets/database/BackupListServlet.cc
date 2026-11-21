@@ -3,9 +3,6 @@
 #include "../../manager/BackupRecordManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 BackupListServlet::BackupListServlet()
     : BlogLoginedServlet("BackupListServlet")
 {
@@ -84,6 +81,3 @@ int32_t BackupListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

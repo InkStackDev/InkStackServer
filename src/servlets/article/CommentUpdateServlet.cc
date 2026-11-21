@@ -7,9 +7,6 @@
 
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 CommentUpdateServlet::CommentUpdateServlet()
     : BlogLoginedServlet("CommentUpdateServlet")
 {
@@ -77,6 +74,3 @@ int32_t CommentUpdateServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

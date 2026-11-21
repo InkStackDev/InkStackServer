@@ -3,9 +3,6 @@
 #include "../../manager/ArticleManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 ArticleAdminStatsServlet::ArticleAdminStatsServlet()
     : BlogLoginedServlet("ArticleAdminStatsServlet")
 {
@@ -51,6 +48,3 @@ int32_t ArticleAdminStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

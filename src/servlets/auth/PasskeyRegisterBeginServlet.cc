@@ -5,9 +5,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/UaParser.hpp"
 
-namespace blog {
-namespace servlet {
-
 PasskeyRegisterBeginServlet::PasskeyRegisterBeginServlet()
     : BlogLoginedServlet("PasskeyRegisterBeginServlet")
 {
@@ -59,8 +56,8 @@ int32_t PasskeyRegisterBeginServlet::handle(
         }
 
         Json::Value options;
-        int32_t ret =
-            webauthn::WebAuthnService::CreateRegistrationOptions(uid, user->getAccount(), user->getName(), passkey_name, exclude_ids, options);
+        int32_t ret = WebAuthnService::CreateRegistrationOptions(
+            uid, user->getAccount(), user->getName(), passkey_name, exclude_ids, options);
         if (ret != 0) {
             result->setErrno(ret);
             break;
@@ -73,6 +70,3 @@ int32_t PasskeyRegisterBeginServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

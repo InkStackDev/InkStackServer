@@ -17,8 +17,6 @@
 #include <string>
 #include <vector>
 
-namespace blog {
-
 class MessageManager {
 public:
     /// 单条消息最大长度
@@ -59,5 +57,3 @@ private:
 };
 
 typedef chen::Singleton<MessageManager> MessageMgr;
-
-} // namespace blog

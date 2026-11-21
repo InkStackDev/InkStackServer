@@ -23,10 +23,6 @@
 #include <ctime>
 #include <string>
 
-namespace blog {
-namespace servlet {
-namespace rd {
-
 // ============================================================================
 // 分页: page/page_size → offset/size
 // ============================================================================
@@ -366,7 +362,3 @@ inline void BuildTaskJson(Json::Value& item, data::TaskInfo::ptr info)
     item["created_at"] = info->getCreateTime();
     item["updated_at"] = info->getUpdateTime();
 }
-
-} // namespace rd
-} // namespace servlet
-} // namespace blog

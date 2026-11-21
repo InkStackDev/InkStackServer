@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class ArticleCategoryRelManager {
 public:
     data::ArticleCategoryRelInfo::ptr get(int64_t id);
@@ -22,5 +20,3 @@ private:
 };
 
 typedef chen::Singleton<ArticleCategoryRelManager> ArticleCategoryRelMgr;
-
-} // namespace blog

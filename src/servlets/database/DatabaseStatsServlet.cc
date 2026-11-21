@@ -8,9 +8,6 @@
 #include "../../util/Util.hpp"
 #include "blog/data/label_info.h"
 
-namespace blog {
-namespace servlet {
-
 DatabaseStatsServlet::DatabaseStatsServlet()
     : BlogLoginedServlet("DatabaseStatsServlet")
 {
@@ -81,6 +78,3 @@ int32_t DatabaseStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

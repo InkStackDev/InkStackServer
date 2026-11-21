@@ -8,9 +8,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationReposSyncServlet::OrganizationReposSyncServlet()
@@ -88,6 +85,3 @@ int32_t OrganizationReposSyncServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

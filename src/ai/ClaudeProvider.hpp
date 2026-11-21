@@ -9,9 +9,6 @@
 
 #include "AIProvider.hpp"
 
-namespace blog {
-namespace ai {
-
 class ClaudeProvider : public AIProvider {
 public:
     typedef std::shared_ptr<ClaudeProvider> ptr;
@@ -35,6 +32,3 @@ public:
 
     void authHeaders(const std::string& apiKey, std::map<std::string, std::string>& outHeaders) override;
 };
-
-} // namespace ai
-} // namespace blog

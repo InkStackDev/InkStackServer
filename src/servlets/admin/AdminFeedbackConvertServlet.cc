@@ -5,9 +5,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 AdminFeedbackConvertServlet::AdminFeedbackConvertServlet()
@@ -181,6 +178,3 @@ int32_t AdminFeedbackConvertServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

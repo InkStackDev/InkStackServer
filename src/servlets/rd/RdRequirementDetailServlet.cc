@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdRequirementDetailServlet::RdRequirementDetailServlet()
     : BlogLoginedServlet("RdRequirementDetailServlet")
 {
@@ -60,12 +57,9 @@ int32_t RdRequirementDetailServlet::handle(
         }
 
         Json::Value data;
-        rd::BuildRequirementJson(data, info);
+        BuildRequirementJson(data, info);
         result->set("data", data);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

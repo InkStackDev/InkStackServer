@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class CommentManager {
 public:
     enum Status {
@@ -71,5 +69,3 @@ private:
 };
 
 typedef chen::Singleton<CommentManager> CommentMgr;
-
-} // namespace blog

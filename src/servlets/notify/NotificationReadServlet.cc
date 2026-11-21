@@ -6,9 +6,6 @@
 
 #include <vector>
 
-namespace blog {
-namespace servlet {
-
 NotificationReadServlet::NotificationReadServlet()
     : BlogLoginedServlet("NotificationReadServlet")
 {
@@ -54,5 +51,3 @@ int32_t NotificationReadServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-} // namespace servlet
-} // namespace blog

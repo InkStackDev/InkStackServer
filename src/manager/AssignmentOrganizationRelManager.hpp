@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class AssignmentOrganizationRelManager {
 public:
     blog::data::AssignmentOrganizationRelInfo::ptr get(int64_t id);
@@ -28,5 +26,3 @@ private:
 };
 
 typedef chen::Singleton<AssignmentOrganizationRelManager> AssignmentOrganizationRelMgr;
-
-} // namespace blog

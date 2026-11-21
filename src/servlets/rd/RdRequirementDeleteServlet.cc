@@ -7,9 +7,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 RdRequirementDeleteServlet::RdRequirementDeleteServlet()
@@ -115,7 +112,4 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
-}
-
-}
 }

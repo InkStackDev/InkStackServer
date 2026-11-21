@@ -3,9 +3,6 @@
 #include "../../manager/ExportRecordManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 ExportListServlet::ExportListServlet()
     : BlogLoginedServlet("ExportListServlet")
 {
@@ -83,6 +80,3 @@ int32_t ExportListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

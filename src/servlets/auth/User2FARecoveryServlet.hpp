@@ -9,9 +9,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class User2FARecoveryServlet : public BlogServlet {
 public:
     typedef std::shared_ptr<User2FARecoveryServlet> ptr;
@@ -24,6 +21,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace servlet
-} // namespace blog

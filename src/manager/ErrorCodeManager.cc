@@ -8,8 +8,6 @@
 
 #include "../i18n/I18n.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ErrorCodeManager::ErrorCodeManager()
@@ -118,5 +116,3 @@ std::string ErrorCodeManager::toJson(const std::string& lang) const
     }
     return chen::JsonUtil::ToString(result);
 }
-
-} // namespace blog

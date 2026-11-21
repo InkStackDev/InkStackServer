@@ -10,9 +10,6 @@
 #include "blog/data/article_info.h"
 #include "blog/data/comment_info.h"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr g_logger = LOG_ROOT();
 
 UserAdminListsServlet::UserAdminListsServlet()
@@ -92,7 +89,4 @@ int32_t UserAdminListsServlet::handle(
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
-}
-
-} // namespace servlet
 }

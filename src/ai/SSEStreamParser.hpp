@@ -14,9 +14,6 @@
 
 #include "AIProvider.hpp"
 
-namespace blog {
-namespace ai {
-
 /// SSE 流式回调解析器，每收到一块 body 数据就逐行解析、提取文本、推送 SSE 事件
 /// 用法：传给 HttpConnection::DoRequestStreaming 作为 HttpStreamCallback
 class SSEStreamParser {
@@ -39,8 +36,3 @@ private:
     std::string line_buf_;
     std::string current_event_;
 };
-
-}  // namespace ai
-}  // namespace blog
-
-

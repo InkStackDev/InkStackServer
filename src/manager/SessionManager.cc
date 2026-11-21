@@ -2,8 +2,6 @@
 
 #include "SystemSettingsManager.hpp"
 
-namespace blog {
-
 /// 默认 session TTL（24 小时 = 86400 秒）
 static const int64_t kDefaultSessionTTL = 24 * 3600;
 
@@ -15,5 +13,3 @@ int64_t GetSessionTTL()
     }
     return kDefaultSessionTTL;
 }
-
-} // namespace blog

@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdBugDeleteServlet::RdBugDeleteServlet()
     : BlogLoginedServlet("RdBugDeleteServlet")
 {
@@ -105,6 +102,3 @@ int32_t RdBugDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -10,9 +10,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationJoinCheckServlet::OrganizationJoinCheckServlet()
@@ -36,8 +33,8 @@ int32_t OrganizationJoinCheckServlet::handle(
             break;
         }
 
-        auto user = blog::UserMgr::GetInstance()->get(user_id);
-        auto org = blog::OrganizationMgr::GetInstance()->get(org_id);
+        auto user = UserMgr::GetInstance()->get(user_id);
+        auto org = OrganizationMgr::GetInstance()->get(org_id);
         if (!user || !org) {
             result->setErrno(errcode::ARTICLE_INVALID_ID);
             break;
@@ -49,14 +46,14 @@ int32_t OrganizationJoinCheckServlet::handle(
             result->setErrno(errcode::NOT_LOGIN);
             break;
         }
-        auto current_user = blog::UserMgr::GetInstance()->get(uid);
+        auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
             result->setErrno(errcode::USER_NOT_FOUND);
             break;
         }
         int32_t system_role = current_user->getRole();
 
-        auto rel = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel) {
             result->setErrno(errcode::ORG_NOT_MEMBER);
             break;
@@ -69,7 +66,7 @@ int32_t OrganizationJoinCheckServlet::handle(
         }
 
         // update user organization relation
-        rel = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, user_id);
+        rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, user_id);
         if (!rel) {
             result->setErrno(errcode::ARTICLE_INVALID_ID);
             break;
@@ -112,6 +109,3 @@ int32_t OrganizationJoinCheckServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

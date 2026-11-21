@@ -9,9 +9,6 @@
 #include <chen/util/util.h>
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 CommentCreateServlet::CommentCreateServlet()
     : BlogLoginedServlet("CommentCreateServlet")
 {
@@ -110,6 +107,3 @@ int32_t CommentCreateServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

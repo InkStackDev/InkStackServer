@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "MessageJson.hpp"
 
-namespace blog {
-namespace servlet {
-
 ConversationServlet::ConversationServlet()
     : BlogLoginedServlet("ConversationServlet")
 {
@@ -90,6 +87,3 @@ int32_t ConversationServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

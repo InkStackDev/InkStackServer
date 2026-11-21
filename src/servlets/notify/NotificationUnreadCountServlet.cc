@@ -2,9 +2,6 @@
 
 #include "../../manager/NotificationManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 NotificationUnreadCountServlet::NotificationUnreadCountServlet()
     : BlogLoginedServlet("NotificationUnreadCountServlet")
 {
@@ -32,5 +29,3 @@ int32_t NotificationUnreadCountServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-} // namespace servlet
-} // namespace blog

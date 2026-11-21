@@ -10,9 +10,6 @@
 #include "../../search/SearchSync.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleCreateServlet::ArticleCreateServlet()
@@ -126,6 +123,3 @@ int32_t ArticleCreateServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

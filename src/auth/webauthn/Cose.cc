@@ -7,9 +7,6 @@
 
 #include "Cbor.hpp"
 
-namespace blog {
-namespace webauthn {
-
 // SDK 只封装了 RSA-SHA256(PEM) 验签；WebAuthn 还需要 ES256/EdDSA 和 COSE 原始公钥，
 // 因此这里直接使用 OpenSSL，避免把 EVP_PKEY 再转成 PEM。
 namespace {
@@ -247,6 +244,3 @@ bool VerifySignature(const CoseKey& key, const std::string& data, const std::str
     EVP_MD_CTX_free(ctx);
     return verify_ret == 1;
 }
-
-} // namespace webauthn
-} // namespace blog

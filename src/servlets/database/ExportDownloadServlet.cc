@@ -9,9 +9,6 @@
 
 #include <fstream>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 static chen::ConfigVar<std::string>::ptr server_data_path = chen::Config::Lookup<std::string>("server.data_path");
 
@@ -110,6 +107,3 @@ int32_t ExportDownloadServlet::handle(
     }
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

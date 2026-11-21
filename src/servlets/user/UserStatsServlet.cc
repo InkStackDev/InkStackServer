@@ -7,9 +7,6 @@
 
 #include <set>
 
-namespace blog {
-namespace servlet {
-
 UserStatsServlet::UserStatsServlet()
     : BlogLoginedServlet("UserStatsServlet")
 {
@@ -95,5 +92,3 @@ int32_t UserStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-} // namespace servlet
-} // namespace blog

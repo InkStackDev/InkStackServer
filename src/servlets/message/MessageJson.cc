@@ -3,9 +3,6 @@
 #include "../../manager/MessageManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 void BuildMessageJson(Json::Value& json, data::ConversationMessageInfo::ptr msg, int64_t uid)
 {
     json["id"] = msg->getId();
@@ -54,6 +51,3 @@ int32_t CheckChatPermission(Result::ptr result, int64_t uid)
     }
     return errcode::SUCCESS;
 }
-
-} // namespace servlet
-} // namespace blog

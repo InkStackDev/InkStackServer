@@ -12,9 +12,6 @@
 
 #include <set>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 AssignmentDeleteServlet::AssignmentDeleteServlet()
@@ -135,6 +132,3 @@ int32_t AssignmentDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

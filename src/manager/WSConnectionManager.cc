@@ -5,8 +5,6 @@
 
 #include <json/json.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 std::string BuildChannelMessage(const std::string& message, const std::string& channel)
@@ -453,5 +451,3 @@ void WSConnectionManager::broadcastPresence()
     msg["count"] = onlineUserCount();
     broadcast(chen::JsonUtil::ToString(msg));
 }
-
-} // namespace blog

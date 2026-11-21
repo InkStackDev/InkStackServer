@@ -3,9 +3,6 @@
 #include "../../manager/OrganizationManager.hpp"
 #include "../../manager/OrganizationUserRelManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdOrganizationsServlet::RdOrganizationsServlet()
     : BlogLoginedServlet("RdOrganizationsServlet")
 {
@@ -46,6 +43,3 @@ int32_t RdOrganizationsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

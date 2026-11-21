@@ -5,9 +5,6 @@
 #include "GLMProvider.hpp"
 #include "OpenAIProvider.hpp"
 
-namespace blog {
-namespace ai {
-
 AIProvider::ptr CreateProvider(const std::string& type)
 {
     if (type == "claude") {
@@ -21,6 +18,3 @@ AIProvider::ptr CreateProvider(const std::string& type)
     }
     return std::make_shared<OpenAIProvider>(); // 默认 OpenAI
 }
-
-} // namespace ai
-} // namespace blog

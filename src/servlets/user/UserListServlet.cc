@@ -6,9 +6,6 @@
 
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 UserListServlet::UserListServlet()
@@ -37,6 +34,3 @@ int32_t UserListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

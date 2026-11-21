@@ -8,9 +8,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -37,11 +34,11 @@ int32_t UserCreateServlet::handle(
             break;
         }
 
-        if (blog::UserMgr::GetInstance()->getByAccount(account)) {
+        if (UserMgr::GetInstance()->getByAccount(account)) {
             result->setErrno(errcode::USER_ACCOUNT_EXISTS);
             break;
         }
-        if (blog::UserMgr::GetInstance()->getByEmail(email)) {
+        if (UserMgr::GetInstance()->getByEmail(email)) {
             result->setErrno(errcode::USER_EMAIL_EXISTS);
             break;
         }
@@ -113,6 +110,3 @@ bool UserCreateServlet::verificationEmailCode(const std::string& email, const st
     chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "DEL email:verify:1:%s", email.c_str());
     return true;
 }
-
-} // namespace servlet
-} // namespace blog

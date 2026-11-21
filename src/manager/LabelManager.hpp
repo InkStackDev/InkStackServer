@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class LabelManager {
 public:
     void add(data::LabelInfo::ptr info);
@@ -22,5 +20,3 @@ private:
 };
 
 typedef chen::Singleton<LabelManager> LabelMgr;
-
-} // namespace blog

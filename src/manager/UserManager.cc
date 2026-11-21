@@ -7,8 +7,6 @@
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 120;
@@ -282,5 +280,3 @@ std::string UserManager::GenerateToken()
     ss << std::hex << chen::TimeUtil::GetCurrentUs() << rand() << rand();
     return chen::EncryptorUtil::MD5(ss.str());
 }
-
-} // namespace blog

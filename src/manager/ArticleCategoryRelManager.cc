@@ -5,8 +5,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::ArticleCategoryRelInfo::ptr ArticleCategoryRelManager::ParseRow(chen::ISQLData::ptr rt)
@@ -78,5 +76,3 @@ data::ArticleCategoryRelInfo::ptr ArticleCategoryRelManager::getByArticleIdCateg
     }
     return info;
 }
-
-} // namespace blog

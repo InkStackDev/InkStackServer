@@ -2,9 +2,6 @@
 
 #include "../../manager/NotificationManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")
 {
@@ -74,5 +71,3 @@ int32_t NotificationListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-} // namespace servlet
-} // namespace blog

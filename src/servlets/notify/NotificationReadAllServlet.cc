@@ -2,9 +2,6 @@
 
 #include "../../manager/NotificationManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 NotificationReadAllServlet::NotificationReadAllServlet()
     : BlogLoginedServlet("NotificationReadAllServlet")
 {
@@ -32,6 +29,3 @@ int32_t NotificationReadAllServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -4,8 +4,6 @@
 
 #include "../util/Util.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::OrganizationApplyInfo::ptr OrganizationApplyManager::ParseRow(chen::ISQLData::ptr rt)
@@ -70,5 +68,3 @@ int64_t OrganizationApplyManager::listByUserId(
     }
     return total;
 }
-
-} // namespace blog

@@ -13,9 +13,6 @@
 #include "../../search/SearchSync.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleUpdateServlet::ArticleUpdateServlet()
@@ -276,6 +273,3 @@ int32_t ArticleUpdateServlet::syncLabelRels(chen::http::HttpRequest::ptr request
 
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

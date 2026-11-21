@@ -2,8 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog::servlet {
-
 /**
  * @brief 错误码下发接口
  * GET /api/v1/error-codes?lang=zh-CN
@@ -21,5 +19,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace blog::servlet

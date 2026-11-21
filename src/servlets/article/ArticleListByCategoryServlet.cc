@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleListByCategoryServlet::ArticleListByCategoryServlet()
@@ -52,6 +49,3 @@ int32_t ArticleListByCategoryServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

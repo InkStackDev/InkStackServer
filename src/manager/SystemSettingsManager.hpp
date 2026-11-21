@@ -6,8 +6,6 @@
 
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class SystemSettingsManager {
 public:
     void add(blog::data::SystemSettingsInfo::ptr info);
@@ -33,5 +31,3 @@ private:
 };
 
 typedef chen::Singleton<SystemSettingsManager> SystemSettingsMgr;
-
-} // namespace blog

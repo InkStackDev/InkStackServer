@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../search/SearchSync.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleSearchServlet::ArticleSearchServlet()
@@ -95,6 +92,3 @@ int32_t ArticleSearchServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

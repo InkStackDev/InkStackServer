@@ -9,9 +9,6 @@
 
 #include <fstream>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 static const int64_t MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB文件大小限制
@@ -195,6 +192,3 @@ bool FileDownloadServlet::checkPermission(int32_t system_role)
     }
     return false;
 }
-
-} // namespace servlet
-} // namespace blog

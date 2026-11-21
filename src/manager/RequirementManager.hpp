@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class RequirementManager {
 public:
     enum Priority {
@@ -34,5 +32,3 @@ private:
 };
 
 typedef chen::Singleton<RequirementManager> RequirementMgr;
-
-} // namespace blog

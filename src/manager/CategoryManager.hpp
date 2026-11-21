@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class CategoryManager {
 public:
     void listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool isValid = false);
@@ -24,5 +22,3 @@ private:
 };
 
 typedef chen::Singleton<CategoryManager> CategoryMgr;
-
-} // namespace blog

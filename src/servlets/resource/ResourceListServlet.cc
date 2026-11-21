@@ -5,9 +5,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ResourceListServlet::ResourceListServlet()
@@ -54,6 +51,3 @@ bool ResourceListServlet::checkPermession(int32_t system_role)
     }
     return true;
 }
-
-} // namespace servlet
-} // namespace blog

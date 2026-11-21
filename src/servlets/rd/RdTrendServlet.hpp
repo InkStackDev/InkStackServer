@@ -14,9 +14,6 @@
 #include <string>
 #include <vector>
 
-namespace blog {
-namespace servlet {
-
 struct TrendContext {
     chen::IDB::ptr db;
     std::vector<int64_t> target_orgs;
@@ -54,6 +51,3 @@ private:
     double avgCycleTime(const TrendContext& ctx, const std::string& table, int32_t min_status);
     void addSeriesBySql(TrendContext& ctx, const std::string& table, int32_t min_status, const std::string& field_name);
 };
-
-} // namespace servlet
-} // namespace blog

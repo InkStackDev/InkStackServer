@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class UserCreateServlet : public BlogServlet {
 public:
     typedef std::shared_ptr<UserCreateServlet> ptr;
@@ -19,6 +16,3 @@ protected:
 
     bool verificationEmailCode(const std::string& email, const std::string& code);
 };
-
-} // namespace servlet
-} // namespace blog

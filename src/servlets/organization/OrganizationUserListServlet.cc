@@ -7,9 +7,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationUserListServlet::OrganizationUserListServlet()
@@ -31,7 +28,7 @@ int32_t OrganizationUserListServlet::handle(
 
         if (status == OrganizationUserRelManager::Status::PENDING) {
             int64_t uid = getUserId(request);
-            auto info = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
+            auto info = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
             if (!info) {
                 result->setErrno(errcode::ORG_NOT_MEMBER);
                 break;
@@ -51,7 +48,7 @@ int32_t OrganizationUserListServlet::handle(
         uint64_t offset = (page_num - 1) * page_size;
 
         std::vector<data::OrganizationUserRelInfo::ptr> rels;
-        int64_t total = blog::OrganizationUserRelMgr::GetInstance()->getByPages(rels, id, offset, page_size, status, true);
+        int64_t total = OrganizationUserRelMgr::GetInstance()->getByPages(rels, id, offset, page_size, status, true);
 
         std::sort(rels.begin(), rels.end(), [](const auto& a, const auto& b) {
             return a->getCreateTime() < b->getCreateTime();
@@ -60,7 +57,7 @@ int32_t OrganizationUserListServlet::handle(
         result->set("total", total);
         Json::Value list;
         for (auto& i : rels) {
-            auto user = blog::UserMgr::GetInstance()->get(i->getUserId());
+            auto user = UserMgr::GetInstance()->get(i->getUserId());
             Json::Value item;
             item["id"] = i->getId();
             item["user_id"] = i->getUserId();
@@ -77,6 +74,3 @@ int32_t OrganizationUserListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

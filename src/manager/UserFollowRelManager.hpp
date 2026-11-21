@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class UserFollowRelManager {
 public:
     void add(data::UserFollowRelInfo::ptr info);
@@ -39,5 +37,3 @@ private:
 };
 
 typedef chen::Singleton<UserFollowRelManager> UserFollowRelMgr;
-
-} // namespace blog

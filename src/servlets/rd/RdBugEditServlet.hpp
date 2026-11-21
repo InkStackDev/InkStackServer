@@ -5,9 +5,6 @@
 
 #include "blog/data/bug_info.h"
 
-namespace blog {
-namespace servlet {
-
 class RdBugEditServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<RdBugEditServlet> ptr;
@@ -23,6 +20,3 @@ protected:
 private:
     void notifyAssignee(int64_t assignee_id, data::BugInfo::ptr bug);
 };
-
-} // namespace servlet
-} // namespace blog

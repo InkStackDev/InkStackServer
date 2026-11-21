@@ -24,8 +24,6 @@
 #include "../manager/ArticleManager.hpp"
 #include "../util/Util.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<bool>::ptr g_enabled = chen::Config::Lookup("search.enabled", true, "enable search service client");
@@ -702,5 +700,3 @@ bool SearchSync::runSnapshot()
         return false;
     }
 }
-
-} // namespace blog

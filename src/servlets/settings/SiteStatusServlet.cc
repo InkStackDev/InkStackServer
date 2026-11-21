@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog::servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 SiteStatusServlet::SiteStatusServlet()
@@ -30,5 +28,3 @@ int32_t SiteStatusServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace blog::servlet

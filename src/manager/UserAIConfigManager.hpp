@@ -11,8 +11,6 @@
 
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class UserAIConfigManager {
 public:
     /**
@@ -31,5 +29,3 @@ public:
 };
 
 typedef chen::Singleton<UserAIConfigManager> UserAIConfigMgr;
-
-} // namespace blog

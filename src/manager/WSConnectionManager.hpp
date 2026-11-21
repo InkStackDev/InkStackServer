@@ -17,8 +17,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace blog {
-
 /**
  * @brief 统一 WebSocket 连接管理器
  * @details 以 device_id 为主键管理连接，一个设备只保留一条长连接。
@@ -194,5 +192,3 @@ private:
 std::string BuildChannelMessage(const std::string& message, const std::string& channel);
 
 typedef chen::Singleton<WSConnectionManager> WSMgr;
-
-} // namespace blog

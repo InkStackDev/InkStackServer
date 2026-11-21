@@ -99,9 +99,6 @@ public:
 
 } // namespace chen
 
-namespace blog {
-namespace webauthn {
-
 /**
  * @brief 注册成功后需要落库的凭据信息
  */
@@ -201,6 +198,3 @@ public:
 private:
     static std::string UserHandle(int64_t uid);
 };
-
-} // namespace webauthn
-} // namespace blog

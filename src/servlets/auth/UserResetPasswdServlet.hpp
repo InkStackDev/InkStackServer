@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class UserResetPasswdServlet : public BlogServlet {
 public:
     typedef std::shared_ptr<UserResetPasswdServlet> ptr;
@@ -18,6 +15,3 @@ protected:
         Result::ptr result) override;
     bool verificationEmailCode(const std::string& email, const std::string& code);
 };
-
-} // namespace servlet
-} // namespace blog

@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class CategoryDeleteServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<CategoryDeleteServlet> ptr;
@@ -36,6 +33,3 @@ public:
 protected:
     bool isAdminRoute() const override { return true; }
 };
-
-} // namespace servlet
-} // namespace blog

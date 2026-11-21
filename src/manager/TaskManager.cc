@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::TaskInfo::ptr TaskManager::ParseRow(chen::ISQLData::ptr rt)
@@ -61,4 +59,3 @@ uint64_t TaskManager::listByOrg(std::vector<data::TaskInfo::ptr>& infos, int64_t
     }
     return total;
 }
-} // namespace blog

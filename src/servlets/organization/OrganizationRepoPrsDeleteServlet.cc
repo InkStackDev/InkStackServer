@@ -16,9 +16,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationRepoPrsDeleteServlet::OrganizationRepoPrsDeleteServlet()
@@ -91,6 +88,3 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

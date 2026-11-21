@@ -10,8 +10,6 @@
 #include <set>
 #include <shared_mutex>
 
-namespace blog {
-
 class ArticleManager {
 public:
     enum Status {
@@ -164,5 +162,3 @@ private:
 };
 
 typedef chen::Singleton<ArticleManager> ArticleMgr;
-
-} // namespace blog

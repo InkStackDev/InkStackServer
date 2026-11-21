@@ -8,9 +8,6 @@
 
 #include <set>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 LabelDeleteServlet::LabelDeleteServlet()
@@ -89,6 +86,3 @@ int32_t LabelDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

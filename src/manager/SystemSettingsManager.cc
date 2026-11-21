@@ -6,8 +6,6 @@
 
 #include "../util/Util.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 void SystemSettingsManager::add(blog::data::SystemSettingsInfo::ptr info)
@@ -69,5 +67,3 @@ bool SystemSettingsManager::update(blog::data::SystemSettingsInfo::ptr info)
     m_data = info;
     return true;
 }
-
-} // namespace blog

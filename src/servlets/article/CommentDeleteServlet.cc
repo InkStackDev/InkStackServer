@@ -3,9 +3,6 @@
 #include "../../manager/CommentManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 CommentDeleteServlet::CommentDeleteServlet()
     : BlogLoginedServlet("CommentDeleteServlet")
 {
@@ -49,6 +46,3 @@ int32_t CommentDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

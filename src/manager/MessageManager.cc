@@ -9,8 +9,6 @@
 
 #include <algorithm>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -370,5 +368,3 @@ int32_t MessageManager::sendToUser(int64_t user_id, const std::string& message)
 {
     return WSMgr::GetInstance()->sendToUser(user_id, BuildChannelMessage(message, "chat"));
 }
-
-} // namespace blog

@@ -79,8 +79,8 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
         return 0;
     }
 
-    INFO(logger) << "[ChatWS] send OK: uid=" << uid << " conv=" << conversation_id << " msg_id=" << msg_info->getId()
-                 << " client_id=" << client_id;
+    INFO(g_session_logger) << "[ChatWS] send OK: uid=" << uid << " conv=" << conversation_id
+                           << " msg_id=" << msg_info->getId() << " client_id=" << client_id;
 
     // ACK 只回发起设备，client_id 是单标签页的
     {
@@ -107,8 +107,8 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
         MessageMgr::GetInstance()->sendToUser(peer_id, chen::JsonUtil::ToString(push));
     }
 
-    INFO(logger) << "[ChatWS] ack->" << uid << " push->" << peer_id
-                 << " peer_online=" << MessageMgr::GetInstance()->isChatConnected(peer_id);
+    INFO(g_session_logger) << "[ChatWS] ack->" << uid << " push->" << peer_id
+                           << " peer_online=" << MessageMgr::GetInstance()->isChatConnected(peer_id);
     return 0;
 }
 

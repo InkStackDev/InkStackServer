@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdTaskDetailServlet::RdTaskDetailServlet()
     : BlogLoginedServlet("RdTaskDetailServlet")
 {
@@ -61,12 +58,9 @@ int32_t RdTaskDetailServlet::handle(
         }
 
         Json::Value data;
-        rd::BuildTaskJson(data, info);
+        BuildTaskJson(data, info);
         result->set("data", data);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

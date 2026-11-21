@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class FileDownloadServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<FileDownloadServlet> ptr;
@@ -18,6 +15,3 @@ protected:
         Result::ptr result) override;
     bool checkPermission(int32_t system_role);
 };
-
-} // namespace servlet
-} // namespace blog

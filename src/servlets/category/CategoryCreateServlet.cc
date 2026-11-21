@@ -7,9 +7,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 CategoryCreateServlet::CategoryCreateServlet()
@@ -161,6 +158,3 @@ int32_t CategoryCreateServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

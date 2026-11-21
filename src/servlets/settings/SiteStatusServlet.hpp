@@ -2,8 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog::servlet {
-
 class SiteStatusServlet : public BlogServlet {
 public:
     typedef std::shared_ptr<SiteStatusServlet> ptr;
@@ -16,5 +14,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace blog::servlet

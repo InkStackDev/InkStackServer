@@ -3,9 +3,6 @@
 #include "../../manager/ArticlePraiseRelManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 ArticleIsPraisingServlet::ArticleIsPraisingServlet()
     : BlogLoginedServlet("ArticleIsPraisingServlet")
 {
@@ -35,6 +32,3 @@ int32_t ArticleIsPraisingServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

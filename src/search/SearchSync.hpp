@@ -18,8 +18,6 @@
 
 #include "protocol_ss_search.h" // IWYU pragma: keep
 
-namespace blog {
-
 /**
  * @brief 搜索索引同步客户端
  * @details 负责连接 SearchServer hub、查询、增量文档推送、失败重试与全量快照。
@@ -108,5 +106,3 @@ private:
 };
 
 typedef chen::LeakySingleton<SearchSync> SearchSyncMgr;
-
-} // namespace blog

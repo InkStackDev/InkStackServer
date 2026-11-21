@@ -12,9 +12,6 @@
 #include "blog/data/task_info.h"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 RdTrendServlet::RdTrendServlet()
@@ -90,7 +87,7 @@ void RdTrendServlet::addSeriesBySql(TrendContext& ctx, const std::string& table,
         for (auto& [d, cnt] : rows) {
             std::string key = d;
             if (ctx.granularity == "week") {
-                key = rd::FormatGroupKey(rd::ParseDate(d), "week");
+                key = FormatGroupKey(ParseDate(d), "week");
             } else if (ctx.granularity == "month") {
                 key = d.substr(0, 7);
             }
@@ -138,13 +135,13 @@ int32_t RdTrendServlet::handle(
 
         time_t now = time(0);
         if (!end_date_str.empty()) {
-            ctx.end_date = rd::ParseDate(end_date_str) + 86400;
+            ctx.end_date = ParseDate(end_date_str) + 86400;
         } else {
             // 左闭右开：结束点取明天 00:00，保证 series 包含今天
             ctx.end_date = chen::TimeUtil::GetDayStart(now) + 86400;
         }
         if (!start_date_str.empty()) {
-            ctx.start_date = rd::ParseDate(start_date_str);
+            ctx.start_date = ParseDate(start_date_str);
         } else {
             ctx.start_date = ctx.end_date - period_days * 86400;
         }
@@ -289,7 +286,7 @@ int32_t RdTrendServlet::handle(
             }
 
             for (auto& t : date_points) {
-                std::string key = rd::FormatGroupKey(t, ctx.granularity);
+                std::string key = FormatGroupKey(t, ctx.granularity);
                 if (ctx.series_map.find(key) == ctx.series_map.end()) {
                     Json::Value pt;
                     pt["date"] = key;
@@ -312,7 +309,7 @@ int32_t RdTrendServlet::handle(
             addSeriesBySql(ctx, "task", 2, "completed");
 
             for (auto& t : date_points) {
-                std::string key = rd::FormatGroupKey(t, ctx.granularity);
+                std::string key = FormatGroupKey(t, ctx.granularity);
                 auto it = ctx.series_map.find(key);
                 if (it != ctx.series_map.end()) {
                     series_arr.append(it->second);
@@ -379,6 +376,3 @@ int32_t RdTrendServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

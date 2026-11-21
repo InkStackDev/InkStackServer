@@ -8,9 +8,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 PasskeyLoginBeginServlet::PasskeyLoginBeginServlet()
     : BlogServlet("PasskeyLoginBeginServlet")
 {
@@ -75,7 +72,7 @@ int32_t PasskeyLoginBeginServlet::handle(
         }
 
         Json::Value options;
-        int32_t ret = webauthn::WebAuthnService::CreateAuthenticationOptions(uid, credential_ids, options);
+        int32_t ret = WebAuthnService::CreateAuthenticationOptions(uid, credential_ids, options);
         if (ret != 0) {
             result->setErrno(ret);
             break;
@@ -87,6 +84,3 @@ int32_t PasskeyLoginBeginServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

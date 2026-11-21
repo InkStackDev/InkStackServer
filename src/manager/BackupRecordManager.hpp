@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class BackupRecordManager {
 public:
     data::BackupRecordInfo::ptr get(int64_t id);
@@ -29,5 +27,3 @@ private:
 };
 
 typedef chen::Singleton<BackupRecordManager> BackupRecordMgr;
-
-} // namespace blog

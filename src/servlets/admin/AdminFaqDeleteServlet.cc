@@ -12,9 +12,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 AdminFaqDeleteServlet::AdminFaqDeleteServlet()
@@ -69,6 +66,3 @@ int32_t AdminFaqDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

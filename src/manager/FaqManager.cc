@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 FaqManager::FaqManager()
@@ -111,5 +109,3 @@ bool FaqManager::update(int64_t id, const std::string& q, const std::string& a, 
 
     return true;
 }
-
-} // namespace blog

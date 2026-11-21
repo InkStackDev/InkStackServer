@@ -7,9 +7,6 @@
 #include "../../util/Util.hpp"
 #include "blog/data/article_info.h"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleDeleteServlet::ArticleDeleteServlet()
@@ -92,6 +89,3 @@ int32_t ArticleDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

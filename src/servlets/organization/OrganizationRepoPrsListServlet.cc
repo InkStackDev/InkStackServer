@@ -14,9 +14,6 @@
 #include "../../manager/OrganizationRepoPrManager.hpp"
 #include "../../manager/OrganizationUserRelManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationRepoPrsListServlet::OrganizationRepoPrsListServlet()
@@ -119,6 +116,3 @@ int32_t OrganizationRepoPrsListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

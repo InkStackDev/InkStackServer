@@ -31,8 +31,8 @@ int32_t BlogServlet::handle(
     try {
         result->setLanguage(I18n::ResolveLanguage(request));
 
-        TRACE(logger) << "path=" << request->getPath()
-                      << " - method=" << chen::http::HttpMethodToString(request->getMethod());
+        TRACE(g_session_logger) << "path=" << request->getPath()
+                                << " - method=" << chen::http::HttpMethodToString(request->getMethod());
 
         if (handlePre(request, response, session, result)) {
             handle(request, response, session, result);
@@ -46,7 +46,8 @@ int32_t BlogServlet::handle(
     } catch (const std::exception& e) {
         used = chen::TimeUtil::GetCurrentUs() - ts;
 
-        ERROR(logger) << "servlet exception path=" << (request ? request->getPath() : "-") << " what=" << e.what();
+        ERROR(g_session_logger) << "servlet exception path=" << (request ? request->getPath() : "-")
+                                << " what=" << e.what();
         result->setErrno(INTERNAL_ERROR);
 
         if (response) {
@@ -55,7 +56,7 @@ int32_t BlogServlet::handle(
     } catch (...) {
         used = chen::TimeUtil::GetCurrentUs() - ts;
 
-        ERROR(logger) << "servlet unknown exception path=" << (request ? request->getPath() : "-");
+        ERROR(g_session_logger) << "servlet unknown exception path=" << (request ? request->getPath() : "-");
         result->setErrno(INTERNAL_ERROR);
 
         if (response) {
@@ -91,8 +92,8 @@ bool BlogServlet::handlePost(
     if (!response->checkGetHeaderAs<std::string>("Content-Type", val, "application/json")) {
         response->setHeader("Content-Type", val);
     }
-    INFO(logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::SESSION_KEY, "-") << "\t"
-                 << getUserId(request) << "\t" << result->getErrno() << "\t" << result->getMessage() << "\t"
+    INFO(g_session_logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::SESSION_KEY, "-")
+                           << "\t" << getUserId(request) << "\t" << result->getErrno() << "\t" << result->getMessage() << "\t"
                  << request->getPath() << "\t" << (!request->getQuery().empty() ? request->getQuery() : "-");
     return true;
 }

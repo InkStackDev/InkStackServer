@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class ResourceManager {
 public:
     enum ResourceType {
@@ -40,5 +38,3 @@ private:
 };
 
 typedef chen::Singleton<ResourceManager> ResourceMgr;
-
-} // namespace blog

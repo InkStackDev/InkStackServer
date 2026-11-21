@@ -9,9 +9,6 @@
 #include "blog/data/backup_record_info.h"
 #include "blog/data/export_record_info.h"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 static chen::ConfigVar<std::string>::ptr server_work_path = chen::Config::Lookup<std::string>("server.work_path");
 
@@ -102,6 +99,3 @@ int32_t CleanupServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -7,8 +7,6 @@
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 120;
@@ -347,5 +345,3 @@ void NotificationManager::cleanupExpiredBroadcasts()
     qb->bindUpdateParams(stmt);
     stmt->execute();
 }
-
-} // namespace blog

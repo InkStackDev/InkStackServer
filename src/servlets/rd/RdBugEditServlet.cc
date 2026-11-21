@@ -7,9 +7,6 @@
 #include "../../util/Util.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdBugEditServlet::RdBugEditServlet()
     : BlogLoginedServlet("RdBugEditServlet")
 {
@@ -72,7 +69,7 @@ int32_t RdBugEditServlet::handle(
 
         std::string severity_str = request->getParam("severity");
         if (!severity_str.empty()) {
-            int32_t s = rd::StringToSeverity(severity_str);
+            int32_t s = StringToSeverity(severity_str);
             if (s >= 0) {
                 info->setSeverity(s);
             }
@@ -80,7 +77,7 @@ int32_t RdBugEditServlet::handle(
 
         std::string priority_str = request->getParam("priority");
         if (!priority_str.empty()) {
-            int32_t p = rd::StringToPriority(priority_str);
+            int32_t p = StringToPriority(priority_str);
             if (p >= 0) {
                 info->setPriority(p);
             }
@@ -88,7 +85,7 @@ int32_t RdBugEditServlet::handle(
 
         std::string status_str = request->getParam("status");
         if (!status_str.empty()) {
-            int32_t s = rd::StringToBugStatus(status_str);
+            int32_t s = StringToBugStatus(status_str);
             if (s >= 0) {
                 info->setStatus(s);
             }
@@ -132,7 +129,7 @@ int32_t RdBugEditServlet::handle(
             break;
         }
         Json::Value data;
-        rd::BuildBugJson(data, info);
+        BuildBugJson(data, info);
         result->setData(data);
 
         notifyAssignee(assignee_id, info);
@@ -157,6 +154,3 @@ void RdBugEditServlet::notifyAssignee(int64_t assignee_id, data::BugInfo::ptr bu
 
     chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_RD_ASSIGN, std::move(data));
 }
-
-} // namespace servlet
-} // namespace blog

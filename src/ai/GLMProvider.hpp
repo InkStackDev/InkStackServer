@@ -9,9 +9,6 @@
 
 #include "OpenAIProvider.hpp"
 
-namespace blog {
-namespace ai {
-
 class GLMProvider : public OpenAIProvider {
 public:
     typedef std::shared_ptr<GLMProvider> ptr;
@@ -25,6 +22,3 @@ public:
 
     std::string endpointSuffix() const override;
 };
-
-} // namespace ai
-} // namespace blog

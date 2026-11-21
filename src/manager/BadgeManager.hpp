@@ -12,8 +12,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class BadgeManager {
 public:
     BadgeManager();
@@ -41,5 +39,3 @@ private:
 };
 
 typedef chen::Singleton<BadgeManager> BadgeMgr;
-
-} // namespace blog

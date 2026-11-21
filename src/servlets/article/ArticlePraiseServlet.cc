@@ -8,9 +8,6 @@
 
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 ArticlePraiseServlet::ArticlePraiseServlet()
     : BlogLoginedServlet("ArticlePraiseServlet")
 {
@@ -82,6 +79,3 @@ int32_t ArticlePraiseServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

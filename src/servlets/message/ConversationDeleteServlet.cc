@@ -3,9 +3,6 @@
 #include "../../manager/MessageManager.hpp"
 #include "MessageJson.hpp"
 
-namespace blog {
-namespace servlet {
-
 ConversationDeleteServlet::ConversationDeleteServlet()
     : BlogLoginedServlet("ConversationDeleteServlet")
 {
@@ -59,7 +56,4 @@ int32_t ConversationDeleteServlet::handle(
 
     response->setBody(result->toJsonString());
     return 0;
-}
-
-} // namespace servlet
 }

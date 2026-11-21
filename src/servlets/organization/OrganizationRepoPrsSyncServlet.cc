@@ -16,9 +16,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 /// 将单条同步状态映射为业务错误码（OK 不处理）
@@ -167,6 +164,3 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

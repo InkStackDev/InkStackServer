@@ -9,8 +9,6 @@
 
 #include "blog/data/notification_info.h"
 
-namespace blog {
-
 struct NotificationData {
     int64_t user_id = 0;
     std::string title;
@@ -62,5 +60,3 @@ private:
 };
 
 typedef chen::Singleton<NotificationManager> NotificationMgr;
-
-} // namespace blog

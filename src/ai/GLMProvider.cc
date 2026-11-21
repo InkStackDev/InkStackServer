@@ -2,9 +2,6 @@
 
 #include <chen/util/json_util.h>
 
-namespace blog {
-namespace ai {
-
 std::string GLMProvider::buildRequest(
     const std::string& model,
     int32_t maxTokens,
@@ -43,6 +40,3 @@ std::string GLMProvider::endpointSuffix() const
 {
     return "/api/paas/v4/chat/completions";
 }
-
-} // namespace ai
-} // namespace blog

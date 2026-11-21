@@ -7,9 +7,6 @@
 
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 UserFollowServlet::UserFollowServlet()
     : BlogLoginedServlet("UserFollowServlet")
 {
@@ -67,6 +64,3 @@ int32_t UserFollowServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -8,9 +8,6 @@
 
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 UserDeviceKickServlet::UserDeviceKickServlet()
     : BlogLoginedServlet("UserDeviceKickServlet")
 {
@@ -47,6 +44,3 @@ int32_t UserDeviceKickServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

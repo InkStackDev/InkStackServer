@@ -10,9 +10,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationUserSwitchRoleServlet::OrganizationUserSwitchRoleServlet()
@@ -38,14 +35,14 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             result->setErrno(errcode::NOT_LOGIN);
             break;
         }
-        auto current_user = blog::UserMgr::GetInstance()->get(uid);
+        auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
             result->setErrno(errcode::USER_NOT_FOUND);
             break;
         }
         int32_t system_role = current_user->getRole();
 
-        auto rel = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel) {
             result->setErrno(errcode::ORG_NOT_MEMBER);
             break;
@@ -58,7 +55,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         }
 
         // 更新用户角色
-        rel = blog::OrganizationUserRelMgr::GetInstance()->get(id);
+        rel = OrganizationUserRelMgr::GetInstance()->get(id);
         if (!rel || rel->getOrgId() != org_id || rel->getUserId() != user_id) {
             result->setErrno(errcode::ARTICLE_INVALID_ID);
             ;
@@ -114,7 +111,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_MEMBER, std::move(data));
         }
 
-        auto user = blog::UserMgr::GetInstance()->get(rel->getUserId());
+        auto user = UserMgr::GetInstance()->get(rel->getUserId());
         result->set("id", rel->getId());
         result->set("user_id", rel->getUserId());
         result->set("name", user->getName());
@@ -127,6 +124,3 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

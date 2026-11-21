@@ -6,9 +6,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationMyAppliesServlet::OrganizationMyAppliesServlet()
@@ -60,6 +57,3 @@ int32_t OrganizationMyAppliesServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

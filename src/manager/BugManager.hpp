@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class BugManager {
 public:
     enum Severity {
@@ -40,5 +38,3 @@ private:
 };
 
 typedef chen::Singleton<BugManager> BugMgr;
-
-} // namespace blog

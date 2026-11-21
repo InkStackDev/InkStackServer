@@ -3,9 +3,6 @@
 #include "../../manager/OrganizationManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 OrganizationAdminStatsServlet::OrganizationAdminStatsServlet()
     : BlogLoginedServlet("OrganizationAdminStatsServlet")
 {
@@ -39,6 +36,3 @@ int32_t OrganizationAdminStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

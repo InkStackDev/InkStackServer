@@ -12,8 +12,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class PasskeyManager {
 public:
     /**
@@ -51,5 +49,3 @@ public:
 };
 
 typedef chen::Singleton<PasskeyManager> PasskeyMgr;
-
-} // namespace blog

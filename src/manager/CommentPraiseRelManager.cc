@@ -6,8 +6,6 @@
 #include <chen/log/log.h>
 #include <chen/util/json_util.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -192,5 +190,3 @@ int64_t CommentPraiseRelManager::countByComment(int64_t comment_id)
     }
     return total;
 }
-
-} // namespace blog

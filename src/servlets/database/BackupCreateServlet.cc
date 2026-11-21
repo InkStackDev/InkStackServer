@@ -10,9 +10,6 @@
 
 #include <sys/stat.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_data_path =
@@ -108,6 +105,3 @@ int32_t BackupCreateServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

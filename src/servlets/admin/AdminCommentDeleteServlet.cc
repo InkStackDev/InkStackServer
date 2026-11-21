@@ -9,9 +9,6 @@
 
 #include <sstream>
 
-namespace blog {
-namespace servlet {
-
 AdminCommentDeleteServlet::AdminCommentDeleteServlet()
     : BlogLoginedServlet("AdminCommentDeleteServlet")
 {
@@ -87,6 +84,3 @@ int32_t AdminCommentDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

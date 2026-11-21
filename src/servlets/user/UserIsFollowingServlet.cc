@@ -3,9 +3,6 @@
 #include "../../manager/UserFollowRelManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserIsFollowingServlet::UserIsFollowingServlet()
     : BlogLoginedServlet("UserIsFollowingServlet")
 {
@@ -35,6 +32,3 @@ int32_t UserIsFollowingServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -8,9 +8,6 @@
 
 #include <set>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 UserAdminRecoverServlet::UserAdminRecoverServlet()
@@ -91,6 +88,3 @@ int32_t UserAdminRecoverServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

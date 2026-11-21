@@ -3,9 +3,6 @@
 #include "../../manager/CommentManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 AdminCommentStatsServlet::AdminCommentStatsServlet()
     : BlogLoginedServlet("AdminCommentStatsServlet")
 {
@@ -47,6 +44,3 @@ int32_t AdminCommentStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

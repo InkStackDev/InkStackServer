@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class OrganizationUserRelManager {
 public:
     enum Status {
@@ -48,5 +46,3 @@ private:
 };
 
 typedef chen::Singleton<OrganizationUserRelManager> OrganizationUserRelMgr;
-
-} // namespace blog

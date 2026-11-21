@@ -5,9 +5,6 @@
 #include "../../manager/TaskManager.hpp"
 #include "RdHelper.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdMyTicketsServlet::RdMyTicketsServlet()
     : BlogLoginedServlet("RdMyTicketsServlet")
 {
@@ -31,7 +28,7 @@ int32_t RdMyTicketsServlet::handle(
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
         uint64_t offset, size;
-        rd::ParsePagination(page, page_size, offset, size);
+        ParsePagination(page, page_size, offset, size);
 
         std::string search = request->getParam("search");
         std::string status_str = request->getParam("status");
@@ -50,7 +47,7 @@ int32_t RdMyTicketsServlet::handle(
                 if (info->getCreatorId() != uid && info->getAssigneeId() != uid) {
                     continue;
                 }
-                if (!status_str.empty() && rd::StringToRequirementStatus(status_str) != info->getStatus()) {
+                if (!status_str.empty() && StringToRequirementStatus(status_str) != info->getStatus()) {
                     continue;
                 }
                 if (!search.empty()) {
@@ -69,15 +66,15 @@ int32_t RdMyTicketsServlet::handle(
                 item["id"] = info->getId();
                 item["title"] = info->getTitle();
                 item["description"] = info->getDescription();
-                item["status"] = rd::RequirementStatusToString(info->getStatus());
-                item["priority"] = rd::PriorityToString(info->getPriority());
-                item["creator"] = rd::GetUserName(info->getCreatorId());
+                item["status"] = RequirementStatusToString(info->getStatus());
+                item["priority"] = PriorityToString(info->getPriority());
+                item["creator"] = GetUserName(info->getCreatorId());
                 item["creator_id"] = info->getCreatorId();
-                item["assignee"] = rd::GetUserName(info->getAssigneeId());
-                item["assignee_avatar"] = rd::GetUserAvatar(info->getAssigneeId());
+                item["assignee"] = GetUserName(info->getAssigneeId());
+                item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
                 item["assignee_id"] = info->getAssigneeId();
                 item["org_id"] = info->getOrgId();
-                item["org_name"] = rd::GetOrgName(info->getOrgId());
+                item["org_name"] = GetOrgName(info->getOrgId());
                 item["deadline"] = info->getDeadline();
                 item["created_at"] = info->getCreateTime();
                 item["updated_at"] = info->getUpdateTime();
@@ -94,7 +91,7 @@ int32_t RdMyTicketsServlet::handle(
                 if (info->getCreatorId() != uid && info->getAssigneeId() != uid) {
                     continue;
                 }
-                if (!status_str.empty() && rd::StringToBugStatus(status_str) != info->getStatus()) {
+                if (!status_str.empty() && StringToBugStatus(status_str) != info->getStatus()) {
                     continue;
                 }
                 if (!search.empty()) {
@@ -113,16 +110,16 @@ int32_t RdMyTicketsServlet::handle(
                 item["id"] = info->getId();
                 item["title"] = info->getTitle();
                 item["description"] = info->getDescription();
-                item["severity"] = rd::SeverityToString(info->getSeverity());
-                item["priority"] = rd::PriorityToString(info->getPriority());
-                item["status"] = rd::BugStatusToString(info->getStatus());
-                item["creator"] = rd::GetUserName(info->getCreatorId());
+                item["severity"] = SeverityToString(info->getSeverity());
+                item["priority"] = PriorityToString(info->getPriority());
+                item["status"] = BugStatusToString(info->getStatus());
+                item["creator"] = GetUserName(info->getCreatorId());
                 item["creator_id"] = info->getCreatorId();
-                item["assignee"] = rd::GetUserName(info->getAssigneeId());
-                item["assignee_avatar"] = rd::GetUserAvatar(info->getAssigneeId());
+                item["assignee"] = GetUserName(info->getAssigneeId());
+                item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
                 item["assignee_id"] = info->getAssigneeId();
                 item["org_id"] = info->getOrgId();
-                item["org_name"] = rd::GetOrgName(info->getOrgId());
+                item["org_name"] = GetOrgName(info->getOrgId());
                 item["module"] = info->getModule();
                 item["created_at"] = info->getCreateTime();
                 item["updated_at"] = info->getUpdateTime();
@@ -139,7 +136,7 @@ int32_t RdMyTicketsServlet::handle(
                 if (info->getCreatorId() != uid && info->getAssigneeId() != uid) {
                     continue;
                 }
-                if (!status_str.empty() && rd::StringToTaskStatus(status_str) != info->getStatus()) {
+                if (!status_str.empty() && StringToTaskStatus(status_str) != info->getStatus()) {
                     continue;
                 }
                 if (!search.empty()) {
@@ -157,15 +154,15 @@ int32_t RdMyTicketsServlet::handle(
                 item["id"] = info->getId();
                 item["title"] = info->getTitle();
                 item["description"] = info->getDescription();
-                item["status"] = rd::TaskStatusToString(info->getStatus());
-                item["priority"] = rd::PriorityToString(info->getPriority());
-                item["creator"] = rd::GetUserName(info->getCreatorId());
+                item["status"] = TaskStatusToString(info->getStatus());
+                item["priority"] = PriorityToString(info->getPriority());
+                item["creator"] = GetUserName(info->getCreatorId());
                 item["creator_id"] = info->getCreatorId();
-                item["assignee"] = rd::GetUserName(info->getAssigneeId());
-                item["assignee_avatar"] = rd::GetUserAvatar(info->getAssigneeId());
+                item["assignee"] = GetUserName(info->getAssigneeId());
+                item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
                 item["assignee_id"] = info->getAssigneeId();
                 item["org_id"] = info->getOrgId();
-                item["org_name"] = rd::GetOrgName(info->getOrgId());
+                item["org_name"] = GetOrgName(info->getOrgId());
                 item["deadline"] = info->getDeadline();
                 item["created_at"] = info->getCreateTime();
                 item["updated_at"] = info->getUpdateTime();
@@ -182,6 +179,3 @@ int32_t RdMyTicketsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

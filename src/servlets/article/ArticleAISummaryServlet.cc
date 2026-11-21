@@ -11,9 +11,6 @@
 #include <chen/http/http_connection.h>
 #include <chen/log/log.h>
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 // 系统默认 AI 配置 — 用户未配置时的兜底
@@ -118,7 +115,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
         TRACE(logger) << "AI final config: type=" << ai_type << ", url=" << ai_url << ", model=" << ai_model << ", max_tokens=" << ai_max_tokens;
     }
 
-    auto provider = ai::CreateProvider(ai_type);
+    auto provider = CreateProvider(ai_type);
     if (!provider) {
         ERROR(logger) << "failed to create AI provider for type: " << ai_type;
         session->sendEvent(R"({"type":"error","message":"unsupported AI provider"})");
@@ -140,14 +137,14 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
 
     const int MAX_RETRIES = 3;
     chen::http::HttpResult::ptr http_result;
-    ai::SSEStreamParser parser(session, provider);
+    SSEStreamParser parser(session, provider);
     std::string raw_body;
 
     for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt) {
         if (attempt > 1) {
             WARN(logger) << "retrying AI API call, attempt " << attempt << "/" << MAX_RETRIES;
             // 重置 parser，丢弃上一次的不完整数据
-            parser = ai::SSEStreamParser(session, provider);
+            parser = SSEStreamParser(session, provider);
             raw_body.clear();
         }
 
@@ -194,6 +191,3 @@ int32_t ArticleAISummaryServlet::onClose(chen::http::HttpRequest::ptr request, c
 {
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

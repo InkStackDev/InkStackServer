@@ -10,9 +10,6 @@
 #include <chen/http/sse_servlet.h>
 #include <chen/http/sse_session.h>
 
-namespace blog {
-namespace servlet {
-
 class ArticleAISummaryServlet : public chen::http::SSEServlet {
 public:
     typedef std::shared_ptr<ArticleAISummaryServlet> ptr;
@@ -21,6 +18,3 @@ public:
     virtual int32_t onConnect(chen::http::HttpRequest::ptr request, chen::http::SSESession::ptr session) override;
     virtual int32_t onClose(chen::http::HttpRequest::ptr request, chen::http::SSESession::ptr session) override;
 };
-
-} // namespace servlet
-} // namespace blog

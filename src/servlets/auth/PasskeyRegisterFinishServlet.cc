@@ -6,9 +6,6 @@
 #include "../../auth/webauthn/WebAuthn.hpp"
 #include "../../manager/PasskeyManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 PasskeyRegisterFinishServlet::PasskeyRegisterFinishServlet()
     : BlogLoginedServlet("PasskeyRegisterFinishServlet")
 {
@@ -33,9 +30,9 @@ int32_t PasskeyRegisterFinishServlet::handle(
             break;
         }
 
-        webauthn::RegistrationResult registration;
+        RegistrationResult registration;
         std::string passkey_name;
-        int32_t ret = webauthn::WebAuthnService::VerifyRegistration(uid, credential, registration, passkey_name);
+        int32_t ret = WebAuthnService::VerifyRegistration(uid, credential, registration, passkey_name);
         if (ret != 0) {
             result->setErrno(ret);
             break;
@@ -89,6 +86,3 @@ int32_t PasskeyRegisterFinishServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

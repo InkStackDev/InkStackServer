@@ -9,9 +9,6 @@
 
 #include "OpenAIProvider.hpp"
 
-namespace blog {
-namespace ai {
-
 /**
  * @brief DeepSeek API 适配器 — 与 OpenAI 完全兼容，无需覆盖任何方法
  * @details 继承 OpenAIProvider 的所有实现（endpoint /v1/chat/completions、
@@ -22,6 +19,3 @@ class DeepSeekProvider : public OpenAIProvider {
 public:
     typedef std::shared_ptr<DeepSeekProvider> ptr;
 };
-
-} // namespace ai
-} // namespace blog

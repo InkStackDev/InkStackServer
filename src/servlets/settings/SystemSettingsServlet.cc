@@ -5,8 +5,6 @@
 #include "../../manager/SystemSettingsManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog::servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 SystemSettingsServlet::SystemSettingsServlet()
@@ -214,5 +212,3 @@ int32_t SystemSettingsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace blog::servlet

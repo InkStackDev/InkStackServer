@@ -11,8 +11,6 @@
 #include "../util/Util.hpp"
 #include "CacheUtil.hpp"
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static const int kCacheTTL = 300;
@@ -312,5 +310,3 @@ void OrganizationRepoManager::SyncFromGitHub(int64_t repo_id, const std::string&
 
     INFO(logger) << "SyncFromGitHub: success for repo " << repo_id;
 }
-
-} // namespace blog

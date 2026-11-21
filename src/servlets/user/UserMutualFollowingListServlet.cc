@@ -7,9 +7,6 @@
 #include "../../manager/UserFollowRelManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserMutualFollowingListServlet::UserMutualFollowingListServlet()
     : BlogLoginedServlet("UserMutualFollowingListServlet")
 {
@@ -87,7 +84,4 @@ int32_t UserMutualFollowingListServlet::handle(
 
     response->setBody(result->toJsonString());
     return 0;
-}
-
-} // namespace servlet
 }

@@ -6,9 +6,6 @@
 #include "../../util/Util.hpp"
 #include "blog/data/user_info.h"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 UserQueryServlet::UserQueryServlet()
@@ -48,6 +45,3 @@ int32_t UserQueryServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

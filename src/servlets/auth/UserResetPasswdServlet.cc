@@ -8,9 +8,6 @@
 #include "../../manager/UserManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static chen::ConfigVar<std::string>::ptr g_redis_pool_name = chen::Config::Lookup("redis.name", std::string("blog"), "Redis connection pool name");
@@ -40,7 +37,7 @@ int32_t UserResetPasswdServlet::handle(
             result->setErrno(errcode::USER_INVALID_EMAIL);
             break;
         }
-        if (!blog::UserMgr::GetInstance()->getByEmail(email)) {
+        if (!UserMgr::GetInstance()->getByEmail(email)) {
             result->setErrno(errcode::USER_EMAIL_NOT_REGISTER);
             break;
         }
@@ -99,6 +96,3 @@ bool UserResetPasswdServlet::verificationEmailCode(const std::string& email, con
     chen::RedisUtil::Cmd(g_redis_pool_name->getValue(), "DEL email:verify:3:%s", email.c_str());
     return true;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -3,9 +3,6 @@
 #include <chen/metrics/metrics.h>
 #include <chen/util/json_util.h>
 
-namespace blog {
-namespace servlet {
-
 MetricsAdminServlet::MetricsAdminServlet()
     : BlogAdminServlet("MetricsAdminServlet")
 {
@@ -36,6 +33,3 @@ int32_t MetricsAdminServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

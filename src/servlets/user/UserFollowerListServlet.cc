@@ -3,9 +3,6 @@
 #include "../../manager/UserFollowRelManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserFollowerListServlet::UserFollowerListServlet()
     : BlogLoginedServlet("UserFollowerListServlet")
 {
@@ -61,6 +58,3 @@ int32_t UserFollowerListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

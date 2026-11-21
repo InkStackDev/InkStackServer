@@ -14,8 +14,6 @@
 #include <chen/ds/event_bus.h>
 #include <chen/email/email.h>
 
-namespace blog {
-
 // 事件类型
 enum EventType {
     EVENT_TYPE_USER_SEND_CODE = 1,        // 用户发送验证码
@@ -166,5 +164,3 @@ struct EventDatabaseBackupData {
     std::map<std::string, std::map<std::string, std::string>> mysql_dbs;
     std::string work_path;
 };
-
-} // namespace blog

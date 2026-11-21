@@ -5,9 +5,6 @@
 #include "../../util/Util.hpp"
 #include "blog/data/comment_info.h"
 
-namespace blog {
-namespace servlet {
-
 UserAdminDetailServlet::UserAdminDetailServlet()
     : BlogAdminServlet("UserAdminDetailServlet")
 {
@@ -56,6 +53,3 @@ int32_t UserAdminDetailServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

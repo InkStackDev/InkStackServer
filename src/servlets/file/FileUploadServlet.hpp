@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class FileUploadServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<FileUploadServlet> ptr;
@@ -18,6 +15,3 @@ protected:
         Result::ptr result) override;
     bool dumpToResource(const std::string& biz_type, int64_t biz_id, const std::string& path, const std::string& hash_key, int64_t uid, size_t size);
 };
-
-} // namespace servlet
-} // namespace blog

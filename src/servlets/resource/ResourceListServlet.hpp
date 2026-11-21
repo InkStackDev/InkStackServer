@@ -2,9 +2,6 @@
 
 #include "../../SessionData.hpp"
 
-namespace blog {
-namespace servlet {
-
 class ResourceListServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<ResourceListServlet> ptr;
@@ -18,6 +15,3 @@ protected:
         Result::ptr result) override;
     bool checkPermession(int32_t system_role);
 };
-
-} // namespace servlet
-} // namespace blog

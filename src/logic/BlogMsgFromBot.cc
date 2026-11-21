@@ -190,4 +190,3 @@ void BlogMsgFromBotInit(chen::rpc::RpcServer::ptr server)
     server->registerMethod(SS_CMD_GET_GITHUB_PR_INFO, HandlePRWebhook);
     server->registerMethod(SS_CMD_GET_GITHUB_PR_REVIEW_INFO, HandlePRReviewWebhook);
 }
-

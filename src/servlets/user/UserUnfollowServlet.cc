@@ -3,9 +3,6 @@
 #include "../../manager/UserFollowRelManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 UserUnfollowServlet::UserUnfollowServlet()
     : BlogLoginedServlet("UserUnfollowServlet")
 {
@@ -37,6 +34,3 @@ int32_t UserUnfollowServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

@@ -7,8 +7,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class AssignmentManager {
 public:
     typedef std::shared_ptr<AssignmentManager> ptr;
@@ -41,5 +39,3 @@ private:
 };
 
 typedef chen::Singleton<AssignmentManager> AssignmentMgr;
-
-} // namespace blog

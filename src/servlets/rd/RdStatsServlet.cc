@@ -6,9 +6,6 @@
 #include "../../manager/TaskManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdStatsServlet::RdStatsServlet()
     : BlogLoginedServlet("RdStatsServlet")
 {
@@ -107,6 +104,3 @@ int32_t RdStatsServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

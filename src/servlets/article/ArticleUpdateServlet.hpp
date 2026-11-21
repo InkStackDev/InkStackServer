@@ -3,9 +3,6 @@
 #include "../../SessionData.hpp"
 #include "blog/data/article_info.h"
 
-namespace blog {
-namespace servlet {
-
 class ArticleUpdateServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<ArticleUpdateServlet> ptr;
@@ -23,6 +20,3 @@ private:
     int32_t syncCategoryRels(chen::http::HttpRequest::ptr request, int64_t id, chen::IDB::ptr db, time_t now, Result::ptr result);
     int32_t syncLabelRels(chen::http::HttpRequest::ptr request, int64_t id, chen::IDB::ptr db, time_t now, Result::ptr result);
 };
-
-} // namespace servlet
-} // namespace blog

@@ -12,9 +12,6 @@
 #include <memory>
 #include <string>
 
-namespace blog {
-namespace ai {
-
 /**
  * @brief AI 厂商抽象接口 — 封装不同厂商的请求构建与响应解析差异
  */
@@ -94,6 +91,3 @@ public:
  * @return 对应厂商的 AIProvider 实例指针；默认返回 OpenAIProvider
  */
 AIProvider::ptr CreateProvider(const std::string& type);
-
-} // namespace ai
-} // namespace blog

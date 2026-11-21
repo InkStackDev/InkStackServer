@@ -4,8 +4,6 @@
 
 #include <chen/log/log.h>
 
-namespace blog {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 data::BackupRecordInfo::ptr BackupRecordManager::ParseRow(chen::ISQLData::ptr rt)
@@ -98,5 +96,3 @@ bool BackupRecordManager::remove(int64_t id)
     }
     return true;
 }
-
-} // namespace blog

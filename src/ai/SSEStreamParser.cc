@@ -2,9 +2,6 @@
 
 #include "../util/Util.hpp"
 
-namespace blog {
-namespace ai {
-
 SSEStreamParser::SSEStreamParser(chen::http::SSESession::ptr session, AIProvider::ptr provider)
     : session_(session)
     , provider_(provider)
@@ -64,6 +61,3 @@ void SSEStreamParser::processEvent()
         SendSSEJson(session_, "error", "message", errMsg);
     }
 }
-
-} // namespace ai
-} // namespace blog

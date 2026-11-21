@@ -2,9 +2,6 @@
 
 #include "../../manager/PasskeyManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 PasskeyDeleteServlet::PasskeyDeleteServlet()
     : BlogLoginedServlet("PasskeyDeleteServlet")
 {
@@ -45,6 +42,3 @@ int32_t PasskeyDeleteServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

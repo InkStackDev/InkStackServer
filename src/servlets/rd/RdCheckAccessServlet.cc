@@ -4,9 +4,6 @@
 #include "../../manager/OrganizationUserRelManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 RdCheckAccessServlet::RdCheckAccessServlet()
     : BlogLoginedServlet("RdCheckAccessServlet")
 {
@@ -67,6 +64,3 @@ int32_t RdCheckAccessServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

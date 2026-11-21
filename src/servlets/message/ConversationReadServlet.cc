@@ -3,9 +3,6 @@
 #include "../../manager/MessageManager.hpp"
 #include "MessageJson.hpp"
 
-namespace blog {
-namespace servlet {
-
 ConversationReadServlet::ConversationReadServlet()
     : BlogLoginedServlet("ConversationReadServlet")
 {
@@ -60,6 +57,3 @@ int32_t ConversationReadServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

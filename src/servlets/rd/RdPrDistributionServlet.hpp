@@ -11,9 +11,6 @@
 
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 class RdPrDistributionServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<RdPrDistributionServlet> ptr;
@@ -26,6 +23,3 @@ protected:
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
 };
-
-} // namespace servlet
-} // namespace blog

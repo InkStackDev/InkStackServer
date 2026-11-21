@@ -6,9 +6,6 @@
 #include "../../manager/OrganizationUserRelManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationDetailServlet::OrganizationDetailServlet()
@@ -32,7 +29,7 @@ int32_t OrganizationDetailServlet::handle(
         }
 
         int64_t uid = getUserId(request);
-        auto rel = blog::OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
+        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
         if (rel) {
             result->set("user_in_org", rel->getStatus());
             result->set("user_role", rel->getRole());
@@ -47,6 +44,3 @@ int32_t OrganizationDetailServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

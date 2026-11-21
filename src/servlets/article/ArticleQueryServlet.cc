@@ -8,9 +8,6 @@
 #include "../../manager/CommentManager.hpp"
 #include "../../manager/UserManager.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleQueryServlet::ArticleQueryServlet()
@@ -71,7 +68,4 @@ int32_t ArticleQueryServlet::handle(
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
-}
-
-} // namespace servlet
 }

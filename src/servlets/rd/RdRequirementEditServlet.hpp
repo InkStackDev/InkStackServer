@@ -4,9 +4,6 @@
 #include "blog/data/requirement_info.h"
 #include <json/json.h>
 
-namespace blog {
-namespace servlet {
-
 class RdRequirementEditServlet : public BlogLoginedServlet {
 public:
     typedef std::shared_ptr<RdRequirementEditServlet> ptr;
@@ -22,6 +19,3 @@ protected:
 private:
     void notifyAssignee(int64_t assignee_id, data::RequirementInfo::ptr requirement);
 };
-
-} // namespace servlet
-} // namespace blog

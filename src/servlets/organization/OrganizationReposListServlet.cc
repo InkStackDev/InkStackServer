@@ -7,9 +7,6 @@
 #include "../../manager/OrganizationUserRelManager.hpp"
 #include "../../util/Util.hpp"
 
-namespace blog {
-namespace servlet {
-
 static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationReposListServlet::OrganizationReposListServlet()
@@ -85,6 +82,3 @@ int32_t OrganizationReposListServlet::handle(
     response->setBody(result->toJsonString());
     return 0;
 }
-
-} // namespace servlet
-} // namespace blog

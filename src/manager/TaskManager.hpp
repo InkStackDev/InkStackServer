@@ -5,8 +5,6 @@
 #include <chen/db/query_builder.h>
 #include <chen/util/singleton.h>
 
-namespace blog {
-
 class TaskManager {
 public:
     enum Priority {
@@ -33,5 +31,3 @@ private:
 };
 
 typedef chen::Singleton<TaskManager> TaskMgr;
-
-} // namespace blog

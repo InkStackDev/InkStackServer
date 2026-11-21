@@ -2,9 +2,6 @@
 
 #include <chen/util/json_util.h>
 
-namespace blog {
-namespace ai {
-
 std::string ClaudeProvider::buildRequest(
     const std::string& model,
     int32_t maxTokens,
@@ -78,6 +75,3 @@ void ClaudeProvider::authHeaders(const std::string& apiKey, std::map<std::string
     outHeaders["x-api-key"] = apiKey;
     outHeaders["anthropic-version"] = "2023-06-01";
 }
-
-} // namespace ai
-} // namespace blog
