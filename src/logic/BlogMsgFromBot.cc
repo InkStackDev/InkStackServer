@@ -1,7 +1,7 @@
-#include "BlogMsgFromBot.h"
+#include "BlogMsgFromBot.hpp"
 
-#include "../manager/organization_repo_pr_manager.h"
-#include "../util.h"
+#include "../manager/OrganizationRepoPrManager.hpp"
+#include "../util/Util.hpp"
 
 #include <chen/log/log.h>
 
@@ -10,7 +10,7 @@ static chen::Logger::ptr logger = LOG_ROOT();
 static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
 {
     // 1. 查找本地仓库
-    auto repo = OrganizationRepoPrManager::findRepoByOwnerAndName(info.RepoOwner, info.RepoName);
+    auto repo = OrganizationRepoPrManager::FindRepoByOwnerAndName(info.RepoOwner, info.RepoName);
     if (!repo) {
         WARN(logger) << "HandlePRWebhook: repo not found for " << info.RepoOwner << "/" << info.RepoName << ", PR #" << info.Number << " \""
                      << info.Title << "\"";
@@ -93,7 +93,7 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
 static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
 {
     // 1. 查找本地仓库
-    auto repo = OrganizationRepoPrManager::findRepoByOwnerAndName(info.RepoOwner, info.RepoName);
+    auto repo = OrganizationRepoPrManager::FindRepoByOwnerAndName(info.RepoOwner, info.RepoName);
     if (!repo) {
         WARN(logger) << "HandlePRReviewWebhook: repo not found for " << info.RepoOwner << "/" << info.RepoName << ", PR #" << info.PRNumber;
         return GITHUB_REPO_NOT_FOUND;

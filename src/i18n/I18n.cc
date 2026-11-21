@@ -12,7 +12,7 @@
 #include <chen/log/log.h>
 #include <chen/util/string_util.h>
 
-#include "../manager/system_settings_manager.h"
+#include "../manager/SystemSettingsManager.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

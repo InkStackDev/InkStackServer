@@ -27,7 +27,7 @@ BraceWrapping:
 
 SpaceBeforeParens: ControlStatementsExceptControlMacros
 
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: false
 
 AllowAllParametersOfDeclarationOnNextLine: false
 
@@ -51,7 +51,7 @@ SpaceBeforeAssignmentOperators: true
 PointerAlignment: Left
 
 # 模板声明总是换行
-AlwaysBreakTemplateDeclarations: true
+BreakTemplateDeclarations: Yes
 
 # 使用4个空格缩进
 IndentWidth: 4

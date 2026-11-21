@@ -1,5 +1,5 @@
 /**
- * @file auth_service.h
+ * @file AuthService.hpp
  * @brief 认证服务 — 统一处理会话签发、解析与撤销
  * @author Christins
  * @date 2026-10-23
@@ -10,11 +10,11 @@
 #include <sstream>
 #include <string>
 
+#include <chen/config/config.h>
 #include <chen/http/http.h>
 #include <chen/http/http_session.h>
-#include <chen/config/config.h>
 
-#include "auth_context.h"
+#include "AuthContext.hpp"
 
 struct AuthConf {
     bool cookie_secure = false;
@@ -24,7 +24,8 @@ struct AuthConf {
 
     bool operator==(const AuthConf& oth) const
     {
-        return cookie_secure == oth.cookie_secure && cookie_same_site == oth.cookie_same_site && session_absolute_ttl == oth.session_absolute_ttl;
+        return cookie_secure == oth.cookie_secure && cookie_same_site == oth.cookie_same_site
+            && session_absolute_ttl == oth.session_absolute_ttl;
     }
 };
 
@@ -93,11 +94,10 @@ public:
      * @brief 登录成功后签发会话
      * @return 0 成功，否则返回业务错误码
      */
-    static int32_t IssueSession(
-        chen::http::HttpRequest::ptr request,
+    static int32_t IssueSession(chen::http::HttpRequest::ptr request,
         chen::http::HttpResponse::ptr response,
         chen::http::HttpSession::ptr session,
-        data::UserInfo::ptr user,
+        db::UserInfo::ptr user,
         const IssueOptions& options = IssueOptions());
 
     /**

@@ -16,9 +16,9 @@
 
 #include "./SessionData.hpp"
 #include "./i18n/I18n.hpp"
-#include "./include/managers.h"
-#include "./logic/BlogMsgFromBot.h"
-#include "./search/search_sync.h"
+#include "./include/Managers.hpp"
+#include "./logic/BlogMsgFromBot.hpp"
+#include "./search/SearchSync.hpp"
 
 static chen::ConfigVar<std::string>::ptr g_work_path = chen::Config::Lookup<std::string>("server.work_path", std::string(""), "server work path");
 
@@ -220,15 +220,15 @@ void BlogModule::registerServlets()
         dp->addServlet("/api/v1/user/follower/list", XX(UserFollowerListServlet));
         dp->addServlet("/api/v1/user/mutual_following/list", XX(UserMutualFollowingListServlet));
         // 双因素认证相关
-        dp->addServlet("/api/v1/user/2fa/enable", XX(User2faEnableServlet));
-        dp->addServlet("/api/v1/user/2fa/confirm", XX(User2faConfirmServlet));
-        dp->addServlet("/api/v1/user/2fa/disable", XX(User2faDisableServlet));
-        dp->addServlet("/api/v1/user/2fa/verify", XX(User2faVerifyServlet));
-        dp->addServlet("/api/v1/user/2fa/reset", XX(User2faResetServlet));
-        dp->addServlet("/api/v1/user/2fa/recovery", XX(User2faRecoveryServlet));
+        dp->addServlet("/api/v1/user/2fa/enable", XX(User2FAEnableServlet));
+        dp->addServlet("/api/v1/user/2fa/confirm", XX(User2FAConfirmServlet));
+        dp->addServlet("/api/v1/user/2fa/disable", XX(User2FADisableServlet));
+        dp->addServlet("/api/v1/user/2fa/verify", XX(User2FAVerifyServlet));
+        dp->addServlet("/api/v1/user/2fa/reset", XX(User2FAResetServlet));
+        dp->addServlet("/api/v1/user/2fa/recovery", XX(User2FARecoveryServlet));
         // 第三方登录相关
-        dp->addServlet("/api/v1/user/oauth/github", XX(UserOauthGithubServlet));
-        dp->addServlet("/api/v1/user/oauth/github/callback", XX(UserOauthGithubCallbackServlet));
+        dp->addServlet("/api/v1/user/oauth/github", XX(UserOAuthGithubServlet));
+        dp->addServlet("/api/v1/user/oauth/github/callback", XX(UserOAuthGithubCallbackServlet));
         // Passkey 登录 / 管理相关
         dp->addServlet("/api/v1/auth/passkey/login/begin", XX(PasskeyLoginBeginServlet));
         dp->addServlet("/api/v1/auth/passkey/login/finish", XX(PasskeyLoginFinishServlet));

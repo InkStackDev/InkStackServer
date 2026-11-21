@@ -1,5 +1,5 @@
 /**
- * @file i18n.h
+ * @file I18n.hpp
  * @brief 国际化运行时：语言解析与 gettext 查表
  * @author Christins
  * @date 2026-10-18

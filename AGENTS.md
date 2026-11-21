@@ -131,7 +131,7 @@ result->setErrno(errcode::ACCESS_DENIED, "custom msg");  // custom message
 
 ### Route registration:
 ```cpp
-// In blog_module.cc → registerServlets()
+// In BlogModule.cc → registerServlets()
 dp->addServlet("/api/v1/xxx/yyy", XX(XxxServlet));
 ```
 
@@ -212,22 +212,23 @@ When adding a new feature:
 1. **XML table** (`dbproxy/xml/`) — define table schema, then `make orm`
 2. **Manager** (`src/manager/`) — singleton + LRU cache + CRUD methods + null checks
 3. **Servlet** (`src/servlets/<domain>/`) — follow handler pattern above
-4. **Includes** — update `src/include/tables.h`, `managers.h`, `servlets.h`
-5. **Registration** — `blog_module.cc`: table create, migrate, servlet route
+4. **Includes** — update `src/include/Managers.hpp`, `src/include/Servlets.hpp`
+5. **Registration** — `BlogModule.cc`: table create, migrate, servlet route
 6. **Error codes** — `src/ErrorCodes.hpp` + `errors.json`
 
 ## 6. Code Style Quick Reference
 
-| Element | Convention |
-|---------|-----------|
-| Classes | `PascalCase` |
-| Member variables | `m_snake_case` |
-| Local variables | `snake_case` |
-| Member functions | `camelCase` |
-| Static functions | `PascalCase` |
-| Macros | `UPPER_SNAKE_CASE` |
-| Brace (class/namespace) | same line |
-| Brace (function) | new line |
-| Brace (if/for/while) | same line, never omit |
-| Null pointer | `nullptr` (never `NULL` or `0`) |
-| Indent | 4 spaces (no tabs) |
+| Element                             | Convention                         |
+|-------------------------------------|------------------------------------|
+| Files (headers / sources)           | `PascalCase.hpp` / `PascalCase.cc` |
+| Classes                             | `PascalCase`                       |
+| Member variables                    | `m_snake_case`                     |
+| Local variables                     | `snake_case`                       |
+| Member functions                    | `camelCase`                        |
+| Static functions / global functions | `PascalCase`                       |
+| Macros                              | `UPPER_SNAKE_CASE`                 |
+| Brace (class/namespace)             | same line                          |
+| Brace (function)                    | new line                           |
+| Brace (if/for/while)                | same line, never omit              |
+| Null pointer                        | `nullptr` (never `NULL` or `0`)    |
+| Indent                              | 4 spaces (no tabs)                 |

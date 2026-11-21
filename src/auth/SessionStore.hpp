@@ -1,5 +1,5 @@
 /**
- * @file session_store.h
+ * @file SessionStore.hpp
  * @brief 服务端会话存储 — Redis 持久化，SESSIONID Cookie 只保存随机 ID
  * @author Christins
  * @date 2026-10-23

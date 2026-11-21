@@ -1,5 +1,5 @@
 /**
- * @file permission.h
+ * @file Permission.hpp
  * @brief RD 平台权限检查辅助函数
  * @author Christins
  * @date 2026-06-03
@@ -9,8 +9,8 @@
 #pragma once
 
 #include "ErrorCodes.hpp"
-#include "manager/organization_manager.h"
-#include "manager/user_manager.h"
+#include "manager/OrganizationManager.hpp"
+#include "manager/UserManager.hpp"
 
 using OrgRole = OrganizationManager::Role;
 

@@ -1,5 +1,5 @@
 /**
- * @file service_metrics.h
+ * @file MetricsService.hpp
  * @brief 服务运行指标注册、路由埋点与 QPS 采样
  * @author Christins
  * @date 2026-11-08

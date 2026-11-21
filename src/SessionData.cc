@@ -6,7 +6,7 @@
 #include "i18n/I18n.hpp"
 #include "manager/ErrorCodeManager.hpp"
 #include "metrics/MetricsService.hpp"
-#include "util.h"
+#include "util/Util.hpp"
 
 const std::string CookieKey::SESSION_KEY = "SESSIONID";
 const std::string SessionDataKey::USER_ID = "user_id";

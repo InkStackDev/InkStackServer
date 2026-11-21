@@ -4,7 +4,7 @@
 #include "./auth/SessionStore.hpp"
 #include "./i18n/I18n.hpp"
 #include "./metrics/MetricsService.hpp"
-#include "./util.h"
+#include "util/Util.hpp"
 
 BlogServlet::BlogServlet(const std::string& name)
     : Servlet(name)

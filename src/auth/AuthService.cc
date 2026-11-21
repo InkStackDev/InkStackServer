@@ -9,8 +9,8 @@
 #include <json/json.h>
 
 #include "../SessionData.hpp"
-#include "../manager/ws_connection_manager.h"
-#include "../util.h"
+#include "../manager/WSConnectionManager.hpp"
+#include "../util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

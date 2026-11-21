@@ -1,0 +1,37 @@
+#pragma once
+
+#include "../manager/ArticleCategoryRelManager.hpp"        // IWYU pragma: keep
+#include "../manager/ArticleLabelRelManager.hpp"           // IWYU pragma: keep
+#include "../manager/ArticleManager.hpp"                   // IWYU pragma: keep
+#include "../manager/ArticlePraiseRelManager.hpp"          // IWYU pragma: keep
+#include "../manager/AssignmentManager.hpp"                // IWYU pragma: keep
+#include "../manager/AssignmentOrganizationRelManager.hpp" // IWYU pragma: keep
+#include "../manager/AssignmentUserRelManager.hpp"         // IWYU pragma: keep
+#include "../manager/BackupRecordManager.hpp"              // IWYU pragma: keep
+#include "../manager/BadgeManager.hpp"                     // IWYU pragma: keep
+#include "../manager/BugManager.hpp"                       // IWYU pragma: keep
+#include "../manager/CategoryManager.hpp"                  // IWYU pragma: keep
+#include "../manager/CommentManager.hpp"                   // IWYU pragma: keep
+#include "../manager/CommentPraiseRelManager.hpp"          // IWYU pragma: keep
+#include "../manager/ErrorCodeManager.hpp"                 // IWYU pragma: keep
+#include "../manager/ExportRecordManager.hpp"              // IWYU pragma: keep
+#include "../manager/FaqManager.hpp"                       // IWYU pragma: keep
+#include "../manager/FeedbackManager.hpp"                  // IWYU pragma: keep
+#include "../manager/LabelManager.hpp"                     // IWYU pragma: keep
+#include "../manager/MessageManager.hpp"                   // IWYU pragma: keep
+#include "../manager/NotificationManager.hpp"              // IWYU pragma: keep
+#include "../manager/OrganizationApplyManager.hpp"         // IWYU pragma: keep
+#include "../manager/OrganizationManager.hpp"              // IWYU pragma: keep
+#include "../manager/OrganizationRepoManager.hpp"          // IWYU pragma: keep
+#include "../manager/OrganizationRepoPrManager.hpp"        // IWYU pragma: keep
+#include "../manager/OrganizationUserRelManager.hpp"       // IWYU pragma: keep
+#include "../manager/PasskeyManager.hpp"                   // IWYU pragma: keep
+#include "../manager/RequirementManager.hpp"               // IWYU pragma: keep
+#include "../manager/ResourceManager.hpp"                  // IWYU pragma: keep
+#include "../manager/SystemSettingsManager.hpp"            // IWYU pragma: keep
+#include "../manager/TaskManager.hpp"                      // IWYU pragma: keep
+#include "../manager/UserAIConfigManager.hpp"              // IWYU pragma: keep
+#include "../manager/UserFollowRelManager.hpp"             // IWYU pragma: keep
+#include "../manager/UserManager.hpp"                      // IWYU pragma: keep
+#include "../manager/UserOAuthManager.hpp"                 // IWYU pragma: keep
+#include "../manager/WSConnectionManager.hpp"              // IWYU pragma: keep
