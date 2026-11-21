@@ -14,13 +14,13 @@ ErrorCodeManager::ErrorCodeManager()
 {
 }
 
-bool ErrorCodeManager::load(const std::string& configPath)
+bool ErrorCodeManager::load(const std::string& config_path)
 {
-    m_configPath = configPath;
+    m_configPath = config_path;
 
-    std::ifstream ifs(configPath);
+    std::ifstream ifs(config_path);
     if (!ifs.is_open()) {
-        ERROR(logger) << "Failed to open error codes config: " << configPath;
+        ERROR(logger) << "Failed to open error codes config: " << config_path;
         return false;
     }
 
@@ -58,7 +58,8 @@ bool ErrorCodeManager::load(const std::string& configPath)
         m_enMessages[code] = en;
     }
 
-    INFO(logger) << "ErrorCodeManager loaded " << m_zhMessages.size() << " error codes from " << configPath << " (version: " << m_version << ")";
+    INFO(logger) << "ErrorCodeManager loaded " << m_zhMessages.size() << " error codes from " << config_path
+                 << " (version: " << m_version << ")";
     return true;
 }
 
@@ -71,18 +72,18 @@ bool ErrorCodeManager::reload()
     return load(m_configPath);
 }
 
-std::string ErrorCodeManager::getMessage(int32_t errCode) const
+std::string ErrorCodeManager::getMessage(int32_t err_code) const
 {
     // 默认使用中文
-    return getMessage(errCode, "zh");
+    return getMessage(err_code, "zh");
 }
 
-std::string ErrorCodeManager::getMessage(int32_t errCode, const std::string& lang) const
+std::string ErrorCodeManager::getMessage(int32_t err_code, const std::string& lang) const
 {
     const std::string normalized = I18n::NormalizeLanguage(lang);
     const bool english = normalized == "en";
 
-    auto keyIt = m_keys.find(errCode);
+    auto keyIt = m_keys.find(err_code);
     if (keyIt != m_keys.end() && !keyIt->second.empty()) {
         const std::string translated = I18n::Translate(keyIt->second, normalized.empty() ? I18n::DefaultLanguage() : normalized);
         if (!translated.empty() && translated != keyIt->second) {
@@ -91,7 +92,7 @@ std::string ErrorCodeManager::getMessage(int32_t errCode, const std::string& lan
     }
 
     const auto& messages = english ? m_enMessages : m_zhMessages;
-    auto it = messages.find(errCode);
+    auto it = messages.find(err_code);
     if (it != messages.end()) {
         return it->second;
     }

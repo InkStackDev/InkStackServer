@@ -22,9 +22,18 @@ public:
 
     data::TaskInfo::ptr get(int64_t id);
 
-    uint64_t listByPages(std::vector<data::TaskInfo::ptr>& infos, uint64_t offset, uint64_t size, int32_t status, bool isValid);
+    uint64_t listByPages(std::vector<data::TaskInfo::ptr>& infos,
+        uint64_t offset,
+        uint64_t size,
+        int32_t status,
+        bool is_valid);
 
-    uint64_t listByOrg(std::vector<data::TaskInfo::ptr>& infos, int64_t orgId, uint64_t offset, uint64_t size, int32_t status, bool isValid);
+    uint64_t listByOrg(std::vector<data::TaskInfo::ptr>& infos,
+        int64_t org_id,
+        uint64_t offset,
+        uint64_t size,
+        int32_t status,
+        bool is_valid);
 
 private:
     static data::TaskInfo::ptr ParseRow(chen::ISQLData::ptr rt);

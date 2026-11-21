@@ -19,7 +19,7 @@ public:
         uint64_t offset,
         uint64_t size,
         int32_t status,
-        bool isValid);
+        bool is_valid);
 
 private:
     static data::AssignmentOrganizationRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);

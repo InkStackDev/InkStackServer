@@ -26,11 +26,14 @@ public:
         uint64_t offset,
         uint64_t size,
         int32_t status,
-        bool isValid);
+        bool is_valid);
 
-    int64_t getOrgByUserId(std::vector<data::OrganizationUserRelInfo::ptr>& results, int64_t u_id, int32_t status, bool isValid);
+    int64_t getOrgByUserId(std::vector<data::OrganizationUserRelInfo::ptr>& results,
+        int64_t u_id,
+        int32_t status,
+        bool is_valid);
 
-    int64_t getMemberCount(int64_t o_id, int32_t status, bool isValid);
+    int64_t getMemberCount(int64_t o_id, int32_t status, bool is_valid);
 
     struct Stats {
         int64_t total_members = 0;

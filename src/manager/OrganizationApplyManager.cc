@@ -26,7 +26,7 @@ int64_t OrganizationApplyManager::listByPages(
     uint64_t offset,
     uint64_t limit,
     int32_t status,
-    bool isValid)
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -35,7 +35,7 @@ int64_t OrganizationApplyManager::listByPages(
     }
     auto qb = data::OrganizationApplyInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("created_at", "DESC");
 
     int64_t total = 0;
@@ -50,7 +50,7 @@ int64_t OrganizationApplyManager::listByUserId(
     int64_t user_id,
     uint64_t offset,
     uint64_t limit,
-    bool isValid)
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -59,7 +59,7 @@ int64_t OrganizationApplyManager::listByUserId(
     }
     auto qb = data::OrganizationApplyInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("created_at", "DESC");
 
     int64_t total = 0;

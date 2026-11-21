@@ -142,12 +142,12 @@ std::string I18n::NormalizeLanguage(std::string_view language)
     return "";
 }
 
-bool I18n::Init(const std::string& localeDir)
+bool I18n::Init(const std::string& locale_dir)
 {
     std::error_code ec;
-    const bool exists = std::filesystem::is_directory(localeDir, ec);
+    const bool exists = std::filesystem::is_directory(locale_dir, ec);
     if (!exists) {
-        WARN(logger) << "i18n locale directory not found: " << localeDir;
+        WARN(logger) << "i18n locale directory not found: " << locale_dir;
     }
 
     const char* currentLocale = setlocale(LC_MESSAGES, nullptr);
@@ -160,8 +160,8 @@ bool I18n::Init(const std::string& localeDir)
     bool ok = exists;
     for (const auto& language : SupportedLanguages()) {
         const std::string domain = DomainFor(language);
-        if (!bindtextdomain(domain.c_str(), localeDir.c_str())) {
-            WARN(logger) << "bindtextdomain failed: " << domain << " -> " << localeDir;
+        if (!bindtextdomain(domain.c_str(), locale_dir.c_str())) {
+            WARN(logger) << "bindtextdomain failed: " << domain << " -> " << locale_dir;
             ok = false;
         }
         if (!bind_textdomain_codeset(domain.c_str(), "UTF-8")) {
@@ -170,7 +170,7 @@ bool I18n::Init(const std::string& localeDir)
         }
     }
 
-    INFO(logger) << "i18n initialized, locale_dir=" << localeDir;
+    INFO(logger) << "i18n initialized, locale_dir=" << locale_dir;
     return ok;
 }
 

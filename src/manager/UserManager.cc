@@ -88,7 +88,7 @@ void UserManager::update(blog::data::UserInfo::ptr info)
     SetUserCache(info);
 }
 
-void UserManager::getAllIds(std::vector<int64_t>& ids, bool isValid)
+void UserManager::getAllIds(std::vector<int64_t>& ids, bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -96,7 +96,7 @@ void UserManager::getAllIds(std::vector<int64_t>& ids, bool isValid)
         return;
     }
     auto qb = data::UserInfoDao::newQuery();
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->select("id");
     qb->queryColumn<int64_t>(ids, db, "id");
 }
@@ -108,7 +108,7 @@ uint64_t UserManager::listByPages(
     int32_t role,
     int32_t state,
     int32_t days,
-    bool isValid)
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -125,7 +125,7 @@ uint64_t UserManager::listByPages(
     qb->whereIf(role != -1, "role", "=", (int64_t)role);
     qb->whereIf(state != -1, "state", "=", (int64_t)state);
     qb->whereIf(days > 0, "create_time", ">=", start_time);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;

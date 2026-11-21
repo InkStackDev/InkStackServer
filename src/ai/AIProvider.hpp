@@ -23,16 +23,16 @@ public:
     /**
      * @brief 构建 API 请求体 JSON
      * @param model 模型名
-     * @param maxTokens 最大输出 token 数
-     * @param systemPrompt 系统提示词
+     * @param max_tokens 最大输出 token 数
+     * @param system_prompt 系统提示词
      * @param prompt 用户提示词
      * @param stream true=流式格式, false=非流式格式
      * @return JSON 字符串
      */
     virtual std::string buildRequest(
         const std::string& model,
-        int32_t maxTokens,
-        const std::string& systemPrompt,
+        int32_t max_tokens,
+        const std::string& system_prompt,
         const std::string& prompt,
         bool stream = true) = 0;
 
@@ -72,17 +72,17 @@ public:
 
     /**
      * @brief 检查非 JSON 的流结束标记（如 OpenAI 的 [DONE]）
-     * @param rawData 原始文本行
+     * @param raw_data 原始文本行
      * @return true=命中结束标记
      */
-    virtual bool isDoneMarker(const std::string& rawData) { return false; }
+    virtual bool isDoneMarker(const std::string& raw_data) { return false; }
 
     /**
      * @brief 填充厂商特定的认证请求头
-     * @param apiKey API 密钥
-     * @param outHeaders [out] 要填充的请求头 map
+     * @param api_key API 密钥
+     * @param out_headers [out] 要填充的请求头 map
      */
-    virtual void authHeaders(const std::string& apiKey, std::map<std::string, std::string>& outHeaders) = 0;
+    virtual void authHeaders(const std::string& api_key, std::map<std::string, std::string>& out_headers) = 0;
 };
 
 /**

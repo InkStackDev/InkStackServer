@@ -30,7 +30,7 @@ public:
         uint64_t offset,
         uint64_t limit,
         int32_t status,
-        bool isValid);
+        bool is_valid);
 
     struct OrganizationStats {
         int64_t total = 0;

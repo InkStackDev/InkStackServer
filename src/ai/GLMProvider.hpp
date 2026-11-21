@@ -15,8 +15,8 @@ public:
 
     std::string buildRequest(
         const std::string& model,
-        int32_t maxTokens,
-        const std::string& systemPrompt,
+        int32_t max_tokens,
+        const std::string& system_prompt,
         const std::string& prompt,
         bool stream = true) override;
 

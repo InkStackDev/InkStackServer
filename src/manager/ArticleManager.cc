@@ -870,9 +870,9 @@ void ArticleManager::getCalendarDays(int64_t user_id, int32_t year, int32_t mont
     }
 }
 
-void ArticleManager::clearCalendarCache(int64_t user_id, int64_t publishTime)
+void ArticleManager::clearCalendarCache(int64_t user_id, int64_t publish_time)
 {
-    time_t pt = static_cast<time_t>(publishTime);
+    time_t pt = static_cast<time_t>(publish_time);
     struct tm tm_pt = {};
     localtime_r(&pt, &tm_pt);
     int32_t year = tm_pt.tm_year + 1900;

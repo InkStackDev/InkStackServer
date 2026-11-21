@@ -23,7 +23,7 @@ public:
 
     void update(db::UserInfo::ptr info);
 
-    void getAllIds(std::vector<int64_t>& ids, bool isValid);
+    void getAllIds(std::vector<int64_t>& ids, bool is_valid);
 
     /**
      * @brief 确保存在超级管理员（启动时无管理员则按配置自动创建）
@@ -37,7 +37,7 @@ public:
         int32_t role,
         int32_t state,
         int32_t days,
-        bool isValid);
+        bool is_valid);
 
     db::UserInfo::ptr get(int64_t id);
 

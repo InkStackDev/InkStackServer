@@ -224,7 +224,7 @@ When adding a new feature:
 | Namespaces                          | none (except `chen` specializations / anonymous namespaces) |
 | Classes                             | `PascalCase`                                                |
 | Member variables                    | `m_snake_case`                                              |
-| Local variables                     | `snake_case`                                                |
+| Local variables / parameters        | `snake_case`                                                |
 | Member functions                    | `camelCase`                                                 |
 | Static functions / global functions | `PascalCase`                                                |
 | Macros                              | `UPPER_SNAKE_CASE`                                          |

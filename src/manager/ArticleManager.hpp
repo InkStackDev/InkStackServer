@@ -134,9 +134,9 @@ public:
 
     /**
      * @brief 清除指定时间戳对应月份的日历缓存
-     * @param publishTime 文章发布时间戳（Unix timestamp）
+     * @param publish_time 文章发布时间戳（Unix timestamp）
      */
-    void clearCalendarCache(int64_t user_id, int64_t publishTime);
+    void clearCalendarCache(int64_t user_id, int64_t publish_time);
 
 private:
     /**

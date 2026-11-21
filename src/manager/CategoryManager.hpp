@@ -7,9 +7,9 @@
 
 class CategoryManager {
 public:
-    void listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool isValid = false);
+    void listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool is_valid = false);
 
-    bool listByUserId(std::vector<blog::data::CategoryInfo::ptr>& infos, int64_t user_id, bool isValid = false);
+    bool listByUserId(std::vector<blog::data::CategoryInfo::ptr>& infos, int64_t user_id, bool is_valid = false);
 
     void add(blog::data::CategoryInfo::ptr info);
 

@@ -80,12 +80,12 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
         sdata->setData("totp_pending_secret", std::string(""));
 
         // 生成恢复码
-        std::vector<std::string> hashedCodes;
-        std::vector<std::string> recoveryCodes = TotpUtil::GenerateRecoveryCodes(10, hashedCodes);
+        std::vector<std::string> hashed_codes;
+        std::vector<std::string> recoveryCodes = TotpUtil::GenerateRecoveryCodes(10, hashed_codes);
 
         // 将恢复码哈希存入DB
         auto trans = db->openTransaction();
-        for (auto& hash : hashedCodes) {
+        for (auto& hash : hashed_codes) {
             auto rc = std::make_shared<data::UserRecoveryCodeInfo>();
             rc->setUserId(uid);
             rc->setCodeHash(hash);

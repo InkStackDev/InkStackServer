@@ -4,14 +4,14 @@
 
 std::string GLMProvider::buildRequest(
     const std::string& model,
-    int32_t maxTokens,
-    const std::string& systemPrompt,
+    int32_t max_tokens,
+    const std::string& system_prompt,
     const std::string& prompt,
     bool stream)
 {
     Json::Value body;
     body["model"] = model;
-    body["max_tokens"] = maxTokens;
+    body["max_tokens"] = max_tokens;
     if (stream) {
         body["stream"] = true;
     }
@@ -24,7 +24,7 @@ std::string GLMProvider::buildRequest(
     Json::Value messages(Json::arrayValue);
     Json::Value sys;
     sys["role"] = "system";
-    sys["content"] = systemPrompt;
+    sys["content"] = system_prompt;
     messages.append(sys);
 
     Json::Value usr;

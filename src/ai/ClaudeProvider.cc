@@ -4,15 +4,15 @@
 
 std::string ClaudeProvider::buildRequest(
     const std::string& model,
-    int32_t maxTokens,
-    const std::string& systemPrompt,
+    int32_t max_tokens,
+    const std::string& system_prompt,
     const std::string& prompt,
     bool stream)
 {
     Json::Value body;
     body["model"] = model;
-    body["max_tokens"] = maxTokens;
-    body["system"] = systemPrompt;
+    body["max_tokens"] = max_tokens;
+    body["system"] = system_prompt;
     if (stream) {
         body["stream"] = true;
     }
@@ -70,8 +70,8 @@ std::string ClaudeProvider::extractNonStreamingContent(const Json::Value& parsed
     return "";
 }
 
-void ClaudeProvider::authHeaders(const std::string& apiKey, std::map<std::string, std::string>& outHeaders)
+void ClaudeProvider::authHeaders(const std::string& api_key, std::map<std::string, std::string>& out_headers)
 {
-    outHeaders["x-api-key"] = apiKey;
-    outHeaders["anthropic-version"] = "2023-06-01";
+    out_headers["x-api-key"] = api_key;
+    out_headers["anthropic-version"] = "2023-06-01";
 }

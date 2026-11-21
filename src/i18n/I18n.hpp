@@ -15,7 +15,7 @@
 
 class I18n {
 public:
-    static bool Init(const std::string& localeDir);
+    static bool Init(const std::string& locale_dir);
 
     static std::string NormalizeLanguage(std::string_view language);
 

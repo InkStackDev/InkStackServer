@@ -87,7 +87,7 @@ blog::data::CategoryInfo::ptr CategoryManager::get(int64_t id)
     return v;
 }
 
-void CategoryManager::listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool isValid)
+void CategoryManager::listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -95,7 +95,7 @@ void CategoryManager::listAll(std::vector<blog::data::CategoryInfo::ptr>& infos,
         return;
     }
     auto qb = data::CategoryInfoDao::newQuery();
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "ASC");
     if (data::CategoryInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
@@ -103,7 +103,7 @@ void CategoryManager::listAll(std::vector<blog::data::CategoryInfo::ptr>& infos,
     }
 }
 
-bool CategoryManager::listByUserId(std::vector<blog::data::CategoryInfo::ptr>& infos, int64_t user_id, bool isValid)
+bool CategoryManager::listByUserId(std::vector<blog::data::CategoryInfo::ptr>& infos, int64_t user_id, bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -112,7 +112,7 @@ bool CategoryManager::listByUserId(std::vector<blog::data::CategoryInfo::ptr>& i
     }
     auto qb = data::CategoryInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "ASC");
     if (data::CategoryInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";

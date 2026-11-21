@@ -108,7 +108,7 @@ int64_t OrganizationUserRelManager::getByPages(
     uint64_t offset,
     uint64_t size,
     int32_t status,
-    bool isValid)
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -118,7 +118,7 @@ int64_t OrganizationUserRelManager::getByPages(
     auto qb = data::OrganizationUserRelInfoDao::newQuery();
     qb->where("org_id", "=", o_id);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
@@ -132,7 +132,7 @@ int64_t OrganizationUserRelManager::getOrgByUserId(
     std::vector<data::OrganizationUserRelInfo::ptr>& results,
     int64_t u_id,
     int32_t status,
-    bool isValid)
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -145,7 +145,7 @@ int64_t OrganizationUserRelManager::getOrgByUserId(
     qb->where("status", "!=", (int64_t)Status::EXITED);
     qb->where("status", "!=", (int64_t)Status::REJECTED);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
     if (data::OrganizationUserRelInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
@@ -154,7 +154,7 @@ int64_t OrganizationUserRelManager::getOrgByUserId(
     return results.size();
 }
 
-int64_t OrganizationUserRelManager::getMemberCount(int64_t o_id, int32_t status, bool isValid)
+int64_t OrganizationUserRelManager::getMemberCount(int64_t o_id, int32_t status, bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -164,7 +164,7 @@ int64_t OrganizationUserRelManager::getMemberCount(int64_t o_id, int32_t status,
     auto qb = data::OrganizationUserRelInfoDao::newQuery();
     qb->where("org_id", "=", o_id);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     int64_t total = 0;
     if (qb->executeCount(total, db)) {
         ERROR(logger) << "executeCount fail errno=" << db->getErrno();

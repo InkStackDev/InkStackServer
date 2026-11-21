@@ -110,7 +110,11 @@ data::AssignmentInfo::ptr AssignmentManager::getByName(const std::string& subjec
     return nullptr;
 }
 
-uint64_t AssignmentManager::listByPages(std::vector<data::AssignmentInfo::ptr>& infos, uint64_t offset, uint64_t size, int32_t status, bool isValid)
+uint64_t AssignmentManager::listByPages(std::vector<data::AssignmentInfo::ptr>& infos,
+    uint64_t offset,
+    uint64_t size,
+    int32_t status,
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -119,7 +123,7 @@ uint64_t AssignmentManager::listByPages(std::vector<data::AssignmentInfo::ptr>& 
     }
     auto qb = data::AssignmentInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;

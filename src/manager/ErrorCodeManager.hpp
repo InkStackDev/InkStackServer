@@ -21,10 +21,10 @@ public:
 
     /**
      * @brief 从 errors.json 加载错误码配置到内存
-     * @param configPath errors.json 的绝对路径
+     * @param config_path errors.json 的绝对路径
      * @return 是否加载成功
      */
-    bool load(const std::string& configPath);
+    bool load(const std::string& config_path);
 
     /**
      * @brief 重新加载（用于热更新）
@@ -33,18 +33,18 @@ public:
 
     /**
      * @brief 获取指定错误码的默认语言消息
-     * @param errCode 错误码
+     * @param err_code 错误码
      * @return 错误消息（未找到返回 "Unknown error"）
      */
-    std::string getMessage(int32_t errCode) const;
+    std::string getMessage(int32_t err_code) const;
 
     /**
      * @brief 获取指定错误码的指定语言消息
-     * @param errCode 错误码
+     * @param err_code 错误码
      * @param lang 语言代码 (zh/en)
      * @return 错误消息
      */
-    std::string getMessage(int32_t errCode, const std::string& lang) const;
+    std::string getMessage(int32_t err_code, const std::string& lang) const;
 
     /**
      * @brief 获取所有错误码的指定语言映射

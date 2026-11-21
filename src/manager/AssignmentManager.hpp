@@ -19,7 +19,11 @@ public:
 
     void add(data::AssignmentInfo::ptr info);
 
-    uint64_t listByPages(std::vector<data::AssignmentInfo::ptr>& infos, uint64_t offset, uint64_t size, int32_t status, bool isValid);
+    uint64_t listByPages(std::vector<data::AssignmentInfo::ptr>& infos,
+        uint64_t offset,
+        uint64_t size,
+        int32_t status,
+        bool is_valid);
 
     data::AssignmentInfo::ptr get(int64_t id);
 

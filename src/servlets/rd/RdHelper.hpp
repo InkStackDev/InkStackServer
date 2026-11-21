@@ -275,21 +275,21 @@ inline int32_t OrgRoleToFrontend(int32_t role)
 // 构建公共响应字段
 // ============================================================================
 
-inline std::string GetOrgName(int64_t orgId)
+inline std::string GetOrgName(int64_t org_id)
 {
-    auto org = OrganizationMgr::GetInstance()->get(orgId);
+    auto org = OrganizationMgr::GetInstance()->get(org_id);
     return org ? org->getName() : "";
 }
 
-inline std::string GetUserName(int64_t userId)
+inline std::string GetUserName(int64_t user_id)
 {
-    auto user = UserMgr::GetInstance()->get(userId);
+    auto user = UserMgr::GetInstance()->get(user_id);
     return user ? user->getName() : "";
 }
 
-inline std::string GetUserAvatar(int64_t userId)
+inline std::string GetUserAvatar(int64_t user_id)
 {
-    auto user = UserMgr::GetInstance()->get(userId);
+    auto user = UserMgr::GetInstance()->get(user_id);
     return user ? user->getAvatar() : "";
 }
 

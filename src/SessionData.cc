@@ -26,10 +26,10 @@ void Result::setErrno(int32_t code)
     message_ = ErrorCodeMgr::GetInstance()->getMessage(code, lang_);
 }
 
-void Result::setErrno(int32_t code, const std::string& customMsg)
+void Result::setErrno(int32_t code, const std::string& custom_msg)
 {
     code_ = code;
-    message_ = I18n::Translate(customMsg, lang_);
+    message_ = I18n::Translate(custom_msg, lang_);
 }
 
 void Result::setErrnoFmt(int32_t code, const char* fmt, ...)

@@ -266,24 +266,24 @@ static std::string ExtractGithubRepo(const std::string& url)
 }
 
 /// 从 Link header 中提取 rel="next" 的 URL
-static std::string GetNextPageUrl(const std::string& linkHeader)
+static std::string GetNextPageUrl(const std::string& link_header)
 {
     // 格式: <https://...>; rel="next", <https://...>; rel="last"
     size_t pos = 0;
-    while (pos < linkHeader.size()) {
-        auto start = linkHeader.find('<', pos);
+    while (pos < link_header.size()) {
+        auto start = link_header.find('<', pos);
         if (start == std::string::npos) {
             break;
         }
-        auto end = linkHeader.find('>', start);
+        auto end = link_header.find('>', start);
         if (end == std::string::npos) {
             break;
         }
-        std::string url = linkHeader.substr(start + 1, end - start - 1);
-        auto relPos = linkHeader.find("rel=\"", end);
+        std::string url = link_header.substr(start + 1, end - start - 1);
+        auto relPos = link_header.find("rel=\"", end);
         if (relPos != std::string::npos) {
-            auto quoteEnd = linkHeader.find('"', relPos + 5);
-            std::string rel = linkHeader.substr(relPos + 5, quoteEnd - relPos - 5);
+            auto quoteEnd = link_header.find('"', relPos + 5);
+            std::string rel = link_header.substr(relPos + 5, quoteEnd - relPos - 5);
             if (rel == "next") {
                 return url;
             }

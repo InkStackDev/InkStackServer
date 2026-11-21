@@ -33,7 +33,7 @@ struct Result {
 
     void setErrno(int32_t code);
 
-    void setErrno(int32_t code, const std::string& customMsg);
+    void setErrno(int32_t code, const std::string& custom_msg);
     int32_t getErrno() const { return code_; }
 
     const std::string& getMessage() const { return message_; }

@@ -22,22 +22,24 @@ std::string TotpUtil::GenerateSecret()
     return chen::StringUtil::Base32Encode(randomData);
 }
 
-uint32_t TotpUtil::DynamicTruncation(const std::string& hmacResult)
+uint32_t TotpUtil::DynamicTruncation(const std::string& hmac_result)
 {
-    if (hmacResult.size() < 20) {
+    if (hmac_result.size() < 20) {
         return 0;
     }
-    int offset = hmacResult[19] & 0x0F;
-    uint32_t code = (static_cast<uint32_t>(hmacResult[offset] & 0x7F) << 24) | (static_cast<uint32_t>(hmacResult[offset + 1] & 0xFF) << 16)
-        | (static_cast<uint32_t>(hmacResult[offset + 2] & 0xFF) << 8) | (static_cast<uint32_t>(hmacResult[offset + 3] & 0xFF));
+    int offset = hmac_result[19] & 0x0F;
+    uint32_t code = (static_cast<uint32_t>(hmac_result[offset] & 0x7F) << 24)
+        | (static_cast<uint32_t>(hmac_result[offset + 1] & 0xFF) << 16)
+        | (static_cast<uint32_t>(hmac_result[offset + 2] & 0xFF) << 8)
+        | (static_cast<uint32_t>(hmac_result[offset + 3] & 0xFF));
     return code;
 }
 
-uint32_t TotpUtil::GenerateTotp(const std::string& secret, int64_t timeStep)
+uint32_t TotpUtil::GenerateTotp(const std::string& secret, int64_t time_step)
 {
     // 将时间步转为 8 字节大端序
     uint8_t timeBytes[8];
-    uint64_t t = static_cast<uint64_t>(timeStep);
+    uint64_t t = static_cast<uint64_t>(time_step);
     for (int i = 7; i >= 0; --i) {
         timeBytes[i] = t & 0xFF;
         t >>= 8;
@@ -92,11 +94,11 @@ std::string TotpUtil::HashRecoveryCode(const std::string& code)
     return chen::EncryptorUtil::SHA256(code);
 }
 
-std::vector<std::string> TotpUtil::GenerateRecoveryCodes(int count, std::vector<std::string>& hashedCodes)
+std::vector<std::string> TotpUtil::GenerateRecoveryCodes(int count, std::vector<std::string>& hashed_codes)
 {
     std::vector<std::string> codes;
-    hashedCodes.clear();
-    hashedCodes.reserve(count);
+    hashed_codes.clear();
+    hashed_codes.reserve(count);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -111,7 +113,7 @@ std::vector<std::string> TotpUtil::GenerateRecoveryCodes(int count, std::vector<
         // 格式化为 XXXXX-XXXXX
         code = code.substr(0, 5) + "-" + code.substr(5);
         codes.push_back(code);
-        hashedCodes.push_back(HashRecoveryCode(code));
+        hashed_codes.push_back(HashRecoveryCode(code));
     }
     return codes;
 }

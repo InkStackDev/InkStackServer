@@ -21,7 +21,11 @@ data::TaskInfo::ptr TaskManager::get(int64_t id)
     return data::TaskInfoDao::Query(id, db);
 }
 
-uint64_t TaskManager::listByPages(std::vector<data::TaskInfo::ptr>& infos, uint64_t offset, uint64_t size, int32_t status, bool isValid)
+uint64_t TaskManager::listByPages(std::vector<data::TaskInfo::ptr>& infos,
+    uint64_t offset,
+    uint64_t size,
+    int32_t status,
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -30,7 +34,7 @@ uint64_t TaskManager::listByPages(std::vector<data::TaskInfo::ptr>& infos, uint6
     }
     auto qb = data::TaskInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
@@ -40,7 +44,12 @@ uint64_t TaskManager::listByPages(std::vector<data::TaskInfo::ptr>& infos, uint6
     return total;
 }
 
-uint64_t TaskManager::listByOrg(std::vector<data::TaskInfo::ptr>& infos, int64_t orgId, uint64_t offset, uint64_t size, int32_t status, bool isValid)
+uint64_t TaskManager::listByOrg(std::vector<data::TaskInfo::ptr>& infos,
+    int64_t org_id,
+    uint64_t offset,
+    uint64_t size,
+    int32_t status,
+    bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
@@ -48,9 +57,9 @@ uint64_t TaskManager::listByOrg(std::vector<data::TaskInfo::ptr>& infos, int64_t
         return 0;
     }
     auto qb = data::TaskInfoDao::newQuery();
-    qb->where("org_id", "=", orgId);
+    qb->where("org_id", "=", org_id);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(isValid, "is_deleted", "=", (int64_t)0);
+    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;

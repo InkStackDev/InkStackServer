@@ -250,13 +250,13 @@ static void EventCommentCreated(const std::any& d)
 {
     auto data = std::any_cast<const EventCommentCreatedData&>(d);
 
-    auto send_notify = [&](int64_t targetUid, const std::string& title, const std::string& content) {
-        if (targetUid == data.commenter_id) {
+    auto send_notify = [&](int64_t target_uid, const std::string& title, const std::string& content) {
+        if (target_uid == data.commenter_id) {
             return;
         }
 
         NotificationData notif_data{};
-        notif_data.user_id = targetUid;
+        notif_data.user_id = target_uid;
         notif_data.title = title;
         notif_data.content = content;
         notif_data.type = "comment";
@@ -273,7 +273,7 @@ static void EventCommentCreated(const std::any& d)
             wsMsg["article_id"] = data.article_id;
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif_info->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(targetUid, chen::JsonUtil::ToString(wsMsg));
+            NotificationMgr::GetInstance()->sendToUser(target_uid, chen::JsonUtil::ToString(wsMsg));
         }
     };
 

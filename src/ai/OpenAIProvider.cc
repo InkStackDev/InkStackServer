@@ -4,14 +4,14 @@
 
 std::string OpenAIProvider::buildRequest(
     const std::string& model,
-    int32_t maxTokens,
-    const std::string& systemPrompt,
+    int32_t max_tokens,
+    const std::string& system_prompt,
     const std::string& prompt,
     bool stream)
 {
     Json::Value body;
     body["model"] = model;
-    body["max_tokens"] = maxTokens;
+    body["max_tokens"] = max_tokens;
     if (stream) {
         body["stream"] = true;
     }
@@ -19,7 +19,7 @@ std::string OpenAIProvider::buildRequest(
     Json::Value messages(Json::arrayValue);
     Json::Value sys;
     sys["role"] = "system";
-    sys["content"] = systemPrompt;
+    sys["content"] = system_prompt;
     messages.append(sys);
 
     Json::Value usr;
@@ -73,12 +73,12 @@ std::string OpenAIProvider::extractNonStreamingContent(const Json::Value& parsed
     return "";
 }
 
-void OpenAIProvider::authHeaders(const std::string& apiKey, std::map<std::string, std::string>& outHeaders)
+void OpenAIProvider::authHeaders(const std::string& api_key, std::map<std::string, std::string>& out_headers)
 {
-    outHeaders["Authorization"] = "Bearer " + apiKey;
+    out_headers["Authorization"] = "Bearer " + api_key;
 }
 
-bool OpenAIProvider::isDoneMarker(const std::string& rawData)
+bool OpenAIProvider::isDoneMarker(const std::string& raw_data)
 {
-    return rawData == "[DONE]";
+    return raw_data == "[DONE]";
 }

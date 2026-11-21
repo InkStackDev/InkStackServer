@@ -32,17 +32,17 @@ public:
 
     /// 生成恢复码（明文列表），同时返回哈希列表用于存储
     /// @param count 生成数量
-    /// @param[out] hashedCodes 恢复码的 SHA-256 哈希列表
+    /// @param[out] hashed_codes 恢复码的 SHA-256 哈希列表
     /// @return 明文恢复码列表（只展示一次）
-    static std::vector<std::string> GenerateRecoveryCodes(int count, std::vector<std::string>& hashedCodes);
+    static std::vector<std::string> GenerateRecoveryCodes(int count, std::vector<std::string>& hashed_codes);
 
     /// 对恢复码进行 SHA-256 哈希
     static std::string HashRecoveryCode(const std::string& code);
 
 private:
     /// 动态截断（RFC 4226 §5.4）
-    static uint32_t DynamicTruncation(const std::string& hmacResult);
+    static uint32_t DynamicTruncation(const std::string& hmac_result);
 
     /// 生成指定时间步的 TOTP 值
-    static uint32_t GenerateTotp(const std::string& secret, int64_t timeStep);
+    static uint32_t GenerateTotp(const std::string& secret, int64_t time_step);
 };
