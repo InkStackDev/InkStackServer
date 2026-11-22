@@ -21,6 +21,12 @@ All notable changes to this project will be documented in this file.
   `DEV_LEAD`/`ORG_ADMIN` 管理权限与角色切换范围统一在 `OrganizationService` 内完成，入口不再查询操作者成员关系。
 - 组织详情、成员分页、组织作业列表改为 Service 读模型：`GetDetail` / `ListMemberPage` / `ListAssignments`，
   入口不再直接调用 `OrganizationUserRelRepository` / `AssignmentRepository`；待审核成员列表要求管理权限。
+- 组织仓库与 PR 入口改为 Service 权限模型：仓库增删/Token/同步/列表走 `OrganizationRepoService` 的 `Viewer` +
+  `AccessPolicy`，PR 列表/删除/同步复用 `CheckOrgAccess` / `CheckRepoAccess`；入口不再查询操作者成员关系，
+  已退出/已拒绝关系不再能管理仓库或 PR。
+- 新增 `src/Client/` 出站适配层与 `GitHubClient`：GitHub 仓库元数据、PR 列表/详情/评审统一在 Client 内完成
+  超时、重试、退避、限流识别、JSON → DTO 和错误分类；`OrganizationRepoService` / `OrganizationRepoPrService`
+  不再直接使用 `HttpConnection` 和厂商 JSON。新增 `github` 配置节（默认值兜底）。
 - 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
   worker 直接投递作为快路径，长连接本身不经过 RPC。
 - 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多

@@ -1,16 +1,7 @@
 #include "OrganizationReposTokenServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/OrganizationRepoRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationReposTokenServlet::OrganizationReposTokenServlet()
     : BlogLoginedServlet("OrganizationReposTokenServlet")
@@ -27,45 +18,32 @@ int32_t OrganizationReposTokenServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, repo_id, "repo_id");
         DEFINE_AND_CHECK_STRING(result, token, "token");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
 
-        // 检查仓库是否存在
-        auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
-        if (!repo) {
+        DB::OrganizationReposInfo::ptr repo;
+        auto rt = OrganizationRepoService::UpdateToken(viewer, repo_id, token, repo);
+        if (rt == OrganizationRepoService::Result::NotFound) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
-        int64_t org_id = repo->getOrgId();
-
-        // 权限检查：系统管理员或组织内研发主管及以上
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+        if (rt == OrganizationRepoService::Result::NotMember) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        int32_t system_role = user->getRole();
-        if (system_role != UserRole::ADMIN) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            int32_t org_role = rel->getRole();
-            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
-                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可管理仓库 Token");
-                break;
-            }
+        if (rt == OrganizationRepoService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可管理仓库 Token");
+            break;
         }
-
-        if (OrganizationRepoService::UpdateToken(repo_id, token, repo) != OrganizationRepoService::Result::Ok) {
+        if (rt != OrganizationRepoService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED, "保存 Token 失败");
             break;
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

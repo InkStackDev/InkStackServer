@@ -1,16 +1,7 @@
 #include "OrganizationReposSyncServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/OrganizationRepoRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationReposSyncServlet::OrganizationReposSyncServlet()
     : BlogLoginedServlet("OrganizationReposSyncServlet")
@@ -26,51 +17,37 @@ int32_t OrganizationReposSyncServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, repo_id, "repo_id");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
 
-        // 检查仓库是否存在
-        auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
-        if (!repo) {
+        DB::OrganizationReposInfo::ptr repo;
+        auto rt = OrganizationRepoService::MarkSyncing(viewer, repo_id, repo);
+        if (rt == OrganizationRepoService::Result::NotFound) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
-        int64_t org_id = repo->getOrgId();
-
-        // 权限检查：系统管理员或组织内研发主管及以上
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+        if (rt == OrganizationRepoService::Result::NotMember) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        int32_t system_role = user->getRole();
-        if (system_role != UserRole::ADMIN) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            int32_t org_role = rel->getRole();
-            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
-                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可触发仓库同步");
-                break;
-            }
+        if (rt == OrganizationRepoService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可触发仓库同步");
+            break;
         }
-
-        // 设置状态为 syncing 后立即返回，异步调 GitHub API
-        if (OrganizationRepoService::MarkSyncing(repo_id, repo) != OrganizationRepoService::Result::Ok) {
+        if (rt != OrganizationRepoService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED, "同步失败");
             break;
         }
 
-        // 异步调度 GitHub 同步
+        // 设置状态为 syncing 后立即返回，异步调 GitHub API
         chen::Scheduler::GetThis()->schedule([repo_id]() {
             OrganizationRepoService::SyncFromGitHub(repo_id);
         });
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

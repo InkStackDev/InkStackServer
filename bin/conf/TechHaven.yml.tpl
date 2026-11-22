@@ -30,6 +30,17 @@ search:
   snapshot_rpc_timeout_ms: 10000
   dirty_key: search:dirty
 
+# GitHub API 客户端配置（组织仓库/PR 同步）
+github:
+  api_base: https://api.github.com
+  oauth_base: https://github.com
+  timeout_ms: 15000
+  detail_timeout_ms: 15000
+  max_attempts: 3
+  backoff_ms: 300
+  user_agent: InkStackServer/1.0
+  per_page: 50
+
 # 第三方登录配置
 oauth:
   github:

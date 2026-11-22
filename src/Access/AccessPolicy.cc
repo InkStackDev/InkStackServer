@@ -23,6 +23,11 @@ bool AccessPolicy::CanManageOrgMembers(const Viewer& viewer, const OrgScope& sco
     return scope.allows(org_id, OrgRole::DEV_LEAD);
 }
 
+bool AccessPolicy::CanManageOrgRepos(const Viewer& viewer, const OrgScope& scope, int64_t org_id)
+{
+    return viewer.is_platform_admin || scope.allows(org_id, OrgRole::DEV_LEAD);
+}
+
 bool AccessPolicy::CanSwitchOrgRole(const Viewer& viewer, const OrgScope& scope, int64_t org_id, int32_t target_role)
 {
     if (viewer.is_platform_admin) {

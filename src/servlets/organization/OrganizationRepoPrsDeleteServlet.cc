@@ -7,17 +7,9 @@
  */
 #include "OrganizationRepoPrsDeleteServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Repository/OrganizationRepoPrRepository.hpp"
+#include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/OrganizationRepoRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationRepoPrsDeleteServlet::OrganizationRepoPrsDeleteServlet()
     : BlogLoginedServlet("OrganizationRepoPrsDeleteServlet")
@@ -33,8 +25,8 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
@@ -45,31 +37,23 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
             break;
         }
 
-        auto repo = OrganizationRepoRepository::Get(pr->getRepoId(), GetDB());
-        if (!repo) {
+        DB::OrganizationReposInfo::ptr repo;
+        auto rt = OrganizationRepoService::CheckRepoAccess(viewer, pr->getRepoId(), true, repo);
+        if (rt == OrganizationRepoService::Result::NotFound) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
-        int64_t org_id = repo->getOrgId();
-
-        // 权限：系统管理员或组织内研发主管及以上
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+        if (rt == OrganizationRepoService::Result::NotMember) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        int32_t system_role = user->getRole();
-        if (system_role != UserRole::ADMIN) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            int32_t org_role = rel->getRole();
-            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
-                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
-                break;
-            }
+        if (rt == OrganizationRepoService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
+            break;
+        }
+        if (rt != OrganizationRepoService::Result::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
         auto db = GetDB();
@@ -80,12 +64,12 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
 
         if (OrganizationRepoPrRepository::DeleteById(id, db)) {
             result->setErrno(DB_OPERATION_FAILED, "删除审查记录失败");
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
 
         OrganizationRepoPrRepository::Evict(id);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

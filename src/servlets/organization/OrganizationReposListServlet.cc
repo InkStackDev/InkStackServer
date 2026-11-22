@@ -1,14 +1,7 @@
 #include "OrganizationReposListServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/OrganizationRepoRepository.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationReposListServlet::OrganizationReposListServlet()
     : BlogLoginedServlet("OrganizationReposListServlet")
@@ -32,29 +25,28 @@ int32_t OrganizationReposListServlet::handle(
             page = 1;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        // 检查组织是否存在
-        auto org = OrganizationRepository::Get(org_id, GetDB());
-        if (!org) {
-            result->setErrno(ORG_NOT_FOUND);
-            break;
-        }
-
-        // 检查用户是否是该组织成员（任意角色即可查看仓库）
-        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-            result->setErrno(ACCESS_DENIED, "无权访问该组织");
             break;
         }
 
         uint64_t offset = (page - 1) * page_size;
         std::vector<DB::OrganizationReposInfo::ptr> repos;
-        int64_t total = OrganizationRepoRepository::ListByOrgPages(repos, org_id, offset, page_size, GetDB());
+        int64_t total = 0;
+        auto rt = OrganizationRepoService::List(viewer, org_id, offset, page_size, repos, total);
+        if (rt == OrganizationRepoService::Result::OrgNotFound) {
+            result->setErrno(ORG_NOT_FOUND);
+            break;
+        }
+        if (rt == OrganizationRepoService::Result::NotMember) {
+            result->setErrno(ACCESS_DENIED, "无权访问该组织");
+            break;
+        }
+        if (rt != OrganizationRepoService::Result::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         result->set("total", total);
         result->set("page", page);
@@ -80,6 +72,7 @@ int32_t OrganizationReposListServlet::handle(
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

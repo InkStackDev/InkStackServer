@@ -7,10 +7,13 @@
  */
 #pragma once
 
+#include "../Domain/AccessTypes.hpp"
+
 #include "DB/OrganizationReposInfo.hpp"
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 struct OrganizationRepoInput {
     int64_t org_id = 0;
@@ -26,17 +29,44 @@ public:
     enum class Result {
         Ok,
         NotFound,
+        OrgNotFound,
         NameExists,
+        NotMember,
+        AccessDenied,
         DbError
     };
 
-    static Result Add(const OrganizationRepoInput& input, DB::OrganizationReposInfo::ptr& out);
+    static Result Add(const Viewer& viewer, const OrganizationRepoInput& input, DB::OrganizationReposInfo::ptr& out);
 
-    static bool Remove(int64_t id);
+    static Result Remove(const Viewer& viewer, int64_t id, int64_t org_id = 0);
 
-    static Result UpdateToken(int64_t id, const std::string& token, DB::OrganizationReposInfo::ptr& out);
+    static Result UpdateToken(const Viewer& viewer,
+        int64_t id,
+        const std::string& token,
+        DB::OrganizationReposInfo::ptr& out);
 
-    static Result MarkSyncing(int64_t id, DB::OrganizationReposInfo::ptr& out);
+    static Result MarkSyncing(const Viewer& viewer, int64_t id, DB::OrganizationReposInfo::ptr& out);
+
+    static Result List(const Viewer& viewer,
+        int64_t org_id,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<DB::OrganizationReposInfo::ptr>& out,
+        int64_t& total);
+
+    /**
+     * @brief 校验组织访问权限
+     * @param manage true 要求 DEV_LEAD 及以上，false 只要求成员
+     */
+    static Result CheckOrgAccess(const Viewer& viewer, int64_t org_id, bool manage);
+
+    /**
+     * @brief 校验仓库访问权限，并返回仓库
+     */
+    static Result CheckRepoAccess(const Viewer& viewer,
+        int64_t repo_id,
+        bool manage,
+        DB::OrganizationReposInfo::ptr& out);
 
     /**
      * @brief 从 GitHub API 同步单个仓库的 stars/language/description

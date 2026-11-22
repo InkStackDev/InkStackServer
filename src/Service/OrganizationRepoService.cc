@@ -1,16 +1,17 @@
 #include "OrganizationRepoService.hpp"
 
-#include <map>
 #include <memory>
 
-#include <Chen/Http/HttpConnection.hpp>
 #include <Chen/Http/Uri.hpp>
 #include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
-#include <json/json.h>
 
+#include "../Access/AccessPolicy.hpp"
+#include "../Access/AccessScopeResolver.hpp"
+#include "../Client/GitHubClient.hpp"
+#include "../Domain/OrganizationTypes.hpp"
 #include "../Repository/OrganizationRepoRepository.hpp"
+#include "../Repository/OrganizationRepository.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -66,13 +67,31 @@ void MarkFailed(int64_t repo_id)
 
 } // namespace
 
-OrganizationRepoService::Result OrganizationRepoService::Add(const OrganizationRepoInput& input,
+OrganizationRepoService::Result OrganizationRepoService::Add(const Viewer& viewer,
+    const OrganizationRepoInput& input,
     DB::OrganizationReposInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return Result::DbError;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(input.org_id, OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, input.org_id)) {
+        return Result::AccessDenied;
+    }
+    auto org = OrganizationRepository::Get(input.org_id, db);
+    if (!org) {
+        return Result::OrgNotFound;
     }
     auto existing = OrganizationRepoRepository::GetByOrgAndName(input.org_id, input.name, db);
     if (existing) {
@@ -106,30 +125,47 @@ OrganizationRepoService::Result OrganizationRepoService::Add(const OrganizationR
     return Result::Ok;
 }
 
-bool OrganizationRepoService::Remove(int64_t id)
+OrganizationRepoService::Result OrganizationRepoService::Remove(const Viewer& viewer, int64_t id, int64_t org_id)
 {
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
-        return false;
+        return Result::DbError;
     }
     auto info = OrganizationRepoRepository::Get(id, db);
-    if (!info) {
-        return false;
+    if (!info || (org_id > 0 && info->getOrgId() != org_id)) {
+        return Result::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(info->getOrgId(), OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, info->getOrgId())) {
+        return Result::AccessDenied;
     }
     if (!OrganizationRepoRepository::DeleteById(id, db)) {
         ERROR(logger) << "OrganizationRepoService::Remove failed, id=" << id;
-        return false;
+        return Result::DbError;
     }
     OrganizationRepoRepository::Evict(id);
     OrganizationRepoRepository::InvalidateOrgCount(info->getOrgId());
-    return true;
+    return Result::Ok;
 }
 
-OrganizationRepoService::Result OrganizationRepoService::UpdateToken(int64_t id,
+OrganizationRepoService::Result OrganizationRepoService::UpdateToken(const Viewer& viewer,
+    int64_t id,
     const std::string& token,
     DB::OrganizationReposInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return Result::DbError;
@@ -137,6 +173,16 @@ OrganizationRepoService::Result OrganizationRepoService::UpdateToken(int64_t id,
     auto info = OrganizationRepoRepository::Get(id, db);
     if (!info) {
         return Result::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(info->getOrgId(), OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, info->getOrgId())) {
+        return Result::AccessDenied;
     }
     info->setToken(token);
     info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
@@ -149,9 +195,14 @@ OrganizationRepoService::Result OrganizationRepoService::UpdateToken(int64_t id,
     return Result::Ok;
 }
 
-OrganizationRepoService::Result OrganizationRepoService::MarkSyncing(int64_t id, DB::OrganizationReposInfo::ptr& out)
+OrganizationRepoService::Result OrganizationRepoService::MarkSyncing(const Viewer& viewer,
+    int64_t id,
+    DB::OrganizationReposInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return Result::DbError;
@@ -159,6 +210,16 @@ OrganizationRepoService::Result OrganizationRepoService::MarkSyncing(int64_t id,
     auto info = OrganizationRepoRepository::Get(id, db);
     if (!info) {
         return Result::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(info->getOrgId(), OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, info->getOrgId())) {
+        return Result::AccessDenied;
     }
     info->setSyncStatus("syncing");
     info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
@@ -171,67 +232,149 @@ OrganizationRepoService::Result OrganizationRepoService::MarkSyncing(int64_t id,
     return Result::Ok;
 }
 
-void OrganizationRepoService::SyncFromGitHub(int64_t repo_id)
+OrganizationRepoService::Result OrganizationRepoService::List(const Viewer& viewer,
+    int64_t org_id,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<DB::OrganizationReposInfo::ptr>& out,
+    int64_t& total)
 {
+    out.clear();
+    total = 0;
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
-        ERROR(logger) << "SyncFromGitHub: GetDB failed";
+        return Result::DbError;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org) {
+        return Result::OrgNotFound;
+    }
+    total = OrganizationRepoRepository::ListByOrgPages(out, org_id, offset, limit, db);
+    return Result::Ok;
+}
+
+OrganizationRepoService::Result OrganizationRepoService::CheckOrgAccess(const Viewer& viewer,
+    int64_t org_id,
+    bool manage)
+{
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return Result::DbError;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (manage && !AccessPolicy::CanManageOrgRepos(viewer, scope, org_id)) {
+        return Result::AccessDenied;
+    }
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org) {
+        return Result::OrgNotFound;
+    }
+    return Result::Ok;
+}
+
+OrganizationRepoService::Result OrganizationRepoService::CheckRepoAccess(const Viewer& viewer,
+    int64_t repo_id,
+    bool manage,
+    DB::OrganizationReposInfo::ptr& out)
+{
+    out.reset();
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return Result::DbError;
+    }
+    auto repo = OrganizationRepoRepository::Get(repo_id, db);
+    if (!repo) {
+        return Result::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(repo->getOrgId(), OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (manage && !AccessPolicy::CanManageOrgRepos(viewer, scope, repo->getOrgId())) {
+        return Result::AccessDenied;
+    }
+    out = repo;
+    return Result::Ok;
+}
+
+void OrganizationRepoService::SyncFromGitHub(int64_t repo_id)
+{
+    std::string token;
+    std::string repo_path;
+    {
+        auto db = GetDB();
+        if (!db) {
+            ERROR(logger) << "SyncFromGitHub: GetDB failed";
+            return;
+        }
+        auto repo = OrganizationRepoRepository::Get(repo_id, db);
+        if (!repo) {
+            ERROR(logger) << "SyncFromGitHub: repo " << repo_id << " not found";
+            return;
+        }
+        token = repo->getToken();
+        repo_path = ExtractGithubRepo(repo->getUrl());
+        if (repo_path.empty()) {
+            ERROR(logger) << "SyncFromGitHub: invalid repo url=" << repo->getUrl();
+            MarkFailed(repo_id);
+            return;
+        }
+    }
+
+    INFO(logger) << "SyncFromGitHub: calling github repo=" << repo_path;
+    auto gh = GitHubClient::GetRepo(token, repo_path);
+    if (!gh.ok()) {
+        ERROR(logger) << "SyncFromGitHub: github request failed repo_id=" << repo_id << " error=" << (int)gh.error
+                      << " detail=" << gh.detail;
+        MarkFailed(repo_id);
+        return;
+    }
+
+    auto db = GetDB();
+    if (!db) {
+        ERROR(logger) << "SyncFromGitHub: GetDB failed after request";
         return;
     }
     auto repo = OrganizationRepoRepository::Get(repo_id, db);
     if (!repo) {
-        ERROR(logger) << "SyncFromGitHub: repo " << repo_id << " not found";
+        ERROR(logger) << "SyncFromGitHub: repo " << repo_id << " disappeared";
         return;
     }
 
-    std::string repo_path = ExtractGithubRepo(repo->getUrl());
-    if (repo_path.empty()) {
-        ERROR(logger) << "SyncFromGitHub: invalid repo url=" << repo->getUrl();
-        MarkFailed(repo_id);
-        return;
+    repo->setStarsCount(gh.value.stars);
+    if (!gh.value.language.empty()) {
+        repo->setLanguage(gh.value.language);
     }
-
-    std::string api_url = "https://api.github.com/repos/" + repo_path;
-    std::map<std::string, std::string> headers;
-    headers["Accept"] = "application/vnd.github.v3+json";
-    headers["Accept-Encoding"] = "identity";
-    headers["User-Agent"] = "Blog-Server/1.0";
-    const std::string& token = repo->getToken();
-    if (!token.empty()) {
-        headers["Authorization"] = "Bearer " + token;
+    if (!gh.value.description.empty()) {
+        repo->setDescription(gh.value.description);
     }
-
-    INFO(logger) << "SyncFromGitHub: calling " << api_url;
-    auto result = chen::http::HttpConnection::DoGet(api_url, 15000, headers);
-    if (!result || result->result != 0 || !result->response
-        || result->response->getStatus() != chen::http::HttpStatus::OK) {
-        ERROR(logger) << "SyncFromGitHub: HTTP request failed"
-                      << " result=" << (result ? result->result : -1)
-                      << " status=" << (result && result->response ? (int)result->response->getStatus() : 0)
-                      << " body=" << (result && result->response ? result->response->getBody() : "");
-        MarkFailed(repo_id);
-        return;
-    }
-
-    Json::Value json;
-    Json::Reader reader;
-    if (!reader.parse(result->response->getBody(), json)) {
-        ERROR(logger) << "SyncFromGitHub: parse JSON failed";
-        MarkFailed(repo_id);
-        return;
-    }
-
-    if (json.isMember("stargazers_count")) {
-        repo->setStarsCount(json["stargazers_count"].asInt());
-    }
-    if (json.isMember("language") && !json["language"].isNull()) {
-        repo->setLanguage(json["language"].asString());
-    }
-    if (json.isMember("description") && !json["description"].isNull()) {
-        repo->setDescription(json["description"].asString());
-    }
-    if (json.isMember("full_name") && !json["full_name"].isNull()) {
-        repo->setGithubFullName(json["full_name"].asString());
+    if (!gh.value.full_name.empty()) {
+        repo->setGithubFullName(gh.value.full_name);
     }
     repo->setSyncStatus("success");
     repo->setUpdateTime(chen::TimeUtil::GetCurrentSec());

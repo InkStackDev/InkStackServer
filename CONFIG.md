@@ -273,7 +273,29 @@ rpc:
 
 > 升级后已有 `prod.env` 需要补充 `INSTANCE_ID` / `RPC_HUB_ADDRESS` / `RPC_BUS_ID`，否则 `switch-env.sh` 会因缺少占位符而失败。
 
-## 10. 注意事项
+## 10. GitHub API 客户端
+
+组织仓库/PR 同步统一走 `src/Client/GitHubClient`，配置位于 `TechHaven.yml.tpl` 的 `github` 节：
+
+```yaml
+github:
+  api_base: https://api.github.com
+  oauth_base: https://github.com
+  timeout_ms: 15000
+  detail_timeout_ms: 15000
+  max_attempts: 3
+  backoff_ms: 300
+  user_agent: InkStackServer/1.0
+  per_page: 50
+```
+
+- `api_base` / `oauth_base`：GitHub API 与 OAuth 域名。
+- `timeout_ms` / `detail_timeout_ms`：普通请求与 PR 详情请求超时。
+- `max_attempts` / `backoff_ms`：连接失败、超时、5xx、429 的重试次数与线性退避基数。
+- `per_page`：PR 列表每页条数，上限 100。
+- 未配置时全部使用默认值；Token 仍按仓库存在数据库中。
+
+## 11. 注意事项
 
 1. **占位符命名**：统一用大写 snake_case（如 `MYSQL_HOST`、`UPLOAD_DIR`），并在 `dev.env` 与 `prod.env.example` 中保持一致。
 2. **密钥不入库**：生产密码、密钥只写在 `bin/conf/prod.env`（已被 `.gitignore` 忽略），不要写进 `prod.env.example` 或提交。

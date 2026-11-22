@@ -7,16 +7,9 @@
  */
 #include "OrganizationRepoPrsListServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/OrganizationRepoRepository.hpp"
+#include "../../Service/OrganizationRepoService.hpp"
 #include "../../Repository/OrganizationRepoPrRepository.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationRepoPrsListServlet::OrganizationRepoPrsListServlet()
     : BlogLoginedServlet("OrganizationRepoPrsListServlet")
@@ -43,8 +36,8 @@ int32_t OrganizationRepoPrsListServlet::handle(
             page = 1;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
@@ -54,35 +47,41 @@ int32_t OrganizationRepoPrsListServlet::handle(
         int64_t total = 0;
 
         if (repo_id) {
-            // 模式1: 按仓库查
-            auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
-            if (!repo) {
+            DB::OrganizationReposInfo::ptr repo;
+            auto rt = OrganizationRepoService::CheckRepoAccess(viewer, repo_id, false, repo);
+            if (rt == OrganizationRepoService::Result::NotFound) {
                 result->setErrno(ORG_REPO_NOT_FOUND);
                 break;
             }
-            int64_t rid = repo->getOrgId();
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(rid, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
+            if (rt == OrganizationRepoService::Result::NotMember
+                || rt == OrganizationRepoService::Result::AccessDenied) {
                 result->setErrno(ACCESS_DENIED, "无权访问该组织");
+                break;
+            }
+            if (rt != OrganizationRepoService::Result::Ok) {
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
             total = OrganizationRepoPrRepository::ListByRepoPages(prs, repo_id, state, offset, page_size, GetDB());
         } else if (org_id) {
-            // 模式2: 按组织查
-            auto org = OrganizationRepository::Get(org_id, GetDB());
-            if (!org) {
+            auto rt = OrganizationRepoService::CheckOrgAccess(viewer, org_id, false);
+            if (rt == OrganizationRepoService::Result::OrgNotFound) {
                 result->setErrno(ORG_NOT_FOUND);
                 break;
             }
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
+            if (rt == OrganizationRepoService::Result::NotMember
+                || rt == OrganizationRepoService::Result::AccessDenied) {
                 result->setErrno(ACCESS_DENIED, "无权访问该组织");
+                break;
+            }
+            if (rt != OrganizationRepoService::Result::Ok) {
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
             total = OrganizationRepoPrRepository::ListByOrgPages(prs, org_id, state, offset, page_size, GetDB());
         } else {
-            // 模式3: 按用户所有组织查
-            total = OrganizationRepoPrRepository::ListByUserPages(prs, uid, state, offset, page_size, GetDB());
+            total =
+                OrganizationRepoPrRepository::ListByUserPages(prs, viewer.user_id, state, offset, page_size, GetDB());
         }
 
         result->set("total", total);
@@ -115,6 +114,7 @@ int32_t OrganizationRepoPrsListServlet::handle(
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

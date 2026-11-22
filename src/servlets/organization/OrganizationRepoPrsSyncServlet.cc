@@ -9,14 +9,10 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/OrganizationRepoRepository.hpp"
-#include "../../Repository/OrganizationRepoPrRepository.hpp"
 #include "../../Service/OrganizationRepoPrService.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Service/OrganizationRepoService.hpp"
+#include "../../Repository/OrganizationRepoPrRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -73,8 +69,8 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
             break;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
@@ -89,35 +85,27 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
             repo_id = pr->getRepoId();
         }
 
-        // 检查仓库是否存在
-        auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
-        if (!repo) {
+        DB::OrganizationReposInfo::ptr repo;
+        auto access = OrganizationRepoService::CheckRepoAccess(viewer, repo_id, true, repo);
+        if (access == OrganizationRepoService::Result::NotFound) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
-        int64_t org_id = repo->getOrgId();
-        std::string url = repo->getUrl();
-        std::string token = repo->getToken();
-
-        // 权限检查：系统管理员或组织内研发主管及以上
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+        if (access == OrganizationRepoService::Result::NotMember) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        int32_t system_role = user->getRole();
-        if (system_role != UserRole::ADMIN) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            int32_t org_role = rel->getRole();
-            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
-                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可同步 PR");
-                break;
-            }
+        if (access == OrganizationRepoService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可同步 PR");
+            break;
         }
+        if (access != OrganizationRepoService::Result::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+
+        std::string url = repo->getUrl();
+        std::string token = repo->getToken();
 
         if (id) {
             // 单条 PR 同步：同步执行，便于直接返回 GitHub 错误
@@ -163,6 +151,7 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
             OrganizationRepoPrService::SyncFromGitHub(repo_id, url, token);
         });
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }
