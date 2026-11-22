@@ -1,6 +1,6 @@
 #include "NotificationReadAllServlet.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
+#include "../../Service/NotificationService.hpp"
 
 NotificationReadAllServlet::NotificationReadAllServlet()
     : BlogLoginedServlet("NotificationReadAllServlet")
@@ -20,7 +20,7 @@ int32_t NotificationReadAllServlet::handle(
             break;
         }
 
-        int64_t count = NotificationMgr::GetInstance()->markAllRead(uid);
+        int64_t count = NotificationService::MarkAllRead(uid);
 
         result->setErrno(SUCCESS);
         result->set("count", count);

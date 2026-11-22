@@ -5,7 +5,6 @@
 
 #include <cmath>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/PrStatsQueryRepository.hpp"
 #include "../../Repository/TaskRepository.hpp"
 #include "../../Util/Util.hpp"
@@ -14,6 +13,8 @@
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -121,13 +122,13 @@ int32_t RdTrendServlet::handle(
             break;
         }
 
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        bool is_admin = (system_role == UserManager::Role::ADMIN);
+        bool is_admin = (system_role == UserRole::ADMIN);
 
         time_t now = time(0);
         if (!end_date_str.empty()) {

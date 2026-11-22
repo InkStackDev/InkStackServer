@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "../Domain/UserTypes.hpp"
 
 /**
  * @brief 用户业务服务
@@ -20,6 +21,9 @@
  */
 class UserService {
 public:
+    /// 生成一次性随机 token（OAuth state / 2FA 临时凭证）
+    static std::string GenerateToken();
+
     enum class UpdateProfileResult {
         Ok,
         UserNotFound,
@@ -92,8 +96,8 @@ public:
         std::string account;
         std::string email;
         std::string passwd;
-        int32_t role = 1;  // UserManager::Role::USER
-        int32_t state = 1; // UserManager::Status::ACTIVE
+        int32_t role = 1;  // UserRole::USER
+        int32_t state = 1; // UserState::ACTIVE
     };
 
     enum class CreateUserResult {

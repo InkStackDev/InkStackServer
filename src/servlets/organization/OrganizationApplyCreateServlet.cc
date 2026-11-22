@@ -1,9 +1,9 @@
 #include "OrganizationApplyCreateServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 OrganizationApplyCreateServlet::OrganizationApplyCreateServlet()
     : BlogLoginedServlet("OrganizationApplyCreateServlet")
@@ -27,7 +27,7 @@ int32_t OrganizationApplyCreateServlet::handle(
             break;
         }
 
-        auto uinfo = UserMgr::GetInstance()->get(user_id);
+        auto uinfo = UserRepository::Get(user_id, GetDB());
         if (!uinfo) {
             result->setErrno(USER_NOT_FOUND);
             break;

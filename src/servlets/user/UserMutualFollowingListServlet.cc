@@ -4,8 +4,8 @@
 
 #include <algorithm>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/UserFollowRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 UserMutualFollowingListServlet::UserMutualFollowingListServlet()
     : BlogLoginedServlet("UserMutualFollowingListServlet")
@@ -36,7 +36,7 @@ int32_t UserMutualFollowingListServlet::handle(
         std::vector<int64_t> filtered_ids;
         filtered_ids.reserve(mutual_ids.size());
         for (auto user_id : mutual_ids) {
-            auto user = UserMgr::GetInstance()->get(user_id);
+            auto user = UserRepository::Get(user_id, GetDB());
             if (!user || user->getIsDeleted()) {
                 continue;
             }
@@ -63,7 +63,7 @@ int32_t UserMutualFollowingListServlet::handle(
 
         Json::Value arr(Json::arrayValue);
         for (int32_t i = start; i < end; ++i) {
-            auto user = UserMgr::GetInstance()->get(filtered_ids[i]);
+            auto user = UserRepository::Get(filtered_ids[i], GetDB());
             if (!user) {
                 continue;
             }

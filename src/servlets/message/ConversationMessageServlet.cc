@@ -3,8 +3,10 @@
 #include <Chen/Http/Http.hpp>
 #include <json/json.h>
 
-#include "../../Manager/MessageManager.hpp"
 #include "MessageJson.hpp"
+#include "../../Repository/ConversationRepository.hpp"
+#include "../../Service/ConversationService.hpp"
+#include "../../Message/MessageRouter.hpp"
 
 ConversationMessageServlet::ConversationMessageServlet()
     : BlogLoginedServlet("ConversationMessageServlet")
@@ -38,7 +40,7 @@ int32_t ConversationMessageServlet::handle(
             break;
         }
 
-        auto conv = MessageMgr::GetInstance()->get(conversation_id);
+        auto conv = ConversationRepository::Get(conversation_id, GetDB());
         if (!conv) {
             result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
             break;
@@ -55,7 +57,7 @@ int32_t ConversationMessageServlet::handle(
             int32_t size = request->getParamAs<int32_t>("size", 50);
 
             std::vector<DB::ConversationMessageInfo::ptr> msgs;
-            MessageMgr::GetInstance()->listMessages(msgs, conversation_id, offset, size);
+            ConversationService::ListMessages(msgs, conversation_id, offset, size);
 
             Json::Value arr(Json::arrayValue);
             for (auto& m : msgs) {
@@ -76,12 +78,12 @@ int32_t ConversationMessageServlet::handle(
                 result->setErrno(PARAM_MISSING, "param text is required");
                 break;
             }
-            if (text.size() > MessageManager::kMaxMessageLen) {
+            if (text.size() > ConversationService::kMaxMessageLen) {
                 result->setErrno(MESSAGE_TEXT_TOO_LONG);
                 break;
             }
 
-            auto msg = MessageMgr::GetInstance()->sendMessage(conversation_id, uid, text);
+            auto msg = ConversationService::SendMessage(conversation_id, uid, text);
             if (!msg) {
                 result->setErrno(MESSAGE_SEND_FAILED);
                 break;
@@ -100,7 +102,7 @@ int32_t ConversationMessageServlet::handle(
             Json::Value msg_json;
             BuildMessageJson(msg_json, msg, peer_id);
             frame["message"] = msg_json;
-            MessageMgr::GetInstance()->sendToUser(peer_id, chen::JsonUtil::ToString(frame));
+            SendChatToUser(peer_id, chen::JsonUtil::ToString(frame));
             break;
         }
 

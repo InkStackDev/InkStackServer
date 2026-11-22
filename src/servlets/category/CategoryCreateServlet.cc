@@ -1,10 +1,10 @@
 #include "CategoryCreateServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/CategoryService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/CategoryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 CategoryCreateServlet::CategoryCreateServlet()
     : BlogLoginedServlet("CategoryCreateServlet")
@@ -26,7 +26,7 @@ bool CategoryCreateServlet::handlePre(
     int64_t uid = getUserId(request);
     DB::UserInfo::ptr user;
     if (uid) {
-        user = UserMgr::GetInstance()->get(uid);
+        user = UserRepository::Get(uid, GetDB());
     }
     int32_t rt = CheckAdminRoute(uid, user);
     if (rt) {
@@ -78,7 +78,7 @@ int32_t CategoryCreateServlet::handle(
                 break;
             }
             owner_id = req_uid;
-            if (!UserMgr::GetInstance()->get(owner_id)) {
+            if (!UserRepository::Get(owner_id, GetDB())) {
                 result->setErrno(USER_NOT_FOUND);
                 break;
             }

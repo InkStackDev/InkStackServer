@@ -12,10 +12,10 @@
 #include "../Message/MessageRouter.hpp"
 #include "../Config/AuthConfig.hpp"
 #include "../Manager/SessionManager.hpp"
-#include "../Manager/UserManager.hpp"
 #include "../Repository/UserRepository.hpp"
 #include "../Util/Util.hpp"
 #include "SessionStore.hpp"
+#include "../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -105,8 +105,8 @@ AuthContext AuthService::Resolve(chen::http::HttpRequest::ptr request, chen::htt
         return ctx;
     }
 
-    auto user = UserMgr::GetInstance()->get(info.uid);
-    if (!user || user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+    auto user = UserRepository::Get(info.uid, GetDB());
+    if (!user || user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
         CloseWsForSession(session_id, "session_revoked");
         SessionStore::Destroy(session_id);
         chen::http::SessionDataMgr::GetInstance()->del(session_id);
@@ -147,7 +147,7 @@ int32_t AuthService::IssueSession(
     if (!request || !response || !user) {
         return INTERNAL_ERROR;
     }
-    if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+    if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
         return ACCOUNT_INVALID;
     }
 
@@ -185,7 +185,7 @@ int32_t AuthService::IssueSession(
         user->setLoginTime(chen::TimeUtil::GetCurrentSec());
         auto db = GetDB();
         if (db && UserRepository::Update(user, db)) {
-            UserMgr::GetInstance()->update(user);
+            UserRepository::Put(user);
         } else {
             WARN(logger) << "update login time failed user=" << user->getId();
         }

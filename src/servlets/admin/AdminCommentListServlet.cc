@@ -1,6 +1,5 @@
 #include "AdminCommentListServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -8,6 +7,8 @@
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/CommentPraiseRepository.hpp"
 #include "../../Domain/CommentTypes.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 AdminCommentListServlet::AdminCommentListServlet()
     : BlogLoginedServlet("AdminCommentListServlet")
@@ -26,13 +27,13 @@ int32_t AdminCommentListServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -92,7 +93,7 @@ int32_t AdminCommentListServlet::handle(
 
             // author info
             Json::Value author;
-            auto u = UserMgr::GetInstance()->get(c->getUserId());
+            auto u = UserRepository::Get(c->getUserId(), GetDB());
             if (u) {
                 author["id"] = std::to_string(u->getId());
                 author["name"] = u->getName();

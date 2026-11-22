@@ -1,10 +1,11 @@
 #include "DashboardTrendServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 
 #include <ctime>
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 DashboardTrendServlet::DashboardTrendServlet()
     : BlogLoginedServlet("DashboardTrendServlet")
@@ -40,13 +41,13 @@ int32_t DashboardTrendServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -76,9 +77,9 @@ int32_t DashboardTrendServlet::handle(
 
         // aggregate users
         std::vector<int64_t> ids;
-        UserMgr::GetInstance()->getAllIds(ids, true);
+        UserRepository::GetAllIds(ids, true, GetDB());
         for (auto id : ids) {
-            auto u = UserMgr::GetInstance()->get(id);
+            auto u = UserRepository::Get(id, GetDB());
             if (!u) {
                 continue;
             }

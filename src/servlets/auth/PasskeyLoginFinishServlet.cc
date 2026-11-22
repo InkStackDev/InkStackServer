@@ -5,8 +5,9 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/PasskeyService.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 PasskeyLoginFinishServlet::PasskeyLoginFinishServlet()
     : BlogServlet("PasskeyLoginFinishServlet")
@@ -44,12 +45,12 @@ int32_t PasskeyLoginFinishServlet::handle(
             break;
         }
 
-        auto user = UserMgr::GetInstance()->get(passkey->getUserId());
+        auto user = UserRepository::Get(passkey->getUserId(), GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-        if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+        if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
             result->setErrno(ACCOUNT_INVALID);
             break;
         }

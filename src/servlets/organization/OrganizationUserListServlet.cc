@@ -2,10 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -33,13 +34,13 @@ int32_t OrganizationUserListServlet::handle(
                 result->setErrno(ORG_NOT_MEMBER);
                 break;
             }
-            auto current_user = UserMgr::GetInstance()->get(uid);
+            auto current_user = UserRepository::Get(uid, GetDB());
             if (!current_user) {
                 result->setErrno(USER_NOT_FOUND);
                 break;
             }
             if (info->getRole() != OrgRole::ORG_ADMIN && info->getRole() != OrgRole::DEV_LEAD
-                && current_user->getRole() != UserManager::Role::ADMIN) {
+                && current_user->getRole() != UserRole::ADMIN) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
@@ -58,7 +59,7 @@ int32_t OrganizationUserListServlet::handle(
         result->set("total", total);
         Json::Value list;
         for (auto& i : rels) {
-            auto user = UserMgr::GetInstance()->get(i->getUserId());
+            auto user = UserRepository::Get(i->getUserId(), GetDB());
             Json::Value item;
             item["id"] = i->getId();
             item["user_id"] = i->getUserId();

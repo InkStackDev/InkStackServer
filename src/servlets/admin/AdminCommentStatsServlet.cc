@@ -1,7 +1,8 @@
 #include "AdminCommentStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 AdminCommentStatsServlet::AdminCommentStatsServlet()
     : BlogLoginedServlet("AdminCommentStatsServlet")
@@ -20,13 +21,13 @@ int32_t AdminCommentStatsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

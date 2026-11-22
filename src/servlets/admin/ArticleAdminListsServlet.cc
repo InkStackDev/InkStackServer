@@ -1,9 +1,10 @@
 #include "ArticleAdminListsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 ArticleAdminListsServlet::ArticleAdminListsServlet()
     : BlogLoginedServlet("ArticleAdminListsServlet")
@@ -29,13 +30,13 @@ int32_t ArticleAdminListsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -49,7 +50,7 @@ int32_t ArticleAdminListsServlet::handle(
 
         Json::Value list;
         for (const auto& atc : articles) {
-            const auto& user = UserMgr::GetInstance()->get(atc->getUserId());
+            const auto& user = UserRepository::Get(atc->getUserId(), GetDB());
             Json::Value item;
             item["id"] = atc->getId();
             item["user_id"] = atc->getUserId();

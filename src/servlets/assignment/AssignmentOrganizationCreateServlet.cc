@@ -2,11 +2,11 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 AssignmentOrganizationCreateServlet::AssignmentOrganizationCreateServlet()
     : BlogLoginedServlet("AssignmentOrganizationCreateServlet")
@@ -37,7 +37,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;

@@ -1,7 +1,7 @@
 #include "UserFollowerListServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/UserFollowRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 UserFollowerListServlet::UserFollowerListServlet()
     : BlogLoginedServlet("UserFollowerListServlet")
@@ -30,7 +30,7 @@ int32_t UserFollowerListServlet::handle(
 
         Json::Value arr(Json::arrayValue);
         for (auto& rel : rels) {
-            auto user = UserMgr::GetInstance()->get(rel->getFollowerId());
+            auto user = UserRepository::Get(rel->getFollowerId(), GetDB());
             if (!user || user->getIsDeleted()) {
                 continue;
             }

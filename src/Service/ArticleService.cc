@@ -12,7 +12,6 @@
 #include "DB/CategoryInfo.hpp"
 #include "DB/LabelInfo.hpp"
 
-#include "../Manager/UserManager.hpp"
 #include "../Permission.hpp"
 #include "../Repository/ArticleRelRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
@@ -24,6 +23,7 @@
 #include "../Event/EventDefine.hpp"
 #include "ArticleScheduleService.hpp"
 #include "../Domain/ArticleTypes.hpp"
+#include "../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -241,7 +241,7 @@ ArticleService::SwitchStateResult ArticleService::SwitchState(int64_t uid, int64
     }
 
     int32_t role = user->getRole();
-    if (role != UserManager::Role::ADMIN) {
+    if (role != UserRole::ADMIN) {
         if (article->getUserId() != uid) {
             return SwitchStateResult::AccessDenied;
         }
@@ -251,7 +251,7 @@ ArticleService::SwitchStateResult ArticleService::SwitchState(int64_t uid, int64
     }
 
     int64_t old_publish_time = article->getPublishTime();
-    bool notify_author = role == UserManager::Role::ADMIN && article->getUserId() != uid;
+    bool notify_author = role == UserRole::ADMIN && article->getUserId() != uid;
 
     article->setState(new_state);
     article->setUpdateTime(chen::TimeUtil::GetCurrentSec());
@@ -422,7 +422,7 @@ ArticleService::VerifyArticleResult ArticleService::VerifyArticle(int64_t uid, i
         return VerifyArticleResult::UserNotFound;
     }
     int32_t role = reviewer->getRole();
-    if (role != UserManager::Role::ADMIN && role != UserManager::Role::CHECKER) {
+    if (role != UserRole::ADMIN && role != UserRole::CHECKER) {
         return VerifyArticleResult::AccessDenied;
     }
 

@@ -3,7 +3,8 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Manager/SystemSettingsManager.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -63,8 +64,8 @@ int32_t SystemSettingsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserMgr::GetInstance()->get(uid);
-        if (!user || user->getRole() != UserManager::Role::ADMIN) {
+        auto user = UserRepository::Get(uid, GetDB());
+        if (!user || user->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

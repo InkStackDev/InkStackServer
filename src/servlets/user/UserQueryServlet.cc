@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/UserInfo.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -26,7 +26,7 @@ int32_t UserQueryServlet::handle(
         std::vector<DB::UserInfo::ptr> infos;
 
         for (auto& i : ids) {
-            DB::UserInfo::ptr info = UserMgr::GetInstance()->get(chen::TypeUtil::Atoi(i));
+            DB::UserInfo::ptr info = UserRepository::Get(chen::TypeUtil::Atoi(i), GetDB());
             if (info) {
                 infos.push_back(info);
             }

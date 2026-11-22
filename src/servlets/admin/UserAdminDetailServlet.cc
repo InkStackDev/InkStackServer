@@ -1,9 +1,9 @@
 #include "UserAdminDetailServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 UserAdminDetailServlet::UserAdminDetailServlet()
     : BlogAdminServlet("UserAdminDetailServlet")
@@ -19,7 +19,7 @@ int32_t UserAdminDetailServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, user_id, "user_id");
 
-        auto info = UserMgr::GetInstance()->get(user_id);
+        auto info = UserRepository::Get(user_id, GetDB());
         if (!info) {
             result->setErrno(USER_NOT_FOUND);
             break;

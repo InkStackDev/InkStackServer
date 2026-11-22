@@ -1,6 +1,7 @@
 #include "UserAdminStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 UserAdminStatsServlet::UserAdminStatsServlet()
     : BlogAdminServlet("UserAdminStatsServlet")
@@ -15,7 +16,7 @@ int32_t UserAdminStatsServlet::handle(
 {
     do {
         std::vector<int64_t> ids;
-        UserMgr::GetInstance()->getAllIds(ids, false);
+        UserRepository::GetAllIds(ids, false, GetDB());
 
         int64_t total_users = 0;
         int64_t active_users = 0;
@@ -24,12 +25,12 @@ int32_t UserAdminStatsServlet::handle(
         int64_t threshold = time(0) - 30 * 24 * 3600;
 
         for (auto& id : ids) {
-            auto user = UserMgr::GetInstance()->get(id);
+            auto user = UserRepository::Get(id, GetDB());
             if (!user || user->getIsDeleted()) {
                 continue;
             }
             total_users++;
-            if (user->getState() == UserManager::Status::ACTIVE) {
+            if (user->getState() == UserState::ACTIVE) {
                 active_users++;
             } else {
                 inactive_users++;

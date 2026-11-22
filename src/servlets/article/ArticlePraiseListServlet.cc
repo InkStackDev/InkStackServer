@@ -1,10 +1,10 @@
 #include "ArticlePraiseListServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 
 #include <json/json.h>
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/ArticlePraiseRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 ArticlePraiseListServlet::ArticlePraiseListServlet()
     : BlogLoginedServlet("ArticlePraiseListServlet")
@@ -48,7 +48,7 @@ int32_t ArticlePraiseListServlet::handle(
                 item["user_id"] = rel->getUserId();
                 item["article_id"] = rel->getArticleId();
                 item["create_time"] = rel->getCreateTime();
-                auto user = UserMgr::GetInstance()->get(rel->getUserId());
+                auto user = UserRepository::Get(rel->getUserId(), GetDB());
                 if (user && !user->getIsDeleted()) {
                     item["user_name"] = user->getName();
                     item["user_avatar"] = user->getAvatar();

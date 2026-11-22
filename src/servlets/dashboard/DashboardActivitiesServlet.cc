@@ -1,9 +1,10 @@
 #include "DashboardActivitiesServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 DashboardActivitiesServlet::DashboardActivitiesServlet()
     : BlogLoginedServlet("DashboardActivitiesServlet")
@@ -46,13 +47,13 @@ int32_t DashboardActivitiesServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -68,10 +69,10 @@ int32_t DashboardActivitiesServlet::handle(
         // recent users
         {
             std::vector<int64_t> ids;
-            UserMgr::GetInstance()->getAllIds(ids, true);
+            UserRepository::GetAllIds(ids, true, GetDB());
             std::vector<DB::UserInfo::ptr> users;
             for (auto id : ids) {
-                auto u = UserMgr::GetInstance()->get(id);
+                auto u = UserRepository::Get(id, GetDB());
                 if (u) {
                     users.push_back(u);
                 }
@@ -99,7 +100,7 @@ int32_t DashboardActivitiesServlet::handle(
                 ActivityItem act;
                 act.type = "article_publish";
                 // get author name
-                auto author = UserMgr::GetInstance()->get(articles[i]->getUserId());
+                auto author = UserRepository::Get(articles[i]->getUserId(), GetDB());
                 std::string author_name = author ? author->getName() : "Unknown";
                 act.title = author_name + " 发布了新文章《" + articles[i]->getTitle() + "》";
                 act.create_time = articles[i]->getCreateTime();
@@ -114,7 +115,7 @@ int32_t DashboardActivitiesServlet::handle(
             for (auto& c : comments) {
                 ActivityItem act;
                 act.type = "comment_create";
-                auto commenter = UserMgr::GetInstance()->get(c->getUserId());
+                auto commenter = UserRepository::Get(c->getUserId(), GetDB());
                 std::string commenter_name = commenter ? commenter->getName() : "Unknown";
                 // get article title for context
                 auto article = ArticleRepository::Get(c->getArticleId(), GetDB());

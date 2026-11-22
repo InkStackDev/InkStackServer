@@ -10,8 +10,7 @@
 
 #include "ErrorCodes.hpp"
 #include "Domain/OrganizationTypes.hpp"
-#include "Manager/UserManager.hpp"
-
+#include "Domain/UserTypes.hpp"
 
 // ============================================================================
 // 成员管理权限
@@ -20,7 +19,7 @@
 /// 是否可以管理组织成员（审批加入、踢人、设角色）
 inline bool CanManageMembers(int32_t system_role, int32_t org_role)
 {
-    if (system_role == UserManager::Role::ADMIN) {
+    if (system_role == UserRole::ADMIN) {
         return true;
     }
     if (org_role == OrgRole::ORG_ADMIN || org_role == OrgRole::DEV_LEAD) {
@@ -32,7 +31,7 @@ inline bool CanManageMembers(int32_t system_role, int32_t org_role)
 /// 是否可以将成员切换到目标角色
 inline bool CanSwitchRole(int32_t system_role, int32_t org_role, int32_t target_role)
 {
-    if (system_role == UserManager::Role::ADMIN) {
+    if (system_role == UserRole::ADMIN) {
         return true;
     }
     if (org_role == OrgRole::ORG_ADMIN) {
@@ -52,7 +51,7 @@ inline bool CanSwitchRole(int32_t system_role, int32_t org_role, int32_t target_
 /// 是否可以进入研发平台: 系统管理员, 或在任一已批准组织中角色为报告者及以上
 inline bool CanAccessPlatform(int32_t system_role, int32_t highest_org_role)
 {
-    if (system_role == UserManager::Role::ADMIN) {
+    if (system_role == UserRole::ADMIN) {
         return true;
     }
     return highest_org_role >= OrgRole::REPORTER;
@@ -176,7 +175,7 @@ inline bool CanAssignTask(int32_t org_role)
 /// 管理员和审核员发布的文章跳过审核，直接发布
 inline bool CanBypassReview(int32_t system_role)
 {
-    return system_role == UserManager::Role::ADMIN || system_role == UserManager::Role::CHECKER;
+    return system_role == UserRole::ADMIN || system_role == UserRole::CHECKER;
 }
 
 // ============================================================================
@@ -186,7 +185,7 @@ inline bool CanBypassReview(int32_t system_role)
 /// 是否系统管理员
 inline bool IsAdmin(int32_t system_role)
 {
-    return system_role == UserManager::Role::ADMIN;
+    return system_role == UserRole::ADMIN;
 }
 
 /**
@@ -203,7 +202,7 @@ inline int32_t CheckAdminRoute(int64_t uid, const DB::UserInfo::ptr& user)
     if (!user) {
         return USER_NOT_FOUND;
     }
-    if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+    if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
         return ACCOUNT_INVALID;
     }
     if (!IsAdmin(user->getRole())) {

@@ -7,10 +7,10 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/StringUtil.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Config/AuthConfig.hpp"
+#include "../../Service/UserService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -53,7 +53,7 @@ int32_t UserOAuthGithubServlet::handle(chen::http::HttpRequest::ptr request,
 
         std::string redirect = NormalizeRedirect(request->getParam("redirect", "/index"));
 
-        std::string state = UserManager::GenerateToken();
+        std::string state = UserService::GenerateToken();
         std::string redisKey = std::string(kOAuthStatePrefix) + state;
         chen::RedisUtil::Cmd(GetRedisPoolName(), "setex %s %d %s", redisKey.c_str(), kOAuthStateTTL, redirect.c_str());
 

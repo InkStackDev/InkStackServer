@@ -1,9 +1,9 @@
 #include "PasskeyRegisterBeginServlet.hpp"
 
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/UaParser.hpp"
 #include "../../Service/PasskeyService.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 PasskeyRegisterBeginServlet::PasskeyRegisterBeginServlet()
     : BlogLoginedServlet("PasskeyRegisterBeginServlet")
@@ -23,7 +23,7 @@ int32_t PasskeyRegisterBeginServlet::handle(
             break;
         }
 
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;

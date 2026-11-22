@@ -9,12 +9,13 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/OrganizationRepoPrRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Repository/OrganizationRepoRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -52,13 +53,13 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
         int64_t org_id = repo->getOrgId();
 
         // 权限：系统管理员或组织内研发主管及以上
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        if (system_role != UserManager::Role::ADMIN) {
+        if (system_role != UserRole::ADMIN) {
             auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
             if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED);

@@ -1,10 +1,10 @@
 #include "CommentUpdateServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+#include "../../Repository/UserRepository.hpp"
 
 CommentUpdateServlet::CommentUpdateServlet()
     : BlogLoginedServlet("CommentUpdateServlet")
@@ -49,7 +49,7 @@ int32_t CommentUpdateServlet::handle(
         item["user_id"] = comment->getUserId();
         item["time"] = chen::TimeUtil::Time2StrSec(comment->getCreateTime());
 
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (user) {
             item["user"] = user->getName();
             item["avatar"] = user->getAvatar();

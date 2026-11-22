@@ -1,7 +1,6 @@
 #include "AdminCommentRejectServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -10,6 +9,8 @@
 #include <sstream>
 #include "../../Repository/CommentRepository.hpp"
 #include "../../Domain/CommentTypes.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 AdminCommentRejectServlet::AdminCommentRejectServlet()
     : BlogLoginedServlet("AdminCommentRejectServlet")
@@ -28,13 +29,13 @@ int32_t AdminCommentRejectServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

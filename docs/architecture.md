@@ -66,12 +66,12 @@ Service 不应依赖 Manager。
 ## 4. Manager 约定
 
 - **纯数据库 facade 一律删除**，不再新增 Manager。新代码直接调用 Service / Repository。
-- 仍然保留的 Manager 只允许是非数据库能力：
+- 仍然保留的组件只允许是非数据库能力（后续可逐步改名为 Registry / Cache / Util）：
   - `WSConnectionManager`：进程内 WS 连接状态
   - `SystemSettingsManager`：进程内设置快照 + 版本校验
   - `ErrorCodeManager`：`errors.json` 内存表与 i18n
   - `SessionManager`：session TTL 计算
-  - `NotificationManager` / `MessageManager`：目前仅剩 WS 推送入口，后续迁入 `MessageRouter` 后删除
+  - `CacheUtil`：Repository 共用缓存工具
 - 已删除的纯 facade（示例）：
   - 基础：`BadgeManager`、`FaqManager`、`FeedbackManager`、`ResourceManager`、`UserOAuthManager`、
     `OrganizationApplyManager`、`UserAIConfigManager`、`AssignmentUserRelManager`
@@ -83,6 +83,7 @@ Service 不应依赖 Manager。
   - RD：`TaskManager`、`BugManager`、`RequirementManager`、`AssignmentManager`、`AssignmentOrganizationRelManager`
     （枚举已迁至 `src/Domain/RdTypes.hpp`）
   - 账号/记录：`PasskeyManager`、`BackupRecordManager`、`ExportRecordManager`、`UserFollowRelManager`
+  - 用户/私信/通知：`UserManager`、`MessageManager`、`NotificationManager`
 - 现有 Manager 中不得再出现：
   - `static ... ParseRow(...)`
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec

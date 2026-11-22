@@ -2,13 +2,14 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Repository/OrganizationRepoRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -66,13 +67,13 @@ int32_t OrganizationReposAddServlet::handle(
         }
 
         // 检查用户权限：需要研发主管及以上（role >= 4），系统管理员可管理任意组织仓库
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        bool is_admin = (system_role == UserManager::Role::ADMIN);
+        bool is_admin = (system_role == UserRole::ADMIN);
 
         if (!is_admin) {
             auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());

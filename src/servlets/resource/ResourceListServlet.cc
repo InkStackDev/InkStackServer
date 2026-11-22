@@ -2,8 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -27,7 +28,7 @@ int32_t ResourceListServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
@@ -46,7 +47,7 @@ int32_t ResourceListServlet::handle(
 
 bool ResourceListServlet::checkPermession(int32_t system_role)
 {
-    if (system_role != UserManager::Role::ADMIN) {
+    if (system_role != UserRole::ADMIN) {
         return false;
     }
     return true;

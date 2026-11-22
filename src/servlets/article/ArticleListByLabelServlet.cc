@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -31,7 +31,7 @@ int32_t ArticleListByLabelServlet::handle(
         Json::Value list;
         for (auto& i : infos) {
             Json::Value item;
-            auto uinfo = UserMgr::GetInstance()->get(i->getUserId());
+            auto uinfo = UserRepository::Get(i->getUserId(), GetDB());
             item["id"] = i->getId();
             item["author"] = uinfo ? uinfo->getName() : "";
             item["title"] = i->getTitle();

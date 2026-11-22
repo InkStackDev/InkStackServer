@@ -4,12 +4,12 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 OrganizationJoinCheckServlet::OrganizationJoinCheckServlet()
     : BlogLoginedServlet("OrganizationJoinCheckServlet")
@@ -32,7 +32,7 @@ int32_t OrganizationJoinCheckServlet::handle(
             break;
         }
 
-        auto user = UserMgr::GetInstance()->get(user_id);
+        auto user = UserRepository::Get(user_id, GetDB());
         auto org = OrganizationRepository::Get(org_id, GetDB());
         if (!user || !org) {
             result->setErrno(ARTICLE_INVALID_ID);
@@ -45,7 +45,7 @@ int32_t OrganizationJoinCheckServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;

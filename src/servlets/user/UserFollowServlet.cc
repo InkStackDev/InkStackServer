@@ -1,11 +1,11 @@
 #include "UserFollowServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 #include "../../Service/UserFollowRelService.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 UserFollowServlet::UserFollowServlet()
     : BlogLoginedServlet("UserFollowServlet")
@@ -33,7 +33,7 @@ int32_t UserFollowServlet::handle(
         }
 
         // check the target user exists
-        auto targetUser = UserMgr::GetInstance()->get(following_id);
+        auto targetUser = UserRepository::Get(following_id, GetDB());
         if (!targetUser || targetUser->getIsDeleted()) {
             result->setErrno(USER_NOT_FOUND);
             break;
@@ -49,7 +49,7 @@ int32_t UserFollowServlet::handle(
 
         // Notify the followed user (only for new follows)
         if (!already_following) {
-            auto follower_info = UserMgr::GetInstance()->get(uid);
+            auto follower_info = UserRepository::Get(uid, GetDB());
             EventUserFollowData data = {};
             data.follower_id = uid;
             data.follower_name = follower_info ? follower_info->getName() : "someone";

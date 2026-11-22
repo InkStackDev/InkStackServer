@@ -588,3 +588,18 @@ void MessageRouter::Shutdown()
         g_router.reset();
     }
 }
+
+void SendNotificationToUser(int64_t user_id, const std::string& message)
+{
+    MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "notification"));
+}
+
+void BroadcastNotification(const std::string& message)
+{
+    MessageRouter::Get()->Broadcast(BuildChannelMessage(message, "notification"));
+}
+
+void SendChatToUser(int64_t user_id, const std::string& message)
+{
+    MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "chat"));
+}

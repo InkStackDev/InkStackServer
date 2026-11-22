@@ -1,9 +1,10 @@
 #include "OrganizationApplyReviewServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 OrganizationApplyReviewServlet::OrganizationApplyReviewServlet()
     : BlogLoginedServlet("OrganizationApplyReviewServlet")
@@ -40,8 +41,8 @@ int32_t OrganizationApplyReviewServlet::handle(
             break;
         }
 
-        auto uinfo = UserMgr::GetInstance()->get(uid);
-        if (!uinfo || uinfo->getRole() != UserManager::Role::ADMIN) {
+        auto uinfo = UserRepository::Get(uid, GetDB());
+        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

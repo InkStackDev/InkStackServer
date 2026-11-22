@@ -1,6 +1,6 @@
 #include "NotificationListServlet.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
+#include "../../Repository/NotificationQueryRepository.hpp"
 
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")
@@ -25,7 +25,7 @@ int32_t NotificationListServlet::handle(
         std::string type = request->getParam("type");
 
         std::vector<DB::NotificationInfo::ptr> notifications;
-        NotificationMgr::GetInstance()->listByUser(notifications, uid, offset, size, type);
+        NotificationQueryRepository::ListByUser(notifications, uid, offset, size, type, GetDB());
 
         Json::Value arr(Json::arrayValue);
         for (auto& n : notifications) {
@@ -59,7 +59,7 @@ int32_t NotificationListServlet::handle(
             arr.append(item);
         }
 
-        int64_t total = NotificationMgr::GetInstance()->countByUser(uid, type);
+        int64_t total = NotificationQueryRepository::CountByUser(uid, type, GetDB());
 
         result->setErrno(SUCCESS);
         result->set("list", arr);

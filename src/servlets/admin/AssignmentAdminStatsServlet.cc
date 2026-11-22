@@ -1,7 +1,8 @@
 #include "AssignmentAdminStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/AssignmentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 AssignmentAdminStatsServlet::AssignmentAdminStatsServlet()
     : BlogLoginedServlet("AssignmentAdminStatsServlet")
@@ -20,12 +21,12 @@ int32_t AssignmentAdminStatsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-        if (current_user->getRole() != UserManager::Role::ADMIN) {
+        if (current_user->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

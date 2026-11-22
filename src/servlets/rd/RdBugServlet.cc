@@ -1,12 +1,13 @@
 #include "RdBugServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/BugRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 RdBugServlet::RdBugServlet()
     : BlogLoginedServlet("RdBugServlet")
@@ -27,13 +28,13 @@ int32_t RdBugServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
+        bool is_platform_admin = (system_role == UserRole::ADMIN);
 
         if (id) {
             auto info = BugRepository::Get(id, GetDB());

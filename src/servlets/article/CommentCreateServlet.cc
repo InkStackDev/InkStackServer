@@ -1,7 +1,6 @@
 #include "CommentCreateServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -9,6 +8,7 @@
 #include <json/json.h>
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/CommentRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 CommentCreateServlet::CommentCreateServlet()
     : BlogLoginedServlet("CommentCreateServlet")
@@ -67,7 +67,7 @@ int32_t CommentCreateServlet::handle(
         item["user_id"] = info->getUserId();
         item["time"] = chen::TimeUtil::Time2StrSec(info->getCreateTime());
 
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (user) {
             item["user"] = user->getName();
             item["avatar"] = user->getAvatar();
@@ -87,7 +87,7 @@ int32_t CommentCreateServlet::handle(
         // Notify article author and parent comment author asynchronously
         {
             auto article = ArticleRepository::Get(article_id, GetDB());
-            auto commenter_info = UserMgr::GetInstance()->get(uid);
+            auto commenter_info = UserRepository::Get(uid, GetDB());
 
             EventCommentCreatedData data = {};
             data.commenter_id = uid;

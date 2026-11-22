@@ -95,3 +95,12 @@ public:
      */
     static MessageRouter::ptr Get();
 };
+
+/// 向用户推送 notification 通道消息
+void SendNotificationToUser(int64_t user_id, const std::string& message);
+
+/// 向所有在线用户广播 notification 通道消息
+void BroadcastNotification(const std::string& message);
+
+/// 向用户推送 chat 通道消息
+void SendChatToUser(int64_t user_id, const std::string& message);

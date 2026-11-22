@@ -1,7 +1,6 @@
 #include "AdminCommentDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -9,6 +8,8 @@
 
 #include <sstream>
 #include "../../Repository/CommentRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 AdminCommentDeleteServlet::AdminCommentDeleteServlet()
     : BlogLoginedServlet("AdminCommentDeleteServlet")
@@ -27,13 +28,13 @@ int32_t AdminCommentDeleteServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

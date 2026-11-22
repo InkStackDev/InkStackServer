@@ -4,11 +4,11 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 OrganizationUserKickServlet::OrganizationUserKickServlet()
     : BlogLoginedServlet("OrganizationUserKickServlet")
@@ -32,7 +32,7 @@ int32_t OrganizationUserKickServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
@@ -65,8 +65,8 @@ int32_t OrganizationUserKickServlet::handle(
         // Notify org admins and kicked user
         {
             auto org = OrganizationRepository::Get(org_id, GetDB());
-            auto kicked_user = UserMgr::GetInstance()->get(user_id);
-            auto oper_user = UserMgr::GetInstance()->get(uid);
+            auto kicked_user = UserRepository::Get(user_id, GetDB());
+            auto oper_user = UserRepository::Get(uid, GetDB());
             std::string org_name = org ? org->getName() : std::to_string(org_id);
             std::string kicked_name = kicked_user ? kicked_user->getName() : std::to_string(user_id);
             std::string oper_name = oper_user ? oper_user->getName() : std::to_string(uid);

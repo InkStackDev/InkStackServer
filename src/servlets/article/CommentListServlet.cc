@@ -1,6 +1,5 @@
 #include "CommentListServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Util/Util.hpp>
@@ -8,6 +7,7 @@
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/CommentPraiseRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 CommentListServlet::CommentListServlet()
     : BlogServlet("CommentListServlet")
@@ -24,7 +24,7 @@ static Json::Value BuildCommentItem(DB::CommentInfo::ptr c,
     item["user_id"] = c->getUserId();
     item["time"] = chen::TimeUtil::Time2StrSec(c->getCreateTime());
 
-    auto user = UserMgr::GetInstance()->get(c->getUserId());
+    auto user = UserRepository::Get(c->getUserId(), GetDB());
     if (user) {
         item["user"] = user->getName();
         item["avatar"] = user->getAvatar();

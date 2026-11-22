@@ -1,6 +1,5 @@
 #include "CommentRepliesServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Util/Util.hpp>
@@ -8,6 +7,7 @@
 #include "../../Repository/CommentRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/CommentPraiseRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 CommentRepliesServlet::CommentRepliesServlet()
     : BlogServlet("CommentRepliesServlet")
@@ -47,7 +47,7 @@ int32_t CommentRepliesServlet::handle(
             item["user_id"] = r->getUserId();
             item["time"] = chen::TimeUtil::Time2StrSec(r->getCreateTime());
 
-            auto user = UserMgr::GetInstance()->get(r->getUserId());
+            auto user = UserRepository::Get(r->getUserId(), GetDB());
             if (user) {
                 item["user"] = user->getName();
                 item["avatar"] = user->getAvatar();

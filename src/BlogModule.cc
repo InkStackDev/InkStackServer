@@ -4,7 +4,6 @@
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
-#include "./Manager/NotificationManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
 #include "./Search/SearchSync.hpp"
@@ -13,6 +12,8 @@
 #include "Service/OrganizationRepoPrService.hpp"
 #include "Service/ArticleCounterService.hpp"
 #include "Service/ArticleScheduleService.hpp"
+#include "Message/MessageRouter.hpp"
+#include "Service/NotificationService.hpp"
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -181,7 +182,7 @@ bool BlogModule::onServerUp()
         .run_immediately = false,
         .run =
             []() {
-                NotificationMgr::GetInstance()->cleanupExpiredBroadcasts();
+                NotificationService::CleanupExpiredBroadcasts();
             },
     });
 

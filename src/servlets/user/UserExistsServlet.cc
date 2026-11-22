@@ -2,8 +2,8 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -22,9 +22,9 @@ int32_t UserExistsServlet::handle(
         DEFINE_AND_CHECK_STRING(result, auth_id, "auth_id");
         DB::UserInfo::ptr info;
         if (IsEmail(auth_id)) {
-            info = UserMgr::GetInstance()->getByEmail(auth_id);
+            info = UserRepository::GetByEmail(auth_id, GetDB());
         } else if (IsValidAccount(auth_id)) {
-            info = UserMgr::GetInstance()->getByAccount(auth_id);
+            info = UserRepository::GetByAccount(auth_id, GetDB());
         } else {
             result->setErrno(AUTH_CODE_INVALID);
             break;

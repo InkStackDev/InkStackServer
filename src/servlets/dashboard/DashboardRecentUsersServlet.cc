@@ -1,6 +1,7 @@
 #include "DashboardRecentUsersServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 DashboardRecentUsersServlet::DashboardRecentUsersServlet()
     : BlogLoginedServlet("DashboardRecentUsersServlet")
@@ -10,13 +11,13 @@ DashboardRecentUsersServlet::DashboardRecentUsersServlet()
 static const char* RoleToString(int32_t role)
 {
     switch (role) {
-    case UserManager::Role::USER:
+    case UserRole::USER:
         return "user";
-    case UserManager::Role::ADMIN:
+    case UserRole::ADMIN:
         return "admin";
-    case UserManager::Role::EDITOR:
+    case UserRole::EDITOR:
         return "editor";
-    case UserManager::Role::CHECKER:
+    case UserRole::CHECKER:
         return "checker";
     default:
         return "unknown";
@@ -26,11 +27,11 @@ static const char* RoleToString(int32_t role)
 static const char* StatusToString(int32_t state)
 {
     switch (state) {
-    case UserManager::Status::INACTIVE:
+    case UserState::INACTIVE:
         return "inactive";
-    case UserManager::Status::ACTIVE:
+    case UserState::ACTIVE:
         return "active";
-    case UserManager::Status::BANNED:
+    case UserState::BANNED:
         return "banned";
     default:
         return "unknown";
@@ -49,13 +50,13 @@ int32_t DashboardRecentUsersServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -66,11 +67,11 @@ int32_t DashboardRecentUsersServlet::handle(
         }
 
         std::vector<int64_t> ids;
-        UserMgr::GetInstance()->getAllIds(ids, true);
+        UserRepository::GetAllIds(ids, true, GetDB());
 
         std::vector<DB::UserInfo::ptr> users;
         for (auto id : ids) {
-            auto u = UserMgr::GetInstance()->get(id);
+            auto u = UserRepository::Get(id, GetDB());
             if (u) {
                 users.push_back(u);
             }

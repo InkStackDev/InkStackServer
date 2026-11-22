@@ -2,9 +2,10 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/OrganizationApplyRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -30,8 +31,8 @@ int32_t OrganizationApplyListServlet::handle(
             break;
         }
 
-        auto uinfo = UserMgr::GetInstance()->get(uid);
-        if (!uinfo || uinfo->getRole() != UserManager::Role::ADMIN) {
+        auto uinfo = UserRepository::Get(uid, GetDB());
+        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -48,7 +49,7 @@ int32_t OrganizationApplyListServlet::handle(
             item["user_id"] = i->getUserId();
 
             // Lookup user name
-            auto apply_user = UserMgr::GetInstance()->get(i->getUserId());
+            auto apply_user = UserRepository::Get(i->getUserId(), GetDB());
             item["user_name"] = apply_user ? apply_user->getName() : "";
 
             item["org_name"] = i->getOrgName();

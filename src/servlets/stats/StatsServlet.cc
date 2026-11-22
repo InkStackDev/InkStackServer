@@ -1,9 +1,9 @@
 #include "StatsServlet.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
 
 #include <Chen/Log/Log.hpp>
 #include "../../Service/ArticleCounterService.hpp"
+#include "../../Message/MessageRouter.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -19,7 +19,7 @@ int32_t StatsServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t online_users = NotificationMgr::GetInstance()->getOnlineCount();
+        int64_t online_users = MessageRouter::Get()->OnlineUserCount();
 
         int64_t today_visits = ArticleCounterService::GetTodayViews();
         int64_t total_visits = ArticleCounterService::GetTotalViews();

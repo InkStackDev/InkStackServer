@@ -1,8 +1,9 @@
 #include "DashboardStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 DashboardStatsServlet::DashboardStatsServlet()
     : BlogLoginedServlet("DashboardStatsServlet")
@@ -21,13 +22,13 @@ int32_t DashboardStatsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
-        if (role != UserManager::Role::ADMIN) {
+        if (role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -47,13 +48,13 @@ int32_t DashboardStatsServlet::handle(
 
         // --- users ---
         std::vector<int64_t> ids;
-        UserMgr::GetInstance()->getAllIds(ids, true);
+        UserRepository::GetAllIds(ids, true, GetDB());
         int64_t total_users = ids.size();
 
         int64_t this_week_users = 0, last_week_users = 0;
         int64_t today_users = 0, yesterday_users = 0;
         for (auto id : ids) {
-            auto u = UserMgr::GetInstance()->get(id);
+            auto u = UserRepository::Get(id, GetDB());
             if (!u) {
                 continue;
             }

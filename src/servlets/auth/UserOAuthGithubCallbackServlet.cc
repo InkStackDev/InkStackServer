@@ -12,12 +12,12 @@
 #include <Chen/Util/StringUtil.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Config/AuthConfig.hpp"
 #include "../../Service/UserOAuthService.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -315,7 +315,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
             error = USER_NOT_FOUND;
             break;
         }
-        if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+        if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
             error = ACCOUNT_INVALID;
             break;
         }

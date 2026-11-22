@@ -2,9 +2,9 @@
 
 #include "../../Util/Util.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
 
 #include <vector>
+#include "../../Service/NotificationService.hpp"
 
 NotificationReadServlet::NotificationReadServlet()
     : BlogLoginedServlet("NotificationReadServlet")
@@ -43,7 +43,7 @@ int32_t NotificationReadServlet::handle(
             ids.push_back(single_id);
         }
 
-        NotificationMgr::GetInstance()->markRead(uid, ids);
+        NotificationService::MarkRead(uid, ids);
 
         result->setErrno(SUCCESS);
     } while (0);

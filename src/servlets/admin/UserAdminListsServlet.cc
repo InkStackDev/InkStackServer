@@ -1,6 +1,5 @@
 #include "UserAdminListsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
@@ -9,6 +8,7 @@
 
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr g_logger = LOG_ROOT();
 
@@ -32,7 +32,7 @@ int32_t UserAdminListsServlet::handle(
 
         uint64_t offset = (page_num - 1) * page_size;
         std::vector<DB::UserInfo::ptr> users;
-        uint64_t total = UserMgr::GetInstance()->listByPages(users, offset, page_size, rrole, state, days, true);
+        uint64_t total = UserRepository::ListByPages(users, offset, page_size, rrole, state, days, true, GetDB());
 
         // 批量查询文章数和评论数，避免逐用户查询
         std::map<int64_t, int64_t> article_counts, comment_counts;

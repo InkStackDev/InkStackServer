@@ -3,11 +3,12 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Permission.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Repository/AssignmentRepository.hpp"
 #include "../../Repository/AssignmentRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -35,13 +36,13 @@ int32_t OrganizationAssignmentListServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        if (system_role != UserManager::Role::ADMIN) {
+        if (system_role != UserRole::ADMIN) {
             auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
             if (!rel) {
                 result->setErrno(ORG_NOT_MEMBER);

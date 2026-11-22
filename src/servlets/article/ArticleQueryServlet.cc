@@ -2,11 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CategoryRepository.hpp"
 #include "../../Repository/ArticleRelRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -34,7 +34,7 @@ int32_t ArticleQueryServlet::handle(
         Json::Value list;
         for (auto& i : infos) {
             Json::Value item;
-            auto uinfo = UserMgr::GetInstance()->get(i->getUserId());
+            auto uinfo = UserRepository::Get(i->getUserId(), GetDB());
             item["id"] = i->getId();
             item["author"] = uinfo->getName();
             item["title"] = i->getTitle();

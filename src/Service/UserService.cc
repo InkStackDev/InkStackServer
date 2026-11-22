@@ -4,18 +4,25 @@
 #include <vector>
 
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/EncryptorUtil.hpp>
+#include <Chen/Util/RandomUtil.hpp>
 #include <Chen/Util/StringUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
 #include "DB/UserRecoveryCodeInfo.hpp"
 
-#include "../Manager/UserManager.hpp"
 #include "../Repository/UserRecoveryCodeRepository.hpp"
 #include "../Repository/UserRepository.hpp"
 #include "../Util/TotpUtil.hpp"
 #include "../Util/Util.hpp"
+#include "../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
+
+std::string UserService::GenerateToken()
+{
+    return chen::EncryptorUtil::MD5(chen::RandomUtil::RandString(32));
+}
 
 namespace {
 
@@ -272,7 +279,7 @@ UserService::DeleteUserResult UserService::DeleteUser(int64_t uid)
         return DeleteUserResult::DbError;
     }
     info->setIsDeleted(1);
-    info->setState(UserManager::Status::INACTIVE);
+    info->setState(UserState::INACTIVE);
     info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
     if (!UserRepository::Update(info, db)) {
         ERROR(logger) << "DeleteUser update failed, uid=" << uid;
@@ -309,7 +316,7 @@ bool UserService::RecoverUsers(const std::vector<int64_t>& ids, std::vector<int6
             continue;
         }
         info->setIsDeleted(0);
-        info->setState(UserManager::Status::ACTIVE);
+        info->setState(UserState::ACTIVE);
         info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
         if (!UserRepository::Update(info, db)) {
             ERROR(logger) << "RecoverUsers update failed, uid=" << id;
@@ -400,7 +407,7 @@ UserService::AdminUpdateResult UserService::AdminUpdate(int64_t uid,
     }
     UserRepository::Put(info);
     out = info;
-    revoke_sessions = !input.passwd.empty() || (input.has_state && input.state != UserManager::Status::ACTIVE);
+    revoke_sessions = !input.passwd.empty() || (input.has_state && input.state != UserState::ACTIVE);
     return AdminUpdateResult::Ok;
 }
 
@@ -609,7 +616,7 @@ UserService::ConsumeRecoveryResult UserService::ConsumeRecoveryCode(int64_t uid,
     if (!info) {
         return ConsumeRecoveryResult::UserNotFound;
     }
-    if (info->getState() != UserManager::Status::ACTIVE || info->getIsDeleted()) {
+    if (info->getState() != UserState::ACTIVE || info->getIsDeleted()) {
         return ConsumeRecoveryResult::AccountInvalid;
     }
     if (!info->getTotpEnabled()) {
@@ -656,7 +663,7 @@ UserService::FindOrCreateOAuthResult UserService::FindOrCreateOAuthUser(const OA
         return FindOrCreateOAuthResult::Ok;
     }
 
-    std::string passwd_hash = HashPassword(UserManager::GenerateToken());
+    std::string passwd_hash = HashPassword(UserService::GenerateToken());
     if (passwd_hash.empty()) {
         return FindOrCreateOAuthResult::InternalError;
     }
@@ -670,8 +677,8 @@ UserService::FindOrCreateOAuthResult UserService::FindOrCreateOAuthUser(const OA
         user->setGithub("https://github.com/" + input.login);
     }
     user->setPasswd(passwd_hash);
-    user->setRole(UserManager::Role::USER);
-    user->setState(UserManager::Status::ACTIVE);
+    user->setRole(UserRole::USER);
+    user->setState(UserState::ACTIVE);
     int64_t now = chen::TimeUtil::GetCurrentSec();
     user->setCreateTime(now);
     user->setUpdateTime(now);

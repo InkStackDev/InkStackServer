@@ -4,9 +4,10 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Service/PasskeyService.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 PasskeyLoginBeginServlet::PasskeyLoginBeginServlet()
     : BlogServlet("PasskeyLoginBeginServlet")
@@ -32,9 +33,9 @@ int32_t PasskeyLoginBeginServlet::handle(
         if (!auth_id.empty()) {
             DB::UserInfo::ptr user;
             if (IsEmail(auth_id)) {
-                user = UserMgr::GetInstance()->getByEmail(auth_id);
+                user = UserRepository::GetByEmail(auth_id, GetDB());
             } else if (IsValidAccount(auth_id)) {
-                user = UserMgr::GetInstance()->getByAccount(auth_id);
+                user = UserRepository::GetByAccount(auth_id, GetDB());
             } else {
                 result->setErrno(USER_INVALID_ACCOUNT);
                 break;
@@ -44,7 +45,7 @@ int32_t PasskeyLoginBeginServlet::handle(
                 result->setErrno(USER_NOT_FOUND);
                 break;
             }
-            if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+            if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
                 result->setErrno(ACCOUNT_INVALID);
                 break;
             }

@@ -2,11 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/AssignmentRelRepository.hpp"
 #include "../../Repository/ResourceRepository.hpp"
 #include "../../Repository/AssignmentRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -33,7 +33,7 @@ int32_t AssignmentSubmissionListServlet::handle(
         int64_t uid = getUserId(request);
         auto rel_info = AssignmentUserRelRepository::GetByAssignAndUser(assign_id, uid, GetDB());
         if (rel_info) {
-            auto uinfo = UserMgr::GetInstance()->get(uid);
+            auto uinfo = UserRepository::Get(uid, GetDB());
             result->set("user_id", uid);
             result->set("user_avatar", uinfo->getAvatar());
             result->set("user_name", uinfo->getName());

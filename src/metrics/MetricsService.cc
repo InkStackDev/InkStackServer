@@ -10,7 +10,7 @@
 
 #include <unistd.h>
 
-#include "../Manager/NotificationManager.hpp"
+#include "../Message/MessageRouter.hpp"
 #include "../Manager/WSConnectionManager.hpp"
 #include "../Util/Util.hpp"
 
@@ -109,11 +109,7 @@ void Init(
     });
 
     registry->getGaugeFunc("blog_online_users", "Online users (deduplicated)", {}, []() -> int64_t {
-        auto* manager = NotificationMgr::GetInstance();
-        if (!manager) {
-            return 0;
-        }
-        return manager->getOnlineCount();
+        return MessageRouter::Get() ? MessageRouter::Get()->OnlineUserCount() : 0;
     });
 
     registry->getGaugeFunc("blog_ws_online_devices", "Online WebSocket devices", {}, []() -> int64_t {

@@ -7,7 +7,6 @@
  */
 #pragma once
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/BugInfo.hpp"
@@ -22,6 +21,7 @@
 #include <string>
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Domain/RdTypes.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 // ============================================================================
 // 分页: page/page_size → offset/size
@@ -283,13 +283,13 @@ inline std::string GetOrgName(int64_t org_id)
 
 inline std::string GetUserName(int64_t user_id)
 {
-    auto user = UserMgr::GetInstance()->get(user_id);
+    auto user = UserRepository::Get(user_id, GetDB());
     return user ? user->getName() : "";
 }
 
 inline std::string GetUserAvatar(int64_t user_id)
 {
-    auto user = UserMgr::GetInstance()->get(user_id);
+    auto user = UserRepository::Get(user_id, GetDB());
     return user ? user->getAvatar() : "";
 }
 

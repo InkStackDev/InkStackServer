@@ -1,7 +1,8 @@
 #include "UserInfoServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/UserFollowRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 UserInfoServlet::UserInfoServlet()
     : BlogServlet("UserInfoServlet")
@@ -27,7 +28,7 @@ int32_t UserInfoServlet::handle(
             target_uid = id;
         }
 
-        DB::UserInfo::ptr info = UserMgr::GetInstance()->get(target_uid);
+        DB::UserInfo::ptr info = UserRepository::Get(target_uid, GetDB());
         if (!info) {
             result->setErrno(ACCOUNT_INVALID);
             break;
@@ -42,8 +43,8 @@ int32_t UserInfoServlet::handle(
         if (target_uid == viewer_uid) {
             result->set("email", info->getEmail());
         } else {
-            auto viewer = UserMgr::GetInstance()->get(viewer_uid);
-            if (viewer && viewer->getRole() == UserManager::Role::ADMIN) {
+            auto viewer = UserRepository::Get(viewer_uid, GetDB());
+            if (viewer && viewer->getRole() == UserRole::ADMIN) {
                 result->set("email", info->getEmail());
             }
         }

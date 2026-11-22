@@ -2,9 +2,9 @@
 
 #include <Chen/Http/Http.hpp>
 
-#include "../../Manager/MessageManager.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "MessageJson.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Service/ConversationService.hpp"
 
 ConversationServlet::ConversationServlet()
     : BlogLoginedServlet("ConversationServlet")
@@ -30,7 +30,7 @@ int32_t ConversationServlet::handle(
         if (request->getMethod() == chen::http::HttpMethod::GET) {
             // 会话列表
             std::vector<DB::ConversationInfo::ptr> convs;
-            MessageMgr::GetInstance()->listConversations(convs, uid);
+            ConversationService::ListConversations(convs, uid);
 
             Json::Value arr(Json::arrayValue);
             for (auto& c : convs) {
@@ -61,13 +61,13 @@ int32_t ConversationServlet::handle(
                 break;
             }
 
-            auto peer = UserMgr::GetInstance()->get(peer_id);
+            auto peer = UserRepository::Get(peer_id, GetDB());
             if (!peer) {
                 result->setErrno(MESSAGE_PEER_NOT_FOUND);
                 break;
             }
 
-            auto conv = MessageMgr::GetInstance()->getOrCreate(uid, peer_id);
+            auto conv = ConversationService::GetOrCreate(uid, peer_id);
             if (!conv) {
                 result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
                 break;

@@ -1,11 +1,11 @@
 #include "BroadcastCloseServlet.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/NotificationService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -22,8 +22,8 @@ int32_t BroadcastCloseServlet::handle(
 {
     do {
         int64_t uid = getUserId(request);
-        auto uinfo = UserMgr::GetInstance()->get(uid);
-        if (!uinfo || uinfo->getRole() != UserManager::ADMIN) {
+        auto uinfo = UserRepository::Get(uid, GetDB());
+        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

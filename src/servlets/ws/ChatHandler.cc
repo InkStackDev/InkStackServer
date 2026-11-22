@@ -1,12 +1,15 @@
 #include "ChatHandler.hpp"
 
-#include "../../Manager/MessageManager.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Manager/WSConnectionManager.hpp"
 #include "../Message/MessageJson.hpp"
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
+#include "../../Repository/ConversationRepository.hpp"
+#include "../../Service/ConversationService.hpp"
+#include "../../Message/MessageRouter.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -41,7 +44,7 @@ static bool CheckConversationAccess(chen::http::WSSession::ptr session,
     int64_t& peer_id,
     const std::string& client_id = "")
 {
-    conv = MessageMgr::GetInstance()->get(conversation_id);
+    conv = ConversationRepository::Get(conversation_id, GetDB());
     if (!conv) {
         SendChatError(session, MESSAGE_CONVERSATION_NOT_FOUND, "Conversation not found", client_id);
         return false;
@@ -64,7 +67,7 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
         SendChatError(session, PARAM_MISSING, "conversation_id and text required", client_id);
         return 0;
     }
-    if (text.size() > MessageManager::kMaxMessageLen) {
+    if (text.size() > ConversationService::kMaxMessageLen) {
         SendChatError(session, MESSAGE_TEXT_TOO_LONG, "Message too long", client_id);
         return 0;
     }
@@ -75,7 +78,7 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
         return 0;
     }
 
-    auto msg_info = MessageMgr::GetInstance()->sendMessage(conversation_id, uid, text);
+    auto msg_info = ConversationService::SendMessage(conversation_id, uid, text);
     if (!msg_info) {
         SendChatError(session, MESSAGE_SEND_FAILED, "Send failed", client_id);
         return 0;
@@ -93,23 +96,23 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
         Json::Value mj;
         BuildMessageJson(mj, msg_info, uid);
         ack["message"] = mj;
-        ack["recipient_online"] = MessageMgr::GetInstance()->isChatConnected(peer_id);
+        ack["recipient_online"] = MessageRouter::Get()->IsUserOnline(peer_id);
         WSMgr::GetInstance()->sendToSession(session, chen::JsonUtil::ToString(ack));
     }
 
     // 推送给接收方所有设备
-    if (MessageMgr::GetInstance()->isChatConnected(peer_id)) {
+    if (MessageRouter::Get()->IsUserOnline(peer_id)) {
         Json::Value push;
         push["type"] = "message";
         push["conversation_id"] = conversation_id;
         Json::Value mj;
         BuildMessageJson(mj, msg_info, peer_id);
         push["message"] = mj;
-        MessageMgr::GetInstance()->sendToUser(peer_id, chen::JsonUtil::ToString(push));
+        SendChatToUser(peer_id, chen::JsonUtil::ToString(push));
     }
 
     INFO(logger) << "[ChatWS] ack->" << uid << " push->" << peer_id
-                 << " peer_online=" << MessageMgr::GetInstance()->isChatConnected(peer_id);
+                 << " peer_online=" << MessageRouter::Get()->IsUserOnline(peer_id);
     return 0;
 }
 
@@ -127,15 +130,15 @@ static int32_t HandleRead(int64_t uid, const Json::Value& root, chen::http::WSSe
         return 0;
     }
 
-    MessageMgr::GetInstance()->markRead(conversation_id, uid);
+    ConversationService::MarkRead(conversation_id, uid);
 
     // 已读回执给对端所有设备
-    if (MessageMgr::GetInstance()->isChatConnected(peer_id)) {
+    if (MessageRouter::Get()->IsUserOnline(peer_id)) {
         Json::Value rcpt;
         rcpt["type"] = "read";
         rcpt["conversation_id"] = conversation_id;
         rcpt["unread"] = 0;
-        MessageMgr::GetInstance()->sendToUser(peer_id, chen::JsonUtil::ToString(rcpt));
+        SendChatToUser(peer_id, chen::JsonUtil::ToString(rcpt));
     }
     return 0;
 }
@@ -152,8 +155,8 @@ int32_t ChatHandler::Handle(int64_t uid, const Json::Value& root, chen::http::WS
     }
 
     // 兜底：连接鉴权之外的二次校验，防止角色变动后仍可用私信
-    auto user = UserMgr::GetInstance()->get(uid);
-    if (!user || user->getRole() == UserManager::Role::USER) {
+    auto user = UserRepository::Get(uid, GetDB());
+    if (!user || user->getRole() == UserRole::USER) {
         SendChatError(
             session, ACCESS_DENIED, "Chat not available for normal users", root.get("client_id", "").asString());
         return 0;

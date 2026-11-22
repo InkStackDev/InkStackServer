@@ -1,8 +1,9 @@
 #include "OrganizationAdminStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 OrganizationAdminStatsServlet::OrganizationAdminStatsServlet()
     : BlogLoginedServlet("OrganizationAdminStatsServlet")
@@ -21,8 +22,8 @@ int32_t OrganizationAdminStatsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
-        if (!current_user || current_user->getRole() != UserManager::Role::ADMIN) {
+        auto current_user = UserRepository::Get(uid, GetDB());
+        if (!current_user || current_user->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

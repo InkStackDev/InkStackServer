@@ -1,6 +1,5 @@
 #include "RdBugDeleteServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
@@ -10,6 +9,8 @@
 #include <set>
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 RdBugDeleteServlet::RdBugDeleteServlet()
     : BlogLoginedServlet("RdBugDeleteServlet")
@@ -42,13 +43,13 @@ int32_t RdBugDeleteServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
+        bool is_platform_admin = (system_role == UserRole::ADMIN);
 
         int32_t org_role = 0;
         if (!is_platform_admin) {

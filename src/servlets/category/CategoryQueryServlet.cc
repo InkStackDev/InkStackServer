@@ -1,12 +1,12 @@
 #include "CategoryQueryServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/UserManager.hpp"
 
 #include <Chen/Log/Log.hpp>
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/CategoryRepository.hpp"
 #include "../../Repository/ArticleRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -30,7 +30,7 @@ bool CategoryQueryServlet::handlePre(
     int64_t uid = getUserId(request);
     DB::UserInfo::ptr user;
     if (uid) {
-        user = UserMgr::GetInstance()->get(uid);
+        user = UserRepository::Get(uid, GetDB());
     }
     int32_t rt = CheckAdminRoute(uid, user);
     if (rt) {
@@ -73,7 +73,7 @@ int32_t CategoryQueryServlet::handle(
             Json::Value item;
             item["id"] = cat->getId();
             item["user_id"] = cat->getUserId();
-            auto owner = UserMgr::GetInstance()->get(cat->getUserId());
+            auto owner = UserRepository::Get(cat->getUserId(), GetDB());
             item["author"] = owner ? owner->getName() : "";
             item["name"] = cat->getName();
             item["url"] = cat->getUrl();

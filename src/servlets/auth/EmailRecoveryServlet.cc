@@ -5,9 +5,10 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -38,12 +39,12 @@ int32_t EmailRecoveryServlet::handle(
             break;
         }
 
-        auto user = UserMgr::GetInstance()->getByEmail(email);
+        auto user = UserRepository::GetByEmail(email, GetDB());
         if (!user) {
             result->setErrno(USER_EMAIL_NOT_REGISTER);
             break;
         }
-        if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
+        if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
             result->setErrno(ACCOUNT_INVALID);
             break;
         }

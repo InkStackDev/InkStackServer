@@ -1,13 +1,14 @@
 #include "OrganizationDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 
 #include <set>
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 OrganizationDeleteServlet::OrganizationDeleteServlet()
     : BlogLoginedServlet("OrganizationDeleteServlet")
@@ -35,8 +36,8 @@ int32_t OrganizationDeleteServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
-        if (!current_user || current_user->getRole() != UserManager::Role::ADMIN) {
+        auto current_user = UserRepository::Get(uid, GetDB());
+        if (!current_user || current_user->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

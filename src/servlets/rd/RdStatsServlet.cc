@@ -1,6 +1,5 @@
 #include "RdStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
@@ -8,6 +7,8 @@
 #include "../../Repository/BugRepository.hpp"
 #include "../../Repository/RequirementRepository.hpp"
 #include "../../Domain/RdTypes.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 RdStatsServlet::RdStatsServlet()
     : BlogLoginedServlet("RdStatsServlet")
@@ -27,13 +28,13 @@ int32_t RdStatsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
+        bool is_platform_admin = (system_role == UserRole::ADMIN);
         time_t now = time(0);
 
         std::vector<DB::RequirementInfo::ptr> reqs;

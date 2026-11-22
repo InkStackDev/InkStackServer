@@ -9,14 +9,16 @@
 #include <json/json.h>
 
 #include "../Repository/RecordRepository.hpp"
-#include "../Manager/NotificationManager.hpp"
-#include "../Manager/UserManager.hpp"
 #include "../Util/Util.hpp"
 #include "EventDefine.hpp"
 #include "../Domain/OrganizationTypes.hpp"
 #include "../Repository/OrganizationUserRelRepository.hpp"
 #include "../Domain/ArticleTypes.hpp"
 #include "../Repository/CommentRepository.hpp"
+#include "../Repository/UserRepository.hpp"
+#include "../Domain/UserTypes.hpp"
+#include "../Service/NotificationService.hpp"
+#include "../Message/MessageRouter.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -97,7 +99,7 @@ static void EventComment(const std::any& d)
     notif_data.article_id = comment->getArticleId();
     notif_data.comment_id = data.comment_id;
 
-    auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif = NotificationService::AddNotification(notif_data);
     if (notif) {
         Json::Value wsMsg;
         wsMsg["id"] = notif->getId();
@@ -108,7 +110,7 @@ static void EventComment(const std::any& d)
         wsMsg["comment_id"] = data.comment_id;
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -122,10 +124,10 @@ static void EventArticleReview(const std::any& d)
         std::string content = "「" + data.author_name + "」提交了文章「" + data.article_title + "」等待审核";
 
         std::vector<int64_t> userIds;
-        UserMgr::GetInstance()->getAllIds(userIds, true);
+        UserRepository::GetAllIds(userIds, true, GetDB());
         for (auto targetId : userIds) {
-            auto u = UserMgr::GetInstance()->get(targetId);
-            if (u && (u->getRole() == UserManager::Role::ADMIN || u->getRole() == UserManager::Role::CHECKER)) {
+            auto u = UserRepository::Get(targetId, GetDB());
+            if (u && (u->getRole() == UserRole::ADMIN || u->getRole() == UserRole::CHECKER)) {
                 NotificationData notif_data{};
                 notif_data.user_id = targetId;
                 notif_data.title = title;
@@ -134,7 +136,7 @@ static void EventArticleReview(const std::any& d)
                 notif_data.sender_id = data.author_id;
                 notif_data.article_id = data.article_id;
 
-                auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+                auto notif_info = NotificationService::AddNotification(notif_data);
                 if (notif_info) {
                     Json::Value wsMsg;
                     wsMsg["id"] = notif_info->getId();
@@ -144,7 +146,7 @@ static void EventArticleReview(const std::any& d)
                     wsMsg["article_id"] = data.article_id;
                     wsMsg["is_read"] = false;
                     wsMsg["create_time"] = notif_info->getCreateTime();
-                    NotificationMgr::GetInstance()->sendToUser(targetId, chen::JsonUtil::ToString(wsMsg));
+                    SendNotificationToUser(targetId, chen::JsonUtil::ToString(wsMsg));
                 }
             }
         }
@@ -162,7 +164,7 @@ static void EventArticleReview(const std::any& d)
         notif_data.sender_id = data.reviewer_id;
         notif_data.article_id = data.article_id;
 
-        auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif_info = NotificationService::AddNotification(notif_data);
         if (notif_info) {
             Json::Value wsMsg;
             wsMsg["id"] = notif_info->getId();
@@ -172,16 +174,16 @@ static void EventArticleReview(const std::any& d)
             wsMsg["article_id"] = data.article_id;
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif_info->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
         }
 
         // Mark other admins/checkers' article_review_request as read
         std::vector<int64_t> userIds;
-        UserMgr::GetInstance()->getAllIds(userIds, true);
+        UserRepository::GetAllIds(userIds, true, GetDB());
         for (auto targetId : userIds) {
-            auto u = UserMgr::GetInstance()->get(targetId);
-            if (u && (u->getRole() == UserManager::Role::ADMIN || u->getRole() == UserManager::Role::CHECKER)) {
-                NotificationMgr::GetInstance()->markReadByType(targetId, "article_review_request");
+            auto u = UserRepository::Get(targetId, GetDB());
+            if (u && (u->getRole() == UserRole::ADMIN || u->getRole() == UserRole::CHECKER)) {
+                NotificationService::MarkReadByType(targetId, "article_review_request");
             }
         }
     }
@@ -203,7 +205,7 @@ static void EventArticleStateChanged(const std::any& d)
     notif_data.sender_id = 0;
     notif_data.article_id = data.article_id;
 
-    auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif = NotificationService::AddNotification(notif_data);
     if (notif) {
         Json::Value wsMsg;
         wsMsg["id"] = notif->getId();
@@ -213,7 +215,7 @@ static void EventArticleStateChanged(const std::any& d)
         wsMsg["article_id"] = data.article_id;
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -232,7 +234,7 @@ static void EventArticlePraise(const std::any& d)
     notif_data.sender_id = data.liker_id;
     notif_data.article_id = data.article_id;
 
-    auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif_info = NotificationService::AddNotification(notif_data);
     if (notif_info) {
         Json::Value wsMsg;
         wsMsg["id"] = notif_info->getId();
@@ -242,7 +244,7 @@ static void EventArticlePraise(const std::any& d)
         wsMsg["article_id"] = data.article_id;
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif_info->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.author_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -263,7 +265,7 @@ static void EventCommentCreated(const std::any& d)
         notif_data.sender_id = data.commenter_id;
         notif_data.article_id = data.article_id;
 
-        auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif_info = NotificationService::AddNotification(notif_data);
         if (notif_info) {
             Json::Value wsMsg;
             wsMsg["id"] = notif_info->getId();
@@ -273,7 +275,7 @@ static void EventCommentCreated(const std::any& d)
             wsMsg["article_id"] = data.article_id;
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif_info->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(target_uid, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(target_uid, chen::JsonUtil::ToString(wsMsg));
         }
     };
 
@@ -302,7 +304,7 @@ static void EventCommentPraise(const std::any& d)
     notif_data.article_id = data.article_id;
     notif_data.comment_id = data.comment_id;
 
-    auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif_info = NotificationService::AddNotification(notif_data);
     if (notif_info) {
         Json::Value wsMsg;
         wsMsg["id"] = notif_info->getId();
@@ -313,7 +315,7 @@ static void EventCommentPraise(const std::any& d)
         wsMsg["comment_id"] = data.comment_id;
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif_info->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.comment_author_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.comment_author_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -331,7 +333,7 @@ static void EventUserFollow(const std::any& d)
     notif_data.type = "follow";
     notif_data.sender_id = data.follower_id;
 
-    auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif_info = NotificationService::AddNotification(notif_data);
     if (notif_info) {
         Json::Value wsMsg;
         wsMsg["id"] = notif_info->getId();
@@ -340,7 +342,7 @@ static void EventUserFollow(const std::any& d)
         wsMsg["type"] = "follow";
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif_info->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.following_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.following_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -369,7 +371,7 @@ static void EventUserAdminAction(const std::any& d)
     notif_data.type = data.type;
     notif_data.sender_id = 0;
 
-    auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif = NotificationService::AddNotification(notif_data);
     if (notif) {
         Json::Value wsMsg;
         wsMsg["id"] = notif->getId();
@@ -378,7 +380,7 @@ static void EventUserAdminAction(const std::any& d)
         wsMsg["type"] = data.type;
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.user_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.user_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -396,7 +398,7 @@ static void EventOrgDeleted(const std::any& d)
     notif_data.type = "org_deleted";
     notif_data.sender_id = 0;
 
-    auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif = NotificationService::AddNotification(notif_data);
     if (notif) {
         Json::Value wsMsg;
         wsMsg["id"] = notif->getId();
@@ -405,7 +407,7 @@ static void EventOrgDeleted(const std::any& d)
         wsMsg["type"] = "org_deleted";
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.member_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.member_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 
@@ -424,7 +426,7 @@ static void EventOrgMember(const std::any& d)
         notif_data.type = "org_role_change";
         notif_data.sender_id = data.operator_id;
 
-        auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif_info = NotificationService::AddNotification(notif_data);
         if (notif_info) {
             Json::Value wsMsg;
             wsMsg["id"] = notif_info->getId();
@@ -433,7 +435,7 @@ static void EventOrgMember(const std::any& d)
             wsMsg["type"] = "org_role_change";
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif_info->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(data.target_user_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(data.target_user_id, chen::JsonUtil::ToString(wsMsg));
         }
     } else if (data.type == "kicked") {
         std::string title = "成员被移出组织";
@@ -450,7 +452,7 @@ static void EventOrgMember(const std::any& d)
                 notif_data.type = "org_member_kicked";
                 notif_data.sender_id = data.operator_id;
 
-                auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+                auto notif_info = NotificationService::AddNotification(notif_data);
                 if (notif_info) {
                     Json::Value wsMsg;
                     wsMsg["id"] = notif_info->getId();
@@ -459,7 +461,7 @@ static void EventOrgMember(const std::any& d)
                     wsMsg["type"] = "org_member_kicked";
                     wsMsg["is_read"] = false;
                     wsMsg["create_time"] = notif_info->getCreateTime();
-                    NotificationMgr::GetInstance()->sendToUser(m->getUserId(), chen::JsonUtil::ToString(wsMsg));
+                    SendNotificationToUser(m->getUserId(), chen::JsonUtil::ToString(wsMsg));
                 }
             }
         }
@@ -475,7 +477,7 @@ static void EventOrgMember(const std::any& d)
             notif_data.type = "org_member_kicked";
             notif_data.sender_id = data.operator_id;
 
-            auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+            auto notif_info = NotificationService::AddNotification(notif_data);
             if (notif_info) {
                 Json::Value wsMsg;
                 wsMsg["id"] = notif_info->getId();
@@ -484,11 +486,11 @@ static void EventOrgMember(const std::any& d)
                 wsMsg["type"] = "org_member_kicked";
                 wsMsg["is_read"] = false;
                 wsMsg["create_time"] = notif_info->getCreateTime();
-                NotificationMgr::GetInstance()->sendToUser(data.kicked_user_id, chen::JsonUtil::ToString(wsMsg));
+                SendNotificationToUser(data.kicked_user_id, chen::JsonUtil::ToString(wsMsg));
             }
         }
     } else if (data.type == "join_request") {
-        auto applicant = UserMgr::GetInstance()->get(data.applicant_id);
+        auto applicant = UserRepository::Get(data.applicant_id, GetDB());
         std::string applicant_name = applicant ? applicant->getName() : std::to_string(data.applicant_id);
         std::string title = "新的加入申请";
         std::string content = "用户「" + applicant_name + "」申请加入组织「" + data.org_name + "」";
@@ -503,7 +505,7 @@ static void EventOrgMember(const std::any& d)
                 notif_data.type = "org_join_request";
                 notif_data.sender_id = data.applicant_id;
 
-                auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+                auto notif_info = NotificationService::AddNotification(notif_data);
                 if (notif_info) {
                     Json::Value wsMsg;
                     wsMsg["id"] = notif_info->getId();
@@ -512,7 +514,7 @@ static void EventOrgMember(const std::any& d)
                     wsMsg["type"] = "org_join_request";
                     wsMsg["is_read"] = false;
                     wsMsg["create_time"] = notif_info->getCreateTime();
-                    NotificationMgr::GetInstance()->sendToUser(m->getUserId(), chen::JsonUtil::ToString(wsMsg));
+                    SendNotificationToUser(m->getUserId(), chen::JsonUtil::ToString(wsMsg));
                 }
             }
         }
@@ -530,7 +532,7 @@ static void EventOrgMember(const std::any& d)
         notif_data.type = notif_type;
         notif_data.sender_id = data.operator_id;
 
-        auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif_info = NotificationService::AddNotification(notif_data);
         if (notif_info) {
             Json::Value wsMsg;
             wsMsg["id"] = notif_info->getId();
@@ -539,14 +541,14 @@ static void EventOrgMember(const std::any& d)
             wsMsg["type"] = notif_type;
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif_info->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
         }
         // Mark other admins' org_join_request as read
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelRepository::ListByOrgPages(members, data.org_id, 0, 10000, -1, true, GetDB());
         for (auto& m : members) {
             if (m->getRole() == OrgRole::ORG_ADMIN) {
-                NotificationMgr::GetInstance()->markReadByType(m->getUserId(), "org_join_request");
+                NotificationService::MarkReadByType(m->getUserId(), "org_join_request");
             }
         }
     }
@@ -560,7 +562,7 @@ static void EventOrgApply(const std::any& d)
         std::string title = "新的组织申请";
         std::string content = "用户「" + data.applicant_name + "」申请创建组织「" + data.org_name + "」";
         std::vector<DB::UserInfo::ptr> admins;
-        UserMgr::GetInstance()->listByPages(admins, 0, 10000, UserManager::Role::ADMIN, -1, -1, true);
+        UserRepository::ListByPages(admins, 0, 10000, UserRole::ADMIN, -1, -1, true, GetDB());
         for (auto& admin : admins) {
             NotificationData notif_data{};
             notif_data.user_id = admin->getId();
@@ -570,7 +572,7 @@ static void EventOrgApply(const std::any& d)
             notif_data.sender_id = 0;
             notif_data.article_id = data.apply_id;
 
-            auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+            auto notif = NotificationService::AddNotification(notif_data);
             if (notif) {
                 Json::Value wsMsg;
                 wsMsg["id"] = notif->getId();
@@ -580,7 +582,7 @@ static void EventOrgApply(const std::any& d)
                 wsMsg["apply_id"] = data.apply_id;
                 wsMsg["is_read"] = false;
                 wsMsg["create_time"] = notif->getCreateTime();
-                NotificationMgr::GetInstance()->sendToUser(admin->getId(), chen::JsonUtil::ToString(wsMsg));
+                SendNotificationToUser(admin->getId(), chen::JsonUtil::ToString(wsMsg));
             }
         }
     } else if (data.type == "approved") {
@@ -595,7 +597,7 @@ static void EventOrgApply(const std::any& d)
         notif_data.sender_id = 0;
         notif_data.article_id = data.org_id;
 
-        auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif = NotificationService::AddNotification(notif_data);
         if (notif) {
             Json::Value wsMsg;
             wsMsg["id"] = notif->getId();
@@ -605,7 +607,7 @@ static void EventOrgApply(const std::any& d)
             wsMsg["org_id"] = data.org_id;
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
         }
     } else if (data.type == "rejected") {
         std::string title = "组织申请被拒绝";
@@ -619,7 +621,7 @@ static void EventOrgApply(const std::any& d)
         notif_data.type = "org_apply_rejected";
         notif_data.sender_id = 0;
 
-        auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif = NotificationService::AddNotification(notif_data);
         if (notif) {
             Json::Value wsMsg;
             wsMsg["id"] = notif->getId();
@@ -628,7 +630,7 @@ static void EventOrgApply(const std::any& d)
             wsMsg["type"] = "org_apply_rejected";
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
         }
     }
 }
@@ -648,7 +650,7 @@ static void EventAssignment(const std::any& d)
         notif_data.type = "assignment_deleted";
         notif_data.sender_id = 0;
 
-        auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif = NotificationService::AddNotification(notif_data);
         if (notif) {
             Json::Value wsMsg;
             wsMsg["id"] = notif->getId();
@@ -657,7 +659,7 @@ static void EventAssignment(const std::any& d)
             wsMsg["type"] = "assignment_deleted";
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(data.submitter_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(data.submitter_id, chen::JsonUtil::ToString(wsMsg));
         }
     } else if (data.type == "created") {
         std::string title = "新作业发布";
@@ -671,7 +673,7 @@ static void EventAssignment(const std::any& d)
             notif_data.sender_id = 0;
             notif_data.article_id = data.assignment_id;
 
-            auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+            auto notif = NotificationService::AddNotification(notif_data);
             if (notif) {
                 Json::Value wsMsg;
                 wsMsg["id"] = notif->getId();
@@ -681,7 +683,7 @@ static void EventAssignment(const std::any& d)
                 wsMsg["assignment_id"] = data.assignment_id;
                 wsMsg["is_read"] = false;
                 wsMsg["create_time"] = notif->getCreateTime();
-                NotificationMgr::GetInstance()->sendToUser(uid, chen::JsonUtil::ToString(wsMsg));
+                SendNotificationToUser(uid, chen::JsonUtil::ToString(wsMsg));
             }
         }
     }
@@ -702,7 +704,7 @@ static void EventAssignmentSubmitted(const std::any& d)
         notif_data.sender_id = 0;
         notif_data.article_id = data.assignment_id;
 
-        auto notif = NotificationMgr::GetInstance()->addNotification(notif_data);
+        auto notif = NotificationService::AddNotification(notif_data);
         if (notif) {
             Json::Value wsMsg;
             wsMsg["id"] = notif->getId();
@@ -712,7 +714,7 @@ static void EventAssignmentSubmitted(const std::any& d)
             wsMsg["assignment_id"] = data.assignment_id;
             wsMsg["is_read"] = false;
             wsMsg["create_time"] = notif->getCreateTime();
-            NotificationMgr::GetInstance()->sendToUser(admin_id, chen::JsonUtil::ToString(wsMsg));
+            SendNotificationToUser(admin_id, chen::JsonUtil::ToString(wsMsg));
         }
     }
 }
@@ -744,7 +746,7 @@ static void EventRdAssign(const std::any& d)
     notif_data.sender_id = data.creator_id;
     notif_data.article_id = data.item_id;
 
-    auto notif_info = NotificationMgr::GetInstance()->addNotification(notif_data);
+    auto notif_info = NotificationService::AddNotification(notif_data);
     if (notif_info) {
         Json::Value wsMsg;
         wsMsg["id"] = notif_info->getId();
@@ -760,7 +762,7 @@ static void EventRdAssign(const std::any& d)
         }
         wsMsg["is_read"] = false;
         wsMsg["create_time"] = notif_info->getCreateTime();
-        NotificationMgr::GetInstance()->sendToUser(data.assignee_id, chen::JsonUtil::ToString(wsMsg));
+        SendNotificationToUser(data.assignee_id, chen::JsonUtil::ToString(wsMsg));
     }
 }
 

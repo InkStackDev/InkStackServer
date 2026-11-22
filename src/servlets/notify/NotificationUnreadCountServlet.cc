@@ -1,6 +1,6 @@
 #include "NotificationUnreadCountServlet.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
+#include "../../Repository/NotificationQueryRepository.hpp"
 
 NotificationUnreadCountServlet::NotificationUnreadCountServlet()
     : BlogLoginedServlet("NotificationUnreadCountServlet")
@@ -20,7 +20,7 @@ int32_t NotificationUnreadCountServlet::handle(
             break;
         }
 
-        int64_t count = NotificationMgr::GetInstance()->unreadCount(uid);
+        int64_t count = NotificationQueryRepository::UnreadCount(uid, GetDB());
 
         result->setErrno(SUCCESS);
         result->set("count", count);

@@ -4,11 +4,11 @@
 
 #include <set>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/CategoryService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/CategoryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 CategoryDeleteServlet::CategoryDeleteServlet()
     : BlogLoginedServlet("CategoryDeleteServlet")
@@ -30,7 +30,7 @@ bool CategoryDeleteServlet::handlePre(
     int64_t uid = getUserId(request);
     DB::UserInfo::ptr user;
     if (uid) {
-        user = UserMgr::GetInstance()->get(uid);
+        user = UserRepository::Get(uid, GetDB());
     }
     int32_t rt = CheckAdminRoute(uid, user);
     if (rt) {

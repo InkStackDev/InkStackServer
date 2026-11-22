@@ -2,7 +2,6 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
@@ -11,6 +10,8 @@
 #include "../../Repository/ArticleRelRepository.hpp"
 #include "../../Domain/ArticleTypes.hpp"
 #include "../../Repository/UserFollowRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -41,7 +42,7 @@ int32_t ArticleDetailServlet::handle(
         }
         int32_t state = info->getState();
         bool is_deleted = info->getIsDeleted();
-        auto current_user = UserMgr::GetInstance()->get(cur_uid);
+        auto current_user = UserRepository::Get(cur_uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
@@ -52,7 +53,7 @@ int32_t ArticleDetailServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (state != ArticleStatus::PUBLISHED && role != UserManager::Role::ADMIN && !is_author) {
+        if (state != ArticleStatus::PUBLISHED && role != UserRole::ADMIN && !is_author) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -61,7 +62,7 @@ int32_t ArticleDetailServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        auto author_info = UserMgr::GetInstance()->get(uid);
+        auto author_info = UserRepository::Get(uid, GetDB());
         result->set("id", info->getId());
         result->set("author", author_info->getName());
         result->set("author_avatar", author_info->getAvatar());

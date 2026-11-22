@@ -1,7 +1,5 @@
 #include "NotificationSendServlet.hpp"
 
-#include "../../Manager/NotificationManager.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/IOManager/IOManager.hpp>
@@ -9,6 +7,10 @@
 #include <json/json.h>
 
 #include <vector>
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
+#include "../../Service/NotificationService.hpp"
+#include "../../Message/MessageRouter.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -26,8 +28,8 @@ int32_t NotificationSendServlet::handle(
     do {
         // 权限检查: 仅管理员可发送通知
         int64_t uid = getUserId(request);
-        DB::UserInfo::ptr uinfo = UserMgr::GetInstance()->get(uid);
-        if (!uinfo || uinfo->getRole() != UserManager::ADMIN) {
+        DB::UserInfo::ptr uinfo = UserRepository::Get(uid, GetDB());
+        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -74,11 +76,9 @@ int32_t NotificationSendServlet::handle(
         }
         std::string msg = chen::JsonUtil::ToString(notif);
 
-        auto& notifMgr = *NotificationMgr::GetInstance();
-
         if (target == "all") {
             std::vector<int64_t> user_ids;
-            UserMgr::GetInstance()->getAllIds(user_ids, true);
+            UserRepository::GetAllIds(user_ids, true, GetDB());
 
             NotificationData ntf{};
             ntf.title = title;
@@ -94,16 +94,16 @@ int32_t NotificationSendServlet::handle(
 
             if (is_broadcast) {
                 // 广播只落一条记录（user_id=0），前端 GET /broadcast/list 只显示这一条
-                NotificationMgr::GetInstance()->addNotification(ntf);
+                NotificationService::AddNotification(ntf);
             }
 
             // 给每个用户创建普通通知（is_broadcast=0）并 WS 推送
             chen::IOManager::GetThis()->schedule([ntf, msg, user_ids]() mutable {
                 for (auto target_uid : user_ids) {
                     ntf.user_id = target_uid;
-                    NotificationMgr::GetInstance()->addNotification(ntf);
+                    NotificationService::AddNotification(ntf);
                 }
-                NotificationMgr::GetInstance()->broadcast(msg);
+                BroadcastNotification(msg);
             });
 
             INFO(logger) << "[NOTIFY] broadcast scheduled: type=" << type << " title=" << title << " count=" << user_ids.size();
@@ -133,8 +133,8 @@ int32_t NotificationSendServlet::handle(
                 ntf.article_id = article_id;
                 ntf.comment_id = comment_id;
 
-                notifMgr.addNotification(ntf);
-                if (notifMgr.sendToUser(id, msg) == 0) {
+                NotificationService::AddNotification(ntf);
+                if (SendNotificationToUser(id, msg) == 0) {
                     sent++;
                 }
             }

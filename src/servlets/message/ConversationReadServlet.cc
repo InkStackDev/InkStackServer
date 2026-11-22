@@ -1,7 +1,8 @@
 #include "ConversationReadServlet.hpp"
 
-#include "../../Manager/MessageManager.hpp"
 #include "MessageJson.hpp"
+#include "../../Repository/ConversationRepository.hpp"
+#include "../../Service/ConversationService.hpp"
 
 ConversationReadServlet::ConversationReadServlet()
     : BlogLoginedServlet("ConversationReadServlet")
@@ -35,7 +36,7 @@ int32_t ConversationReadServlet::handle(
             break;
         }
 
-        auto conv = MessageMgr::GetInstance()->get(conversation_id);
+        auto conv = ConversationRepository::Get(conversation_id, GetDB());
         if (!conv) {
             result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
             break;
@@ -45,7 +46,7 @@ int32_t ConversationReadServlet::handle(
             break;
         }
 
-        if (!MessageMgr::GetInstance()->markRead(conversation_id, uid)) {
+        if (!ConversationService::MarkRead(conversation_id, uid)) {
             result->setErrno(DB_OPERATION_FAILED, "mark read failed");
             break;
         }

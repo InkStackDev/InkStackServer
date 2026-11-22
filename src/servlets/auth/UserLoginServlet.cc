@@ -5,10 +5,10 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
+#include "../../Service/UserService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -40,9 +40,9 @@ int32_t UserLoginServlet::handle(
 
         DB::UserInfo::ptr info;
         if (IsEmail(auth_id)) {
-            info = UserMgr::GetInstance()->getByEmail(auth_id);
+            info = UserRepository::GetByEmail(auth_id, GetDB());
         } else if (IsValidAccount(auth_id)) {
-            info = UserMgr::GetInstance()->getByAccount(auth_id);
+            info = UserRepository::GetByAccount(auth_id, GetDB());
         } else {
             result->setErrno(USER_INVALID_ACCOUNT);
             break;
@@ -70,7 +70,7 @@ int32_t UserLoginServlet::handle(
                 std::string old_hash = info->getPasswd();
                 info->setPasswd(passwd_hash);
                 if (UserRepository::Update(info, upgrade_db)) {
-                    UserMgr::GetInstance()->update(info);
+                    UserRepository::Put(info);
                 } else {
                     info->setPasswd(old_hash);
                     ERROR(logger) << "upgrade password hash failed user=" << info->getId();
@@ -80,7 +80,7 @@ int32_t UserLoginServlet::handle(
 
         // 2FA: 密码验证通过后，如果启用了TOTP，返回临时凭证等待第二步验证
         if (info->getTotpEnabled()) {
-            std::string tempToken = UserManager::GenerateToken();
+            std::string tempToken = UserService::GenerateToken();
             std::string redisKey = std::string(k2faPendingPrefix) + tempToken;
             chen::RedisUtil::Cmd(
                 GetRedisPoolName(), "setex %s %d %lld", redisKey.c_str(), k2faPendingTTL, (long long)info->getId());

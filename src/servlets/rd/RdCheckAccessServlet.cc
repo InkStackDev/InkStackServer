@@ -1,10 +1,11 @@
 #include "RdCheckAccessServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 RdCheckAccessServlet::RdCheckAccessServlet()
     : BlogLoginedServlet("RdCheckAccessServlet")
@@ -19,7 +20,7 @@ int32_t RdCheckAccessServlet::handle(
 {
     do {
         int64_t current_uid = getUserId(request);
-        DB::UserInfo::ptr currentUser = UserMgr::GetInstance()->get(current_uid);
+        DB::UserInfo::ptr currentUser = UserRepository::Get(current_uid, GetDB());
         if (!currentUser || currentUser->getState() != 1) {
             result->setErrno(RD_INVALID_USER);
             break;
@@ -30,13 +31,13 @@ int32_t RdCheckAccessServlet::handle(
         if (!uidParam.empty()) {
             target_uid = atol(uidParam.c_str());
             // 只有管理员可以查询其他用户的平台访问权限
-            if (target_uid != current_uid && currentUser->getRole() != UserManager::Role::ADMIN) {
+            if (target_uid != current_uid && currentUser->getRole() != UserRole::ADMIN) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
         }
 
-        DB::UserInfo::ptr targetUser = UserMgr::GetInstance()->get(target_uid);
+        DB::UserInfo::ptr targetUser = UserRepository::Get(target_uid, GetDB());
         if (!targetUser || targetUser->getState() != 1) {
             result->setErrno(SUCCESS);
             result->set("can_access", "0");

@@ -1,13 +1,13 @@
 #include "ArticlePraiseServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Service/ArticleCounterService.hpp"
 #include "../../Service/ArticlePraiseRelService.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 ArticlePraiseServlet::ArticlePraiseServlet()
     : BlogLoginedServlet("ArticlePraiseServlet")
@@ -58,7 +58,7 @@ int32_t ArticlePraiseServlet::handle(
 
             // Notify article author (not self-praise)
             if (article->getUserId() != uid) {
-                auto liker_info = UserMgr::GetInstance()->get(uid);
+                auto liker_info = UserRepository::Get(uid, GetDB());
                 // 文章点赞事件
                 {
                     EventArticlePraiseData data = {};

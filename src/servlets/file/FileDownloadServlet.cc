@@ -3,13 +3,14 @@
 #include <Chen/Config/Config.hpp>
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <fstream>
 
 #include "../../Config/AppConfig.hpp"
 #include "../../Repository/ResourceRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 static const int64_t MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB文件大小限制
@@ -94,7 +95,7 @@ int32_t FileDownloadServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
@@ -188,7 +189,7 @@ int32_t FileDownloadServlet::handle(
 bool FileDownloadServlet::checkPermission(int32_t system_role)
 {
     // 所有登录用户均可下载文件
-    if (system_role == UserManager::Role::ADMIN) {
+    if (system_role == UserRole::ADMIN) {
         return true;
     }
     return false;

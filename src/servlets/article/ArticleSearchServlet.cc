@@ -2,10 +2,10 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Search/SearchSync.hpp"
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Domain/ArticleTypes.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -75,7 +75,7 @@ int32_t ArticleSearchServlet::handle(
                 continue;
             }
             Json::Value item;
-            auto uinfo = UserMgr::GetInstance()->get(info->getUserId());
+            auto uinfo = UserRepository::Get(info->getUserId(), GetDB());
             item["id"] = info->getId();
             item["author"] = uinfo ? uinfo->getName() : "";
             item["title"] = info->getTitle();

@@ -1,7 +1,8 @@
 #include "BackupListServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/RecordRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 BackupListServlet::BackupListServlet()
     : BlogLoginedServlet("BackupListServlet")
@@ -20,12 +21,12 @@ int32_t BackupListServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-        if (current_user->getRole() != UserManager::Role::ADMIN) {
+        if (current_user->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -63,7 +64,7 @@ int32_t BackupListServlet::handle(
             item["status"] = info->getStatus();
             item["created_at"] = info->getCreateTime();
             item["completed_at"] = info->getCompletedAt();
-            auto created_by_user = UserMgr::GetInstance()->get(info->getCreatedBy());
+            auto created_by_user = UserRepository::Get(info->getCreatedBy(), GetDB());
             if (created_by_user) {
                 item["created_by"] = created_by_user->getName();
             }

@@ -11,13 +11,14 @@
 #include <vector>
 
 #include "../../Repository/PrStatsQueryRepository.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/OrganizationRepoPrsInfo.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -98,12 +99,12 @@ int32_t RdPrDistributionServlet::handle(
             break;
         }
 
-        auto user = UserMgr::GetInstance()->get(uid);
+        auto user = UserRepository::Get(uid, GetDB());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-        bool is_admin = (user->getRole() == UserManager::Role::ADMIN);
+        bool is_admin = (user->getRole() == UserRole::ADMIN);
 
         std::vector<int64_t> target_orgs;
         if (org_id > 0) {

@@ -1,7 +1,8 @@
 #include "ArticleAdminStatsServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 ArticleAdminStatsServlet::ArticleAdminStatsServlet()
     : BlogLoginedServlet("ArticleAdminStatsServlet")
@@ -25,13 +26,13 @@ int32_t ArticleAdminStatsServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t user_role = current_user->getRole();
-        if (user_role != UserManager::Role::ADMIN) {
+        if (user_role != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

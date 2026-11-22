@@ -4,12 +4,12 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 OrganizationUserSwitchRoleServlet::OrganizationUserSwitchRoleServlet()
     : BlogLoginedServlet("OrganizationUserSwitchRoleServlet")
@@ -34,7 +34,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
@@ -96,7 +96,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_MEMBER, std::move(data));
         }
 
-        auto user = UserMgr::GetInstance()->get(rel->getUserId());
+        auto user = UserRepository::Get(rel->getUserId(), GetDB());
         result->set("id", rel->getId());
         result->set("user_id", rel->getUserId());
         result->set("name", user->getName());

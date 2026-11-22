@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-#include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -21,7 +21,7 @@ int32_t UserListServlet::handle(
 {
     do {
         std::vector<int64_t> ids;
-        UserMgr::GetInstance()->getAllIds(ids, false);
+        UserRepository::GetAllIds(ids, false, GetDB());
 
         std::sort(ids.begin(), ids.end(), std::less<>());
 

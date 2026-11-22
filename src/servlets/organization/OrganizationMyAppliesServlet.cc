@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/OrganizationApplyRepository.hpp"
+#include "../../Repository/UserRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -40,7 +40,7 @@ int32_t OrganizationMyAppliesServlet::handle(
             item["id"] = i->getId();
             item["user_id"] = i->getUserId();
 
-            auto apply_user = UserMgr::GetInstance()->get(i->getUserId());
+            auto apply_user = UserRepository::Get(i->getUserId(), GetDB());
             item["user_name"] = apply_user ? apply_user->getName() : "";
 
             item["org_name"] = i->getOrgName();

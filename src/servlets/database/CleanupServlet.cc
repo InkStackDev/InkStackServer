@@ -4,12 +4,13 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/Util.hpp>
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Repository/RecordRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/BackupRecordInfo.hpp"
 #include "DB/ExportRecordInfo.hpp"
 #include "../../Config/AppConfig.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -30,12 +31,12 @@ int32_t CleanupServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserMgr::GetInstance()->get(uid);
+        auto current_user = UserRepository::Get(uid, GetDB());
         if (!current_user) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-        if (current_user->getRole() != UserManager::Role::ADMIN) {
+        if (current_user->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

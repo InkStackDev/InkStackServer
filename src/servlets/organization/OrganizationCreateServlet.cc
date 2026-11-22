@@ -1,8 +1,9 @@
 #include "OrganizationCreateServlet.hpp"
 
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 OrganizationCreateServlet::OrganizationCreateServlet()
     : BlogLoginedServlet("OrganizationCreateServlet")
@@ -28,13 +29,13 @@ int32_t OrganizationCreateServlet::handle(
             break;
         }
 
-        auto uinfo = UserMgr::GetInstance()->get(user_id);
+        auto uinfo = UserRepository::Get(user_id, GetDB());
         if (!uinfo) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
 
-        if (uinfo->getRole() != UserManager::Role::ADMIN) {
+        if (uinfo->getRole() != UserRole::ADMIN) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

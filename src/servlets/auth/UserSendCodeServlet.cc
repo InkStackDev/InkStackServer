@@ -6,9 +6,10 @@
 
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/SystemSettingsManager.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -38,17 +39,17 @@ int32_t UserSendCodeServlet::handle(
             break;
         }
 
-        if (type == "1" && UserMgr::GetInstance()->getByEmail(email)) {
+        if (type == "1" && UserRepository::GetByEmail(email, GetDB())) {
             result->setErrno(USER_EMAIL_EXISTS);
             break;
         }
         if (type == "5") {
-            auto recovery_user = UserMgr::GetInstance()->getByEmail(email);
+            auto recovery_user = UserRepository::GetByEmail(email, GetDB());
             if (!recovery_user) {
                 result->setErrno(USER_EMAIL_NOT_REGISTER);
                 break;
             }
-            if (recovery_user->getState() != UserManager::Status::ACTIVE || recovery_user->getIsDeleted()) {
+            if (recovery_user->getState() != UserState::ACTIVE || recovery_user->getIsDeleted()) {
                 result->setErrno(ACCOUNT_INVALID);
                 break;
             }

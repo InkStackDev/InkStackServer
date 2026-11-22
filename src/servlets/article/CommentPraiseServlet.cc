@@ -1,11 +1,11 @@
 #include "CommentPraiseServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+#include "../../Repository/UserRepository.hpp"
 
 CommentPraiseServlet::CommentPraiseServlet()
     : BlogLoginedServlet("CommentPraiseServlet")
@@ -46,7 +46,7 @@ int32_t CommentPraiseServlet::handle(
 
         // Notify comment author (not self-praise)
         if (is_praising && comment && comment->getUserId() != uid) {
-            auto liker_info = UserMgr::GetInstance()->get(uid);
+            auto liker_info = UserRepository::Get(uid, GetDB());
 
             EventCommentPraiseData data = {};
             data.comment_author_id = comment->getUserId();
