@@ -63,6 +63,7 @@ public:
 
     enum class ListResult {
         Ok,
+        NotMember,
         AccessDenied,
         DbError
     };
@@ -80,6 +81,42 @@ public:
         int32_t role = 0;
     };
 
+    struct OrganizationMemberRow {
+        int64_t id = 0;
+        int64_t user_id = 0;
+        std::string name;
+        std::string avatar;
+        std::string email;
+        int32_t role = 0;
+        int32_t status = 0;
+        int64_t join_time = 0;
+    };
+
+    struct OrganizationDetailView {
+        int64_t id = 0;
+        std::string name;
+        std::string description;
+        std::string type;
+        int32_t status = 0;
+        bool has_membership = false;
+        int32_t member_status = 0;
+        int32_t member_role = 0;
+    };
+
+    struct OrganizationAssignmentView {
+        int64_t id = 0;
+        int64_t assign_id = 0;
+        std::string assigned_by;
+        std::string name;
+        std::string subject_name;
+        int64_t end_time = 0;
+        int64_t max_size = 0;
+        int32_t status = 0;
+        int32_t priority = 0;
+        std::string file_type;
+        std::string description;
+    };
+
     /**
      * @brief 当前用户可进入研发平台的组织（role >= REPORTER）
      */
@@ -89,6 +126,34 @@ public:
      * @brief 组织成员列表；普通成员可查看，非成员拒绝
      */
     static ListResult ListMembers(const Viewer& viewer, int64_t org_id, std::vector<OrganizationMemberView>& out);
+
+    /**
+     * @brief 组织详情 + 当前用户成员状态
+     */
+    static Result GetDetail(const Viewer& viewer, int64_t org_id, OrganizationDetailView& out);
+
+    /**
+     * @brief 按状态分页查询组织成员
+     * @details PENDING 列表要求成员身份 + 管理权限；其他状态保持原行为
+     */
+    static ListResult ListMemberPage(const Viewer& viewer,
+        int64_t org_id,
+        int32_t status,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<OrganizationMemberRow>& out,
+        int64_t& total);
+
+    /**
+     * @brief 组织已布置作业列表（管理员或 DEV_LEAD 及以上）
+     */
+    static ListResult ListAssignments(const Viewer& viewer,
+        int64_t org_id,
+        int32_t status,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<OrganizationAssignmentView>& out,
+        int64_t& total);
 
     static Result CreateOrUpdate(const Viewer& viewer,
         const OrganizationInput& input,

@@ -1,12 +1,7 @@
 #include "OrganizationDetailServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationDetailServlet::OrganizationDetailServlet()
     : BlogLoginedServlet("OrganizationDetailServlet")
@@ -22,25 +17,39 @@ int32_t OrganizationDetailServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
-        auto org = OrganizationRepository::Get(id, GetDB());
-        if (!org) {
-            result->setErrno(ORG_NOT_FOUND);
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        int64_t uid = getUserId(request);
-        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(id, uid, GetDB());
-        if (rel) {
-            result->set("user_in_org", rel->getStatus());
-            result->set("user_role", rel->getRole());
+        OrganizationService::OrganizationDetailView detail;
+        auto rt = OrganizationService::GetDetail(viewer, id, detail);
+        if (rt == OrganizationService::Result::NotFound) {
+            result->setErrno(ORG_NOT_FOUND);
+            break;
+        }
+        if (rt == OrganizationService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (rt != OrganizationService::Result::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        result->set("id", org->getId());
-        result->set("name", org->getName());
-        result->set("description", org->getDescription());
-        result->set("type", org->getType());
-        result->set("status", org->getStatus());
+        if (detail.has_membership) {
+            result->set("user_in_org", detail.member_status);
+            result->set("user_role", detail.member_role);
+        }
+
+        result->set("id", detail.id);
+        result->set("name", detail.name);
+        result->set("description", detail.description);
+        result->set("type", detail.type);
+        result->set("status", detail.status);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

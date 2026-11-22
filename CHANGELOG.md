@@ -19,6 +19,8 @@ All notable changes to this project will be documented in this file.
   `AccessPolicy::CanAccessPlatform` 统一平台准入判断。
 - 组织创建/删除、申请审核、加入审核、踢人、角色切换改为 Service 接收 `Viewer`：管理员校验、成员身份、
   `DEV_LEAD`/`ORG_ADMIN` 管理权限与角色切换范围统一在 `OrganizationService` 内完成，入口不再查询操作者成员关系。
+- 组织详情、成员分页、组织作业列表改为 Service 读模型：`GetDetail` / `ListMemberPage` / `ListAssignments`，
+  入口不再直接调用 `OrganizationUserRelRepository` / `AssignmentRepository`；待审核成员列表要求管理权限。
 - 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
   worker 直接投递作为快路径，长连接本身不经过 RPC。
 - 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多

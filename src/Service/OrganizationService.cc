@@ -10,11 +10,15 @@
 #include "../Access/AccessPolicy.hpp"
 #include "../Access/AccessScopeResolver.hpp"
 #include "../Domain/OrganizationTypes.hpp"
+#include "../Repository/AssignmentRelRepository.hpp"
+#include "../Repository/AssignmentRepository.hpp"
 #include "../Repository/OrganizationApplyRepository.hpp"
 #include "../Repository/OrganizationRepository.hpp"
 #include "../Repository/OrganizationUserRelRepository.hpp"
 #include "../Repository/UserRepository.hpp"
 #include "../Util/Util.hpp"
+
+#include <algorithm>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -94,6 +98,150 @@ OrganizationService::ListResult OrganizationService::ListMembers(const Viewer& v
             continue;
         }
         out.push_back({member->getUserId(), user->getName(), user->getAvatar(), member->getRole()});
+    }
+    return ListResult::Ok;
+}
+
+OrganizationService::Result OrganizationService::GetDetail(const Viewer& viewer,
+    int64_t org_id,
+    OrganizationDetailView& out)
+{
+    out = OrganizationDetailView{};
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return Result::DbError;
+    }
+
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org) {
+        return Result::NotFound;
+    }
+
+    out.id = org->getId();
+    out.name = org->getName();
+    out.description = org->getDescription();
+    out.type = org->getType();
+    out.status = org->getStatus();
+
+    auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, viewer.user_id, db);
+    if (rel) {
+        out.has_membership = true;
+        out.member_status = rel->getStatus();
+        out.member_role = rel->getRole();
+    }
+    return Result::Ok;
+}
+
+OrganizationService::ListResult OrganizationService::ListMemberPage(const Viewer& viewer,
+    int64_t org_id,
+    int32_t status,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<OrganizationMemberRow>& out,
+    int64_t& total)
+{
+    out.clear();
+    total = 0;
+    if (!viewer.valid()) {
+        return ListResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ListResult::DbError;
+    }
+
+    if (status == OrgMemberStatus::PENDING) {
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+            return ListResult::DbError;
+        }
+        if (!scope.allows(org_id, OrgRole::MEMBER)) {
+            return ListResult::NotMember;
+        }
+        if (!AccessPolicy::CanManageOrgMembers(viewer, scope, org_id)) {
+            return ListResult::AccessDenied;
+        }
+    }
+
+    std::vector<DB::OrganizationUserRelInfo::ptr> rels;
+    total = OrganizationUserRelRepository::ListByOrgPages(rels, org_id, offset, limit, status, true, db);
+    std::sort(rels.begin(), rels.end(), [](const auto& a, const auto& b) {
+        return a->getCreateTime() < b->getCreateTime();
+    });
+
+    for (const auto& rel : rels) {
+        auto user = UserRepository::Get(rel->getUserId(), db);
+        if (!user) {
+            continue;
+        }
+        OrganizationMemberRow row;
+        row.id = rel->getId();
+        row.user_id = rel->getUserId();
+        row.name = user->getName();
+        row.avatar = user->getAvatar();
+        row.email = user->getEmail();
+        row.role = rel->getRole();
+        row.status = rel->getStatus();
+        row.join_time = rel->getCreateTime();
+        out.push_back(std::move(row));
+    }
+    return ListResult::Ok;
+}
+
+OrganizationService::ListResult OrganizationService::ListAssignments(const Viewer& viewer,
+    int64_t org_id,
+    int32_t status,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<OrganizationAssignmentView>& out,
+    int64_t& total)
+{
+    out.clear();
+    total = 0;
+    if (!viewer.valid()) {
+        return ListResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ListResult::DbError;
+    }
+
+    if (!viewer.is_platform_admin) {
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+            return ListResult::DbError;
+        }
+        if (!scope.allows(org_id, OrgRole::MEMBER)) {
+            return ListResult::NotMember;
+        }
+        if (!AccessPolicy::CanManageOrgMembers(viewer, scope, org_id)) {
+            return ListResult::AccessDenied;
+        }
+    }
+
+    std::vector<DB::AssignmentOrganizationRelInfo::ptr> rels;
+    total = AssignmentOrganizationRelRepository::ListByOrgPages(rels, org_id, offset, limit, status, true, db);
+    for (const auto& rel : rels) {
+        auto assign = AssignmentRepository::Get(rel->getAssignmentId(), db);
+        if (!assign || assign->getIsDeleted()) {
+            continue;
+        }
+        OrganizationAssignmentView item;
+        item.id = rel->getId();
+        item.assign_id = rel->getAssignmentId();
+        item.assigned_by = rel->getAssignedBy();
+        item.name = assign->getName();
+        item.subject_name = assign->getSubjectName();
+        item.end_time = assign->getDeadline();
+        item.max_size = assign->getMaxSize();
+        item.status = assign->getStatus();
+        item.priority = assign->getPriority();
+        item.file_type = assign->getFileType();
+        item.description = assign->getDescription();
+        out.push_back(std::move(item));
     }
     return ListResult::Ok;
 }
