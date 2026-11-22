@@ -3,7 +3,7 @@
 #include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/comment_info.h"
+#include "DB/CommentInfo.hpp"
 
 UserAdminDetailServlet::UserAdminDetailServlet()
     : BlogAdminServlet("UserAdminDetailServlet")
@@ -21,18 +21,18 @@ int32_t UserAdminDetailServlet::handle(
 
         auto info = UserMgr::GetInstance()->get(user_id);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
-        std::vector<data::ArticleInfo::ptr> articles;
+        std::vector<DB::ArticleInfo::ptr> articles;
         ArticleMgr::GetInstance()->listByUserId(articles, user_id, false);
         int64_t article_count = articles.size();
 
-        std::vector<data::CommentInfo::ptr> comments;
-        auto db = getDB();
+        std::vector<DB::CommentInfo::ptr> comments;
+        auto db = GetDB();
         if (db) {
-            data::CommentInfoDao::QueryByUserId(comments, user_id, db);
+            DB::CommentInfoDao::QueryByUserId(comments, user_id, db);
         }
         int64_t comment_count = comments.size();
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "db/organization_info.h"
+#include "DB/OrganizationInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -19,14 +19,13 @@ public:
         ACTIVE = 1,
     };
 
-    void add(db::OrganizationInfo::ptr info);
+    void add(DB::OrganizationInfo::ptr info);
 
-    db::OrganizationInfo::ptr get(int64_t id);
+    DB::OrganizationInfo::ptr get(int64_t id);
 
-    db::OrganizationInfo::ptr getByName(const std::string& name);
+    DB::OrganizationInfo::ptr getByName(const std::string& name);
 
-    int64_t listByPages(
-        std::vector<db::OrganizationInfo::ptr>& orgs,
+    int64_t listByPages(std::vector<DB::OrganizationInfo::ptr>& orgs,
         uint64_t offset,
         uint64_t limit,
         int32_t status,
@@ -41,7 +40,7 @@ public:
     OrganizationStats getStats();
 
 private:
-    static db::OrganizationInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::OrganizationInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationManager> OrganizationMgr;

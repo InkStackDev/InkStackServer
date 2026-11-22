@@ -28,26 +28,26 @@ int32_t BackupCreateServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         std::string type;
         if (!request->checkGetParamAs("type", type) || type.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "param type is required");
+            result->setErrno(PARAM_MISSING, "param type is required");
             break;
         }
         if (type != "full" && type != "incremental") {
-            result->setErrno(errcode::PARAM_INVALID, "type must be full or incremental");
+            result->setErrno(PARAM_INVALID, "type must be full or incremental");
             break;
         }
 
@@ -56,14 +56,14 @@ int32_t BackupCreateServlet::handle(
 
         auto info = BackupRecordMgr::GetInstance()->create(uid, type, name, "");
         if (!info) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "create backup failed");
+            result->setErrno(DB_OPERATION_FAILED, "create backup failed");
             break;
         }
 
         std::string storage_path = GetServerDataPath();
         if (storage_path.empty()) {
             ERROR(logger) << "storage_path is empty";
-            result->setErrno(errcode::INTERNAL_ERROR);
+            result->setErrno(INTERNAL_ERROR);
             break;
         }
 
@@ -78,7 +78,7 @@ int32_t BackupCreateServlet::handle(
             data.name = name;
             data.mysql_dbs = mysql_dbs;
             data.work_path = storage_path;
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_DATABASE_BACKUP, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_DATABASE_BACKUP, std::move(data));
         }
 
         Json::Value item;
@@ -96,7 +96,7 @@ int32_t BackupCreateServlet::handle(
         item["description"] = info->getDescription();
 
         result->set("data", item);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

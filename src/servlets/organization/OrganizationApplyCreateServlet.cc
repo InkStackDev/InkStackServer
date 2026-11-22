@@ -27,17 +27,17 @@ int32_t OrganizationApplyCreateServlet::handle(
 
         int64_t user_id = getUserId(request);
         if (!user_id) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto uinfo = UserMgr::GetInstance()->get(user_id);
         if (!uinfo) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
-        auto info = std::make_shared<data::OrganizationApplyInfo>();
+        auto info = std::make_shared<DB::OrganizationApplyInfo>();
         info->setUserId(user_id);
         info->setOrgName(name);
         info->setOrgType(type);
@@ -46,14 +46,14 @@ int32_t OrganizationApplyCreateServlet::handle(
         info->setCreatedAt(time(0));
         info->setIsDeleted(0);
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::OrganizationApplyInfoDao::Insert(info, db)) {
-            result->setErrno(errcode::ORG_APPLY_INSERT_FAILED);
+        if (DB::OrganizationApplyInfoDao::Insert(info, db)) {
+            result->setErrno(ORG_APPLY_INSERT_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
@@ -70,7 +70,7 @@ int32_t OrganizationApplyCreateServlet::handle(
             data.org_name = name;
             data.apply_id = info->getId();
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_APPLY, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

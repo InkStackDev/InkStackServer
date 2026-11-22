@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include "blog/data/user_info.h"
+#include "DB/UserInfo.hpp"
 
 /**
  * @brief 一次请求解析出的登录上下文
@@ -17,7 +17,7 @@
 struct AuthContext {
     int64_t uid = 0;
     std::string session_id;
-    data::UserInfo::ptr user;
+    DB::UserInfo::ptr user;
 
     bool valid() const { return uid > 0 && user != nullptr; }
 };

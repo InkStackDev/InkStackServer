@@ -1,7 +1,7 @@
 #include "BroadcastListServlet.hpp"
 
 #include "../../Util/Util.hpp"
-#include "blog/data/notification_info.h"
+#include "DB/NotificationInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Log/Log.hpp>
@@ -28,22 +28,22 @@ int32_t BroadcastListServlet::handle(
 
         auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
         // 查 is_broadcast=1 且未删除的，按创建时间倒序
-        auto qb = data::NotificationInfoDao::newQuery();
+        auto qb = DB::NotificationInfoDao::newQuery();
         qb->where("is_broadcast", "=", (int64_t)1);
         qb->where("is_deleted", "=", (int64_t)0);
         qb->orderBy("id", "DESC");
         qb->limit((int32_t)size);
         qb->offset((int32_t)offset);
 
-        std::vector<data::NotificationInfo::ptr> notifs;
-        if (data::NotificationInfoDao::QueryByBuilder(notifs, qb, db)) {
+        std::vector<DB::NotificationInfo::ptr> notifs;
+        if (DB::NotificationInfoDao::QueryByBuilder(notifs, qb, db)) {
             ERROR(logger) << "QueryByBuilder failed";
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -64,7 +64,7 @@ int32_t BroadcastListServlet::handle(
             list.append(item);
         }
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

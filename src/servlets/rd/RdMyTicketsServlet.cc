@@ -20,7 +20,7 @@ int32_t RdMyTicketsServlet::handle(
         int64_t uid = getUserId(request);
         std::string type = request->getParam("type");
         if (type.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "type is required");
+            result->setErrno(PARAM_MISSING, "type is required");
             break;
         }
 
@@ -37,8 +37,8 @@ int32_t RdMyTicketsServlet::handle(
         uint64_t total = 0;
 
         if (type == "requirement") {
-            std::vector<data::RequirementInfo::ptr> my;
-            std::vector<data::RequirementInfo::ptr> all;
+            std::vector<DB::RequirementInfo::ptr> my;
+            std::vector<DB::RequirementInfo::ptr> all;
             RequirementMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
             for (auto& info : all) {
                 if (org_id && info->getOrgId() != org_id) {
@@ -81,8 +81,8 @@ int32_t RdMyTicketsServlet::handle(
                 arr.append(item);
             }
         } else if (type == "bug") {
-            std::vector<data::BugInfo::ptr> my;
-            std::vector<data::BugInfo::ptr> all;
+            std::vector<DB::BugInfo::ptr> my;
+            std::vector<DB::BugInfo::ptr> all;
             BugMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
             for (auto& info : all) {
                 if (org_id && info->getOrgId() != org_id) {
@@ -126,8 +126,8 @@ int32_t RdMyTicketsServlet::handle(
                 arr.append(item);
             }
         } else if (type == "task") {
-            std::vector<data::TaskInfo::ptr> my;
-            std::vector<data::TaskInfo::ptr> all;
+            std::vector<DB::TaskInfo::ptr> my;
+            std::vector<DB::TaskInfo::ptr> all;
             TaskMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
             for (auto& info : all) {
                 if (org_id && info->getOrgId() != org_id) {
@@ -169,7 +169,7 @@ int32_t RdMyTicketsServlet::handle(
                 arr.append(item);
             }
         } else {
-            result->setErrno(errcode::RD_INVALID_TYPE);
+            result->setErrno(RD_INVALID_TYPE);
             break;
         }
 

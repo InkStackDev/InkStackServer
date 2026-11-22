@@ -31,17 +31,17 @@ int32_t ArticleCreateServlet::handle(
         std::string label = request->getParam("label");
 
         if (type != ArticleManager::Type::ORIGINAL && type != ArticleManager::Type::REPRINT) {
-            result->setErrno(errcode::ARTICLE_INVALID_TYPE);
+            result->setErrno(ARTICLE_INVALID_TYPE);
             break;
         }
 
         int64_t uid = getUserId(request);
         INFO(logger) << "uid=" << uid;
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
-        data::ArticleInfo::ptr info(new data::ArticleInfo);
+        DB::ArticleInfo::ptr info(new DB::ArticleInfo);
         info->setTitle(title);
         info->setContent(content);
         info->setType(type);
@@ -50,22 +50,22 @@ int32_t ArticleCreateServlet::handle(
         info->setCreateTime(time(0));
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
 
-        if (data::ArticleInfoDao::Insert(info, db)) {
+        if (DB::ArticleInfoDao::Insert(info, db)) {
             ERROR(logger) << "insert article fail title=" << title << " user_id=" << uid << " errno=" << db->getErrno()
                           << " errstr=" << db->getErrStr();
-            result->setErrno(errcode::ARTICLE_INSERT_FAILED);
+            result->setErrno(ARTICLE_INSERT_FAILED);
             break;
         }
         result->set("id", info->getId());
@@ -81,11 +81,11 @@ int32_t ArticleCreateServlet::handle(
                     WARN(logger) << "skip category not owned by user, user_id=" << uid << " category_id=" << cid;
                     continue;
                 }
-                data::ArticleCategoryRelInfo::ptr rel(new data::ArticleCategoryRelInfo);
+                DB::ArticleCategoryRelInfo::ptr rel(new DB::ArticleCategoryRelInfo);
                 rel->setArticleId(info->getId());
                 rel->setCategoryId(cid);
                 rel->setUpdateTime(now);
-                if (data::ArticleCategoryRelInfoDao::Insert(rel, db)) {
+                if (DB::ArticleCategoryRelInfoDao::Insert(rel, db)) {
                     ERROR(logger) << "insert article_category_rel fail article_id=" << info->getId() << " category_id=" << cid
                                   << " errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
@@ -101,11 +101,11 @@ int32_t ArticleCreateServlet::handle(
                 if (!linfo) {
                     continue;
                 }
-                data::ArticleLabelRelInfo::ptr rel(new data::ArticleLabelRelInfo);
+                DB::ArticleLabelRelInfo::ptr rel(new DB::ArticleLabelRelInfo);
                 rel->setArticleId(info->getId());
                 rel->setLabelId(lid);
                 rel->setUpdateTime(now);
-                if (data::ArticleLabelRelInfoDao::Insert(rel, db)) {
+                if (DB::ArticleLabelRelInfoDao::Insert(rel, db)) {
                     ERROR(logger) << "insert article_label_rel fail article_id=" << info->getId() << " label_id=" << lid
                                   << " errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
@@ -113,7 +113,7 @@ int32_t ArticleCreateServlet::handle(
         }
 
         if (!trans->commit()) {
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
 

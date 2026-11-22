@@ -20,16 +20,16 @@ int32_t ConversationServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
-        if (CheckChatPermission(result, uid) != errcode::SUCCESS) {
+        if (CheckChatPermission(result, uid) != SUCCESS) {
             break;
         }
 
         if (request->getMethod() == chen::http::HttpMethod::GET) {
             // 会话列表
-            std::vector<data::ConversationInfo::ptr> convs;
+            std::vector<DB::ConversationInfo::ptr> convs;
             MessageMgr::GetInstance()->listConversations(convs, uid);
 
             Json::Value arr(Json::arrayValue);
@@ -39,7 +39,7 @@ int32_t ConversationServlet::handle(
                 arr.append(item);
             }
 
-            result->setErrno(errcode::SUCCESS);
+            result->setErrno(SUCCESS);
             result->set("list", arr);
             break;
         }
@@ -48,28 +48,28 @@ int32_t ConversationServlet::handle(
             // 创建/获取会话
             std::string peer_str = request->getParam("peer_id");
             if (peer_str.empty()) {
-                result->setErrno(errcode::PARAM_MISSING, "param peer_id is required");
+                result->setErrno(PARAM_MISSING, "param peer_id is required");
                 break;
             }
             int64_t peer_id = chen::TypeUtil::Atoi(peer_str);
             if (!peer_id) {
-                result->setErrno(errcode::PARAM_INVALID, "invalid peer_id");
+                result->setErrno(PARAM_INVALID, "invalid peer_id");
                 break;
             }
             if (peer_id == uid) {
-                result->setErrno(errcode::MESSAGE_CANNOT_SELF);
+                result->setErrno(MESSAGE_CANNOT_SELF);
                 break;
             }
 
             auto peer = UserMgr::GetInstance()->get(peer_id);
             if (!peer) {
-                result->setErrno(errcode::MESSAGE_PEER_NOT_FOUND);
+                result->setErrno(MESSAGE_PEER_NOT_FOUND);
                 break;
             }
 
             auto conv = MessageMgr::GetInstance()->getOrCreate(uid, peer_id);
             if (!conv) {
-                result->setErrno(errcode::MESSAGE_CONVERSATION_NOT_FOUND);
+                result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
                 break;
             }
 
@@ -77,11 +77,11 @@ int32_t ConversationServlet::handle(
             BuildConversationJson(data, conv, uid);
             result->set("data", data);
 
-            result->setErrno(errcode::SUCCESS);
+            result->setErrno(SUCCESS);
             break;
         }
 
-        result->setErrno(errcode::INVALID_METHOD);
+        result->setErrno(INVALID_METHOD);
     } while (0);
 
     response->setBody(result->toJsonString());

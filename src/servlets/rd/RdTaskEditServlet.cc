@@ -24,34 +24,34 @@ int32_t RdTaskEditServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-            result->setErrno(errcode::ORG_NOT_MEMBER);
+            result->setErrno(ORG_NOT_MEMBER);
             break;
         }
         int32_t org_role = rel->getRole();
 
-        data::TaskInfo::ptr info;
+        DB::TaskInfo::ptr info;
         if (id) {
             info = TaskMgr::GetInstance()->get(id);
             if (!info || info->getOrgId() != org_id) {
-                result->setErrno(errcode::TASK_NOT_FOUND);
+                result->setErrno(TASK_NOT_FOUND);
                 break;
             }
-            if (!permission::CanEditTask(org_role, uid, info->getAssigneeId())) {
-                result->setErrno(errcode::ACCESS_DENIED);
+            if (!CanEditTask(org_role, uid, info->getAssigneeId())) {
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         } else {
-            if (!permission::CanCreateTask(org_role)) {
-                result->setErrno(errcode::ACCESS_DENIED);
+            if (!CanCreateTask(org_role)) {
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
-            info.reset(new data::TaskInfo);
+            info.reset(new DB::TaskInfo);
             info->setOrgId(org_id);
             info->setCreatorId(uid);
             info->setCreateTime(time(0));
@@ -111,13 +111,13 @@ int32_t RdTaskEditServlet::handle(
         info->setIsDeleted(0);
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        if (data::TaskInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::RD_UPDATE_FAILED);
+        if (DB::TaskInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(RD_UPDATE_FAILED);
             break;
         }
         Json::Value data;
@@ -131,7 +131,7 @@ int32_t RdTaskEditServlet::handle(
     return 0;
 }
 
-void RdTaskEditServlet::notifyAssignee(int64_t assignee_id, data::TaskInfo::ptr task)
+void RdTaskEditServlet::notifyAssignee(int64_t assignee_id, DB::TaskInfo::ptr task)
 {
     if (!assignee_id) {
         return;
@@ -144,5 +144,5 @@ void RdTaskEditServlet::notifyAssignee(int64_t assignee_id, data::TaskInfo::ptr 
     data.item_title = task->getTitle();
     data.creator_id = task->getCreatorId();
 
-    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_RD_ASSIGN, std::move(data));
+    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_RD_ASSIGN, std::move(data));
 }

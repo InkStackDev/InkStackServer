@@ -28,11 +28,11 @@ bool CategoryQueryServlet::handlePre(
         return true;
     }
     int64_t uid = getUserId(request);
-    data::UserInfo::ptr user;
+    DB::UserInfo::ptr user;
     if (uid) {
         user = UserMgr::GetInstance()->get(uid);
     }
-    int32_t rt = permission::CheckAdminRoute(uid, user);
+    int32_t rt = CheckAdminRoute(uid, user);
     if (rt) {
         result->setErrno(rt);
         return false;
@@ -49,21 +49,21 @@ int32_t CategoryQueryServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         int64_t req_uid = request->getParamAs<int64_t>("user_id", 0);
 
-        std::vector<blog::data::CategoryInfo::ptr> infos;
+        std::vector<DB::CategoryInfo::ptr> infos;
         if (req_uid) {
             if (!CategoryMgr::GetInstance()->listByUserId(infos, req_uid, true)) {
-                result->setErrno(errcode::DB_OPERATION_FAILED);
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
         } else if (isAdminRoute()) {
             CategoryMgr::GetInstance()->listAll(infos, true);
         } else if (!CategoryMgr::GetInstance()->listByUserId(infos, uid, true)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -87,7 +87,7 @@ int32_t CategoryQueryServlet::handle(
 
             int64_t article_count = 0;
             int64_t view_count = 0;
-            std::vector<blog::data::ArticleCategoryRelInfo::ptr> rels;
+            std::vector<DB::ArticleCategoryRelInfo::ptr> rels;
             ArticleCategoryRelMgr::GetInstance()->listByCategoryId(rels, cat->getId(), true);
             for (const auto& rel : rels) {
                 auto article = ArticleMgr::GetInstance()->get(rel->getArticleId());

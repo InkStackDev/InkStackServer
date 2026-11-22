@@ -32,29 +32,29 @@ int32_t AssignmentCreateServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         if (file_size > 96) {
-            result->setErrno(errcode::ASSIGNMENT_SIZE_EXCEED);
+            result->setErrno(ASSIGNMENT_SIZE_EXCEED);
             break;
         }
 
-        data::AssignmentInfo::ptr info;
+        DB::AssignmentInfo::ptr info;
         if (aid) {
             info = AssignmentMgr::GetInstance()->get(aid);
             if (!info) {
-                result->setErrno(errcode::ASSIGNMENT_NOT_FOUND);
+                result->setErrno(ASSIGNMENT_NOT_FOUND);
                 break;
             }
             info->setName(name);
@@ -62,7 +62,7 @@ int32_t AssignmentCreateServlet::handle(
         } else {
             info = AssignmentMgr::GetInstance()->getByName(subject_name, name);
             if (!info) {
-                info.reset(new data::AssignmentInfo);
+                info.reset(new DB::AssignmentInfo);
                 info->setName(name);
                 info->setSubjectName(subject_name);
                 info->setCreateTime(time(0));
@@ -79,14 +79,14 @@ int32_t AssignmentCreateServlet::handle(
         info->setIsDeleted(0);
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::AssignmentInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::ASSIGNMENT_UPDATE_FAILED);
+        if (DB::AssignmentInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(ASSIGNMENT_UPDATE_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

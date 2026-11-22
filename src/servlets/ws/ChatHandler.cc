@@ -3,10 +3,12 @@
 #include "../../Manager/MessageManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Manager/WSConnectionManager.hpp"
-#include "../message/MessageJson.hpp"
+#include "../Message/MessageJson.hpp"
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
+
+static chen::Logger::ptr logger = LOG_ROOT();
 
 static void SendChatError(chen::http::WSSession::ptr session,
     int32_t errno_,
@@ -35,17 +37,17 @@ static void SendChatError(chen::http::WSSession::ptr session,
 static bool CheckConversationAccess(chen::http::WSSession::ptr session,
     int64_t uid,
     int64_t conversation_id,
-    data::ConversationInfo::ptr& conv,
+    DB::ConversationInfo::ptr& conv,
     int64_t& peer_id,
     const std::string& client_id = "")
 {
     conv = MessageMgr::GetInstance()->get(conversation_id);
     if (!conv) {
-        SendChatError(session, errcode::MESSAGE_CONVERSATION_NOT_FOUND, "Conversation not found", client_id);
+        SendChatError(session, MESSAGE_CONVERSATION_NOT_FOUND, "Conversation not found", client_id);
         return false;
     }
     if (uid != conv->getUserAId() && uid != conv->getUserBId()) {
-        SendChatError(session, errcode::ACCESS_DENIED, "Access denied", client_id);
+        SendChatError(session, ACCESS_DENIED, "Access denied", client_id);
         return false;
     }
     peer_id = conv->getUserAId() == uid ? conv->getUserBId() : conv->getUserAId();
@@ -59,15 +61,15 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
     std::string text = root.get("text", "").asString();
 
     if (conversation_id <= 0 || text.empty()) {
-        SendChatError(session, errcode::PARAM_MISSING, "conversation_id and text required", client_id);
+        SendChatError(session, PARAM_MISSING, "conversation_id and text required", client_id);
         return 0;
     }
     if (text.size() > MessageManager::kMaxMessageLen) {
-        SendChatError(session, errcode::MESSAGE_TEXT_TOO_LONG, "Message too long", client_id);
+        SendChatError(session, MESSAGE_TEXT_TOO_LONG, "Message too long", client_id);
         return 0;
     }
 
-    data::ConversationInfo::ptr conv;
+    DB::ConversationInfo::ptr conv;
     int64_t peer_id = 0;
     if (!CheckConversationAccess(session, uid, conversation_id, conv, peer_id, client_id)) {
         return 0;
@@ -75,7 +77,7 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
 
     auto msg_info = MessageMgr::GetInstance()->sendMessage(conversation_id, uid, text);
     if (!msg_info) {
-        SendChatError(session, errcode::MESSAGE_SEND_FAILED, "Send failed", client_id);
+        SendChatError(session, MESSAGE_SEND_FAILED, "Send failed", client_id);
         return 0;
     }
 
@@ -115,11 +117,11 @@ static int32_t HandleRead(int64_t uid, const Json::Value& root, chen::http::WSSe
 {
     int64_t conversation_id = root.get("conversation_id", 0).asInt64();
     if (conversation_id <= 0) {
-        SendChatError(session, errcode::PARAM_MISSING, "conversation_id required");
+        SendChatError(session, PARAM_MISSING, "conversation_id required");
         return 0;
     }
 
-    data::ConversationInfo::ptr conv;
+    DB::ConversationInfo::ptr conv;
     int64_t peer_id = 0;
     if (!CheckConversationAccess(session, uid, conversation_id, conv, peer_id)) {
         return 0;
@@ -152,8 +154,8 @@ int32_t ChatHandler::Handle(int64_t uid, const Json::Value& root, chen::http::WS
     // 兜底：连接鉴权之外的二次校验，防止角色变动后仍可用私信
     auto user = UserMgr::GetInstance()->get(uid);
     if (!user || user->getRole() == UserManager::Role::USER) {
-        SendChatError(session, errcode::ACCESS_DENIED, "Chat not available for normal users",
-            root.get("client_id", "").asString());
+        SendChatError(
+            session, ACCESS_DENIED, "Chat not available for normal users", root.get("client_id", "").asString());
         return 0;
     }
 

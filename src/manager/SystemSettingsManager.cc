@@ -8,13 +8,13 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-void SystemSettingsManager::add(blog::data::SystemSettingsInfo::ptr info)
+void SystemSettingsManager::add(DB::SystemSettingsInfo::ptr info)
 {
     std::unique_lock<std::mutex> lock(mutex_);
     data_ = info;
 }
 
-blog::data::SystemSettingsInfo::ptr SystemSettingsManager::get()
+DB::SystemSettingsInfo::ptr SystemSettingsManager::get()
 {
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -27,12 +27,12 @@ blog::data::SystemSettingsInfo::ptr SystemSettingsManager::get()
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::SystemSettingsInfoDao::Query(1, db);
+    auto info = DB::SystemSettingsInfoDao::Query(1, db);
     if (!info) {
         // 创建默认行
-        info.reset(new data::SystemSettingsInfo);
+        info.reset(new DB::SystemSettingsInfo);
         info->setId(1);
-        if (data::SystemSettingsInfoDao::Insert(info, db)) {
+        if (DB::SystemSettingsInfoDao::Insert(info, db)) {
             ERROR(logger) << "SystemSettingsManager insert default row fail";
             return info;
         }
@@ -42,16 +42,16 @@ blog::data::SystemSettingsInfo::ptr SystemSettingsManager::get()
     return info;
 }
 
-blog::data::SystemSettingsInfo::ptr SystemSettingsManager::clone()
+DB::SystemSettingsInfo::ptr SystemSettingsManager::clone()
 {
     auto current = get();
     if (!current) {
         return nullptr;
     }
-    return std::make_shared<blog::data::SystemSettingsInfo>(*current);
+    return std::make_shared<DB::SystemSettingsInfo>(*current);
 }
 
-bool SystemSettingsManager::update(blog::data::SystemSettingsInfo::ptr info)
+bool SystemSettingsManager::update(DB::SystemSettingsInfo::ptr info)
 {
     auto db = GetDB();
     if (!db) {
@@ -59,7 +59,7 @@ bool SystemSettingsManager::update(blog::data::SystemSettingsInfo::ptr info)
         return false;
     }
     info->setId(1);
-    if (blog::data::SystemSettingsInfoDao::InsertOrUpdate(info, db)) {
+    if (DB::SystemSettingsInfoDao::InsertOrUpdate(info, db)) {
         ERROR(logger) << "SystemSettingsManager update fail";
         return false;
     }

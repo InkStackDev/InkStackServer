@@ -24,35 +24,35 @@ int32_t RdRequirementEditServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-            result->setErrno(errcode::ORG_NOT_MEMBER);
+            result->setErrno(ORG_NOT_MEMBER);
             break;
         }
         int32_t org_role = rel->getRole();
 
-        data::RequirementInfo::ptr info;
+        DB::RequirementInfo::ptr info;
 
         if (id) {
             info = RequirementMgr::GetInstance()->get(id);
             if (!info || info->getOrgId() != org_id) {
-                result->setErrno(errcode::REQUIREMENT_NOT_FOUND);
+                result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;
             }
-            if (!permission::CanEditRequirement(org_role)) {
-                result->setErrno(errcode::ACCESS_DENIED);
+            if (!CanEditRequirement(org_role)) {
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         } else {
-            if (!permission::CanCreateRequirement(org_role)) {
-                result->setErrno(errcode::ACCESS_DENIED);
+            if (!CanCreateRequirement(org_role)) {
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
-            info.reset(new data::RequirementInfo);
+            info.reset(new DB::RequirementInfo);
             info->setOrgId(org_id);
             info->setCreatorId(uid);
             info->setCreateTime(time(0));
@@ -112,14 +112,14 @@ int32_t RdRequirementEditServlet::handle(
         info->setIsDeleted(0);
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::RequirementInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::RD_UPDATE_FAILED);
+        if (DB::RequirementInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(RD_UPDATE_FAILED);
             break;
         }
 
@@ -133,7 +133,7 @@ int32_t RdRequirementEditServlet::handle(
     return 0;
 }
 
-void RdRequirementEditServlet::notifyAssignee(int64_t assignee_id, data::RequirementInfo::ptr requirement)
+void RdRequirementEditServlet::notifyAssignee(int64_t assignee_id, DB::RequirementInfo::ptr requirement)
 {
     if (!assignee_id) {
         return;
@@ -146,5 +146,5 @@ void RdRequirementEditServlet::notifyAssignee(int64_t assignee_id, data::Require
     data.item_title = requirement->getTitle();
     data.creator_id = requirement->getCreatorId();
 
-    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_RD_ASSIGN, std::move(data));
+    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_RD_ASSIGN, std::move(data));
 }

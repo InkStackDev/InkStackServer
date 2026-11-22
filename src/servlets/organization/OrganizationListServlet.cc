@@ -21,7 +21,7 @@ int32_t OrganizationListServlet::handle(
     do {
         int32_t status = request->getParamAs<int32_t>("status", -1);
 
-        std::vector<data::OrganizationInfo::ptr> orgs;
+        std::vector<DB::OrganizationInfo::ptr> orgs;
         int64_t total = OrganizationMgr::GetInstance()->listByPages(orgs, 0, INT32_MAX, status, true);
 
         result->set("total", total);

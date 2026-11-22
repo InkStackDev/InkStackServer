@@ -24,7 +24,7 @@ int32_t UserAssignmentListServlet::handle(
         auto uid = getUserId(request);
 
         // 当前用户的所有组织关系
-        std::vector<data::OrganizationUserRelInfo::ptr> user_org_rels;
+        std::vector<DB::OrganizationUserRelInfo::ptr> user_org_rels;
         OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_org_rels, uid, -1, true);
 
         if (user_org_rels.empty()) {
@@ -37,7 +37,7 @@ int32_t UserAssignmentListServlet::handle(
         Json::Value list;
         for (auto& org_rel : user_org_rels) {
             // 该组织下的所有作业关系
-            std::vector<data::AssignmentOrganizationRelInfo::ptr> assignment_org_rels;
+            std::vector<DB::AssignmentOrganizationRelInfo::ptr> assignment_org_rels;
             AssignmentOrganizationRelMgr::GetInstance()->getByPages(assignment_org_rels, org_rel->getOrgId(), 0, INT32_MAX, -1, true);
             for (auto& assign_org_rel : assignment_org_rels) {
                 // 把作业信息加入结果集中

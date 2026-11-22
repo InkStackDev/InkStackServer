@@ -13,7 +13,8 @@
 #include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
-#include "blog/data/organization_repo_prs_info.h"
+#include "../../Util/Util.hpp"
+#include "DB/OrganizationRepoPrsInfo.hpp"
 #include "RdHelper.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -40,7 +41,7 @@ static bool AddPrSeries(
     const std::string& field,
     std::map<std::string, Json::Value>& series)
 {
-    auto qb = data::OrganizationRepoPrsInfoDao::newQuery("prs");
+    auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
     if (!qb) {
         ERROR(logger) << "pr-distribution newQuery failed field=" << field;
         return false;
@@ -92,37 +93,37 @@ int32_t RdPrDistributionServlet::handle(
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
 
         if (range.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "range is required");
+            result->setErrno(PARAM_MISSING, "range is required");
             break;
         }
         if (granularity.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "granularity is required");
+            result->setErrno(PARAM_MISSING, "granularity is required");
             break;
         }
         if (org_id < 0) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid org_id");
+            result->setErrno(PARAM_INVALID, "invalid org_id");
             break;
         }
 
         bool is_15d = (range == "15d");
         if (!is_15d && range != "3m") {
-            result->setErrno(errcode::PARAM_INVALID, "range must be 15d or 3m");
+            result->setErrno(PARAM_INVALID, "range must be 15d or 3m");
             break;
         }
         if ((is_15d && granularity != "day") || (!is_15d && granularity != "week")) {
-            result->setErrno(errcode::PARAM_INVALID, "granularity does not match range");
+            result->setErrno(PARAM_INVALID, "granularity does not match range");
             break;
         }
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         bool is_admin = (user->getRole() == UserManager::Role::ADMIN);
@@ -131,20 +132,20 @@ int32_t RdPrDistributionServlet::handle(
         if (org_id > 0) {
             auto org = OrganizationMgr::GetInstance()->get(org_id);
             if (!org || org->getIsDeleted()) {
-                result->setErrno(errcode::ORG_NOT_FOUND);
+                result->setErrno(ORG_NOT_FOUND);
                 break;
             }
             if (!is_admin) {
                 auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
                 if (!rel || rel->getIsDeleted() || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED
                     || rel->getRole() < OrganizationManager::Role::REPORTER) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
             }
             target_orgs.push_back(org_id);
         } else if (!is_admin) {
-            std::vector<data::OrganizationUserRelInfo::ptr> rels;
+            std::vector<DB::OrganizationUserRelInfo::ptr> rels;
             OrganizationUserRelMgr::GetInstance()->getOrgByUserId(rels, uid, OrganizationUserRelManager::Status::APPROVED, true);
             for (auto& rel : rels) {
                 if (rel && !rel->getIsDeleted() && rel->getRole() >= OrganizationManager::Role::REPORTER) {
@@ -152,15 +153,15 @@ int32_t RdPrDistributionServlet::handle(
                 }
             }
             if (target_orgs.empty()) {
-                result->setErrno(errcode::ACCESS_DENIED, "no accessible organization");
+                result->setErrno(ACCESS_DENIED, "no accessible organization");
                 break;
             }
         }
         // 管理员不传 org_id 时 target_orgs 为空，表示统计全部组织
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -208,7 +209,7 @@ int32_t RdPrDistributionServlet::handle(
 
         if (!AddPrSeries(db, target_orgs, start, end, granularity, false, "total", series)
             || !AddPrSeries(db, target_orgs, start, end, granularity, true, "merged", series)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 

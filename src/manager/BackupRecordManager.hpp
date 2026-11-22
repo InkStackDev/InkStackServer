@@ -1,16 +1,15 @@
 #pragma once
 
-#include "blog/data/backup_record_info.h"
+#include "DB/BackupRecordInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 class BackupRecordManager {
 public:
-    data::BackupRecordInfo::ptr get(int64_t id);
+    DB::BackupRecordInfo::ptr get(int64_t id);
 
-    bool list(
-        std::vector<data::BackupRecordInfo::ptr>& results,
+    bool list(std::vector<DB::BackupRecordInfo::ptr>& results,
         int64_t& total,
         const std::string& search,
         const std::string& type,
@@ -18,12 +17,15 @@ public:
         int32_t offset,
         int32_t limit);
 
-    data::BackupRecordInfo::ptr create(int64_t uid, const std::string& type, const std::string& name, const std::string& description);
+    DB::BackupRecordInfo::ptr create(int64_t uid,
+        const std::string& type,
+        const std::string& name,
+        const std::string& description);
 
     bool remove(int64_t id);
 
 private:
-    static data::BackupRecordInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::BackupRecordInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<BackupRecordManager> BackupRecordMgr;

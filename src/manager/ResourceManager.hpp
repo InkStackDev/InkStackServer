@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/resource_info.h"
+#include "DB/ResourceInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -23,18 +23,24 @@ public:
 
     ResourceType GetResourceType(const std::string& filename);
 
-    void add(blog::data::ResourceInfo::ptr info);
+    void add(DB::ResourceInfo::ptr info);
 
-    data::ResourceInfo::ptr get(int64_t id);
+    DB::ResourceInfo::ptr get(int64_t id);
 
-    void getByBizUid(std::vector<data::ResourceInfo::ptr>& results, const std::string& biz_type, int64_t biz_id, int64_t uid);
+    void getByBizUid(std::vector<DB::ResourceInfo::ptr>& results,
+        const std::string& biz_type,
+        int64_t biz_id,
+        int64_t uid);
 
-    data::ResourceInfo::ptr getByBizUidName(const std::string& biz_type, int64_t biz_id, int64_t uid, const std::string& filename);
+    DB::ResourceInfo::ptr getByBizUidName(const std::string& biz_type,
+        int64_t biz_id,
+        int64_t uid,
+        const std::string& filename);
 
-    data::ResourceInfo::ptr getByPath(const std::string& path);
+    DB::ResourceInfo::ptr getByPath(const std::string& path);
 
 private:
-    static data::ResourceInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::ResourceInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<ResourceManager> ResourceMgr;

@@ -20,16 +20,16 @@ int32_t UserExistsServlet::handle(
 {
     do {
         DEFINE_AND_CHECK_STRING(result, auth_id, "auth_id");
-        data::UserInfo::ptr info;
+        DB::UserInfo::ptr info;
         if (IsEmail(auth_id)) {
             info = UserMgr::GetInstance()->getByEmail(auth_id);
         } else if (IsValidAccount(auth_id)) {
             info = UserMgr::GetInstance()->getByAccount(auth_id);
         } else {
-            result->setErrno(errcode::AUTH_CODE_INVALID);
+            result->setErrno(AUTH_CODE_INVALID);
             break;
         }
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("is_exists", info ? "1" : "0");
     } while (0);
     response->setBody(result->toJsonString());

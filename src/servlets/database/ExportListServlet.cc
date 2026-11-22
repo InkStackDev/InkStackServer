@@ -17,16 +17,16 @@ int32_t ExportListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -45,10 +45,10 @@ int32_t ExportListServlet::handle(
 
         int32_t offset = (page - 1) * pageSize;
 
-        std::vector<data::ExportRecordInfo::ptr> list;
+        std::vector<DB::ExportRecordInfo::ptr> list;
         int64_t total = 0;
         if (!ExportRecordMgr::GetInstance()->list(list, total, search, type, status, offset, pageSize)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -75,7 +75,7 @@ int32_t ExportListServlet::handle(
 
         result->set("list", arr);
         result->set("total", total);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

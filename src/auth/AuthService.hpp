@@ -14,7 +14,7 @@
 #include <Chen/Http/Http.hpp>
 #include <Chen/Http/HttpSession.hpp>
 
-#include "db/UserInfo.hpp"
+#include "DB/UserInfo.hpp"
 
 #include "AuthContext.hpp"
 #include "../Config/AuthConfig.hpp"
@@ -44,7 +44,7 @@ public:
     static int32_t IssueSession(chen::http::HttpRequest::ptr request,
         chen::http::HttpResponse::ptr response,
         chen::http::HttpSession::ptr session,
-        db::UserInfo::ptr user,
+        DB::UserInfo::ptr user,
         const IssueOptions& options = IssueOptions());
 
     /**
@@ -60,7 +60,7 @@ public:
     /**
      * @brief WebSocket 握手认证：仅使用握手 Cookie 中的服务端会话
      */
-    static bool ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, db::UserInfo::ptr& user);
+    static bool ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, DB::UserInfo::ptr& user);
 
     /**
      * @brief 写入 SESSIONID Cookie（HttpOnly / SameSite）

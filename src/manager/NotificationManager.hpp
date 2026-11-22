@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "blog/data/notification_info.h"
+#include "DB/NotificationInfo.hpp"
 
 struct NotificationData {
     int64_t user_id = 0;
@@ -33,13 +33,17 @@ public:
     int32_t getOnlineCount();
 
     // DB persistence
-    data::NotificationInfo::ptr get(int64_t id);
+    DB::NotificationInfo::ptr get(int64_t id);
 
-    data::NotificationInfo::ptr addNotification(const NotificationData& data);
+    DB::NotificationInfo::ptr addNotification(const NotificationData& data);
 
-    void update(data::NotificationInfo::ptr info);
+    void update(DB::NotificationInfo::ptr info);
 
-    void listByUser(std::vector<data::NotificationInfo::ptr>& results, int64_t user_id, uint64_t offset, uint64_t size, const std::string& type = "");
+    void listByUser(std::vector<DB::NotificationInfo::ptr>& results,
+        int64_t user_id,
+        uint64_t offset,
+        uint64_t size,
+        const std::string& type = "");
 
     int64_t countByUser(int64_t user_id, const std::string& type = "");
 
@@ -56,7 +60,7 @@ public:
     void cleanupExpiredBroadcasts();
 
 private:
-    static data::NotificationInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::NotificationInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<NotificationManager> NotificationMgr;

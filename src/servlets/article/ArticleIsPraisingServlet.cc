@@ -17,7 +17,7 @@ int32_t ArticleIsPraisingServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -25,7 +25,7 @@ int32_t ArticleIsPraisingServlet::handle(
 
         bool praising = ArticlePraiseRelMgr::GetInstance()->isPraising(uid, article_id);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("is_praising", praising);
     } while (0);
 

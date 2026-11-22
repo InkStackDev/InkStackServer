@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "blog/data/user_feedback_info.h"
+#include "DB/UserFeedbackInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -25,8 +25,7 @@ public:
      * @param[out] total 总条数
      * @return true 成功，false 失败
      */
-    bool list(
-        std::vector<data::UserFeedbackInfo::ptr>& infos,
+    bool list(std::vector<DB::UserFeedbackInfo::ptr>& infos,
         const std::string& type = "",
         int32_t page = 1,
         int32_t page_size = 20,
@@ -37,7 +36,7 @@ public:
      * @param id 反馈ID
      * @return 反馈对象，不存在返回 nullptr
      */
-    data::UserFeedbackInfo::ptr get(int64_t id);
+    DB::UserFeedbackInfo::ptr get(int64_t id);
 
     /**
      * @brief 软删除反馈（设置 is_deleted = 1）

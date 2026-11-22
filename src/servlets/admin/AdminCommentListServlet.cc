@@ -22,17 +22,17 @@ int32_t AdminCommentListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -56,7 +56,7 @@ int32_t AdminCommentListServlet::handle(
         int64_t article_id = request->getParamAs<int64_t>("article_id", 0);
         int32_t is_reported = request->getParamAs<int32_t>("is_reported", -1);
 
-        std::vector<data::CommentInfo::ptr> comments;
+        std::vector<DB::CommentInfo::ptr> comments;
         int64_t total = CommentMgr::GetInstance()->listByAdmin(comments, page_num, page_size, status, keyword, article_id, is_reported);
 
         Json::Value list(Json::arrayValue);
@@ -113,7 +113,7 @@ int32_t AdminCommentListServlet::handle(
 
         result->set("total", total);
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -26,14 +26,14 @@ int32_t OrganizationReposSyncServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         // 检查仓库是否存在
         auto repo = OrganizationRepoMgr::GetInstance()->get(repo_id);
         if (!repo) {
-            result->setErrno(errcode::ORG_REPO_NOT_FOUND);
+            result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
         int64_t org_id = repo->getOrgId();
@@ -43,34 +43,34 @@ int32_t OrganizationReposSyncServlet::handle(
         // 权限检查：系统管理员或组织内研发主管及以上
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
             int32_t org_role = rel->getRole();
             if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
-                result->setErrno(errcode::ACCESS_DENIED, "仅研发主管及以上角色可触发仓库同步");
+                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可触发仓库同步");
                 break;
             }
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         // 设置状态为 syncing 后立即返回，异步调 GitHub API
         repo->setSyncStatus("syncing");
         repo->setUpdateTime(time(0));
-        if (data::OrganizationReposInfoDao::Update(repo, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "同步失败");
+        if (DB::OrganizationReposInfoDao::Update(repo, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "同步失败");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

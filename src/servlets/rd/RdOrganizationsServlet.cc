@@ -17,7 +17,7 @@ int32_t RdOrganizationsServlet::handle(
     do {
         int64_t uid = getUserId(request);
 
-        std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+        std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
         OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, -1, true);
 
         Json::Value arr(Json::arrayValue);

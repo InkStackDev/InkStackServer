@@ -3,7 +3,7 @@
 #include "../../Manager/MessageManager.hpp"
 #include "../../Manager/UserManager.hpp"
 
-void BuildMessageJson(Json::Value& json, data::ConversationMessageInfo::ptr msg, int64_t uid)
+void BuildMessageJson(Json::Value& json, DB::ConversationMessageInfo::ptr msg, int64_t uid)
 {
     json["id"] = msg->getId();
     json["fromMe"] = (msg->getSenderId() == uid);
@@ -11,7 +11,7 @@ void BuildMessageJson(Json::Value& json, data::ConversationMessageInfo::ptr msg,
     json["create_time"] = msg->getCreateTime();
 }
 
-void BuildConversationJson(Json::Value& json, data::ConversationInfo::ptr conv, int64_t uid)
+void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, int64_t uid)
 {
     int64_t peer_id = (conv->getUserAId() == uid) ? conv->getUserBId() : conv->getUserAId();
     int32_t unread = (conv->getUserAId() == uid) ? conv->getUnreadA() : conv->getUnreadB();
@@ -42,12 +42,12 @@ int32_t CheckChatPermission(Result::ptr result, int64_t uid)
 {
     auto user = UserMgr::GetInstance()->get(uid);
     if (!user) {
-        result->setErrno(errcode::USER_NOT_FOUND);
-        return errcode::USER_NOT_FOUND;
+        result->setErrno(USER_NOT_FOUND);
+        return USER_NOT_FOUND;
     }
     if (user->getRole() == UserManager::Role::USER) {
-        result->setErrno(errcode::ACCESS_DENIED, "私信仅对内部成员开放");
-        return errcode::ACCESS_DENIED;
+        result->setErrno(ACCESS_DENIED, "私信仅对内部成员开放");
+        return ACCESS_DENIED;
     }
-    return errcode::SUCCESS;
+    return SUCCESS;
 }

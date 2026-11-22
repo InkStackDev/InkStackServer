@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
 #include <json/json.h>
 
-#include "blog/data/task_info.h"
+#include "DB/TaskInfo.hpp"
 
 class RdTaskEditServlet : public BlogLoginedServlet {
 public:
@@ -18,5 +20,5 @@ protected:
         Result::ptr result) override;
 
 private:
-    void notifyAssignee(int64_t assignee_id, data::TaskInfo::ptr task);
+    void notifyAssignee(int64_t assignee_id, DB::TaskInfo::ptr task);
 };

@@ -24,7 +24,7 @@ int32_t OrganizationDetailServlet::handle(
 
         auto org = OrganizationMgr::GetInstance()->get(id);
         if (!org) {
-            result->setErrno(errcode::ORG_NOT_FOUND);
+            result->setErrno(ORG_NOT_FOUND);
             break;
         }
 

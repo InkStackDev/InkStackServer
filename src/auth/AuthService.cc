@@ -11,7 +11,10 @@
 #include "../SessionData.hpp"
 #include "../Message/MessageRouter.hpp"
 #include "../Config/AuthConfig.hpp"
+#include "../Manager/SessionManager.hpp"
+#include "../Manager/UserManager.hpp"
 #include "../Util/Util.hpp"
+#include "SessionStore.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -137,14 +140,14 @@ int32_t AuthService::IssueSession(
     chen::http::HttpRequest::ptr request,
     chen::http::HttpResponse::ptr response,
     chen::http::HttpSession::ptr session,
-    data::UserInfo::ptr user,
+    DB::UserInfo::ptr user,
     const IssueOptions& options)
 {
     if (!request || !response || !user) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
     if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
-        return errcode::ACCOUNT_INVALID;
+        return ACCOUNT_INVALID;
     }
 
     const AuthConf conf = GetAuthConf();
@@ -163,7 +166,7 @@ int32_t AuthService::IssueSession(
 
     std::string session_id = SessionStore::Create(user->getId(), ip, user_agent, idle_ttl, absolute_ttl);
     if (session_id.empty()) {
-        return errcode::REDIS_OPERATION_FAILED;
+        return REDIS_OPERATION_FAILED;
     }
 
     if (!old_session_id.empty() && old_session_id != session_id) {
@@ -180,7 +183,7 @@ int32_t AuthService::IssueSession(
     if (options.update_login_time) {
         user->setLoginTime(chen::TimeUtil::GetCurrentSec());
         auto db = GetDB();
-        if (db && data::UserInfoDao::Update(user, db) == 0) {
+        if (db && DB::UserInfoDao::Update(user, db) == 0) {
             UserMgr::GetInstance()->update(user);
         } else {
             WARN(logger) << "update login time failed user=" << user->getId();
@@ -221,7 +224,7 @@ void AuthService::RevokeAllSessions(int64_t uid)
     INFO(logger) << "revoked all sessions uid=" << uid;
 }
 
-bool AuthService::ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, db::UserInfo::ptr& user)
+bool AuthService::ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, DB::UserInfo::ptr& user)
 {
     if (!request) {
         return false;

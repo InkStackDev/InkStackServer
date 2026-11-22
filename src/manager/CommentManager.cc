@@ -16,9 +16,9 @@ static std::string CommentCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::CommentInfo::ptr ParseCommentCache(const Json::Value& v)
+static DB::CommentInfo::ptr ParseCommentCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::CommentInfo>();
+    auto info = std::make_shared<DB::CommentInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setArticleId(CacheJsonInt64(v, "article_id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
@@ -36,7 +36,7 @@ static data::CommentInfo::ptr ParseCommentCache(const Json::Value& v)
     return info;
 }
 
-static data::CommentInfo::ptr GetCommentCache(int64_t id)
+static DB::CommentInfo::ptr GetCommentCache(int64_t id)
 {
     std::string key = CommentCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -51,7 +51,7 @@ static data::CommentInfo::ptr GetCommentCache(int64_t id)
     return ParseCommentCache(v);
 }
 
-static void SetCommentCache(const data::CommentInfo::ptr& info)
+static void SetCommentCache(const DB::CommentInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -59,17 +59,17 @@ static void SetCommentCache(const data::CommentInfo::ptr& info)
     RedisCacheSetex(CommentCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::CommentInfo::ptr CommentManager::ParseRow(chen::ISQLData::ptr rt)
+DB::CommentInfo::ptr CommentManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::CommentInfoDao::ParseRow(rt);
+    return DB::CommentInfoDao::ParseRow(rt);
 }
 
-void CommentManager::add(data::CommentInfo::ptr info)
+void CommentManager::add(DB::CommentInfo::ptr info)
 {
     SetCommentCache(info);
 }
 
-data::CommentInfo::ptr CommentManager::get(int64_t id)
+DB::CommentInfo::ptr CommentManager::get(int64_t id)
 {
     auto v = GetCommentCache(id);
     if (v) {
@@ -80,15 +80,14 @@ data::CommentInfo::ptr CommentManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::CommentInfoDao::Query(id, db);
+    v = DB::CommentInfoDao::Query(id, db);
     if (v) {
         SetCommentCache(v);
     }
     return v;
 }
 
-data::CommentInfo::ptr CommentManager::create(
-    int64_t article_id,
+DB::CommentInfo::ptr CommentManager::create(int64_t article_id,
     int64_t user_id,
     const std::string& content,
     int64_t parent_id,
@@ -101,7 +100,7 @@ data::CommentInfo::ptr CommentManager::create(
         return nullptr;
     }
 
-    auto info = std::make_shared<data::CommentInfo>();
+    auto info = std::make_shared<DB::CommentInfo>();
     info->setArticleId(article_id);
     info->setUserId(user_id);
     info->setContent(content);
@@ -115,7 +114,7 @@ data::CommentInfo::ptr CommentManager::create(
     info->setCreateTime(time(0));
     info->setUpdateTime(time(0));
 
-    if (data::CommentInfoDao::Insert(info, db)) {
+    if (DB::CommentInfoDao::Insert(info, db)) {
         ERROR(logger) << "CommentManager create Insert fail";
         return nullptr;
     }
@@ -139,7 +138,7 @@ bool CommentManager::update(int64_t id, const std::string& content)
 
     info->setContent(content);
     info->setUpdateTime(time(0));
-    if (data::CommentInfoDao::Update(info, db)) {
+    if (DB::CommentInfoDao::Update(info, db)) {
         ERROR(logger) << "CommentManager update fail";
         return false;
     }
@@ -162,7 +161,7 @@ bool CommentManager::del(int64_t id)
 
     info->setIsDeleted(1);
     info->setUpdateTime(time(0));
-    if (data::CommentInfoDao::Update(info, db)) {
+    if (DB::CommentInfoDao::Update(info, db)) {
         ERROR(logger) << "CommentManager del Update fail";
         return false;
     }
@@ -170,32 +169,35 @@ bool CommentManager::del(int64_t id)
     return true;
 }
 
-void CommentManager::listAllByArticle(std::vector<data::CommentInfo::ptr>& results, int64_t article_id)
+void CommentManager::listAllByArticle(std::vector<DB::CommentInfo::ptr>& results, int64_t article_id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->where("article_id", "=", article_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("status", "=", (int64_t)APPROVED);
     qb->orderBy("id", "ASC");
-    if (data::CommentInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::CommentInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
 }
 
-void CommentManager::listByArticle(std::vector<data::CommentInfo::ptr>& results, int64_t article_id, uint64_t offset, uint64_t size)
+void CommentManager::listByArticle(std::vector<DB::CommentInfo::ptr>& results,
+    int64_t article_id,
+    uint64_t offset,
+    uint64_t size)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->where("article_id", "=", article_id);
     qb->where("parent_id", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
@@ -217,7 +219,7 @@ void CommentManager::listByArticle(std::vector<data::CommentInfo::ptr>& results,
         return;
     }
 
-    if (data::CommentInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::CommentInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
@@ -228,21 +230,24 @@ void CommentManager::listByArticle(std::vector<data::CommentInfo::ptr>& results,
     CacheListResult(listKey, ids);
 }
 
-void CommentManager::listReplies(std::vector<data::CommentInfo::ptr>& results, int64_t parent_id, uint64_t offset, uint64_t size)
+void CommentManager::listReplies(std::vector<DB::CommentInfo::ptr>& results,
+    int64_t parent_id,
+    uint64_t offset,
+    uint64_t size)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->where("parent_id", "=", parent_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("status", "=", (int64_t)APPROVED);
     qb->orderBy("id", "ASC");
     qb->limit((int32_t)size);
     qb->offset((int32_t)offset);
-    if (data::CommentInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::CommentInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
@@ -255,7 +260,7 @@ int64_t CommentManager::countByArticle(int64_t article_id)
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->where("article_id", "=", article_id);
     qb->where("parent_id", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
@@ -270,15 +275,14 @@ int64_t CommentManager::countReplies(int64_t parent_id)
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->where("parent_id", "=", parent_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("status", "=", (int64_t)APPROVED);
     return ExecuteCountCached(qb, db, "cmt:reply:" + std::to_string(parent_id));
 }
 
-int64_t CommentManager::listByAdmin(
-    std::vector<data::CommentInfo::ptr>& results,
+int64_t CommentManager::listByAdmin(std::vector<DB::CommentInfo::ptr>& results,
     int64_t page_num,
     int64_t page_size,
     int32_t status,
@@ -291,7 +295,7 @@ int64_t CommentManager::listByAdmin(
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->where("is_deleted", "=", (int64_t)0);
     qb->whereIf(status > 0, "status", "=", (int64_t)status);
     qb->whereIf(article_id > 0, "article_id", "=", article_id);
@@ -301,7 +305,7 @@ int64_t CommentManager::listByAdmin(
 
     int64_t total = 0;
     int32_t offset = (int32_t)((page_num - 1) * page_size);
-    if (data::CommentInfoDao::QueryByBuilderPages(results, total, qb, offset, (int32_t)page_size, db)) {
+    if (DB::CommentInfoDao::QueryByBuilderPages(results, total, qb, offset, (int32_t)page_size, db)) {
         ERROR(logger) << "listByAdmin QueryByBuilderPages failed";
         return 0;
     }
@@ -319,7 +323,7 @@ int64_t CommentManager::batchUpdateStatus(const std::vector<int64_t>& ids, int32
         return 0;
     }
 
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->set("status", (int64_t)status);
     qb->whereIn("id", ids);
     if (qb->executeUpdate(db)) {
@@ -349,7 +353,7 @@ int64_t CommentManager::batchDelete(const std::vector<int64_t>& ids)
         return 0;
     }
 
-    auto qb = data::CommentInfoDao::newQuery();
+    auto qb = DB::CommentInfoDao::newQuery();
     qb->set("is_deleted", (int64_t)1);
     qb->whereIn("id", ids);
     if (qb->executeUpdate(db)) {
@@ -396,7 +400,7 @@ CommentManager::CommentStats CommentManager::getStats()
 
     // Query status counts with GROUP BY
     {
-        auto qb = data::CommentInfoDao::newQuery();
+        auto qb = DB::CommentInfoDao::newQuery();
         qb->select("status, COUNT(*) AS cnt");
         qb->where("is_deleted", "=", (int64_t)0);
         qb->groupBy("status");
@@ -423,7 +427,7 @@ CommentManager::CommentStats CommentManager::getStats()
 
     // Query reported count
     {
-        auto qb = data::CommentInfoDao::newQuery();
+        auto qb = DB::CommentInfoDao::newQuery();
         qb->where("is_deleted", "=", (int64_t)0);
         qb->where("is_reported", "=", (int64_t)1);
         int64_t reported = 0;

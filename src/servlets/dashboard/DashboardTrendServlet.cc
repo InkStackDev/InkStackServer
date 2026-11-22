@@ -37,17 +37,17 @@ int32_t DashboardTrendServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -92,7 +92,7 @@ int32_t DashboardTrendServlet::handle(
         }
 
         // aggregate articles
-        std::vector<data::ArticleInfo::ptr> articles;
+        std::vector<DB::ArticleInfo::ptr> articles;
         ArticleMgr::GetInstance()->listByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true);
         for (auto& a : articles) {
             int64_t ts = a->getCreateTime();
@@ -105,7 +105,7 @@ int32_t DashboardTrendServlet::handle(
         }
 
         // aggregate comments
-        std::vector<data::CommentInfo::ptr> comments;
+        std::vector<DB::CommentInfo::ptr> comments;
         CommentMgr::GetInstance()->listByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1);
         for (auto& c : comments) {
             int64_t ts = c->getCreateTime();
@@ -152,7 +152,7 @@ int32_t DashboardTrendServlet::handle(
         result->set("total_visits", total_visits);
         result->set("avg_visits", num_buckets > 0 ? (double)total_visits / num_buckets : 0);
         result->set("max_visits", max_visits);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../BlogServlet.hpp"
+
 #include "../../SessionData.hpp"
 
 class PasskeyLoginFinishServlet : public BlogServlet {
@@ -15,8 +17,6 @@ public:
     PasskeyLoginFinishServlet();
 
 protected:
-    bool allowAutoLogin() const override { return false; }
-
     int32_t handle(
         chen::http::HttpRequest::ptr request,
         chen::http::HttpResponse::ptr response,

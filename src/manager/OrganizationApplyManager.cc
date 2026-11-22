@@ -6,23 +6,22 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::OrganizationApplyInfo::ptr OrganizationApplyManager::ParseRow(chen::ISQLData::ptr rt)
+DB::OrganizationApplyInfo::ptr OrganizationApplyManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::OrganizationApplyInfoDao::ParseRow(rt);
+    return DB::OrganizationApplyInfoDao::ParseRow(rt);
 }
 
-data::OrganizationApplyInfo::ptr OrganizationApplyManager::get(int64_t id)
+DB::OrganizationApplyInfo::ptr OrganizationApplyManager::get(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    return data::OrganizationApplyInfoDao::Query(id, db);
+    return DB::OrganizationApplyInfoDao::Query(id, db);
 }
 
-int64_t OrganizationApplyManager::listByPages(
-    std::vector<data::OrganizationApplyInfo::ptr>& results,
+int64_t OrganizationApplyManager::listByPages(std::vector<DB::OrganizationApplyInfo::ptr>& results,
     uint64_t offset,
     uint64_t limit,
     int32_t status,
@@ -33,20 +32,19 @@ int64_t OrganizationApplyManager::listByPages(
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::OrganizationApplyInfoDao::newQuery();
+    auto qb = DB::OrganizationApplyInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("created_at", "DESC");
 
     int64_t total = 0;
-    if (data::OrganizationApplyInfoDao::QueryByBuilderPages(results, total, qb, (int32_t)offset, (int32_t)limit, db)) {
+    if (DB::OrganizationApplyInfoDao::QueryByBuilderPages(results, total, qb, (int32_t)offset, (int32_t)limit, db)) {
         return 0;
     }
     return total;
 }
 
-int64_t OrganizationApplyManager::listByUserId(
-    std::vector<data::OrganizationApplyInfo::ptr>& results,
+int64_t OrganizationApplyManager::listByUserId(std::vector<DB::OrganizationApplyInfo::ptr>& results,
     int64_t user_id,
     uint64_t offset,
     uint64_t limit,
@@ -57,13 +55,13 @@ int64_t OrganizationApplyManager::listByUserId(
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::OrganizationApplyInfoDao::newQuery();
+    auto qb = DB::OrganizationApplyInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("created_at", "DESC");
 
     int64_t total = 0;
-    if (data::OrganizationApplyInfoDao::QueryByBuilderPages(results, total, qb, (int32_t)offset, (int32_t)limit, db)) {
+    if (DB::OrganizationApplyInfoDao::QueryByBuilderPages(results, total, qb, (int32_t)offset, (int32_t)limit, db)) {
         return 0;
     }
     return total;

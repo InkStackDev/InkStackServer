@@ -21,19 +21,19 @@ int32_t AdminFeedbackConvertServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -43,7 +43,7 @@ int32_t AdminFeedbackConvertServlet::handle(
 
         // 校验 target 值
         if (target != "faq" && target != "requirement" && target != "bug") {
-            result->setErrno(errcode::PARAM_INVALID, "target must be faq, requirement or bug");
+            result->setErrno(PARAM_INVALID, "target must be faq, requirement or bug");
             break;
         }
 
@@ -51,14 +51,14 @@ int32_t AdminFeedbackConvertServlet::handle(
         try {
             id = chen::TypeUtil::Atoi(id_str);
         } catch (...) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid id");
+            result->setErrno(PARAM_INVALID, "invalid id");
             break;
         }
 
         // 获取反馈
         auto feedback = FeedbackMgr::GetInstance()->get(id);
         if (!feedback) {
-            result->setErrno(errcode::FEEDBACK_NOT_FOUND);
+            result->setErrno(FEEDBACK_NOT_FOUND);
             break;
         }
 
@@ -68,9 +68,9 @@ int32_t AdminFeedbackConvertServlet::handle(
             content = feedback->getContent();
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
@@ -80,7 +80,7 @@ int32_t AdminFeedbackConvertServlet::handle(
             // 转换为常见问题
             std::string cat = request->getParam("cat");
 
-            data::HelpFaqsInfo::ptr faq(new data::HelpFaqsInfo);
+            DB::HelpFaqsInfo::ptr faq(new DB::HelpFaqsInfo);
             faq->setCat(cat);
             faq->setQ(title);
             faq->setA(content);
@@ -89,8 +89,8 @@ int32_t AdminFeedbackConvertServlet::handle(
             faq->setCreateTime(time(0));
             faq->setUpdateTime(time(0));
 
-            if (data::HelpFaqsInfoDao::Insert(faq, db)) {
-                result->setErrno(errcode::DB_OPERATION_FAILED, "insert faq failed");
+            if (DB::HelpFaqsInfoDao::Insert(faq, db)) {
+                result->setErrno(DB_OPERATION_FAILED, "insert faq failed");
                 ERROR(logger) << "insert faq failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -104,12 +104,12 @@ int32_t AdminFeedbackConvertServlet::handle(
                 try {
                     org_id = chen::TypeUtil::Atoi(org_id_str);
                 } catch (...) {
-                    result->setErrno(errcode::PARAM_INVALID, "invalid orgId");
+                    result->setErrno(PARAM_INVALID, "invalid orgId");
                     break;
                 }
             }
 
-            data::RequirementInfo::ptr req(new data::RequirementInfo);
+            DB::RequirementInfo::ptr req(new DB::RequirementInfo);
             req->setOrgId(org_id);
             req->setTitle(title);
             req->setDescription(content);
@@ -121,8 +121,8 @@ int32_t AdminFeedbackConvertServlet::handle(
             req->setCreateTime(time(0));
             req->setUpdateTime(time(0));
 
-            if (data::RequirementInfoDao::Insert(req, db)) {
-                result->setErrno(errcode::DB_OPERATION_FAILED, "insert requirement failed");
+            if (DB::RequirementInfoDao::Insert(req, db)) {
+                result->setErrno(DB_OPERATION_FAILED, "insert requirement failed");
                 ERROR(logger) << "insert requirement failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -136,12 +136,12 @@ int32_t AdminFeedbackConvertServlet::handle(
                 try {
                     org_id = chen::TypeUtil::Atoi(org_id_str);
                 } catch (...) {
-                    result->setErrno(errcode::PARAM_INVALID, "invalid orgId");
+                    result->setErrno(PARAM_INVALID, "invalid orgId");
                     break;
                 }
             }
 
-            data::BugInfo::ptr bug(new data::BugInfo);
+            DB::BugInfo::ptr bug(new DB::BugInfo);
             bug->setOrgId(org_id);
             bug->setTitle(title);
             bug->setDescription(content);
@@ -154,8 +154,8 @@ int32_t AdminFeedbackConvertServlet::handle(
             bug->setCreateTime(time(0));
             bug->setUpdateTime(time(0));
 
-            if (data::BugInfoDao::Insert(bug, db)) {
-                result->setErrno(errcode::DB_OPERATION_FAILED, "insert bug failed");
+            if (DB::BugInfoDao::Insert(bug, db)) {
+                result->setErrno(DB_OPERATION_FAILED, "insert bug failed");
                 ERROR(logger) << "insert bug failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -171,7 +171,7 @@ int32_t AdminFeedbackConvertServlet::handle(
         }
 
         result->set("id", std::to_string(converted_id));
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     DEBUG(logger) << "AdminFeedbackConvertServlet handle result: " << result->toJsonString();

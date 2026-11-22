@@ -17,7 +17,7 @@ int32_t UserFollowingListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -25,7 +25,7 @@ int32_t UserFollowingListServlet::handle(
         int32_t offset = request->getParamAs<int32_t>("offset", 0);
         int32_t size = request->getParamAs<int32_t>("size", 20);
 
-        std::vector<data::UserFollowRelInfo::ptr> rels;
+        std::vector<DB::UserFollowRelInfo::ptr> rels;
         UserFollowRelMgr::GetInstance()->listFollowing(rels, target_uid, offset, size);
 
         Json::Value arr(Json::arrayValue);
@@ -49,7 +49,7 @@ int32_t UserFollowingListServlet::handle(
 
         int64_t total = UserFollowRelMgr::GetInstance()->countFollowing(target_uid);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("list", arr);
         result->set("total", total);
         result->set("offset", offset);

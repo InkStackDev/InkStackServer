@@ -439,7 +439,7 @@ static void EventOrgMember(const std::any& d)
         std::string title = "成员被移出组织";
         std::string content = "「" + data.operator_name + "」将「" + data.applicant_name + "」移出了组织「" + data.org_name + "」";
         // Notify all org admins
-        std::vector<data::OrganizationUserRelInfo::ptr> members;
+        std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelMgr::GetInstance()->getByPages(members, data.org_id, 0, 10000, -1, true);
         for (auto& m : members) {
             if (m->getRole() == OrganizationManager::Role::ORG_ADMIN) {
@@ -492,7 +492,7 @@ static void EventOrgMember(const std::any& d)
         std::string applicant_name = applicant ? applicant->getName() : std::to_string(data.applicant_id);
         std::string title = "新的加入申请";
         std::string content = "用户「" + applicant_name + "」申请加入组织「" + data.org_name + "」";
-        std::vector<data::OrganizationUserRelInfo::ptr> members;
+        std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelMgr::GetInstance()->getByPages(members, data.org_id, 0, 10000, -1, true);
         for (auto& m : members) {
             if (m->getRole() == OrganizationManager::Role::ORG_ADMIN) {
@@ -542,7 +542,7 @@ static void EventOrgMember(const std::any& d)
             NotificationMgr::GetInstance()->sendToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
         }
         // Mark other admins' org_join_request as read
-        std::vector<data::OrganizationUserRelInfo::ptr> members;
+        std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelMgr::GetInstance()->getByPages(members, data.org_id, 0, 10000, -1, true);
         for (auto& m : members) {
             if (m->getRole() == OrganizationManager::Role::ORG_ADMIN) {
@@ -559,7 +559,7 @@ static void EventOrgApply(const std::any& d)
     if (data.type == "created") {
         std::string title = "新的组织申请";
         std::string content = "用户「" + data.applicant_name + "」申请创建组织「" + data.org_name + "」";
-        std::vector<data::UserInfo::ptr> admins;
+        std::vector<DB::UserInfo::ptr> admins;
         UserMgr::GetInstance()->listByPages(admins, 0, 10000, UserManager::Role::ADMIN, -1, -1, true);
         for (auto& admin : admins) {
             NotificationData notif_data{};
@@ -776,7 +776,7 @@ static void EventDatabaseBackup(const std::any& d)
             info->setDescription("mysql config not found");
             auto db = GetDB();
             if (db) {
-                data::BackupRecordInfoDao::Update(info, db);
+                DB::BackupRecordInfoDao::Update(info, db);
             }
         }
         return;
@@ -791,7 +791,7 @@ static void EventDatabaseBackup(const std::any& d)
                 info->setDescription(std::string("mysql config missing: ") + key);
                 auto db = GetDB();
                 if (db) {
-                    data::BackupRecordInfoDao::Update(info, db);
+                    DB::BackupRecordInfoDao::Update(info, db);
                 }
             }
             return;
@@ -831,7 +831,7 @@ static void EventDatabaseBackup(const std::any& d)
         ERROR(logger) << "Backup " << data.backup_id << " failed, rc=" << rc;
         info->setStatus("failed");
         info->setDescription("mysqldump failed with exit code " + std::to_string(rc));
-        data::BackupRecordInfoDao::Update(info, db);
+        DB::BackupRecordInfoDao::Update(info, db);
         return;
     }
 
@@ -844,7 +844,7 @@ static void EventDatabaseBackup(const std::any& d)
     info->setFilePath("backups/" + filename);
     info->setCompletedAt(time(0));
     info->setDescription("completed in " + std::to_string(elapsed) + "s, size " + std::to_string(fileSize) + " bytes");
-    data::BackupRecordInfoDao::Update(info, db);
+    DB::BackupRecordInfoDao::Update(info, db);
 
     INFO(logger) << "Backup " << data.backup_id << " completed: " << filepath << " (" << fileSize << " bytes, " << elapsed << "s)";
 }

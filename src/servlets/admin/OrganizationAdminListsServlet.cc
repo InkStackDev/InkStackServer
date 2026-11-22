@@ -27,22 +27,22 @@ int32_t OrganizationAdminListsServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<data::OrganizationInfo::ptr> orgs;
+        std::vector<DB::OrganizationInfo::ptr> orgs;
         uint64_t total = OrganizationMgr::GetInstance()->listByPages(orgs, offset, page_size, status, true);
 
         result->set("total", total);

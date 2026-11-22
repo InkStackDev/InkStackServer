@@ -18,17 +18,17 @@ int32_t DashboardStatsServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -74,7 +74,7 @@ int32_t DashboardStatsServlet::handle(
         auto astats = ArticleMgr::GetInstance()->getStats(0, -1, 0, "");
         int64_t total_articles = astats.total;
 
-        std::vector<data::ArticleInfo::ptr> articles;
+        std::vector<DB::ArticleInfo::ptr> articles;
         ArticleMgr::GetInstance()->listByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true);
 
         int64_t this_week_articles = 0, last_week_articles = 0;
@@ -97,7 +97,7 @@ int32_t DashboardStatsServlet::handle(
         auto cstats = CommentMgr::GetInstance()->getStats();
         int64_t total_comments = cstats.total;
 
-        std::vector<data::CommentInfo::ptr> comments;
+        std::vector<DB::CommentInfo::ptr> comments;
         CommentMgr::GetInstance()->listByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1);
         int64_t this_week_comments = 0, last_week_comments = 0;
         int64_t today_comments = 0, yesterday_comments = 0;
@@ -130,7 +130,7 @@ int32_t DashboardStatsServlet::handle(
         result->set("new_users_today", today_users);
         result->set("new_users_today_change", pct_change(today_users, yesterday_users));
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

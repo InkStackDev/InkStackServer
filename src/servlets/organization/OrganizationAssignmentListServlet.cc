@@ -32,25 +32,25 @@ int32_t OrganizationAssignmentListServlet::handle(
         // check operator permission
         auto uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel) {
-                result->setErrno(errcode::ORG_NOT_MEMBER);
+                result->setErrno(ORG_NOT_MEMBER);
                 break;
             }
 
             int32_t org_role = rel->getRole();
-            if (!permission::CanManageMembers(system_role, org_role)) {
-                result->setErrno(errcode::ACCESS_DENIED);
+            if (!CanManageMembers(system_role, org_role)) {
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         }
@@ -58,7 +58,7 @@ int32_t OrganizationAssignmentListServlet::handle(
         uint64_t offset = (page_num - 1) * page_size;
 
         // get assignments in organization
-        std::vector<data::AssignmentOrganizationRelInfo::ptr> assign_rels;
+        std::vector<DB::AssignmentOrganizationRelInfo::ptr> assign_rels;
         int64_t total = AssignmentOrganizationRelMgr::GetInstance()->getByPages(assign_rels, org_id, offset, page_size, status, true);
 
         Json::Value list;

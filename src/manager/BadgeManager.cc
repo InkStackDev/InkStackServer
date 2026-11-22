@@ -19,8 +19,8 @@ void BadgeManager::ensureDefaults()
     }
 
     // 检查是否已有徽章数据
-    std::vector<data::BadgeInfo::ptr> existing;
-    data::BadgeInfoDao::QueryAll(existing, db);
+    std::vector<DB::BadgeInfo::ptr> existing;
+    DB::BadgeInfoDao::QueryAll(existing, db);
     if (!existing.empty()) {
         return;
     }
@@ -49,7 +49,7 @@ void BadgeManager::insertDefault(
         return;
     }
 
-    data::BadgeInfo::ptr badge(new data::BadgeInfo);
+    DB::BadgeInfo::ptr badge(new DB::BadgeInfo);
     badge->setName(name);
     badge->setDescription(desc);
     badge->setIcon(icon);
@@ -61,12 +61,12 @@ void BadgeManager::insertDefault(
     badge->setCreateTime(time(0));
     badge->setUpdateTime(time(0));
 
-    if (data::BadgeInfoDao::Insert(badge, db)) {
+    if (DB::BadgeInfoDao::Insert(badge, db)) {
         ERROR(logger) << "insert badge failed: " << name << " errno=" << db->getErrno() << " errstr=" << db->getErrStr();
     }
 }
 
-void BadgeManager::listAll(std::vector<data::BadgeInfo::ptr>& badges)
+void BadgeManager::listAll(std::vector<DB::BadgeInfo::ptr>& badges)
 {
     auto db = GetDB();
     if (!db) {
@@ -74,12 +74,12 @@ void BadgeManager::listAll(std::vector<data::BadgeInfo::ptr>& badges)
         return;
     }
 
-    auto qb = data::BadgeInfoDao::newQuery();
+    auto qb = DB::BadgeInfoDao::newQuery();
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("sort_order", "ASC");
     qb->orderBy("id", "ASC");
 
-    if (data::BadgeInfoDao::QueryByBuilder(badges, qb, db)) {
+    if (DB::BadgeInfoDao::QueryByBuilder(badges, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
     }
 }

@@ -4,7 +4,7 @@
 
 #include "../../Manager/LabelManager.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/label_info.h"
+#include "DB/LabelInfo.hpp"
 
 #include <set>
 
@@ -31,41 +31,41 @@ int32_t LabelDeleteServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
-        std::vector<data::LabelInfo::ptr> infos;
+        std::vector<DB::LabelInfo::ptr> infos;
         if (!LabelMgr::GetInstance()->listByUserId(infos, uid, true)) {
             break;
         }
 
-        std::vector<data::LabelInfo::ptr> del_labels;
+        std::vector<DB::LabelInfo::ptr> del_labels;
         for (auto& i : infos) {
             if (label_ids.count(i->getId())) {
                 del_labels.push_back(i);
             }
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
         time_t now = time(0);
         for (auto& i : del_labels) {
             i->setIsDeleted(1);
             i->setUpdateTime(now);
-            data::LabelInfoDao::Update(i, db);
+            DB::LabelInfoDao::Update(i, db);
         }
         if (!trans->commit()) {
             ERROR(logger) << "commit fail";
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
 
             for (auto& i : del_labels) {
                 i->setIsDeleted(0);

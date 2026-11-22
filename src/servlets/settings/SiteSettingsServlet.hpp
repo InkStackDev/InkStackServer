@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../BlogServlet.hpp"
+
 #include "../../SessionData.hpp"
 
 class SiteSettingsServlet : public BlogServlet {

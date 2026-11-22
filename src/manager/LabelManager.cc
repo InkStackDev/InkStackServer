@@ -16,9 +16,9 @@ static std::string LabelCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::LabelInfo::ptr ParseLabelCache(const Json::Value& v)
+static DB::LabelInfo::ptr ParseLabelCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::LabelInfo>();
+    auto info = std::make_shared<DB::LabelInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
     info->setName(CacheJsonString(v, "name"));
@@ -31,7 +31,7 @@ static data::LabelInfo::ptr ParseLabelCache(const Json::Value& v)
     return info;
 }
 
-static data::LabelInfo::ptr GetLabelCache(int64_t id)
+static DB::LabelInfo::ptr GetLabelCache(int64_t id)
 {
     std::string key = LabelCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -46,7 +46,7 @@ static data::LabelInfo::ptr GetLabelCache(int64_t id)
     return ParseLabelCache(v);
 }
 
-static void SetLabelCache(const data::LabelInfo::ptr& info)
+static void SetLabelCache(const DB::LabelInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -54,17 +54,17 @@ static void SetLabelCache(const data::LabelInfo::ptr& info)
     RedisCacheSetex(LabelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::LabelInfo::ptr LabelManager::ParseRow(chen::ISQLData::ptr rt)
+DB::LabelInfo::ptr LabelManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::LabelInfoDao::ParseRow(rt);
+    return DB::LabelInfoDao::ParseRow(rt);
 }
 
-void LabelManager::add(data::LabelInfo::ptr info)
+void LabelManager::add(DB::LabelInfo::ptr info)
 {
     SetLabelCache(info);
 }
 
-data::LabelInfo::ptr LabelManager::get(int64_t id)
+DB::LabelInfo::ptr LabelManager::get(int64_t id)
 {
     auto v = GetLabelCache(id);
     if (v) {
@@ -75,14 +75,14 @@ data::LabelInfo::ptr LabelManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::LabelInfoDao::Query(id, db);
+    v = DB::LabelInfoDao::Query(id, db);
     if (v) {
         SetLabelCache(v);
     }
     return v;
 }
 
-data::LabelInfo::ptr LabelManager::getByUserIdName(int64_t id, const std::string& name)
+DB::LabelInfo::ptr LabelManager::getByUserIdName(int64_t id, const std::string& name)
 {
     int64_t cachedId = GetCachedIdMapping("lbl:uid_name:" + std::to_string(id) + ":" + name);
     if (cachedId > 0) {
@@ -93,7 +93,7 @@ data::LabelInfo::ptr LabelManager::getByUserIdName(int64_t id, const std::string
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::LabelInfoDao::QueryByUserIdName(id, name, db);
+    auto info = DB::LabelInfoDao::QueryByUserIdName(id, name, db);
     if (info) {
         SetLabelCache(info);
         CacheIdMapping("lbl:uid_name:" + std::to_string(id) + ":" + name, info->getId());
@@ -101,18 +101,18 @@ data::LabelInfo::ptr LabelManager::getByUserIdName(int64_t id, const std::string
     return info;
 }
 
-bool LabelManager::listByUserId(std::vector<data::LabelInfo::ptr>& infos, int64_t id, bool valid)
+bool LabelManager::listByUserId(std::vector<DB::LabelInfo::ptr>& infos, int64_t id, bool valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::LabelInfoDao::newQuery();
+    auto qb = DB::LabelInfoDao::newQuery();
     qb->where("user_id", "=", id);
     qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
-    if (data::LabelInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::LabelInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }

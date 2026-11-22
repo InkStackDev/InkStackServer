@@ -7,7 +7,10 @@
  */
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
+#include <Chen/DB/DB.hpp>
 #include <ctime>
 #include <json/json.h>
 #include <map>

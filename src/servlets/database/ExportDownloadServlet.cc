@@ -28,39 +28,39 @@ int32_t ExportDownloadServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         std::string id_str = request->getParam("id");
         if (id_str.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "param id is required");
+            result->setErrno(PARAM_MISSING, "param id is required");
             break;
         }
         int64_t id = chen::TypeUtil::Atoi(id_str);
         if (!id) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid id");
+            result->setErrno(PARAM_INVALID, "invalid id");
             break;
         }
 
         auto info = ExportRecordMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "export record not found");
+            result->setErrno(DB_OPERATION_FAILED, "export record not found");
             break;
         }
 
         std::string filepath = info->getFilePath();
         if (filepath.empty()) {
-            result->setErrno(errcode::FILE_NOT_FOUND);
+            result->setErrno(FILE_NOT_FOUND);
             break;
         }
 
@@ -70,7 +70,7 @@ int32_t ExportDownloadServlet::handle(
 
         std::ifstream ifs(filepath, std::ios::binary);
         if (!ifs) {
-            result->setErrno(errcode::FILE_NOT_FOUND);
+            result->setErrno(FILE_NOT_FOUND);
             break;
         }
 
@@ -96,7 +96,7 @@ int32_t ExportDownloadServlet::handle(
             file_content.append(buffer.data(), bytesRead);
         }
         if (ifs.bad()) {
-            result->setErrno(errcode::FILE_READ_ERROR);
+            result->setErrno(FILE_READ_ERROR);
             break;
         }
         response->setBody(file_content);

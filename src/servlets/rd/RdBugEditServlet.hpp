@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
 #include <json/json.h>
 
-#include "blog/data/bug_info.h"
+#include "DB/BugInfo.hpp"
 
 class RdBugEditServlet : public BlogLoginedServlet {
 public:
@@ -18,5 +20,5 @@ protected:
         Result::ptr result) override;
 
 private:
-    void notifyAssignee(int64_t assignee_id, data::BugInfo::ptr bug);
+    void notifyAssignee(int64_t assignee_id, DB::BugInfo::ptr bug);
 };

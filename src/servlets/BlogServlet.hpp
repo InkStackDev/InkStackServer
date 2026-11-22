@@ -40,7 +40,7 @@ protected:
 
     int64_t getUserId(chen::http::HttpRequest::ptr request);
 
-private:
+protected:
     chen::http::SessionData::ptr getSessionData(
         chen::http::HttpRequest::ptr request,
         chen::http::HttpResponse::ptr response);

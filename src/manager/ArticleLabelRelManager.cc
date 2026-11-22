@@ -7,58 +7,60 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::ArticleLabelRelInfo::ptr ArticleLabelRelManager::ParseRow(chen::ISQLData::ptr rt)
+DB::ArticleLabelRelInfo::ptr ArticleLabelRelManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::ArticleLabelRelInfoDao::ParseRow(rt);
+    return DB::ArticleLabelRelInfoDao::ParseRow(rt);
 }
 
-data::ArticleLabelRelInfo::ptr ArticleLabelRelManager::get(int64_t id)
+DB::ArticleLabelRelInfo::ptr ArticleLabelRelManager::get(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    return data::ArticleLabelRelInfoDao::Query(id, db);
+    return DB::ArticleLabelRelInfoDao::Query(id, db);
 }
 
-bool ArticleLabelRelManager::listByArticleId(std::vector<data::ArticleLabelRelInfo::ptr>& infos, int64_t id, bool valid)
+bool ArticleLabelRelManager::listByArticleId(std::vector<DB::ArticleLabelRelInfo::ptr>& infos, int64_t id, bool valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::ArticleLabelRelInfoDao::newQuery();
+    auto qb = DB::ArticleLabelRelInfoDao::newQuery();
     qb->where("article_id", "=", id);
     qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
-    if (data::ArticleLabelRelInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::ArticleLabelRelInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }
     return true;
 }
 
-bool ArticleLabelRelManager::listByLabelId(std::vector<data::ArticleLabelRelInfo::ptr>& infos, int64_t label_id, bool valid)
+bool ArticleLabelRelManager::listByLabelId(std::vector<DB::ArticleLabelRelInfo::ptr>& infos,
+    int64_t label_id,
+    bool valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::ArticleLabelRelInfoDao::newQuery();
+    auto qb = DB::ArticleLabelRelInfoDao::newQuery();
     qb->where("label_id", "=", label_id);
     qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
-    if (data::ArticleLabelRelInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::ArticleLabelRelInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }
     return true;
 }
 
-data::ArticleLabelRelInfo::ptr ArticleLabelRelManager::getByArticleIdLabelId(int64_t article_id, int64_t label_id)
+DB::ArticleLabelRelInfo::ptr ArticleLabelRelManager::getByArticleIdLabelId(int64_t article_id, int64_t label_id)
 {
     std::string ck = "alr:" + std::to_string(article_id) + ":" + std::to_string(label_id);
     int64_t cachedId = GetCachedIdMapping(ck);
@@ -70,7 +72,7 @@ data::ArticleLabelRelInfo::ptr ArticleLabelRelManager::getByArticleIdLabelId(int
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::ArticleLabelRelInfoDao::QueryByArticleIdLabelId(article_id, label_id, db);
+    auto info = DB::ArticleLabelRelInfoDao::QueryByArticleIdLabelId(article_id, label_id, db);
     if (info) {
         CacheIdMapping(ck, info->getId());
     }

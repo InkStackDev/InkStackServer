@@ -1,8 +1,7 @@
 #pragma once
 
-#include "db/user_info.h"
+#include "DB/UserInfo.hpp"
 
-#include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 class UserManager {
@@ -19,9 +18,9 @@ public:
         BANNED = 2
     };
 
-    void add(db::UserInfo::ptr info);
+    void add(DB::UserInfo::ptr info);
 
-    void update(db::UserInfo::ptr info);
+    void update(DB::UserInfo::ptr info);
 
     void getAllIds(std::vector<int64_t>& ids, bool is_valid);
 
@@ -30,8 +29,7 @@ public:
      */
     void ensureSuperAdmin();
 
-    uint64_t listByPages(
-        std::vector<db::UserInfo::ptr>& infos,
+    uint64_t listByPages(std::vector<DB::UserInfo::ptr>& infos,
         uint64_t offset,
         uint64_t size,
         int32_t role,
@@ -39,20 +37,17 @@ public:
         int32_t days,
         bool is_valid);
 
-    db::UserInfo::ptr get(int64_t id);
+    DB::UserInfo::ptr get(int64_t id);
 
-    db::UserInfo::ptr getByAccount(const std::string& v);
+    DB::UserInfo::ptr getByAccount(const std::string& v);
 
-    db::UserInfo::ptr getByEmail(const std::string& v);
+    DB::UserInfo::ptr getByEmail(const std::string& v);
 
-    db::UserInfo::ptr getByName(const std::string& v);
+    DB::UserInfo::ptr getByName(const std::string& v);
 
-    static std::string GetToken(db::UserInfo::ptr info, int64_t us);
+    static std::string GetToken(DB::UserInfo::ptr info, int64_t us);
 
     static std::string GenerateToken();
-
-private:
-    static db::UserInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<UserManager> UserMgr;

@@ -17,7 +17,7 @@ int32_t UserLogoutServlet::handle(
         // 登出是幂等操作：无论会话是否还在，都清理当前 Cookie 与旧 token
         AuthContext ctx;
         AuthService::RevokeSession(request, response, ctx);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

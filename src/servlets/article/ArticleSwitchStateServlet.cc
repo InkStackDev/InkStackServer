@@ -27,13 +27,13 @@ int32_t ArticleSwitchStateServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto article = ArticleMgr::GetInstance()->get(id);
         if (!article) {
-            result->setErrno(errcode::ARTICLE_NOT_FOUND);
+            result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
@@ -42,16 +42,16 @@ int32_t ArticleSwitchStateServlet::handle(
 
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
             if (article->getUserId() != uid) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             } else if (new_state != ArticleManager::Status::PRIVATE) {
-                result->setErrno(errcode::ARTICLE_INVALID_STATE);
+                result->setErrno(ARTICLE_INVALID_STATE);
                 break;
             }
         }
@@ -60,13 +60,13 @@ int32_t ArticleSwitchStateServlet::handle(
         article->setUpdateTime(time(0));
         article->setPublishTime(0);
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
-        if (data::ArticleInfoDao::Update(article, db)) {
-            result->setErrno(errcode::ARTICLE_UPDATE_FAILED);
+        if (DB::ArticleInfoDao::Update(article, db)) {
+            result->setErrno(ARTICLE_UPDATE_FAILED);
             break;
         }
         ArticleMgr::GetInstance()->add(article);
@@ -92,7 +92,7 @@ int32_t ArticleSwitchStateServlet::handle(
             data.article_title = article->getTitle();
             data.new_state = new_state;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ARTICLE_STATE_CHANGED, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_STATE_CHANGED, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

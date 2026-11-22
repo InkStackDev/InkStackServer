@@ -16,9 +16,9 @@ static std::string AssignmentCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::AssignmentInfo::ptr ParseAssignmentCache(const Json::Value& v)
+static DB::AssignmentInfo::ptr ParseAssignmentCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::AssignmentInfo>();
+    auto info = std::make_shared<DB::AssignmentInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setName(CacheJsonString(v, "name"));
     info->setSubjectName(CacheJsonString(v, "subject_name"));
@@ -35,7 +35,7 @@ static data::AssignmentInfo::ptr ParseAssignmentCache(const Json::Value& v)
     return info;
 }
 
-static data::AssignmentInfo::ptr GetAssignmentCache(int64_t id)
+static DB::AssignmentInfo::ptr GetAssignmentCache(int64_t id)
 {
     std::string key = AssignmentCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -50,7 +50,7 @@ static data::AssignmentInfo::ptr GetAssignmentCache(int64_t id)
     return ParseAssignmentCache(v);
 }
 
-static void SetAssignmentCache(const data::AssignmentInfo::ptr& info)
+static void SetAssignmentCache(const DB::AssignmentInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -58,17 +58,17 @@ static void SetAssignmentCache(const data::AssignmentInfo::ptr& info)
     RedisCacheSetex(AssignmentCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::AssignmentInfo::ptr AssignmentManager::ParseRow(chen::ISQLData::ptr rt)
+DB::AssignmentInfo::ptr AssignmentManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::AssignmentInfoDao::ParseRow(rt);
+    return DB::AssignmentInfoDao::ParseRow(rt);
 }
 
-void AssignmentManager::add(data::AssignmentInfo::ptr info)
+void AssignmentManager::add(DB::AssignmentInfo::ptr info)
 {
     SetAssignmentCache(info);
 }
 
-data::AssignmentInfo::ptr AssignmentManager::get(int64_t id)
+DB::AssignmentInfo::ptr AssignmentManager::get(int64_t id)
 {
     auto v = GetAssignmentCache(id);
     if (v) {
@@ -79,14 +79,14 @@ data::AssignmentInfo::ptr AssignmentManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::AssignmentInfoDao::Query(id, db);
+    v = DB::AssignmentInfoDao::Query(id, db);
     if (v) {
         SetAssignmentCache(v);
     }
     return v;
 }
 
-data::AssignmentInfo::ptr AssignmentManager::getByName(const std::string& subject_name, const std::string& name)
+DB::AssignmentInfo::ptr AssignmentManager::getByName(const std::string& subject_name, const std::string& name)
 {
     std::string ck = "assign:name:" + subject_name + ":" + name;
     int64_t cachedId = GetCachedIdMapping(ck);
@@ -98,8 +98,8 @@ data::AssignmentInfo::ptr AssignmentManager::getByName(const std::string& subjec
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    std::vector<data::AssignmentInfo::ptr> results;
-    if (data::AssignmentInfoDao::QueryBySubjectNameName(results, subject_name, name, db)) {
+    std::vector<DB::AssignmentInfo::ptr> results;
+    if (DB::AssignmentInfoDao::QueryBySubjectNameName(results, subject_name, name, db)) {
         return nullptr;
     }
     if (!results.empty()) {
@@ -110,7 +110,7 @@ data::AssignmentInfo::ptr AssignmentManager::getByName(const std::string& subjec
     return nullptr;
 }
 
-uint64_t AssignmentManager::listByPages(std::vector<data::AssignmentInfo::ptr>& infos,
+uint64_t AssignmentManager::listByPages(std::vector<DB::AssignmentInfo::ptr>& infos,
     uint64_t offset,
     uint64_t size,
     int32_t status,
@@ -121,13 +121,13 @@ uint64_t AssignmentManager::listByPages(std::vector<data::AssignmentInfo::ptr>& 
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::AssignmentInfoDao::newQuery();
+    auto qb = DB::AssignmentInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::AssignmentInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::AssignmentInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;
@@ -144,7 +144,7 @@ AssignmentManager::AssignmentStats AssignmentManager::getStats()
 
     // Query status counts with GROUP BY
     {
-        auto qb = data::AssignmentInfoDao::newQuery();
+        auto qb = DB::AssignmentInfoDao::newQuery();
         qb->select("status, COUNT(*) AS cnt");
         qb->where("is_deleted", "=", (int64_t)0);
         qb->groupBy("status");

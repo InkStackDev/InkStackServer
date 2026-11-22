@@ -27,11 +27,11 @@ bool CategoryCreateServlet::handlePre(
         return true;
     }
     int64_t uid = getUserId(request);
-    data::UserInfo::ptr user;
+    DB::UserInfo::ptr user;
     if (uid) {
         user = UserMgr::GetInstance()->get(uid);
     }
-    int32_t rt = permission::CheckAdminRoute(uid, user);
+    int32_t rt = CheckAdminRoute(uid, user);
     if (rt) {
         result->setErrno(rt);
         return false;
@@ -58,35 +58,35 @@ int32_t CategoryCreateServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         bool admin_route = isAdminRoute();
 
-        data::CategoryInfo::ptr info;
+        DB::CategoryInfo::ptr info;
         int64_t owner_id = uid;
         if (cid) {
             info = CategoryMgr::GetInstance()->get(cid);
             if (!info) {
-                result->setErrno(errcode::PARAM_INVALID, "invalid cid");
+                result->setErrno(PARAM_INVALID, "invalid cid");
                 break;
             }
             if (!admin_route && info->getUserId() != uid) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
             owner_id = info->getUserId();
         } else {
             if (req_uid && req_uid != uid) {
                 if (!admin_route) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
                 owner_id = req_uid;
             }
             auto owner = UserMgr::GetInstance()->get(owner_id);
             if (!owner) {
-                result->setErrno(errcode::USER_NOT_FOUND);
+                result->setErrno(USER_NOT_FOUND);
                 break;
             }
         }
@@ -94,11 +94,11 @@ int32_t CategoryCreateServlet::handle(
         if (parent_id) {
             auto parent_info = CategoryMgr::GetInstance()->get(parent_id);
             if (!parent_info || parent_info->getUserId() != owner_id) {
-                result->setErrno(errcode::PARAM_INVALID, "invalid parent_id");
+                result->setErrno(PARAM_INVALID, "invalid parent_id");
                 break;
             }
             if (parent_id == cid) {
-                result->setErrno(errcode::PARAM_INVALID, "invalid parent_id");
+                result->setErrno(PARAM_INVALID, "invalid parent_id");
                 break;
             }
         }
@@ -106,7 +106,7 @@ int32_t CategoryCreateServlet::handle(
         if (!info) {
             info = CategoryMgr::GetInstance()->getByUserIdName(owner_id, name);
             if (!info) {
-                info.reset(new data::CategoryInfo);
+                info.reset(new DB::CategoryInfo);
                 info->setUserId(owner_id);
                 info->setName(name);
                 info->setCreateTime(time(0));
@@ -116,7 +116,7 @@ int32_t CategoryCreateServlet::handle(
         } else if (info->getName() != name) {
             auto same = CategoryMgr::GetInstance()->getByUserIdName(owner_id, name);
             if (same && same->getId() != info->getId()) {
-                result->setErrno(errcode::PARAM_INVALID, "category name exists");
+                result->setErrno(PARAM_INVALID, "category name exists");
                 break;
             }
             info->setName(name);
@@ -131,14 +131,14 @@ int32_t CategoryCreateServlet::handle(
         info->setDescription(desc);
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::CategoryInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "category operation failed");
+        if (DB::CategoryInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "category operation failed");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

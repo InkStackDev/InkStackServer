@@ -15,9 +15,9 @@
 #include <Chen/Util/TimeUtil.hpp>
 #include <Chen/Util/TypeUtil.hpp>
 
-#include "blog/data/article_category_rel_info.h"
-#include "blog/data/article_info.h"
-#include "blog/data/article_label_rel_info.h"
+#include "DB/ArticleCategoryRelInfo.hpp"
+#include "DB/ArticleInfo.hpp"
+#include "DB/ArticleLabelRelInfo.hpp"
 
 #include "../Manager/ArticleCategoryRelManager.hpp"
 #include "../Manager/ArticleLabelRelManager.hpp"
@@ -382,7 +382,7 @@ bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc
     doc.Title = info->getTitle();
     doc.Content = info->getContent();
 
-    std::vector<data::ArticleCategoryRelInfo::ptr> categories;
+    std::vector<DB::ArticleCategoryRelInfo::ptr> categories;
     if (!ArticleCategoryRelMgr::GetInstance()->listByArticleId(categories, info->getId(), true)) {
         return false;
     }
@@ -390,7 +390,7 @@ bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc
         doc.CategoryIds.push_back(static_cast<uint64_t>(category->getCategoryId()));
     }
 
-    std::vector<data::ArticleLabelRelInfo::ptr> labels;
+    std::vector<DB::ArticleLabelRelInfo::ptr> labels;
     if (!ArticleLabelRelMgr::GetInstance()->listByArticleId(labels, info->getId(), true)) {
         return false;
     }
@@ -592,11 +592,11 @@ bool SearchSync::runSnapshot()
                 return false;
             }
 
-            auto qb = data::ArticleInfoDao::newQuery();
+            auto qb = DB::ArticleInfoDao::newQuery();
             qb->where("is_deleted", "=", (int64_t)0)->where("id", ">", last_id)->orderBy("id", "ASC")->limit(page_size);
 
-            std::vector<data::ArticleInfo::ptr> infos;
-            if (data::ArticleInfoDao::QueryByBuilder(infos, qb, db) != 0) {
+            std::vector<DB::ArticleInfo::ptr> infos;
+            if (DB::ArticleInfoDao::QueryByBuilder(infos, qb, db) != 0) {
                 ERROR(logger) << "search snapshot query article failed, last_id=" << last_id;
                 return false;
             }
@@ -611,10 +611,10 @@ bool SearchSync::runSnapshot()
             }
 
             std::map<int64_t, std::vector<uint64_t>> category_map;
-            auto category_qb = data::ArticleCategoryRelInfoDao::newQuery();
+            auto category_qb = DB::ArticleCategoryRelInfoDao::newQuery();
             category_qb->whereIn("article_id", ids)->where("is_deleted", "=", (int64_t)0);
-            std::vector<data::ArticleCategoryRelInfo::ptr> categories;
-            if (data::ArticleCategoryRelInfoDao::QueryByBuilder(categories, category_qb, db) != 0) {
+            std::vector<DB::ArticleCategoryRelInfo::ptr> categories;
+            if (DB::ArticleCategoryRelInfoDao::QueryByBuilder(categories, category_qb, db) != 0) {
                 ERROR(logger) << "search snapshot query category rel failed";
                 return false;
             }
@@ -623,10 +623,10 @@ bool SearchSync::runSnapshot()
             }
 
             std::map<int64_t, std::vector<uint64_t>> label_map;
-            auto label_qb = data::ArticleLabelRelInfoDao::newQuery();
+            auto label_qb = DB::ArticleLabelRelInfoDao::newQuery();
             label_qb->whereIn("article_id", ids)->where("is_deleted", "=", (int64_t)0);
-            std::vector<data::ArticleLabelRelInfo::ptr> labels;
-            if (data::ArticleLabelRelInfoDao::QueryByBuilder(labels, label_qb, db) != 0) {
+            std::vector<DB::ArticleLabelRelInfo::ptr> labels;
+            if (DB::ArticleLabelRelInfoDao::QueryByBuilder(labels, label_qb, db) != 0) {
                 ERROR(logger) << "search snapshot query label rel failed";
                 return false;
             }
@@ -680,9 +680,10 @@ bool SearchSync::runSnapshot()
         }
 
         int64_t finished_at = static_cast<int64_t>(chen::TimeUtil::GetCurrentMs());
-        int32_t rt = client->callWithTimeout<int32_t>(rpc_timeout, static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_COMMIT), snapshot_id, finished_at);
-        if (rt != SEARCH_OK) {
-            WARN(logger) << "search rebuild commit rejected, snapshot_id=" << snapshot_id << ", code=" << rt;
+        int32_t commit_rt = client->callWithTimeout<int32_t>(
+            rpc_timeout, static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_COMMIT), snapshot_id, finished_at);
+        if (commit_rt != SEARCH_OK) {
+            WARN(logger) << "search rebuild commit rejected, snapshot_id=" << snapshot_id << ", code=" << commit_rt;
             return false;
         }
 

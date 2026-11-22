@@ -22,23 +22,23 @@ int32_t ArticleAdminStatsServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t user_role = current_user->getRole();
         if (user_role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         auto stats = ArticleMgr::GetInstance()->getStats(category, role, days, keyword);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("total_articles", stats.total);
         result->set("pending_articles", stats.pending);
         result->set("published_articles", stats.published);

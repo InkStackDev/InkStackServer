@@ -21,7 +21,7 @@ int32_t CommentUpdateServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -30,18 +30,18 @@ int32_t CommentUpdateServlet::handle(
 
         auto comment = CommentMgr::GetInstance()->get(id);
         if (!comment || comment->getIsDeleted()) {
-            result->setErrno(errcode::COMMENT_NOT_FOUND);
+            result->setErrno(COMMENT_NOT_FOUND);
             break;
         }
 
         // only the comment author can edit
         if (comment->getUserId() != uid) {
-            result->setErrno(errcode::COMMENT_PERMISSION_DENIED);
+            result->setErrno(COMMENT_PERMISSION_DENIED);
             break;
         }
 
         if (!CommentMgr::GetInstance()->update(id, content)) {
-            result->setErrno(errcode::COMMENT_UPDATE_FAILED);
+            result->setErrno(COMMENT_UPDATE_FAILED);
             break;
         }
 
@@ -68,7 +68,7 @@ int32_t CommentUpdateServlet::handle(
         item["reply_count"] = CommentMgr::GetInstance()->countReplies(id);
 
         result->setData(item);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

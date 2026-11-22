@@ -30,7 +30,7 @@ int32_t UserAdminRecoverServlet::handle(
             user_ids.insert(chen::TypeUtil::Atoi(i));
         }
 
-        std::vector<data::UserInfo::ptr> infos;
+        std::vector<DB::UserInfo::ptr> infos;
         for (const int64_t& id : user_ids) {
             auto info = UserMgr::GetInstance()->get(id);
             if (!info || !info->getIsDeleted()) {
@@ -39,14 +39,14 @@ int32_t UserAdminRecoverServlet::handle(
             infos.emplace_back(info);
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
         time_t now = time(0);
@@ -54,11 +54,11 @@ int32_t UserAdminRecoverServlet::handle(
             i->setIsDeleted(0);
             i->setState(UserManager::Status::ACTIVE);
             i->setUpdateTime(now);
-            data::UserInfoDao::Update(i, db);
+            DB::UserInfoDao::Update(i, db);
         }
         if (!trans->commit()) {
             ERROR(logger) << "commit fail";
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
 
             for (auto& i : infos) {
                 i->setIsDeleted(0);
@@ -81,7 +81,7 @@ int32_t UserAdminRecoverServlet::handle(
                 data.type = "account_recovered";
                 data.user_id = u->getId();
 
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_USER_ADMIN, std::move(data));
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_ADMIN, std::move(data));
             }
         }
     } while (0);

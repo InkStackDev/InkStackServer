@@ -17,42 +17,42 @@ int32_t BackupDeleteServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         std::string id_str = request->getParam("id");
         if (id_str.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "param id is required");
+            result->setErrno(PARAM_MISSING, "param id is required");
             break;
         }
         int64_t id = chen::TypeUtil::Atoi(id_str);
         if (!id) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid id");
+            result->setErrno(PARAM_INVALID, "invalid id");
             break;
         }
 
         auto info = BackupRecordMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "backup record not found");
+            result->setErrno(DB_OPERATION_FAILED, "backup record not found");
             break;
         }
 
         if (!BackupRecordMgr::GetInstance()->remove(id)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "delete backup failed");
+            result->setErrno(DB_OPERATION_FAILED, "delete backup failed");
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

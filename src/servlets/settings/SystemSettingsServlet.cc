@@ -12,7 +12,7 @@ SystemSettingsServlet::SystemSettingsServlet()
 {
 }
 
-static void BuildSettingsJson(Json::Value& json, data::SystemSettingsInfo::ptr info)
+static void BuildSettingsJson(Json::Value& json, DB::SystemSettingsInfo::ptr info)
 {
     json["id"] = info->getId();
     json["siteName"] = info->getSiteName();
@@ -60,12 +60,12 @@ int32_t SystemSettingsServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user || user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -74,7 +74,7 @@ int32_t SystemSettingsServlet::handle(
         if (method == chen::http::HttpMethod::GET) {
             auto settings = SystemSettingsMgr::GetInstance()->get();
             if (!settings) {
-                result->setErrno(errcode::SETTINGS_NOT_LOADED);
+                result->setErrno(SETTINGS_NOT_LOADED);
                 break;
             }
             Json::Value data;
@@ -83,7 +83,7 @@ int32_t SystemSettingsServlet::handle(
         } else if (method == chen::http::HttpMethod::PUT) {
             auto info = SystemSettingsMgr::GetInstance()->clone();
             if (!info) {
-                result->setErrno(errcode::SETTINGS_NOT_LOADED);
+                result->setErrno(SETTINGS_NOT_LOADED);
                 break;
             }
 
@@ -199,14 +199,14 @@ int32_t SystemSettingsServlet::handle(
             info->setUpdatedAt(time(0));
 
             if (!SystemSettingsMgr::GetInstance()->update(info)) {
-                result->setErrno(errcode::SETTINGS_SAVE_FAILED);
+                result->setErrno(SETTINGS_SAVE_FAILED);
                 break;
             }
             Json::Value data;
             BuildSettingsJson(data, info);
             result->setData(data);
         } else {
-            result->setErrno(errcode::METHOD_NOT_ALLOWED);
+            result->setErrno(METHOD_NOT_ALLOWED);
         }
     } while (0);
     response->setBody(result->toJsonString());

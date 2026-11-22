@@ -167,8 +167,8 @@ inline void SendWX(const std::string& group, const std::string& msg)
 
 #define DEFINE_AND_CHECK_STRING(result, var, param)                                 \
     std::string var = request->getParam(param);                                     \
-    if (var.empty()) {                                                              \
-        result->setErrnoFmt(errcode::PARAM_MISSING, "param %s is required", param); \
+    if (var.empty()) {                                                                                                 \
+        result->setErrnoFmt(PARAM_MISSING, "param %s is required", param);                                             \
         break;                                                                      \
     }
 
@@ -176,8 +176,8 @@ inline void SendWX(const std::string& group, const std::string& msg)
 
 #define DEFINE_AND_CHECK_TYPE(result, type, var, param)                             \
     type var;                                                                       \
-    if (!request->checkGetParamAs(param, var)) {                                    \
-        result->setErrnoFmt(errcode::PARAM_MISSING, "param %s is required", param); \
+    if (!request->checkGetParamAs(param, var)) {                                                                       \
+        result->setErrnoFmt(PARAM_MISSING, "param %s is required", param);                                             \
         break;                                                                      \
     }
 

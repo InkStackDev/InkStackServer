@@ -20,7 +20,7 @@ int32_t FaqsServlet::handle(
     do {
         std::string keyword = request->getParam("keyword");
 
-        std::vector<data::HelpFaqsInfo::ptr> infos;
+        std::vector<DB::HelpFaqsInfo::ptr> infos;
         if (keyword.empty()) {
             FaqMgr::GetInstance()->listAll(infos);
         } else {

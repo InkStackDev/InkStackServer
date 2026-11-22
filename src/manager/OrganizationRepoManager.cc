@@ -22,9 +22,9 @@ static std::string OrgRepoCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::OrganizationReposInfo::ptr ParseOrgRepoCache(const Json::Value& v)
+static DB::OrganizationReposInfo::ptr ParseOrgRepoCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::OrganizationReposInfo>();
+    auto info = std::make_shared<DB::OrganizationReposInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setOrgId(CacheJsonInt64(v, "org_id"));
     info->setName(CacheJsonString(v, "name"));
@@ -44,7 +44,7 @@ static data::OrganizationReposInfo::ptr ParseOrgRepoCache(const Json::Value& v)
     return info;
 }
 
-static data::OrganizationReposInfo::ptr GetOrgRepoCache(int64_t id)
+static DB::OrganizationReposInfo::ptr GetOrgRepoCache(int64_t id)
 {
     std::string key = OrgRepoCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -59,7 +59,7 @@ static data::OrganizationReposInfo::ptr GetOrgRepoCache(int64_t id)
     return ParseOrgRepoCache(v);
 }
 
-static void SetOrgRepoCache(const data::OrganizationReposInfo::ptr& info)
+static void SetOrgRepoCache(const DB::OrganizationReposInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -72,12 +72,12 @@ static void DelOrgRepoCache(int64_t id)
     RedisCacheDel(OrgRepoCacheKey(id));
 }
 
-data::OrganizationReposInfo::ptr OrganizationRepoManager::ParseRow(chen::ISQLData::ptr rt)
+DB::OrganizationReposInfo::ptr OrganizationRepoManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::OrganizationReposInfoDao::ParseRow(rt);
+    return DB::OrganizationReposInfoDao::ParseRow(rt);
 }
 
-void OrganizationRepoManager::add(data::OrganizationReposInfo::ptr info)
+void OrganizationRepoManager::add(DB::OrganizationReposInfo::ptr info)
 {
     SetOrgRepoCache(info);
     invalidateCountCache(info->getOrgId());
@@ -94,7 +94,7 @@ void OrganizationRepoManager::del(int64_t id)
 
 void OrganizationRepoManager::onTick()
 {
-    std::vector<data::OrganizationReposInfo::ptr> repos;
+    std::vector<DB::OrganizationReposInfo::ptr> repos;
     getAllWithToken(repos);
 
     for (const auto& repo : repos) {
@@ -109,7 +109,7 @@ void OrganizationRepoManager::onTick()
     }
 }
 
-data::OrganizationReposInfo::ptr OrganizationRepoManager::get(int64_t id)
+DB::OrganizationReposInfo::ptr OrganizationRepoManager::get(int64_t id)
 {
     auto v = GetOrgRepoCache(id);
     if (v) {
@@ -120,28 +120,31 @@ data::OrganizationReposInfo::ptr OrganizationRepoManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::OrganizationReposInfoDao::Query(id, db);
+    v = DB::OrganizationReposInfoDao::Query(id, db);
     if (v) {
         SetOrgRepoCache(v);
     }
     return v;
 }
 
-data::OrganizationReposInfo::ptr OrganizationRepoManager::getByOrgAndName(int64_t org_id, const std::string& name)
+DB::OrganizationReposInfo::ptr OrganizationRepoManager::getByOrgAndName(int64_t org_id, const std::string& name)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::OrganizationReposInfoDao::QueryByOrgIdName(org_id, name, db);
+    auto info = DB::OrganizationReposInfoDao::QueryByOrgIdName(org_id, name, db);
     if (info) {
         SetOrgRepoCache(info);
     }
     return info;
 }
 
-int64_t OrganizationRepoManager::listByOrgPages(std::vector<data::OrganizationReposInfo::ptr>& repos, int64_t org_id, uint64_t offset, uint64_t limit)
+int64_t OrganizationRepoManager::listByOrgPages(std::vector<DB::OrganizationReposInfo::ptr>& repos,
+    int64_t org_id,
+    uint64_t offset,
+    uint64_t limit)
 {
     auto db = GetDB();
     if (!db) {
@@ -149,12 +152,12 @@ int64_t OrganizationRepoManager::listByOrgPages(std::vector<data::OrganizationRe
         return 0;
     }
 
-    auto qb = data::OrganizationReposInfoDao::newQuery();
+    auto qb = DB::OrganizationReposInfoDao::newQuery();
     qb->where("org_id", "=", org_id);
     qb->orderBy("sort_order DESC, id", "DESC");
 
     int64_t total = 0;
-    if (data::OrganizationReposInfoDao::QueryByBuilderPages(repos, total, qb, (int32_t)offset, (int32_t)limit, db)) {
+    if (DB::OrganizationReposInfoDao::QueryByBuilderPages(repos, total, qb, (int32_t)offset, (int32_t)limit, db)) {
         ERROR(logger) << "QueryByBuilderPages failed";
         return 0;
     }
@@ -169,7 +172,7 @@ int64_t OrganizationRepoManager::getCountByOrg(int64_t org_id)
         return 0;
     }
 
-    auto qb = data::OrganizationReposInfoDao::newQuery();
+    auto qb = DB::OrganizationReposInfoDao::newQuery();
     qb->where("org_id", "=", org_id);
 
     std::stringstream ck;
@@ -177,16 +180,16 @@ int64_t OrganizationRepoManager::getCountByOrg(int64_t org_id)
     return ExecuteCountCached(qb, db, ck.str());
 }
 
-void OrganizationRepoManager::getAllWithToken(std::vector<data::OrganizationReposInfo::ptr>& repos)
+void OrganizationRepoManager::getAllWithToken(std::vector<DB::OrganizationReposInfo::ptr>& repos)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::OrganizationReposInfoDao::newQuery();
+    auto qb = DB::OrganizationReposInfoDao::newQuery();
     qb->where("token", "!=", "");
-    if (data::OrganizationReposInfoDao::QueryByBuilder(repos, qb, db)) {
+    if (DB::OrganizationReposInfoDao::QueryByBuilder(repos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
     }
 }
@@ -233,7 +236,7 @@ static void MarkSyncFailed(int64_t repo_id)
     }
     repo->setSyncStatus("failed");
     repo->setUpdateTime(time(0));
-    data::OrganizationReposInfoDao::Update(repo, db);
+    DB::OrganizationReposInfoDao::Update(repo, db);
 }
 
 void OrganizationRepoManager::SyncFromGitHub(int64_t repo_id, const std::string& url, const std::string& token)
@@ -300,10 +303,10 @@ void OrganizationRepoManager::SyncFromGitHub(int64_t repo_id, const std::string&
     repo->setSyncStatus("success");
     repo->setUpdateTime(time(0));
 
-    if (data::OrganizationReposInfoDao::Update(repo, db)) {
+    if (DB::OrganizationReposInfoDao::Update(repo, db)) {
         ERROR(logger) << "SyncFromGitHub: DB update failed";
         repo->setSyncStatus("failed");
-        data::OrganizationReposInfoDao::Update(repo, db);
+        DB::OrganizationReposInfoDao::Update(repo, db);
         return;
     }
 

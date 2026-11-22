@@ -1,13 +1,7 @@
 #include "User2FADisableServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/UserManager.hpp"
-#include "../../Util/TotpUtil.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/user_recovery_code_info.h"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 User2FADisableServlet::User2FADisableServlet()
     : BlogLoginedServlet("User2FADisableServlet")
@@ -24,58 +18,23 @@ int32_t User2FADisableServlet::handle(chen::http::HttpRequest::ptr request,
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        auto info = UserMgr::GetInstance()->get(uid);
-        if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+        auto rt = UserService::Disable2FA(uid, code);
+        if (rt == UserService::Disable2faResult::Ok) {
+            result->setErrno(SUCCESS);
+        } else if (rt == UserService::Disable2faResult::UserNotFound) {
+            result->setErrno(USER_NOT_FOUND);
+        } else if (rt == UserService::Disable2faResult::NotEnabled) {
+            result->setErrno(TOTP_NOT_ENABLED);
+        } else if (rt == UserService::Disable2faResult::InvalidCode) {
+            result->setErrno(TOTP_INVALID_CODE);
+        } else {
+            result->setErrno(TOTP_ENABLE_FAILED, "disable 2fa failed");
             break;
         }
-
-        if (!info->getTotpEnabled()) {
-            result->setErrno(errcode::TOTP_NOT_ENABLED);
-            break;
-        }
-
-        // 验证TOTP码（必须验证通过才能禁用）
-        if (!TotpUtil::VerifyCode(info->getTotpSecret(), code, 1)) {
-            result->setErrno(errcode::TOTP_INVALID_CODE);
-            break;
-        }
-
-        auto db = getDB();
-        if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
-            break;
-        }
-
-        info->setTotpEnabled(0);
-        info->setTotpSecret("");
-        info->setUpdateTime(time(0));
-
-        if (data::UserInfoDao::Update(info, db)) {
-            result->setErrno(errcode::TOTP_ENABLE_FAILED, "disable 2fa failed");
-            ERROR(logger) << "disable 2fa: Update failed"
-                          << " errstr=" << db->getErrStr() << " errno=" << db->getErrno();
-            break;
-        }
-        UserMgr::GetInstance()->update(info);
-
-        // 删除该用户所有恢复码
-        auto qb = data::UserRecoveryCodeInfoDao::newQuery();
-        qb->where("user_id", "=", uid);
-        std::vector<data::UserRecoveryCodeInfo::ptr> codes;
-        data::UserRecoveryCodeInfoDao::QueryByBuilder(codes, qb, db);
-        for (auto& rc : codes) {
-            data::UserRecoveryCodeInfoDao::DeleteById(rc->getId(), db);
-        }
-
-        // 更新缓存
-        UserMgr::GetInstance()->update(info);
-
-        INFO(logger) << "user=" << uid << " disabled 2fa";
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

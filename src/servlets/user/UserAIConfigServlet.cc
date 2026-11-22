@@ -21,7 +21,7 @@ int32_t UserAIConfigServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -31,7 +31,7 @@ int32_t UserAIConfigServlet::handle(
             // 获取AI配置
             auto info = UserAIConfigMgr::GetInstance()->getByUserId(uid);
             if (!info) {
-                result->setErrno(errcode::SUCCESS);
+                result->setErrno(SUCCESS);
                 result->set("data", Json::Value::null);
                 break;
             }
@@ -40,7 +40,7 @@ int32_t UserAIConfigServlet::handle(
             std::string raw_key = DecryptApiKey(info->getApiKey());
             std::string masked_key = MaskApiKey(raw_key);
 
-            result->setErrno(errcode::SUCCESS);
+            result->setErrno(SUCCESS);
             result->set("type", info->getType());
             result->set("url", info->getUrl());
             result->set("api_key", masked_key);
@@ -54,14 +54,14 @@ int32_t UserAIConfigServlet::handle(
 
             // 校验type值
             if (type != "openai" && type != "claude" && type != "glm") {
-                result->setErrno(errcode::PARAM_INVALID, "type must be openai, claude or glm");
+                result->setErrno(PARAM_INVALID, "type must be openai, claude or glm");
                 break;
             }
 
             // claude类型必须提供max_tokens
             int32_t max_tokens = request->getParamAs<int32_t>("max_tokens", 0);
             if (type == "claude" && max_tokens <= 0) {
-                result->setErrno(errcode::PARAM_MISSING, "max_tokens is required for claude");
+                result->setErrno(PARAM_MISSING, "max_tokens is required for claude");
                 break;
             }
 
@@ -70,7 +70,7 @@ int32_t UserAIConfigServlet::handle(
             // 查询已有配置
             auto info = UserAIConfigMgr::GetInstance()->getByUserId(uid);
             if (!info) {
-                info.reset(new data::UserAiConfigInfo);
+                info.reset(new DB::UserAiConfigInfo);
                 info->setUserId(uid);
             }
 
@@ -85,11 +85,11 @@ int32_t UserAIConfigServlet::handle(
             }
 
             if (!UserAIConfigMgr::GetInstance()->save(info)) {
-                result->setErrno(errcode::AI_CONFIG_SAVE_FAILED);
+                result->setErrno(AI_CONFIG_SAVE_FAILED);
                 break;
             }
         } else {
-            result->setErrno(errcode::METHOD_NOT_ALLOWED);
+            result->setErrno(METHOD_NOT_ALLOWED);
         }
     } while (0);
     response->setBody(result->toJsonString());

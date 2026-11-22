@@ -10,7 +10,7 @@ UserOAuthManager::UserOAuthManager()
 {
 }
 
-data::UserOauthInfo::ptr UserOAuthManager::getByOpenId(const std::string& provider, const std::string& open_id)
+DB::UserOauthInfo::ptr UserOAuthManager::getByOpenId(const std::string& provider, const std::string& open_id)
 {
     if (provider.empty() || open_id.empty()) {
         return nullptr;
@@ -20,11 +20,11 @@ data::UserOauthInfo::ptr UserOAuthManager::getByOpenId(const std::string& provid
         ERROR(logger) << "getByOpenId: GetDB failed";
         return nullptr;
     }
-    std::vector<data::UserOauthInfo::ptr> results;
-    auto qb = data::UserOauthInfoDao::newQuery();
+    std::vector<DB::UserOauthInfo::ptr> results;
+    auto qb = DB::UserOauthInfoDao::newQuery();
     qb->where("provider", "=", provider);
     qb->where("open_id", "=", open_id);
-    if (data::UserOauthInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::UserOauthInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "getByOpenId: query failed"
                       << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
         return nullptr;
@@ -35,7 +35,7 @@ data::UserOauthInfo::ptr UserOAuthManager::getByOpenId(const std::string& provid
     return results[0];
 }
 
-data::UserOauthInfo::ptr UserOAuthManager::getByUser(int64_t user_id, const std::string& provider)
+DB::UserOauthInfo::ptr UserOAuthManager::getByUser(int64_t user_id, const std::string& provider)
 {
     if (!user_id || provider.empty()) {
         return nullptr;
@@ -45,11 +45,11 @@ data::UserOauthInfo::ptr UserOAuthManager::getByUser(int64_t user_id, const std:
         ERROR(logger) << "getByUser: GetDB failed";
         return nullptr;
     }
-    std::vector<data::UserOauthInfo::ptr> results;
-    auto qb = data::UserOauthInfoDao::newQuery();
+    std::vector<DB::UserOauthInfo::ptr> results;
+    auto qb = DB::UserOauthInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->where("provider", "=", provider);
-    if (data::UserOauthInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::UserOauthInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "getByUser: query failed"
                       << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
         return nullptr;
@@ -70,14 +70,14 @@ int UserOAuthManager::bind(int64_t user_id, const std::string& provider, const s
         ERROR(logger) << "bind: GetDB failed";
         return -1;
     }
-    auto info = std::make_shared<data::UserOauthInfo>();
+    auto info = std::make_shared<DB::UserOauthInfo>();
     info->setUserId(user_id);
     info->setProvider(provider);
     info->setOpenId(open_id);
     info->setLoginName(login_name);
     info->setCreateTime(time(0));
     info->setUpdateTime(time(0));
-    if (data::UserOauthInfoDao::Insert(info, db)) {
+    if (DB::UserOauthInfoDao::Insert(info, db)) {
         ERROR(logger) << "bind: Insert failed"
                       << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
         return -1;

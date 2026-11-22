@@ -41,12 +41,12 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -56,35 +56,35 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
         if (!is_platform_admin) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
             org_role = rel->getRole();
         }
 
-        std::vector<data::RequirementInfo::ptr> all;
+        std::vector<DB::RequirementInfo::ptr> all;
         RequirementMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
 
-        std::vector<data::RequirementInfo::ptr> delItems;
+        std::vector<DB::RequirementInfo::ptr> delItems;
         for (auto& i : all) {
             if (!delIds.count(i->getId())) {
                 continue;
             }
-            if (!is_platform_admin && uid != i->getCreatorId() && !permission::CanDeleteRequirement(org_role)) {
+            if (!is_platform_admin && uid != i->getCreatorId() && !CanDeleteRequirement(org_role)) {
                 continue;
             }
             delItems.push_back(i);
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
 
@@ -92,13 +92,13 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
         for (auto& i : delItems) {
             i->setIsDeleted(1);
             i->setUpdateTime(now);
-            data::RequirementInfoDao::Update(i, db);
+            DB::RequirementInfoDao::Update(i, db);
         }
         if (!trans->commit()) {
             for (auto& i : delItems) {
                 i->setIsDeleted(0);
             }
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
 

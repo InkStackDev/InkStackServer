@@ -31,65 +31,65 @@ int32_t OrganizationDeleteServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user || current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        std::vector<data::OrganizationInfo::ptr> infos;
+        std::vector<DB::OrganizationInfo::ptr> infos;
         if (!OrganizationMgr::GetInstance()->listByPages(infos, 0, INT32_MAX, -1, true)) {
             break;
         }
 
-        std::vector<data::OrganizationInfo::ptr> del_organizations;
+        std::vector<DB::OrganizationInfo::ptr> del_organizations;
         for (auto& i : infos) {
             if (assignment_ids.count(i->getId())) {
                 del_organizations.push_back(i);
             }
         }
         if (del_organizations.empty()) {
-            result->setErrno(errcode::ORG_NO_VALID_ORGS);
+            result->setErrno(ORG_NO_VALID_ORGS);
             break;
         }
 
         // 收集所有待删除组织关联的用户关系记录
-        std::vector<data::OrganizationUserRelInfo::ptr> all_rels;
+        std::vector<DB::OrganizationUserRelInfo::ptr> all_rels;
         for (auto& org : del_organizations) {
-            std::vector<data::OrganizationUserRelInfo::ptr> rels;
+            std::vector<DB::OrganizationUserRelInfo::ptr> rels;
             OrganizationUserRelMgr::GetInstance()->getByPages(rels, org->getId(), 0, INT32_MAX, -1, true);
             for (auto& rel : rels) {
                 all_rels.push_back(rel);
             }
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
         time_t now = time(0);
         for (auto& i : del_organizations) {
             i->setIsDeleted(1);
             i->setUpdateTime(now);
-            data::OrganizationInfoDao::Update(i, db);
+            DB::OrganizationInfoDao::Update(i, db);
         }
         for (auto& rel : all_rels) {
             rel->setIsDeleted(1);
             rel->setUpdateTime(now);
-            data::OrganizationUserRelInfoDao::Update(rel, db);
+            DB::OrganizationUserRelInfoDao::Update(rel, db);
         }
         if (!trans->commit()) {
             ERROR(logger) << "commit fail";
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
 
             for (auto& i : del_organizations) {
                 i->setIsDeleted(0);
@@ -128,7 +128,7 @@ int32_t OrganizationDeleteServlet::handle(
                     data.org_id = org->getId();
                     data.org_name = org->getName();
 
-                    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_DELETED, std::move(data));
+                    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_DELETED, std::move(data));
                 }
             }
         }

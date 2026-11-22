@@ -28,19 +28,19 @@ int32_t AdminFaqEditServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -50,7 +50,7 @@ int32_t AdminFaqEditServlet::handle(
         try {
             id = chen::TypeUtil::Atoi(id_str);
         } catch (...) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid id");
+            result->setErrno(PARAM_INVALID, "invalid id");
             break;
         }
 
@@ -59,11 +59,11 @@ int32_t AdminFaqEditServlet::handle(
         std::string cat = request->getParam("cat");
 
         if (!FaqMgr::GetInstance()->update(id, q, a, cat)) {
-            result->setErrno(errcode::FAQ_NOT_FOUND);
+            result->setErrno(FAQ_NOT_FOUND);
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     DEBUG(logger) << "AdminFaqEditServlet handle result: " << result->toJsonString();

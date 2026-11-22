@@ -1,10 +1,14 @@
 #include "BlogServlet.hpp"
 
+#include <Chen/Log/Log.hpp>
+
 #include "../Auth/AuthService.hpp"
 #include "../Auth/SessionStore.hpp"
 #include "../I18n/I18n.hpp"
 #include "../Metrics/MetricsService.hpp"
 #include "../Util/Util.hpp"
+
+static chen::Logger::ptr logger = LOG_ROOT();
 
 BlogServlet::BlogServlet(const std::string& name)
     : Servlet(name)

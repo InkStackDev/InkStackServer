@@ -23,12 +23,12 @@ int32_t RdRequirementServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -37,18 +37,18 @@ int32_t RdRequirementServlet::handle(
         if (id) {
             auto info = RequirementMgr::GetInstance()->get(id);
             if (!info || info->getIsDeleted()) {
-                result->setErrno(errcode::REQUIREMENT_NOT_FOUND);
+                result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;
             }
             int64_t info_org_id = info->getOrgId();
             if (!is_platform_admin) {
                 auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(info_org_id, uid);
                 if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
-                if (!permission::CanViewRequirement(rel->getRole(), uid, info->getCreatorId())) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                if (!CanViewRequirement(rel->getRole(), uid, info->getCreatorId())) {
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
             }
@@ -67,20 +67,20 @@ int32_t RdRequirementServlet::handle(
         std::string status_str = request->getParam("status");
         std::string priority_str = request->getParam("priority");
 
-        std::vector<data::RequirementInfo::ptr> all;
+        std::vector<DB::RequirementInfo::ptr> all;
         if (is_platform_admin && org_id) {
             RequirementMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
         } else if (!is_platform_admin) {
-            std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
             for (auto& rel : user_orgs) {
                 if (org_id && rel->getOrgId() != org_id) {
                     continue;
                 }
-                std::vector<data::RequirementInfo::ptr> org_reqs;
+                std::vector<DB::RequirementInfo::ptr> org_reqs;
                 RequirementMgr::GetInstance()->listByOrg(org_reqs, rel->getOrgId(), 0, INT32_MAX, -1, true);
                 for (auto& req : org_reqs) {
-                    if (permission::CanViewRequirement(rel->getRole(), uid, req->getCreatorId())) {
+                    if (CanViewRequirement(rel->getRole(), uid, req->getCreatorId())) {
                         all.push_back(req);
                     }
                 }
@@ -89,7 +89,7 @@ int32_t RdRequirementServlet::handle(
             RequirementMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
         }
 
-        std::vector<data::RequirementInfo::ptr> filtered;
+        std::vector<DB::RequirementInfo::ptr> filtered;
         for (auto& info : all) {
             if (!status_str.empty() && StringToRequirementStatus(status_str) != info->getStatus()) {
                 continue;

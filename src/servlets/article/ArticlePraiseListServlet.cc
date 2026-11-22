@@ -20,7 +20,7 @@ int32_t ArticlePraiseListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -36,7 +36,7 @@ int32_t ArticlePraiseListServlet::handle(
         uint64_t size = 20;
         request->checkGetParamAs("size", size);
 
-        std::vector<data::ArticlePraiseRelInfo::ptr> results;
+        std::vector<DB::ArticlePraiseRelInfo::ptr> results;
 
         if (article_id > 0) {
             // list users who praised this article
@@ -78,7 +78,7 @@ int32_t ArticlePraiseListServlet::handle(
             result->set("total", ArticlePraiseRelMgr::GetInstance()->countByUser(query_user_id));
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

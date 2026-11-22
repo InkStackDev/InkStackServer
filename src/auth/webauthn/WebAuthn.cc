@@ -201,27 +201,27 @@ int32_t WebAuthnService::CreateRegistrationOptions(
     const WebAuthnConf conf = GetWebAuthnConf();
 
     if (!IsConfigured()) {
-        return errcode::WEBAUTHN_NOT_CONFIGURED;
+        return WEBAUTHN_NOT_CONFIGURED;
     }
 
     std::string challenge;
     try {
         challenge = chen::StringUtil::Base64UrlEncode(chen::EncryptorUtil::GenerateRandomKey(32));
     } catch (...) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
     if (challenge.empty()) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
 
     std::string user_handle = UserHandle(uid);
     if (user_handle.empty()) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
 
     std::string name = passkey_name.empty() ? "Passkey" : passkey_name;
     if (!StoreChallenge(kRegistrationChallengePrefix, uid, challenge, name)) {
-        return errcode::REDIS_OPERATION_FAILED;
+        return REDIS_OPERATION_FAILED;
     }
 
     options = Json::Value(Json::objectValue);
@@ -278,68 +278,68 @@ int32_t WebAuthnService::CreateRegistrationOptions(
 int32_t WebAuthnService::VerifyRegistration(int64_t uid, const Json::Value& credential, RegistrationResult& result, std::string& passkey_name)
 {
     if (!IsConfigured()) {
-        return errcode::WEBAUTHN_NOT_CONFIGURED;
+        return WEBAUTHN_NOT_CONFIGURED;
     }
     if (!credential.isObject()) {
-        return errcode::PARAM_INVALID;
+        return PARAM_INVALID;
     }
     if (!credential.isMember("type") || !credential["type"].isString() || credential["type"].asString() != "public-key") {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     const Json::Value& response = credential["response"];
     if (!response.isObject()) {
-        return errcode::PARAM_INVALID;
+        return PARAM_INVALID;
     }
     if (!response.isMember("clientDataJSON") || !response["clientDataJSON"].isString() || !response.isMember("attestationObject")
         || !response["attestationObject"].isString()) {
-        return errcode::PARAM_MISSING;
+        return PARAM_MISSING;
     }
 
     std::string client_data_b64 = response["clientDataJSON"].asString();
     std::string attestation_b64 = response["attestationObject"].asString();
     if (client_data_b64.empty() || attestation_b64.empty()) {
-        return errcode::PARAM_MISSING;
+        return PARAM_MISSING;
     }
 
     std::string client_data_json = chen::StringUtil::Base64UrlDecode(client_data_b64);
     if (client_data_json.empty()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     ClientData client_data;
     if (!ParseClientData(client_data_json, client_data)) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (client_data.type != "webauthn.create") {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (client_data.cross_origin) {
-        return errcode::WEBAUTHN_ORIGIN_MISMATCH;
+        return WEBAUTHN_ORIGIN_MISMATCH;
     }
     if (chen::StringUtil::Trim(client_data.origin, kTrimChars) != Origin()) {
         WARN(logger) << "webauthn origin mismatch expected=" << Origin() << " got=" << client_data.origin;
-        return errcode::WEBAUTHN_ORIGIN_MISMATCH;
+        return WEBAUTHN_ORIGIN_MISMATCH;
     }
 
     if (!ConsumeChallenge(kRegistrationChallengePrefix, uid, client_data.challenge, passkey_name)) {
-        return errcode::WEBAUTHN_CHALLENGE_INVALID;
+        return WEBAUTHN_CHALLENGE_INVALID;
     }
 
     std::string attestation = chen::StringUtil::Base64UrlDecode(attestation_b64);
     if (attestation.empty()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     CborValue attestation_obj;
     if (!DecodeCbor(attestation, attestation_obj) || attestation_obj.type != CborType::Map) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     const CborValue* fmt = attestation_obj.Get("fmt");
     const CborValue* auth_data_value = attestation_obj.Get("authData");
     if (!fmt || fmt->type != CborType::TextString || !auth_data_value || auth_data_value->type != CborType::ByteString) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (fmt->bytes != "none") {
         // 请求的是 attestation=none；这里不建立证书链信任，只记录实际格式。
@@ -348,56 +348,56 @@ int32_t WebAuthnService::VerifyRegistration(int64_t uid, const Json::Value& cred
 
     AuthData auth_data;
     if (!ParseRegistrationData(auth_data_value->bytes, auth_data)) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (!(auth_data.flags & kFlagUp)) {
-        return errcode::WEBAUTHN_VERIFY_FAILED;
+        return WEBAUTHN_VERIFY_FAILED;
     }
 
     const WebAuthnConf conf = GetWebAuthnConf();
 
     if (conf.user_verification == "required" && !(auth_data.flags & kFlagUv)) {
-        return errcode::WEBAUTHN_VERIFY_FAILED;
+        return WEBAUTHN_VERIFY_FAILED;
     }
     if (chen::StringUtil::HexEncode(auth_data.rp_id_hash, false) != chen::EncryptorUtil::SHA256(RpId())) {
-        return errcode::WEBAUTHN_RP_ID_MISMATCH;
+        return WEBAUTHN_RP_ID_MISMATCH;
     }
 
     if (!credential.isMember("rawId") || !credential["rawId"].isString()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     std::string raw_id = credential["rawId"].asString();
     std::string raw_id_bytes = chen::StringUtil::Base64UrlDecode(raw_id);
     if (raw_id_bytes.empty() || raw_id_bytes != auth_data.credential_id) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     if (credential.isMember("id") && !credential["id"].isString()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     std::string id = credential.isMember("id") ? credential["id"].asString() : "";
     if (!id.empty()) {
         std::string id_bytes = chen::StringUtil::Base64UrlDecode(id);
         if (id_bytes.empty() || id_bytes != auth_data.credential_id) {
-            return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+            return WEBAUTHN_INVALID_CREDENTIAL;
         }
     }
 
     if (auth_data.credential_id.size() > 1023) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     CoseKey cose_key;
     if (!ParseCoseKey(auth_data.cose_key, cose_key)) {
-        return errcode::WEBAUTHN_UNSUPPORTED_ALG;
+        return WEBAUTHN_UNSUPPORTED_ALG;
     }
     if (cose_key.alg != -7 && cose_key.alg != -257 && cose_key.alg != -8) {
-        return errcode::WEBAUTHN_UNSUPPORTED_ALG;
+        return WEBAUTHN_UNSUPPORTED_ALG;
     }
 
     result.credential_id = chen::StringUtil::Base64UrlEncode(auth_data.credential_id);
     if (result.credential_id.size() > kMaxCredentialIdB64) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     result.public_key = chen::StringUtil::Base64UrlEncode(auth_data.cose_key);
     result.alg = cose_key.alg;
@@ -432,21 +432,21 @@ int32_t WebAuthnService::VerifyRegistration(int64_t uid, const Json::Value& cred
 int32_t WebAuthnService::CreateAuthenticationOptions(int64_t uid, const std::vector<std::string>& allow_credential_ids, Json::Value& options)
 {
     if (!IsConfigured()) {
-        return errcode::WEBAUTHN_NOT_CONFIGURED;
+        return WEBAUTHN_NOT_CONFIGURED;
     }
 
     std::string challenge;
     try {
         challenge = chen::StringUtil::Base64UrlEncode(chen::EncryptorUtil::GenerateRandomKey(32));
     } catch (...) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
     if (challenge.empty()) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
 
     if (!StoreChallenge(kAuthenticationChallengePrefix, uid, challenge, "1")) {
-        return errcode::REDIS_OPERATION_FAILED;
+        return REDIS_OPERATION_FAILED;
     }
 
     const WebAuthnConf conf = GetWebAuthnConf();
@@ -506,49 +506,49 @@ int32_t WebAuthnService::VerifyAuthentication(
     AuthenticationResult& result)
 {
     if (!IsConfigured()) {
-        return errcode::WEBAUTHN_NOT_CONFIGURED;
+        return WEBAUTHN_NOT_CONFIGURED;
     }
     if (!uid || !credential.isObject()) {
-        return errcode::PARAM_INVALID;
+        return PARAM_INVALID;
     }
     if (!credential.isMember("type") || !credential["type"].isString() || credential["type"].asString() != "public-key") {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     const Json::Value& response = credential["response"];
     if (!response.isObject()) {
-        return errcode::PARAM_INVALID;
+        return PARAM_INVALID;
     }
     if (!response.isMember("clientDataJSON") || !response["clientDataJSON"].isString() || !response.isMember("authenticatorData")
         || !response["authenticatorData"].isString() || !response.isMember("signature") || !response["signature"].isString()) {
-        return errcode::PARAM_MISSING;
+        return PARAM_MISSING;
     }
 
     std::string client_data_b64 = response["clientDataJSON"].asString();
     std::string authent_data_b64 = response["authenticatorData"].asString();
     std::string signature_b64 = response["signature"].asString();
     if (client_data_b64.empty() || authent_data_b64.empty() || signature_b64.empty()) {
-        return errcode::PARAM_MISSING;
+        return PARAM_MISSING;
     }
 
     std::string client_data_json = chen::StringUtil::Base64UrlDecode(client_data_b64);
     if (client_data_json.empty()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     ClientData client_data;
     if (!ParseClientData(client_data_json, client_data)) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (client_data.type != "webauthn.get") {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (client_data.cross_origin) {
-        return errcode::WEBAUTHN_ORIGIN_MISMATCH;
+        return WEBAUTHN_ORIGIN_MISMATCH;
     }
     if (chen::StringUtil::Trim(client_data.origin, kTrimChars) != Origin()) {
         WARN(logger) << "webauthn assertion origin mismatch expected=" << Origin() << " got=" << client_data.origin;
-        return errcode::WEBAUTHN_ORIGIN_MISMATCH;
+        return WEBAUTHN_ORIGIN_MISMATCH;
     }
 
     // challenge 可能绑定到指定用户，也可能是 discoverable credential 的匿名 challenge。
@@ -558,51 +558,51 @@ int32_t WebAuthnService::VerifyAuthentication(
         challenge_ok = ConsumeChallenge(kAuthenticationChallengePrefix, 0, client_data.challenge, challenge_value);
     }
     if (!challenge_ok) {
-        return errcode::WEBAUTHN_CHALLENGE_INVALID;
+        return WEBAUTHN_CHALLENGE_INVALID;
     }
 
     std::string auth_data_raw = chen::StringUtil::Base64UrlDecode(authent_data_b64);
     if (auth_data_raw.empty()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     AuthData auth_data;
     if (!ParseAuthDataHeader(auth_data_raw, auth_data)) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     if (!(auth_data.flags & kFlagUp)) {
-        return errcode::WEBAUTHN_VERIFY_FAILED;
+        return WEBAUTHN_VERIFY_FAILED;
     }
 
     const WebAuthnConf conf = GetWebAuthnConf();
     if (conf.user_verification == "required" && !(auth_data.flags & kFlagUv)) {
-        return errcode::WEBAUTHN_VERIFY_FAILED;
+        return WEBAUTHN_VERIFY_FAILED;
     }
     if (chen::StringUtil::HexEncode(auth_data.rp_id_hash, false) != chen::EncryptorUtil::SHA256(RpId())) {
-        return errcode::WEBAUTHN_RP_ID_MISMATCH;
+        return WEBAUTHN_RP_ID_MISMATCH;
     }
 
     std::string credential_id;
     if (!ExtractCredentialId(credential, credential_id)) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     // id 与 rawId 必须指向同一个 credential。
     if (credential.isMember("id")) {
         if (!credential["id"].isString()) {
-            return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+            return WEBAUTHN_INVALID_CREDENTIAL;
         }
         std::string id_bytes = chen::StringUtil::Base64UrlDecode(credential["id"].asString());
         std::string raw_id_bytes = chen::StringUtil::Base64UrlDecode(credential["rawId"].asString());
         if (id_bytes.empty() || raw_id_bytes.empty() || id_bytes != raw_id_bytes) {
-            return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+            return WEBAUTHN_INVALID_CREDENTIAL;
         }
     }
 
     // discoverable credential 会返回 userHandle，必须与当前用户的稳定 handle 一致。
     if (response.isMember("userHandle") && !response["userHandle"].isNull()) {
         if (!response["userHandle"].isString()) {
-            return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+            return WEBAUTHN_INVALID_CREDENTIAL;
         }
         std::string user_handle = response["userHandle"].asString();
         if (!user_handle.empty()) {
@@ -610,38 +610,38 @@ int32_t WebAuthnService::VerifyAuthentication(
             std::string provided_bytes = chen::StringUtil::Base64UrlDecode(user_handle);
             std::string expected_bytes = chen::StringUtil::Base64UrlDecode(expected_handle);
             if (expected_handle.empty() || provided_bytes.empty() || expected_bytes.empty() || provided_bytes != expected_bytes) {
-                return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+                return WEBAUTHN_INVALID_CREDENTIAL;
             }
         }
     }
 
     std::string signature = chen::StringUtil::Base64UrlDecode(signature_b64);
     if (signature.empty()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
     std::string cose_bytes = chen::StringUtil::Base64UrlDecode(stored_public_key);
     if (cose_bytes.empty()) {
-        return errcode::WEBAUTHN_INVALID_CREDENTIAL;
+        return WEBAUTHN_INVALID_CREDENTIAL;
     }
     CoseKey cose_key;
     if (!ParseCoseKey(cose_bytes, cose_key)) {
-        return errcode::WEBAUTHN_UNSUPPORTED_ALG;
+        return WEBAUTHN_UNSUPPORTED_ALG;
     }
 
     std::string client_data_hash = chen::EncryptorUtil::SHA256Raw(client_data_json);
     if (client_data_hash.empty()) {
-        return errcode::INTERNAL_ERROR;
+        return INTERNAL_ERROR;
     }
     std::string signed_data = auth_data_raw + client_data_hash;
     if (!VerifySignature(cose_key, signed_data, signature)) {
         WARN(logger) << "webauthn signature verify failed uid=" << uid << " credential=" << credential_id;
-        return errcode::WEBAUTHN_VERIFY_FAILED;
+        return WEBAUTHN_VERIFY_FAILED;
     }
 
     if (stored_sign_count > 0 && auth_data.sign_count > 0 && static_cast<int64_t>(auth_data.sign_count) <= stored_sign_count) {
         WARN(logger) << "webauthn sign counter regression uid=" << uid << " stored=" << stored_sign_count << " got=" << auth_data.sign_count;
-        return errcode::WEBAUTHN_VERIFY_FAILED;
+        return WEBAUTHN_VERIFY_FAILED;
     }
 
     result.credential_id = credential_id;

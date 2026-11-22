@@ -16,13 +16,13 @@ int32_t NotificationReadAllServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         int64_t count = NotificationMgr::GetInstance()->markAllRead(uid);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("count", count);
     } while (0);
 

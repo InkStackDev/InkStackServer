@@ -19,13 +19,13 @@ int32_t PasskeyRegisterBeginServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
@@ -37,13 +37,13 @@ int32_t PasskeyRegisterBeginServlet::handle(
             passkey_name = "Passkey";
         }
         if (passkey_name.size() > 64) {
-            result->setErrno(errcode::PARAM_INVALID, "passkey name too long");
+            result->setErrno(PARAM_INVALID, "passkey name too long");
             break;
         }
 
-        std::vector<data::UserPasskeyInfo::ptr> passkeys;
+        std::vector<DB::UserPasskeyInfo::ptr> passkeys;
         if (PasskeyMgr::GetInstance()->listByUser(passkeys, uid) < 0) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -65,7 +65,7 @@ int32_t PasskeyRegisterBeginServlet::handle(
 
         result->setData(options);
         result->set("name", passkey_name);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

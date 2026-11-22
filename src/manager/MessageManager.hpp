@@ -9,8 +9,8 @@
 
 #include <Chen/Util/Singleton.hpp>
 
-#include "blog/data/conversation_info.h"
-#include "blog/data/conversation_message_info.h"
+#include "DB/ConversationInfo.hpp"
+#include "DB/ConversationMessageInfo.hpp"
 
 #include <cstdint>
 #include <mutex>
@@ -23,18 +23,21 @@ public:
     static const size_t kMaxMessageLen = 2000;
 
     /// 会话相关
-    data::ConversationInfo::ptr get(int64_t id);
+    DB::ConversationInfo::ptr get(int64_t id);
 
-    data::ConversationInfo::ptr getByUsers(int64_t uid_a, int64_t uid_b);
+    DB::ConversationInfo::ptr getByUsers(int64_t uid_a, int64_t uid_b);
 
-    data::ConversationInfo::ptr getOrCreate(int64_t uid_a, int64_t uid_b);
+    DB::ConversationInfo::ptr getOrCreate(int64_t uid_a, int64_t uid_b);
 
-    void listConversations(std::vector<data::ConversationInfo::ptr>& results, int64_t uid);
+    void listConversations(std::vector<DB::ConversationInfo::ptr>& results, int64_t uid);
 
     /// 消息相关
-    void listMessages(std::vector<data::ConversationMessageInfo::ptr>& results, int64_t conversation_id, int32_t offset, int32_t limit);
+    void listMessages(std::vector<DB::ConversationMessageInfo::ptr>& results,
+        int64_t conversation_id,
+        int32_t offset,
+        int32_t limit);
 
-    data::ConversationMessageInfo::ptr sendMessage(int64_t conversation_id, int64_t sender_id, const std::string& text);
+    DB::ConversationMessageInfo::ptr sendMessage(int64_t conversation_id, int64_t sender_id, const std::string& text);
 
     bool markRead(int64_t conversation_id, int64_t uid);
 

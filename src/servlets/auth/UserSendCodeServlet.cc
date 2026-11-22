@@ -29,27 +29,27 @@ int32_t UserSendCodeServlet::handle(
         DEFINE_AND_CHECK_STRING(result, agent, "agent");
 
         if (email.empty() && agent.empty()) {
-            result->setErrno(errcode::PARAM_MISSING);
+            result->setErrno(PARAM_MISSING);
             break;
         }
 
         if (!IsEmail(email)) {
-            result->setErrno(errcode::USER_INVALID_EMAIL);
+            result->setErrno(USER_INVALID_EMAIL);
             break;
         }
 
         if (type == "1" && UserMgr::GetInstance()->getByEmail(email)) {
-            result->setErrno(errcode::USER_EMAIL_EXISTS);
+            result->setErrno(USER_EMAIL_EXISTS);
             break;
         }
         if (type == "5") {
             auto recovery_user = UserMgr::GetInstance()->getByEmail(email);
             if (!recovery_user) {
-                result->setErrno(errcode::USER_EMAIL_NOT_REGISTER);
+                result->setErrno(USER_EMAIL_NOT_REGISTER);
                 break;
             }
             if (recovery_user->getState() != UserManager::Status::ACTIVE || recovery_user->getIsDeleted()) {
-                result->setErrno(errcode::ACCOUNT_INVALID);
+                result->setErrno(ACCOUNT_INVALID);
                 break;
             }
         }
@@ -69,7 +69,7 @@ int32_t UserSendCodeServlet::handle(
                 chen::RedisUtil::Cmd(GetRedisPoolName(), "EXPIRE code_limit:ip:%s 3600", ip.c_str());
             }
             if (rpy && rpy->integer > 5) {
-                result->setErrno(errcode::SEND_CODE_FREQUENT);
+                result->setErrno(SEND_CODE_FREQUENT);
                 break;
             }
         }
@@ -77,13 +77,14 @@ int32_t UserSendCodeServlet::handle(
         // 检查 SMTP 配置（在写 DB 之前校验，避免产生无效验证码）
         auto sys_settings = SystemSettingsMgr::GetInstance()->get();
         if (!sys_settings || sys_settings->getSmtpHost().empty() || sys_settings->getSmtpPort() <= 0 || sys_settings->getSmtpPort() > 65535) {
-            result->setErrno(errcode::SMTP_NOT_CONFIGURED);
+            result->setErrno(SMTP_NOT_CONFIGURED);
             break;
         }
         bool smtp_use_ssl = false;
         if (!ResolveSmtpTls(sys_settings->getSmtpEncryption(), smtp_use_ssl)) {
             ERROR(logger) << "unsupported smtp encryption: " << sys_settings->getSmtpEncryption();
-            result->setErrno(errcode::SMTP_ENCRYPTION_UNSUPPORTED, "SMTP STARTTLS is not supported, use port 465 with SSL encryption");
+            result->setErrno(
+                SMTP_ENCRYPTION_UNSUPPORTED, "SMTP STARTTLS is not supported, use port 465 with SSL encryption");
             break;
         }
 
@@ -92,7 +93,7 @@ int32_t UserSendCodeServlet::handle(
         auto rpy = chen::RedisUtil::Cmd(
             GetRedisPoolName(), "SETEX email:verify:%s:%s 600 %s", type.c_str(), email.c_str(), code.c_str());
         if (!rpy) {
-            result->setErrno(errcode::REDIS_OPERATION_FAILED);
+            result->setErrno(REDIS_OPERATION_FAILED);
             break;
         }
 
@@ -133,10 +134,10 @@ int32_t UserSendCodeServlet::handle(
             data.port = static_cast<uint16_t>(smtp_port);
             data.use_ssl = smtp_use_ssl;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_USER_SEND_CODE, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_SEND_CODE, std::move(data));
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

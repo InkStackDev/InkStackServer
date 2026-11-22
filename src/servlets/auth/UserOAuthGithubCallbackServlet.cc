@@ -269,7 +269,7 @@ static std::string BuildName(const std::string& open_id, const std::string& unam
 static void RedirectError(chen::http::HttpResponse::ptr response, const std::string& frontend_base, int32_t code)
 {
     if (code == 0) {
-        code = errcode::GITHUB_OAUTH_FAILED;
+        code = GITHUB_OAUTH_FAILED;
     }
     response->setRedirect(frontend_base + "/auth?oauth_error=" + std::to_string(code));
 }
@@ -286,7 +286,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
     std::string frontend_base = oauth.frontend_base;
 
     if (client_id.empty() || client_secret.empty() || callback_url.empty() || frontend_base.empty()) {
-        result->setErrno(errcode::GITHUB_OAUTH_FAILED, "GitHub OAuth 未配置");
+        result->setErrno(GITHUB_OAUTH_FAILED, "GitHub OAuth 未配置");
         response->setBody(result->toJsonString());
         return 0;
     }
@@ -302,7 +302,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
 
     do {
         if (code.empty() || state.empty()) {
-            error = errcode::GITHUB_STATE_INVALID;
+            error = GITHUB_STATE_INVALID;
             break;
         }
 
@@ -310,7 +310,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         std::string stateKey = std::string(kOAuthStatePrefix) + state;
         auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", stateKey.c_str());
         if (!rpy || rpy->type != REDIS_REPLY_STRING || !rpy->str) {
-            error = errcode::GITHUB_STATE_INVALID;
+            error = GITHUB_STATE_INVALID;
             break;
         }
         redirect = NormalizeRedirect(std::string(rpy->str, rpy->len));
@@ -319,12 +319,12 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         // 换取 GitHub 身份
         std::string access_token;
         if (!ExchangeAccessToken(client_id, client_secret, code, callback_url, access_token)) {
-            error = errcode::GITHUB_OAUTH_FAILED;
+            error = GITHUB_OAUTH_FAILED;
             break;
         }
         GithubProfile profile;
         if (!FetchGithubProfile(access_token, profile)) {
-            error = errcode::GITHUB_OAUTH_FAILED;
+            error = GITHUB_OAUTH_FAILED;
             break;
         }
         if (profile.email.empty()) {
@@ -332,12 +332,12 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         }
 
         // 查询或创建本地用户
-        data::UserInfo::ptr user;
+        DB::UserInfo::ptr user;
         auto binding = UserOAuthMgr::GetInstance()->getByOpenId(kProviderGithub, profile.open_id);
         if (binding) {
             user = UserMgr::GetInstance()->get(binding->getUserId());
             if (!user) {
-                error = errcode::USER_NOT_FOUND;
+                error = USER_NOT_FOUND;
                 break;
             }
         }
@@ -350,9 +350,9 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         }
 
         if (!user) {
-            auto db = getDB();
+            auto db = GetDB();
             if (!db) {
-                error = errcode::DB_OPERATION_FAILED;
+                error = DB_OPERATION_FAILED;
                 break;
             }
             std::string email = profile.email;
@@ -361,7 +361,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
             }
             user = UserMgr::GetInstance()->getByEmail(email);
             if (!user) {
-                user = std::make_shared<data::UserInfo>();
+                user = std::make_shared<DB::UserInfo>();
                 user->setAccount(BuildAccount(profile.open_id, profile.login));
                 user->setName(BuildName(profile.open_id, profile.name, profile.login));
                 user->setEmail(email);
@@ -375,10 +375,10 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
                 user->setState(UserManager::Status::ACTIVE);
                 user->setCreateTime(chen::TimeUtil::GetCurrentSec());
                 user->setUpdateTime(chen::TimeUtil::GetCurrentSec());
-                if (data::UserInfoDao::Insert(user, db)) {
+                if (DB::UserInfoDao::Insert(user, db)) {
                     ERROR(logger) << "callback: insert user failed"
                                   << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
-                    error = errcode::DB_OPERATION_FAILED;
+                    error = DB_OPERATION_FAILED;
                     break;
                 }
                 UserMgr::GetInstance()->add(user);
@@ -387,11 +387,11 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         }
 
         if (!user) {
-            error = errcode::USER_NOT_FOUND;
+            error = USER_NOT_FOUND;
             break;
         }
         if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
-            error = errcode::ACCOUNT_INVALID;
+            error = ACCOUNT_INVALID;
             break;
         }
 

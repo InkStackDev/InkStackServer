@@ -26,18 +26,18 @@ int32_t OrganizationApplyListServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto uinfo = UserMgr::GetInstance()->get(uid);
         if (!uinfo || uinfo->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<data::OrganizationApplyInfo::ptr> applies;
+        std::vector<DB::OrganizationApplyInfo::ptr> applies;
         int64_t total = OrganizationApplyMgr::GetInstance()->listByPages(applies, offset, page_size, status, true);
 
         result->set("total", total);

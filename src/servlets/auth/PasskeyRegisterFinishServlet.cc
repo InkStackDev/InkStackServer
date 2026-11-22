@@ -20,13 +20,13 @@ int32_t PasskeyRegisterFinishServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         Json::Value credential;
         if (!chen::JsonUtil::FromString(credential, request->getBody()) || !credential.isObject()) {
-            result->setErrno(errcode::PARAM_INVALID);
+            result->setErrno(PARAM_INVALID);
             break;
         }
 
@@ -49,16 +49,16 @@ int32_t PasskeyRegisterFinishServlet::handle(
             passkey_name = "Passkey";
         }
         if (passkey_name.size() > 64) {
-            result->setErrno(errcode::PARAM_INVALID, "passkey name too long");
+            result->setErrno(PARAM_INVALID, "passkey name too long");
             break;
         }
 
         if (PasskeyMgr::GetInstance()->getByCredentialId(registration.credential_id)) {
-            result->setErrno(errcode::PASSKEY_ALREADY_EXISTS);
+            result->setErrno(PASSKEY_ALREADY_EXISTS);
             break;
         }
 
-        auto info = std::make_shared<data::UserPasskeyInfo>();
+        auto info = std::make_shared<DB::UserPasskeyInfo>();
         info->setUserId(uid);
         info->setCredentialId(registration.credential_id);
         info->setPublicKey(registration.public_key);
@@ -74,14 +74,14 @@ int32_t PasskeyRegisterFinishServlet::handle(
         info->setLastUsedAt(chen::TimeUtil::GetCurrentSec());
 
         if (PasskeyMgr::GetInstance()->add(info) != 0) {
-            result->setErrno(errcode::PASSKEY_REGISTER_FAILED);
+            result->setErrno(PASSKEY_REGISTER_FAILED);
             break;
         }
 
         result->set("id", info->getId());
         result->set("name", info->getName());
         result->set("credential_id", info->getCredentialId());
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

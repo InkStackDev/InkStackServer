@@ -7,7 +7,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::UserPasskeyInfo::ptr PasskeyManager::getByCredentialId(const std::string& credential_id)
+DB::UserPasskeyInfo::ptr PasskeyManager::getByCredentialId(const std::string& credential_id)
 {
     if (credential_id.empty()) {
         return nullptr;
@@ -19,14 +19,14 @@ data::UserPasskeyInfo::ptr PasskeyManager::getByCredentialId(const std::string& 
         return nullptr;
     }
 
-    auto info = data::UserPasskeyInfoDao::QueryByCredentialId(credential_id, db);
+    auto info = DB::UserPasskeyInfoDao::QueryByCredentialId(credential_id, db);
     if (!info || info->getIsDeleted()) {
         return nullptr;
     }
     return info;
 }
 
-data::UserPasskeyInfo::ptr PasskeyManager::get(int64_t id)
+DB::UserPasskeyInfo::ptr PasskeyManager::get(int64_t id)
 {
     if (!id) {
         return nullptr;
@@ -38,14 +38,14 @@ data::UserPasskeyInfo::ptr PasskeyManager::get(int64_t id)
         return nullptr;
     }
 
-    auto info = data::UserPasskeyInfoDao::Query(id, db);
+    auto info = DB::UserPasskeyInfoDao::Query(id, db);
     if (!info || info->getIsDeleted()) {
         return nullptr;
     }
     return info;
 }
 
-int PasskeyManager::listByUser(std::vector<data::UserPasskeyInfo::ptr>& results, int64_t uid)
+int PasskeyManager::listByUser(std::vector<DB::UserPasskeyInfo::ptr>& results, int64_t uid)
 {
     results.clear();
     if (!uid) {
@@ -58,8 +58,8 @@ int PasskeyManager::listByUser(std::vector<data::UserPasskeyInfo::ptr>& results,
         return -1;
     }
 
-    std::vector<data::UserPasskeyInfo::ptr> all;
-    if (data::UserPasskeyInfoDao::QueryByUserId(all, uid, db)) {
+    std::vector<DB::UserPasskeyInfo::ptr> all;
+    if (DB::UserPasskeyInfoDao::QueryByUserId(all, uid, db)) {
         ERROR(logger) << "query passkeys failed uid=" << uid;
         return -1;
     }
@@ -72,7 +72,7 @@ int PasskeyManager::listByUser(std::vector<data::UserPasskeyInfo::ptr>& results,
     return results.size();
 }
 
-int PasskeyManager::add(data::UserPasskeyInfo::ptr info)
+int PasskeyManager::add(DB::UserPasskeyInfo::ptr info)
 {
     if (!info || !info->getUserId() || info->getCredentialId().empty()) {
         return -1;
@@ -85,7 +85,7 @@ int PasskeyManager::add(data::UserPasskeyInfo::ptr info)
     }
 
     // credential_id 有唯一索引：如果同一用户曾软删除同一凭据，复用旧行而不是插入失败。
-    auto existing = data::UserPasskeyInfoDao::QueryByCredentialId(info->getCredentialId(), db);
+    auto existing = DB::UserPasskeyInfoDao::QueryByCredentialId(info->getCredentialId(), db);
     if (existing) {
         if (existing->getUserId() != info->getUserId()) {
             ERROR(logger) << "credential belongs to another user credential=" << info->getCredentialId();
@@ -93,21 +93,21 @@ int PasskeyManager::add(data::UserPasskeyInfo::ptr info)
         }
         info->setId(existing->getId());
         info->setIsDeleted(0);
-        if (data::UserPasskeyInfoDao::Update(info, db)) {
+        if (DB::UserPasskeyInfoDao::Update(info, db)) {
             ERROR(logger) << "revive passkey failed user=" << info->getUserId() << " id=" << info->getId();
             return -1;
         }
         return 0;
     }
 
-    if (data::UserPasskeyInfoDao::Insert(info, db)) {
+    if (DB::UserPasskeyInfoDao::Insert(info, db)) {
         ERROR(logger) << "insert passkey failed user=" << info->getUserId();
         return -1;
     }
     return 0;
 }
 
-int PasskeyManager::update(data::UserPasskeyInfo::ptr info)
+int PasskeyManager::update(DB::UserPasskeyInfo::ptr info)
 {
     if (!info) {
         return -1;
@@ -119,7 +119,7 @@ int PasskeyManager::update(data::UserPasskeyInfo::ptr info)
         return -1;
     }
 
-    if (data::UserPasskeyInfoDao::Update(info, db)) {
+    if (DB::UserPasskeyInfoDao::Update(info, db)) {
         ERROR(logger) << "update passkey failed id=" << info->getId();
         return -1;
     }

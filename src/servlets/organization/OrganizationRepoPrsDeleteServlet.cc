@@ -34,19 +34,19 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto pr = OrganizationRepoPrMgr::GetInstance()->get(id);
         if (!pr) {
-            result->setErrno(errcode::PARAM_INVALID, "PR 记录不存在");
+            result->setErrno(PARAM_INVALID, "PR 记录不存在");
             break;
         }
 
         auto repo = OrganizationRepoMgr::GetInstance()->get(pr->getRepoId());
         if (!repo) {
-            result->setErrno(errcode::ORG_REPO_NOT_FOUND);
+            result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
         int64_t org_id = repo->getOrgId();
@@ -54,31 +54,31 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
         // 权限：系统管理员或组织内研发主管及以上
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
             int32_t org_role = rel->getRole();
             if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
-                result->setErrno(errcode::ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
+                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
                 break;
             }
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::OrganizationRepoPrsInfoDao::DeleteById(id, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "删除审查记录失败");
+        if (DB::OrganizationRepoPrsInfoDao::DeleteById(id, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "删除审查记录失败");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

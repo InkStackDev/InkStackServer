@@ -26,9 +26,9 @@ int32_t NotificationSendServlet::handle(
     do {
         // 权限检查: 仅管理员可发送通知
         int64_t uid = getUserId(request);
-        data::UserInfo::ptr uinfo = UserMgr::GetInstance()->get(uid);
+        DB::UserInfo::ptr uinfo = UserMgr::GetInstance()->get(uid);
         if (!uinfo || uinfo->getRole() != UserManager::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -38,11 +38,11 @@ int32_t NotificationSendServlet::handle(
         DEFINE_AND_CHECK_STRING(result, target, "target");
 
         if (title.size() > 100) {
-            result->setErrno(errcode::NOTIFICATION_TITLE_TOO_LONG);
+            result->setErrno(NOTIFICATION_TITLE_TOO_LONG);
             break;
         }
         if (content.size() > 2000) {
-            result->setErrno(errcode::NOTIFICATION_CONTENT_TOO_LONG);
+            result->setErrno(NOTIFICATION_CONTENT_TOO_LONG);
             break;
         }
 
@@ -110,7 +110,7 @@ int32_t NotificationSendServlet::handle(
         } else if (target == "users") {
             std::string user_ids_str = request->getParam("user_ids");
             if (user_ids_str.empty()) {
-                result->setErrno(errcode::NOTIFICATION_USERS_REQUIRED);
+                result->setErrno(NOTIFICATION_USERS_REQUIRED);
                 break;
             }
 
@@ -140,11 +140,11 @@ int32_t NotificationSendServlet::handle(
             }
             INFO(logger) << "[NOTIFY] send to users: count=" << ids.size() << " sent=" << sent << " type=" << type << " title=" << title;
         } else {
-            result->setErrno(errcode::NOTIFICATION_INVALID_TARGET);
+            result->setErrno(NOTIFICATION_INVALID_TARGET);
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

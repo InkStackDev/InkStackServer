@@ -33,42 +33,42 @@ int32_t UserLoginServlet::handle(
 
         AuthContext ctx = AuthService::Resolve(request, response, false);
         if (ctx.valid()) {
-            result->setErrno(errcode::USER_ALREADY_LOGIN);
+            result->setErrno(USER_ALREADY_LOGIN);
             break;
         }
 
-        data::UserInfo::ptr info;
+        DB::UserInfo::ptr info;
         if (IsEmail(auth_id)) {
             info = UserMgr::GetInstance()->getByEmail(auth_id);
         } else if (IsValidAccount(auth_id)) {
             info = UserMgr::GetInstance()->getByAccount(auth_id);
         } else {
-            result->setErrno(errcode::USER_INVALID_ACCOUNT);
+            result->setErrno(USER_INVALID_ACCOUNT);
             break;
         }
 
         if (!info) {
-            result->setErrno(errcode::AUTH_CODE_INVALID);
+            result->setErrno(AUTH_CODE_INVALID);
             break;
         }
         if (!VerifyPassword(passwd, info->getPasswd())) {
-            result->setErrno(errcode::USER_PASSWORD_WRONG);
+            result->setErrno(USER_PASSWORD_WRONG);
             break;
         }
 
         if (info->getState() != 1 || info->getIsDeleted()) {
-            result->setErrno(errcode::ACCOUNT_INVALID);
+            result->setErrno(ACCOUNT_INVALID);
             break;
         }
 
         // 历史 MD5 哈希在登录成功后透明升级为 bcrypt；失败不影响本次登录，下次登录重试
         if (IsLegacyPasswordHash(info->getPasswd())) {
             std::string passwd_hash = HashPassword(passwd);
-            auto upgrade_db = getDB();
+            auto upgrade_db = GetDB();
             if (!passwd_hash.empty() && upgrade_db) {
                 std::string old_hash = info->getPasswd();
                 info->setPasswd(passwd_hash);
-                if (data::UserInfoDao::Update(info, upgrade_db) == 0) {
+                if (DB::UserInfoDao::Update(info, upgrade_db) == 0) {
                     UserMgr::GetInstance()->update(info);
                 } else {
                     info->setPasswd(old_hash);

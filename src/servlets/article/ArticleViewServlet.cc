@@ -17,7 +17,7 @@ int32_t ArticleViewServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -25,7 +25,7 @@ int32_t ArticleViewServlet::handle(
 
         auto article = ArticleMgr::GetInstance()->get(article_id);
         if (!article || article->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_NOT_FOUND);
+            result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
@@ -33,7 +33,7 @@ int32_t ArticleViewServlet::handle(
         ArticleMgr::GetInstance()->incViews(article_id, cookie_id, uid);
 
         result->set("views", article->getViews());
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

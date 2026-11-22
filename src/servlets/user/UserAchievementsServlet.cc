@@ -5,6 +5,11 @@
 
 #include <map>
 
+#include "../../Include/Managers.hpp"
+#include "../../Util/Util.hpp"
+
+static chen::Logger::ptr logger = LOG_ROOT();
+
 UserAchievementsServlet::UserAchievementsServlet()
     : BlogLoginedServlet("UserAchievementsServlet")
 {
@@ -46,7 +51,7 @@ int32_t UserAchievementsServlet::handle(
         }
 
         // ========== 1. 获取用户所有文章 ==========
-        std::vector<data::ArticleInfo::ptr> articles;
+        std::vector<DB::ArticleInfo::ptr> articles;
         ArticleMgr::GetInstance()->listByUserId(articles, uid, true);
 
         int64_t published_articles = 0;
@@ -73,13 +78,13 @@ int32_t UserAchievementsServlet::handle(
 
         // ========== 2. 查询评论贡献 ==========
         {
-            auto db = getDB();
+            auto db = GetDB();
             if (db) {
                 time_t now = time(0);
                 time_t cutoff = now - 371 * 86400;
                 std::string cutoffStr = chen::TimeUtil::Time2StrSec(cutoff, "%Y-%m-%d");
 
-                auto qb = data::CommentInfoDao::newQuery();
+                auto qb = DB::CommentInfoDao::newQuery();
                 qb->where("user_id", "=", uid);
                 qb->where("is_deleted", "=", (int64_t)0);
                 qb->where("create_time", ">=", cutoffStr);
@@ -123,7 +128,7 @@ int32_t UserAchievementsServlet::handle(
         int64_t total_followers = UserFollowRelMgr::GetInstance()->countFollowers(uid);
 
         // ========== 5. 徽章解锁判断 ==========
-        std::vector<data::BadgeInfo::ptr> badges;
+        std::vector<DB::BadgeInfo::ptr> badges;
         BadgeMgr::GetInstance()->listAll(badges);
 
         int64_t unlocked_count = 0;

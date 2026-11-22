@@ -6,7 +6,7 @@
 #include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/label_info.h"
+#include "DB/LabelInfo.hpp"
 
 DatabaseStatsServlet::DatabaseStatsServlet()
     : BlogLoginedServlet("DatabaseStatsServlet")
@@ -22,16 +22,16 @@ int32_t DatabaseStatsServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -44,20 +44,20 @@ int32_t DatabaseStatsServlet::handle(
         total_users = uids.size();
 
         int64_t total_categories = 0;
-        std::vector<data::CategoryInfo::ptr> categories;
+        std::vector<DB::CategoryInfo::ptr> categories;
         CategoryMgr::GetInstance()->listAll(categories, true);
         total_categories = categories.size();
 
         int64_t total_labels = 0;
         auto db = GetDB();
         if (db) {
-            auto qb = data::LabelInfoDao::newQuery();
+            auto qb = DB::LabelInfoDao::newQuery();
             qb->where("is_deleted", "=", (int64_t)0);
             qb->executeCount(total_labels, db);
         }
 
         int64_t total_backups = 0;
-        std::vector<data::BackupRecordInfo::ptr> backups;
+        std::vector<DB::BackupRecordInfo::ptr> backups;
         BackupRecordMgr::GetInstance()->list(backups, total_backups, "", "", "", 0, 1);
 
         auto du = GetDiskUsage();
@@ -73,7 +73,7 @@ int32_t DatabaseStatsServlet::handle(
         result->set("tags", total_labels);
         result->set("backups", total_backups);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

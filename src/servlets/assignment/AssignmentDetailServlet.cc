@@ -23,7 +23,7 @@ int32_t AssignmentDetailServlet::handle(
         auto assignment = AssignmentMgr::GetInstance()->get(id);
 
         if (!assignment || assignment->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 

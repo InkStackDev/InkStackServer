@@ -21,7 +21,7 @@ int32_t UserMutualFollowingListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -75,7 +75,7 @@ int32_t UserMutualFollowingListServlet::handle(
             arr.append(item);
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("list", arr);
         result->set("total", total);
         result->set("offset", offset);

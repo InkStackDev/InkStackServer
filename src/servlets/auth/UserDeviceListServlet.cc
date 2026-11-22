@@ -17,7 +17,7 @@ int32_t UserDeviceListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -30,7 +30,7 @@ int32_t UserDeviceListServlet::handle(
         std::vector<SessionInfo> sessions;
         SessionStore::List(uid, sessions);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("total", sessions.size());
         Json::Value list;
         for (const auto& s : sessions) {

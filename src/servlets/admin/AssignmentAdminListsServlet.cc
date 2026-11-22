@@ -28,22 +28,22 @@ int32_t AssignmentAdminListsServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         uint64_t offset = (page_num - 1) * page_size;
 
-        std::vector<data::AssignmentInfo::ptr> infos;
+        std::vector<DB::AssignmentInfo::ptr> infos;
         uint64_t total = AssignmentMgr::GetInstance()->listByPages(infos, offset, page_size, state, true);
 
         result->set("total", total);
@@ -63,7 +63,7 @@ int32_t AssignmentAdminListsServlet::handle(
             item["file_size"] = i->getMaxSize();
 
             // organization info (负责人)
-            std::vector<data::AssignmentOrganizationRelInfo::ptr> org_rels;
+            std::vector<DB::AssignmentOrganizationRelInfo::ptr> org_rels;
             AssignmentOrganizationRelMgr::GetInstance()->getByAssignmentId(org_rels, i->getId());
             if (!org_rels.empty() && org_rels[0]) {
                 auto org = OrganizationMgr::GetInstance()->get(org_rels[0]->getOrganizationId());

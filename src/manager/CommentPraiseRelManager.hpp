@@ -1,20 +1,20 @@
 #pragma once
 
-#include "blog/data/comment_praise_rel_info.h"
+#include "DB/CommentPraiseRelInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 class CommentPraiseRelManager {
 public:
-    void add(data::CommentPraiseRelInfo::ptr info);
+    void add(DB::CommentPraiseRelInfo::ptr info);
 
-    data::CommentPraiseRelInfo::ptr get(int64_t id);
+    DB::CommentPraiseRelInfo::ptr get(int64_t id);
 
-    data::CommentPraiseRelInfo::ptr getByUserAndComment(int64_t user_id, int64_t comment_id);
+    DB::CommentPraiseRelInfo::ptr getByUserAndComment(int64_t user_id, int64_t comment_id);
 
     // praise/unpraise
-    data::CommentPraiseRelInfo::ptr praise(int64_t user_id, int64_t comment_id);
+    DB::CommentPraiseRelInfo::ptr praise(int64_t user_id, int64_t comment_id);
 
     bool unpraise(int64_t user_id, int64_t comment_id);
 
@@ -24,7 +24,7 @@ public:
     int64_t countByComment(int64_t comment_id);
 
 private:
-    static data::CommentPraiseRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::CommentPraiseRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<CommentPraiseRelManager> CommentPraiseRelMgr;

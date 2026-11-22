@@ -31,47 +31,47 @@ int32_t OrganizationApplyReviewServlet::handle(
         try {
             apply_id = chen::TypeUtil::Atoi(apply_id_str);
         } catch (...) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid apply_id");
+            result->setErrno(PARAM_INVALID, "invalid apply_id");
             break;
         }
 
         if (action != "approve" && action != "reject") {
-            result->setErrno(errcode::PARAM_INVALID, "action must be approve or reject");
+            result->setErrno(PARAM_INVALID, "action must be approve or reject");
             break;
         }
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto uinfo = UserMgr::GetInstance()->get(uid);
         if (!uinfo || uinfo->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         auto apply = OrganizationApplyMgr::GetInstance()->get(apply_id);
         if (!apply) {
-            result->setErrno(errcode::ORG_APPLY_NOT_FOUND);
+            result->setErrno(ORG_APPLY_NOT_FOUND);
             break;
         }
 
         if (apply->getStatus() != OrganizationApplyManager::Status::PENDING) {
-            result->setErrno(errcode::ORG_APPLY_ALREADY_REVIEWED);
+            result->setErrno(ORG_APPLY_ALREADY_REVIEWED);
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         if (action == "approve") {
             // Create the organization
-            auto org = std::make_shared<data::OrganizationInfo>();
+            auto org = std::make_shared<DB::OrganizationInfo>();
             org->setName(apply->getOrgName());
             org->setType(apply->getOrgType());
             org->setDescription(apply->getOrgDescription());
@@ -81,8 +81,8 @@ int32_t OrganizationApplyReviewServlet::handle(
             org->setCreateTime(time(0));
             org->setUpdateTime(time(0));
 
-            if (data::OrganizationInfoDao::Insert(org, db)) {
-                result->setErrno(errcode::ORG_INSERT_FAILED);
+            if (DB::OrganizationInfoDao::Insert(org, db)) {
+                result->setErrno(ORG_INSERT_FAILED);
                 ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -90,7 +90,7 @@ int32_t OrganizationApplyReviewServlet::handle(
             OrganizationMgr::GetInstance()->add(org);
 
             // Add applicant as org admin (role=5)
-            auto rel = std::make_shared<data::OrganizationUserRelInfo>();
+            auto rel = std::make_shared<DB::OrganizationUserRelInfo>();
             rel->setOrgId(org->getId());
             rel->setUserId(apply->getUserId());
             rel->setRole(OrganizationManager::Role::ORG_ADMIN);
@@ -98,8 +98,8 @@ int32_t OrganizationApplyReviewServlet::handle(
             rel->setCreateTime(time(0));
             rel->setUpdateTime(time(0));
 
-            if (data::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
-                result->setErrno(errcode::ORG_USER_REL_FAILED);
+            if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
+                result->setErrno(ORG_USER_REL_FAILED);
                 ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -111,8 +111,8 @@ int32_t OrganizationApplyReviewServlet::handle(
             apply->setReviewReason(reason);
             apply->setReviewedAt(time(0));
 
-            if (data::OrganizationApplyInfoDao::Update(apply, db)) {
-                result->setErrno(errcode::ORG_APPLY_UPDATE_FAILED);
+            if (DB::OrganizationApplyInfoDao::Update(apply, db)) {
+                result->setErrno(ORG_APPLY_UPDATE_FAILED);
                 ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -127,7 +127,7 @@ int32_t OrganizationApplyReviewServlet::handle(
                 data.org_name = apply->getOrgName();
                 data.org_id = org->getId();
 
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_APPLY, std::move(data));
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
             }
         } else {
             // Reject
@@ -135,8 +135,8 @@ int32_t OrganizationApplyReviewServlet::handle(
             apply->setReviewReason(reason);
             apply->setReviewedAt(time(0));
 
-            if (data::OrganizationApplyInfoDao::Update(apply, db)) {
-                result->setErrno(errcode::ORG_APPLY_UPDATE_FAILED);
+            if (DB::OrganizationApplyInfoDao::Update(apply, db)) {
+                result->setErrno(ORG_APPLY_UPDATE_FAILED);
                 ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -149,7 +149,7 @@ int32_t OrganizationApplyReviewServlet::handle(
                 data.org_name = apply->getOrgName();
                 data.reason = reason;
 
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_APPLY, std::move(data));
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
             }
         }
     } while (0);

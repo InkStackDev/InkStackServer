@@ -6,7 +6,7 @@
 #include "../../Manager/CategoryManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/category_info.h"
+#include "DB/CategoryInfo.hpp"
 
 #include <set>
 
@@ -30,11 +30,11 @@ bool CategoryDeleteServlet::handlePre(
         return true;
     }
     int64_t uid = getUserId(request);
-    data::UserInfo::ptr user;
+    DB::UserInfo::ptr user;
     if (uid) {
         user = UserMgr::GetInstance()->get(uid);
     }
-    int32_t rt = permission::CheckAdminRoute(uid, user);
+    int32_t rt = CheckAdminRoute(uid, user);
     if (rt) {
         result->setErrno(rt);
         return false;
@@ -42,9 +42,9 @@ bool CategoryDeleteServlet::handlePre(
     return true;
 }
 
-void GetDeleteValues(const std::map<int64_t, std::map<int64_t, data::CategoryInfo::ptr>>& parent_map,
+void GetDeleteValues(const std::map<int64_t, std::map<int64_t, DB::CategoryInfo::ptr>>& parent_map,
     int64_t id,
-    std::set<data::CategoryInfo::ptr>& infos)
+    std::set<DB::CategoryInfo::ptr>& infos)
 {
     auto it = parent_map.at(0).find(id);
     if (it == parent_map.at(0).end()) {
@@ -79,16 +79,16 @@ int32_t CategoryDeleteServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         bool admin_route = isAdminRoute();
 
-        std::vector<data::CategoryInfo::ptr> infos;
+        std::vector<DB::CategoryInfo::ptr> infos;
         if (admin_route) {
             if (req_uid) {
                 if (!CategoryMgr::GetInstance()->listByUserId(infos, req_uid)) {
-                    result->setErrno(errcode::DB_OPERATION_FAILED);
+                    result->setErrno(DB_OPERATION_FAILED);
                     break;
                 }
             } else {
@@ -96,15 +96,15 @@ int32_t CategoryDeleteServlet::handle(
             }
         } else {
             if (!CategoryMgr::GetInstance()->listByUserId(infos, uid)) {
-                result->setErrno(errcode::DB_OPERATION_FAILED);
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
         }
         if (infos.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "no categories");
+            result->setErrno(PARAM_MISSING, "no categories");
             break;
         }
-        std::map<int64_t, std::map<int64_t, data::CategoryInfo::ptr>> parent_map;
+        std::map<int64_t, std::map<int64_t, DB::CategoryInfo::ptr>> parent_map;
         for (auto& i : infos) {
             if (i->getParentId()) {
                 parent_map[i->getParentId()][i->getId()] = i;
@@ -112,30 +112,30 @@ int32_t CategoryDeleteServlet::handle(
             parent_map[0][i->getId()] = i;
         }
 
-        std::set<data::CategoryInfo::ptr> del_cats;
+        std::set<DB::CategoryInfo::ptr> del_cats;
         for (auto& i : cat_ids) {
             GetDeleteValues(parent_map, i, del_cats);
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
         time_t now = time(0);
         for (auto& i : del_cats) {
             i->setIsDeleted(1);
             i->setUpdateTime(now);
-            data::CategoryInfoDao::Update(i, db);
+            DB::CategoryInfoDao::Update(i, db);
         }
         if (!trans->commit()) {
             ERROR(logger) << "commit fail";
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
 
             for (auto& i : del_cats) {
                 i->setIsDeleted(0);

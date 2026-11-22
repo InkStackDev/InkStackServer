@@ -33,17 +33,17 @@ int32_t ArticleUpdateServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        data::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
+        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::ARTICLE_NOT_FOUND);
+            result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
         if (uid != info->getUserId()) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -59,7 +59,7 @@ int32_t ArticleUpdateServlet::handle(
         bool bypass_review = false;
         auto article_author = UserMgr::GetInstance()->get(info->getUserId());
         if (article_author) {
-            bypass_review = permission::CanBypassReview(article_author->getRole());
+            bypass_review = CanBypassReview(article_author->getRole());
         }
 
         if (old_state == ArticleManager::Status::PUBLISHED) {
@@ -72,21 +72,21 @@ int32_t ArticleUpdateServlet::handle(
         }
         info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
 
-        if (data::ArticleInfoDao::Update(info, db)) {
+        if (DB::ArticleInfoDao::Update(info, db)) {
             ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-            result->setErrno(errcode::ARTICLE_UPDATE_FAILED);
+            result->setErrno(ARTICLE_UPDATE_FAILED);
             break;
         }
 
@@ -100,7 +100,7 @@ int32_t ArticleUpdateServlet::handle(
         }
 
         if (!trans->commit()) {
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
 
@@ -124,13 +124,15 @@ int32_t ArticleUpdateServlet::handle(
     return 0;
 }
 
-int32_t ArticleUpdateServlet::updateOptionalFields(chen::http::HttpRequest::ptr request, std::shared_ptr<data::ArticleInfo> info, Result::ptr result)
+int32_t ArticleUpdateServlet::updateOptionalFields(chen::http::HttpRequest::ptr request,
+    std::shared_ptr<DB::ArticleInfo> info,
+    Result::ptr result)
 {
     std::string type_str = request->getParam("type");
     if (!type_str.empty()) {
         int32_t type = chen::TypeUtil::Atoi(type_str);
         if (type != ArticleManager::Type::ORIGINAL && type != ArticleManager::Type::REPRINT) {
-            result->setErrno(errcode::ARTICLE_INVALID_TYPE);
+            result->setErrno(ARTICLE_INVALID_TYPE);
             return -1;
         }
         info->setType(type);
@@ -152,7 +154,7 @@ int32_t ArticleUpdateServlet::syncCategoryRels(chen::http::HttpRequest::ptr requ
         return 0;
     }
 
-    std::vector<data::ArticleCategoryRelInfo::ptr> old_rels;
+    std::vector<DB::ArticleCategoryRelInfo::ptr> old_rels;
     ArticleCategoryRelMgr::GetInstance()->listByArticleId(old_rels, id, true);
 
     int64_t uid = getUserId(request);
@@ -181,15 +183,15 @@ int32_t ArticleUpdateServlet::syncCategoryRels(chen::http::HttpRequest::ptr requ
             if (existing && existing->getIsDeleted()) {
                 existing->setIsDeleted(0);
                 existing->setUpdateTime(now);
-                if (data::ArticleCategoryRelInfoDao::Update(existing, db)) {
+                if (DB::ArticleCategoryRelInfoDao::Update(existing, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
             } else if (!existing) {
-                data::ArticleCategoryRelInfo::ptr rel(new data::ArticleCategoryRelInfo);
+                DB::ArticleCategoryRelInfo::ptr rel(new DB::ArticleCategoryRelInfo);
                 rel->setArticleId(id);
                 rel->setCategoryId(cid);
                 rel->setUpdateTime(now);
-                if (data::ArticleCategoryRelInfoDao::Insert(rel, db)) {
+                if (DB::ArticleCategoryRelInfoDao::Insert(rel, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
             }
@@ -202,7 +204,7 @@ int32_t ArticleUpdateServlet::syncCategoryRels(chen::http::HttpRequest::ptr requ
             if (existing && !existing->getIsDeleted()) {
                 existing->setIsDeleted(1);
                 existing->setUpdateTime(now);
-                if (data::ArticleCategoryRelInfoDao::Update(existing, db)) {
+                if (DB::ArticleCategoryRelInfoDao::Update(existing, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
             }
@@ -219,7 +221,7 @@ int32_t ArticleUpdateServlet::syncLabelRels(chen::http::HttpRequest::ptr request
         return 0;
     }
 
-    std::vector<data::ArticleLabelRelInfo::ptr> old_rels;
+    std::vector<DB::ArticleLabelRelInfo::ptr> old_rels;
     ArticleLabelRelMgr::GetInstance()->listByArticleId(old_rels, id, true);
 
     std::set<int64_t> new_label_ids;
@@ -243,15 +245,15 @@ int32_t ArticleUpdateServlet::syncLabelRels(chen::http::HttpRequest::ptr request
             if (existing && existing->getIsDeleted()) {
                 existing->setIsDeleted(0);
                 existing->setUpdateTime(now);
-                if (data::ArticleLabelRelInfoDao::Update(existing, db)) {
+                if (DB::ArticleLabelRelInfoDao::Update(existing, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
             } else if (!existing) {
-                data::ArticleLabelRelInfo::ptr rel(new data::ArticleLabelRelInfo);
+                DB::ArticleLabelRelInfo::ptr rel(new DB::ArticleLabelRelInfo);
                 rel->setArticleId(id);
                 rel->setLabelId(lid);
                 rel->setUpdateTime(now);
-                if (data::ArticleLabelRelInfoDao::Insert(rel, db)) {
+                if (DB::ArticleLabelRelInfoDao::Insert(rel, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
             }
@@ -264,7 +266,7 @@ int32_t ArticleUpdateServlet::syncLabelRels(chen::http::HttpRequest::ptr request
             if (existing && !existing->getIsDeleted()) {
                 existing->setIsDeleted(1);
                 existing->setUpdateTime(now);
-                if (data::ArticleLabelRelInfoDao::Update(existing, db)) {
+                if (DB::ArticleLabelRelInfoDao::Update(existing, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 }
             }

@@ -8,8 +8,9 @@
 #include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
-#include "blog/data/organization_repo_prs_info.h"
-#include "blog/data/task_info.h"
+#include "../../Util/Util.hpp"
+#include "DB/OrganizationRepoPrsInfo.hpp"
+#include "DB/TaskInfo.hpp"
 #include "RdHelper.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -121,13 +122,13 @@ int32_t RdTrendServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -147,7 +148,7 @@ int32_t RdTrendServlet::handle(
         }
 
         if (ctx.start_date >= ctx.end_date) {
-            result->setErrno(errcode::PARAM_INVALID, "日期范围不合法");
+            result->setErrno(PARAM_INVALID, "日期范围不合法");
             break;
         }
 
@@ -155,13 +156,13 @@ int32_t RdTrendServlet::handle(
         if (org_id) {
             ctx.target_orgs.push_back(org_id);
         } else if (!is_admin) {
-            std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
             for (auto& rel : user_orgs) {
                 ctx.target_orgs.push_back(rel->getOrgId());
             }
             if (ctx.target_orgs.empty()) {
-                result->setErrno(errcode::ACCESS_DENIED, "无权访问任何组织");
+                result->setErrno(ACCESS_DENIED, "无权访问任何组织");
                 break;
             }
         }
@@ -171,14 +172,14 @@ int32_t RdTrendServlet::handle(
         if (org_id && !is_admin) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED || rel->getRole() < OrganizationManager::Role::REPORTER) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         }
 
-        ctx.db = getDB();
+        ctx.db = GetDB();
         if (!ctx.db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -194,7 +195,7 @@ int32_t RdTrendServlet::handle(
         // avg_review_pass_rate
         {
             auto buildBaseQB = [&]() {
-                auto qb = data::OrganizationRepoPrsInfoDao::newQuery("prs");
+                auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
                 qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
                 qb->where("prs.review_status", "!=", std::string(""));
                 qb->where("prs.review_status", "!=", std::string("pending"));
@@ -230,13 +231,13 @@ int32_t RdTrendServlet::handle(
 
         // task_delta
         {
-            auto qbEnd = data::TaskInfoDao::newQuery();
+            auto qbEnd = DB::TaskInfoDao::newQuery();
             AddBaseConds(qbEnd, ctx);
             qbEnd->whereSQL("create_time < FROM_UNIXTIME(?)", (int64_t)ctx.end_date);
             int64_t tasks_at_end = 0;
             qbEnd->executeCount(tasks_at_end, ctx.db);
 
-            auto qbStart = data::TaskInfoDao::newQuery();
+            auto qbStart = DB::TaskInfoDao::newQuery();
             AddBaseConds(qbStart, ctx);
             qbStart->whereSQL("create_time < FROM_UNIXTIME(?)", (int64_t)ctx.start_date);
             int64_t tasks_at_start = 0;
@@ -333,7 +334,7 @@ int32_t RdTrendServlet::handle(
         int64_t total_items = ctx.new_req + ctx.bug_total + ctx.new_task;
         Json::Value dist;
         {
-            auto qb = data::OrganizationRepoPrsInfoDao::newQuery("prs");
+            auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
             qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
             if (!ctx.target_orgs.empty()) {
                 qb->whereIn("repos.org_id", ctx.target_orgs);

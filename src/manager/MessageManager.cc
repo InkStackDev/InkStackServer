@@ -20,9 +20,9 @@ static std::string ConversationCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::ConversationInfo::ptr ParseConversationCache(const Json::Value& v)
+static DB::ConversationInfo::ptr ParseConversationCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::ConversationInfo>();
+    auto info = std::make_shared<DB::ConversationInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserAId(CacheJsonInt64(v, "user_a_id"));
     info->setUserBId(CacheJsonInt64(v, "user_b_id"));
@@ -41,7 +41,7 @@ static data::ConversationInfo::ptr ParseConversationCache(const Json::Value& v)
     return info;
 }
 
-static data::ConversationInfo::ptr GetConversationCache(int64_t id)
+static DB::ConversationInfo::ptr GetConversationCache(int64_t id)
 {
     std::string key = ConversationCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -56,7 +56,7 @@ static data::ConversationInfo::ptr GetConversationCache(int64_t id)
     return ParseConversationCache(v);
 }
 
-static void SetConversationCache(const data::ConversationInfo::ptr& info)
+static void SetConversationCache(const DB::ConversationInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -64,7 +64,7 @@ static void SetConversationCache(const data::ConversationInfo::ptr& info)
     RedisCacheSetex(ConversationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::ConversationInfo::ptr MessageManager::get(int64_t id)
+DB::ConversationInfo::ptr MessageManager::get(int64_t id)
 {
     auto v = GetConversationCache(id);
     if (v) {
@@ -75,26 +75,26 @@ data::ConversationInfo::ptr MessageManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::ConversationInfoDao::Query(id, db);
+    v = DB::ConversationInfoDao::Query(id, db);
     if (v) {
         SetConversationCache(v);
     }
     return v;
 }
 
-data::ConversationInfo::ptr MessageManager::getByUsers(int64_t uid_a, int64_t uid_b)
+DB::ConversationInfo::ptr MessageManager::getByUsers(int64_t uid_a, int64_t uid_b)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto qb = data::ConversationInfoDao::newQuery();
+    auto qb = DB::ConversationInfoDao::newQuery();
     qb->where("user_a_id", "=", NormalizeUserA(uid_a, uid_b));
     qb->where("user_b_id", "=", NormalizeUserB(uid_a, uid_b));
     qb->where("is_deleted", "=", (int64_t)0);
-    std::vector<data::ConversationInfo::ptr> results;
-    if (data::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
+    std::vector<DB::ConversationInfo::ptr> results;
+    if (DB::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return nullptr;
     }
@@ -105,7 +105,7 @@ data::ConversationInfo::ptr MessageManager::getByUsers(int64_t uid_a, int64_t ui
     return results[0];
 }
 
-data::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t uid_b)
+DB::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t uid_b)
 {
     std::lock_guard<std::mutex> lock(conv_mutex_);
     auto conv = getByUsers(uid_a, uid_b);
@@ -126,7 +126,7 @@ data::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t u
         }
         if (need_update) {
             conv->setUpdateTime(time(0));
-            if (data::ConversationInfoDao::Update(conv, db) == 0) {
+            if (DB::ConversationInfoDao::Update(conv, db) == 0) {
                 SetConversationCache(conv);
             }
         }
@@ -139,7 +139,7 @@ data::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t u
         return nullptr;
     }
 
-    auto info = std::make_shared<data::ConversationInfo>();
+    auto info = std::make_shared<DB::ConversationInfo>();
     info->setUserAId(NormalizeUserA(uid_a, uid_b));
     info->setUserBId(NormalizeUserB(uid_a, uid_b));
     info->setLastMessageId(0);
@@ -154,7 +154,7 @@ data::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t u
     info->setCreateTime(time(0));
     info->setUpdateTime(time(0));
 
-    if (data::ConversationInfoDao::Insert(info, db)) {
+    if (DB::ConversationInfoDao::Insert(info, db)) {
         // 并发下唯一索引冲突时回查
         conv = getByUsers(uid_a, uid_b);
         if (conv) {
@@ -168,7 +168,7 @@ data::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t u
     return info;
 }
 
-void MessageManager::listConversations(std::vector<data::ConversationInfo::ptr>& results, int64_t uid)
+void MessageManager::listConversations(std::vector<DB::ConversationInfo::ptr>& results, int64_t uid)
 {
     auto db = GetDB();
     if (!db) {
@@ -177,21 +177,21 @@ void MessageManager::listConversations(std::vector<data::ConversationInfo::ptr>&
     }
 
     // 分两次查询（user_a_id / user_b_id），避免 OR 优先级问题；并按本端隐藏标志过滤
-    auto qb = data::ConversationInfoDao::newQuery();
+    auto qb = DB::ConversationInfoDao::newQuery();
     qb->where("user_a_id", "=", uid);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("user_a_deleted", "=", (int64_t)0);
-    if (data::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
 
-    auto qb2 = data::ConversationInfoDao::newQuery();
+    auto qb2 = DB::ConversationInfoDao::newQuery();
     qb2->where("user_b_id", "=", uid);
     qb2->where("is_deleted", "=", (int64_t)0);
     qb2->where("user_b_deleted", "=", (int64_t)0);
-    std::vector<data::ConversationInfo::ptr> part;
-    if (data::ConversationInfoDao::QueryByBuilder(part, qb2, db)) {
+    std::vector<DB::ConversationInfo::ptr> part;
+    if (DB::ConversationInfoDao::QueryByBuilder(part, qb2, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
@@ -202,7 +202,10 @@ void MessageManager::listConversations(std::vector<data::ConversationInfo::ptr>&
     });
 }
 
-void MessageManager::listMessages(std::vector<data::ConversationMessageInfo::ptr>& results, int64_t conversation_id, int32_t offset, int32_t limit)
+void MessageManager::listMessages(std::vector<DB::ConversationMessageInfo::ptr>& results,
+    int64_t conversation_id,
+    int32_t offset,
+    int32_t limit)
 {
     auto db = GetDB();
     if (!db) {
@@ -210,15 +213,15 @@ void MessageManager::listMessages(std::vector<data::ConversationMessageInfo::ptr
         return;
     }
 
-    auto qb = data::ConversationMessageInfoDao::newQuery();
+    auto qb = DB::ConversationMessageInfoDao::newQuery();
     qb->where("conversation_id", "=", conversation_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
     qb->limit(limit);
     qb->offset(offset);
 
-    std::vector<data::ConversationMessageInfo::ptr> tmp;
-    if (data::ConversationMessageInfoDao::QueryByBuilder(tmp, qb, db)) {
+    std::vector<DB::ConversationMessageInfo::ptr> tmp;
+    if (DB::ConversationMessageInfoDao::QueryByBuilder(tmp, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
@@ -226,7 +229,9 @@ void MessageManager::listMessages(std::vector<data::ConversationMessageInfo::ptr
     results.swap(tmp);
 }
 
-data::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversation_id, int64_t sender_id, const std::string& text)
+DB::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversation_id,
+    int64_t sender_id,
+    const std::string& text)
 {
     std::lock_guard<std::mutex> lock(conv_mutex_);
     auto db = GetDB();
@@ -235,7 +240,7 @@ data::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversat
         return nullptr;
     }
 
-    auto msg = std::make_shared<data::ConversationMessageInfo>();
+    auto msg = std::make_shared<DB::ConversationMessageInfo>();
     msg->setConversationId(conversation_id);
     msg->setSenderId(sender_id);
     msg->setContent(text);
@@ -245,7 +250,7 @@ data::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversat
     msg->setCreateTime(time(0));
     msg->setUpdateTime(time(0));
 
-    if (data::ConversationMessageInfoDao::Insert(msg, db)) {
+    if (DB::ConversationMessageInfoDao::Insert(msg, db)) {
         ERROR(logger) << "MessageManager sendMessage Insert fail";
         return nullptr;
     }
@@ -270,7 +275,7 @@ data::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversat
                 conv->setUserADeleted(0);
             }
         }
-        if (data::ConversationInfoDao::Update(conv, db) == 0) {
+        if (DB::ConversationInfoDao::Update(conv, db) == 0) {
             SetConversationCache(conv);
         }
     }
@@ -303,13 +308,13 @@ bool MessageManager::markRead(int64_t conversation_id, int64_t uid)
         return false;
     }
     conv->setUpdateTime(time(0));
-    if (data::ConversationInfoDao::Update(conv, db)) {
+    if (DB::ConversationInfoDao::Update(conv, db)) {
         return false;
     }
     SetConversationCache(conv);
 
     // 将该会话内对方发来的未读消息置为已读
-    auto qb = data::ConversationMessageInfoDao::newQuery();
+    auto qb = DB::ConversationMessageInfoDao::newQuery();
     qb->set("is_read", (int64_t)1);
     qb->set("read_time", (int64_t)time(0));
     qb->set("update_time", (int64_t)time(0));
@@ -353,7 +358,7 @@ bool MessageManager::deleteForUser(int64_t conversation_id, int64_t uid)
         return false;
     }
     conv->setUpdateTime(time(0));
-    if (data::ConversationInfoDao::Update(conv, db)) {
+    if (DB::ConversationInfoDao::Update(conv, db)) {
         return false;
     }
     SetConversationCache(conv);

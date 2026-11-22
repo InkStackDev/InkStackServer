@@ -22,7 +22,7 @@ int32_t UserDeviceKickServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -30,7 +30,7 @@ int32_t UserDeviceKickServlet::handle(
 
         // device_id 是 SessionStore::HashId(SESSIONID)
         if (!SessionStore::DestroyForUser(uid, device_id)) {
-            result->setErrno(errcode::DEVICE_NOT_FOUND);
+            result->setErrno(DEVICE_NOT_FOUND);
             break;
         }
 
@@ -39,7 +39,7 @@ int32_t UserDeviceKickServlet::handle(
         msg["type"] = "device_kicked";
         MessageRouter::Get()->CloseDevice(device_id, chen::JsonUtil::ToString(msg));
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

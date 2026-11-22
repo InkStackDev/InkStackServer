@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
 
 class BroadcastCloseServlet : public BlogLoginedServlet {

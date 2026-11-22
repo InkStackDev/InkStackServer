@@ -5,43 +5,43 @@
 
 #include <ranges>
 
-#include "db/article_category_rel_info.h"
-#include "db/article_info.h"
-#include "db/article_label_rel_info.h"
-#include "db/article_praise_rel_info.h"
-#include "db/assignment_info.h"
-#include "db/assignment_organization_rel_info.h"
-#include "db/assignment_user_rel_info.h"
-#include "db/backup_record_info.h"
-#include "db/badge_info.h"
-#include "db/bug_info.h"
-#include "db/category_info.h"
-#include "db/comment_info.h"
-#include "db/comment_praise_rel_info.h"
-#include "db/conversation_info.h"
-#include "db/conversation_message_info.h"
-#include "db/email_verification_info.h"
-#include "db/export_record_info.h"
-#include "db/help_faqs_info.h"
-#include "db/label_info.h"
-#include "db/notification_info.h"
-#include "db/organization_apply_info.h"
-#include "db/organization_info.h"
-#include "db/organization_repo_prs_info.h"
-#include "db/organization_repos_info.h"
-#include "db/organization_user_rel_info.h"
-#include "db/requirement_info.h"
-#include "db/resource_info.h"
-#include "db/system_settings_info.h"
-#include "db/task_info.h"
-#include "db/user_ai_config_info.h"
-#include "db/user_feedback_info.h"
-#include "db/user_follow_rel_info.h"
-#include "db/user_info.h"
-#include "db/user_login_device_info.h"
-#include "db/user_oauth_info.h"
-#include "db/user_passkey_info.h"
-#include "db/user_recovery_code_info.h"
+#include "DB/ArticleCategoryRelInfo.hpp"
+#include "DB/ArticleInfo.hpp"
+#include "DB/ArticleLabelRelInfo.hpp"
+#include "DB/ArticlePraiseRelInfo.hpp"
+#include "DB/AssignmentInfo.hpp"
+#include "DB/AssignmentOrganizationRelInfo.hpp"
+#include "DB/AssignmentUserRelInfo.hpp"
+#include "DB/BackupRecordInfo.hpp"
+#include "DB/BadgeInfo.hpp"
+#include "DB/BugInfo.hpp"
+#include "DB/CategoryInfo.hpp"
+#include "DB/CommentInfo.hpp"
+#include "DB/CommentPraiseRelInfo.hpp"
+#include "DB/ConversationInfo.hpp"
+#include "DB/ConversationMessageInfo.hpp"
+#include "DB/EmailVerificationInfo.hpp"
+#include "DB/ExportRecordInfo.hpp"
+#include "DB/HelpFaqsInfo.hpp"
+#include "DB/LabelInfo.hpp"
+#include "DB/NotificationInfo.hpp"
+#include "DB/OrganizationApplyInfo.hpp"
+#include "DB/OrganizationInfo.hpp"
+#include "DB/OrganizationRepoPrsInfo.hpp"
+#include "DB/OrganizationReposInfo.hpp"
+#include "DB/OrganizationUserRelInfo.hpp"
+#include "DB/RequirementInfo.hpp"
+#include "DB/ResourceInfo.hpp"
+#include "DB/SystemSettingsInfo.hpp"
+#include "DB/TaskInfo.hpp"
+#include "DB/UserAiConfigInfo.hpp"
+#include "DB/UserFeedbackInfo.hpp"
+#include "DB/UserFollowRelInfo.hpp"
+#include "DB/UserInfo.hpp"
+#include "DB/UserLoginDeviceInfo.hpp"
+#include "DB/UserOauthInfo.hpp"
+#include "DB/UserPasskeyInfo.hpp"
+#include "DB/UserRecoveryCodeInfo.hpp"
 #include "../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -56,8 +56,8 @@ bool DBManager::CreateAllTables()
             return false;
         }
 
-#define XX(class_name, table_name)                             \
-    if (db::class_name::CreateTableMySQL(mysql)) {             \
+#define XX(class_name, table_name)                                                                                     \
+    if (DB::class_name::CreateTableMySQL(mysql)) {                                                                     \
         ERROR(logger) << "create " table_name " table failed"; \
         return false;                                          \
     }
@@ -115,8 +115,8 @@ bool DBManager::MigrateAllTables()
             ERROR(logger) << "connect mysql failed";
             return false;
         }
-#define XX(clazz)                                      \
-    if (db::clazz::MigrateTableMySQL(mysql) != 0) {    \
+#define XX(clazz)                                                                                                      \
+    if (DB::clazz::MigrateTableMySQL(mysql) != 0) {                                                                    \
         ERROR(logger) << "migrate table mysql failed"; \
         return false;                                  \
     }

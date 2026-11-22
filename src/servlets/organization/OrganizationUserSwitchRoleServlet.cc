@@ -32,53 +32,53 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         // 操作者权限检查
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = current_user->getRole();
 
         auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel) {
-            result->setErrno(errcode::ORG_NOT_MEMBER);
+            result->setErrno(ORG_NOT_MEMBER);
             break;
         }
         int32_t org_role = rel->getRole();
 
-        if (!permission::CanSwitchRole(system_role, org_role, role)) {
-            result->setErrno(errcode::ACCESS_DENIED);
+        if (!CanSwitchRole(system_role, org_role, role)) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         // 更新用户角色
         rel = OrganizationUserRelMgr::GetInstance()->get(id);
         if (!rel || rel->getOrgId() != org_id || rel->getUserId() != user_id) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             ;
             break;
         }
 
         if (role != OrganizationManager::Role::MEMBER && role != OrganizationManager::Role::REPORTER && role != OrganizationManager::Role::DEVELOPER
             && role != OrganizationManager::Role::DEV_LEAD && role != OrganizationManager::Role::ORG_ADMIN) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid role");
+            result->setErrno(PARAM_INVALID, "invalid role");
             break;
         }
 
         rel->setRole(role);
         rel->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
-            result->setErrno(errcode::ORG_USER_REL_FAILED);
+        if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
+            result->setErrno(ORG_USER_REL_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
             break;
         }
@@ -108,7 +108,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             data.target_user_id = user_id;
             data.new_role_name = role_name;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_MEMBER, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_MEMBER, std::move(data));
         }
 
         auto user = UserMgr::GetInstance()->get(rel->getUserId());

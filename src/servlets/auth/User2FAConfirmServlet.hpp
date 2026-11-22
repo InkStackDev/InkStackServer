@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
 
 class User2FAConfirmServlet : public BlogLoginedServlet {

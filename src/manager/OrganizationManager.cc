@@ -16,9 +16,9 @@ static std::string OrganizationCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static db::OrganizationInfo::ptr ParseOrganizationCache(const Json::Value& v)
+static DB::OrganizationInfo::ptr ParseOrganizationCache(const Json::Value& v)
 {
-    auto info = std::make_shared<db::OrganizationInfo>();
+    auto info = std::make_shared<DB::OrganizationInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setName(CacheJsonString(v, "name"));
     info->setType(CacheJsonString(v, "type"));
@@ -32,7 +32,7 @@ static db::OrganizationInfo::ptr ParseOrganizationCache(const Json::Value& v)
     return info;
 }
 
-static data::OrganizationInfo::ptr GetOrganizationCache(int64_t id)
+static DB::OrganizationInfo::ptr GetOrganizationCache(int64_t id)
 {
     std::string key = OrganizationCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -47,7 +47,7 @@ static data::OrganizationInfo::ptr GetOrganizationCache(int64_t id)
     return ParseOrganizationCache(v);
 }
 
-static void SetOrganizationCache(const data::OrganizationInfo::ptr& info)
+static void SetOrganizationCache(const DB::OrganizationInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -55,17 +55,17 @@ static void SetOrganizationCache(const data::OrganizationInfo::ptr& info)
     RedisCacheSetex(OrganizationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::OrganizationInfo::ptr OrganizationManager::ParseRow(chen::ISQLData::ptr rt)
+DB::OrganizationInfo::ptr OrganizationManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::OrganizationInfoDao::ParseRow(rt);
+    return DB::OrganizationInfoDao::ParseRow(rt);
 }
 
-void OrganizationManager::add(data::OrganizationInfo::ptr info)
+void OrganizationManager::add(DB::OrganizationInfo::ptr info)
 {
     SetOrganizationCache(info);
 }
 
-data::OrganizationInfo::ptr OrganizationManager::get(int64_t id)
+DB::OrganizationInfo::ptr OrganizationManager::get(int64_t id)
 {
     auto v = GetOrganizationCache(id);
     if (v) {
@@ -76,14 +76,14 @@ data::OrganizationInfo::ptr OrganizationManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::OrganizationInfoDao::Query(id, db);
+    v = DB::OrganizationInfoDao::Query(id, db);
     if (v) {
         SetOrganizationCache(v);
     }
     return v;
 }
 
-data::OrganizationInfo::ptr OrganizationManager::getByName(const std::string& name)
+DB::OrganizationInfo::ptr OrganizationManager::getByName(const std::string& name)
 {
     int64_t cachedId = GetCachedIdMapping("org:name:" + name);
     if (cachedId > 0) {
@@ -94,7 +94,7 @@ data::OrganizationInfo::ptr OrganizationManager::getByName(const std::string& na
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::OrganizationInfoDao::QueryByName(name, db);
+    auto info = DB::OrganizationInfoDao::QueryByName(name, db);
     if (info) {
         SetOrganizationCache(info);
         CacheIdMapping("org:name:" + name, info->getId());
@@ -102,8 +102,7 @@ data::OrganizationInfo::ptr OrganizationManager::getByName(const std::string& na
     return info;
 }
 
-int64_t OrganizationManager::listByPages(
-    std::vector<data::OrganizationInfo::ptr>& orgs,
+int64_t OrganizationManager::listByPages(std::vector<DB::OrganizationInfo::ptr>& orgs,
     uint64_t offset,
     uint64_t limit,
     int32_t status,
@@ -114,13 +113,13 @@ int64_t OrganizationManager::listByPages(
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::OrganizationInfoDao::newQuery();
+    auto qb = DB::OrganizationInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::OrganizationInfoDao::QueryByBuilderPages(orgs, total, qb, (int32_t)offset, (int32_t)limit, db)) {
+    if (DB::OrganizationInfoDao::QueryByBuilderPages(orgs, total, qb, (int32_t)offset, (int32_t)limit, db)) {
         return 0;
     }
     return total;
@@ -152,7 +151,7 @@ OrganizationManager::OrganizationStats OrganizationManager::getStats()
 
     // Query total (non-deleted)
     {
-        auto qb = data::OrganizationInfoDao::newQuery();
+        auto qb = DB::OrganizationInfoDao::newQuery();
         qb->where("is_deleted", "=", (int64_t)0);
         int64_t total = 0;
         if (qb->executeCount(total, db) == 0) {
@@ -162,7 +161,7 @@ OrganizationManager::OrganizationStats OrganizationManager::getStats()
 
     // Query active
     {
-        auto qb = data::OrganizationInfoDao::newQuery();
+        auto qb = DB::OrganizationInfoDao::newQuery();
         qb->where("is_deleted", "=", (int64_t)0);
         qb->where("status", "=", (int64_t)Status::ACTIVE);
         int64_t active = 0;
@@ -173,7 +172,7 @@ OrganizationManager::OrganizationStats OrganizationManager::getStats()
 
     // Query inactive
     {
-        auto qb = data::OrganizationInfoDao::newQuery();
+        auto qb = DB::OrganizationInfoDao::newQuery();
         qb->where("is_deleted", "=", (int64_t)0);
         qb->where("status", "=", (int64_t)Status::INACTIVE);
         int64_t inactive = 0;

@@ -28,21 +28,21 @@ int32_t ArticlePublishServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
-        data::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
+        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
         if (info->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
         if (info->getState() == ArticleManager::Status::PUBLISHED || info->getState() == ArticleManager::Status::CHECKING) {
-            result->setErrno(errcode::ARTICLE_INVALID_STATE);
+            result->setErrno(ARTICLE_INVALID_STATE);
             break;
         }
         info->setState(ArticleManager::Status::CHECKING);
@@ -58,7 +58,7 @@ int32_t ArticlePublishServlet::handle(
         auto author = UserMgr::GetInstance()->get(uid);
         bool bypass_review = false;
         if (author) {
-            bypass_review = permission::CanBypassReview(author->getRole());
+            bypass_review = CanBypassReview(author->getRole());
         }
 
         if (bypass_review) {
@@ -70,13 +70,13 @@ int32_t ArticlePublishServlet::handle(
             }
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
-        if (data::ArticleInfoDao::Update(info, db)) {
-            result->setErrno(errcode::ARTICLE_UPDATE_FAILED);
+        if (DB::ArticleInfoDao::Update(info, db)) {
+            result->setErrno(ARTICLE_UPDATE_FAILED);
             break;
         }
         ArticleMgr::GetInstance()->add(info);
@@ -99,7 +99,7 @@ int32_t ArticlePublishServlet::handle(
             data.author_id = uid;
             data.author_name = author ? author->getName() : std::to_string(uid);
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ARTICLE_REVIEW, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_REVIEW, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

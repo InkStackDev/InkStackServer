@@ -28,13 +28,13 @@ int32_t CommentRepliesServlet::handle(
         // check parent comment exists
         auto parent = CommentMgr::GetInstance()->get(comment_id);
         if (!parent || parent->getIsDeleted()) {
-            result->setErrno(errcode::COMMENT_NOT_FOUND);
+            result->setErrno(COMMENT_NOT_FOUND);
             break;
         }
 
         int64_t uid = getUserId(request);
 
-        std::vector<data::CommentInfo::ptr> replies;
+        std::vector<DB::CommentInfo::ptr> replies;
         CommentMgr::GetInstance()->listReplies(replies, comment_id, offset, size);
         int64_t total = CommentMgr::GetInstance()->countReplies(comment_id);
 
@@ -69,7 +69,7 @@ int32_t CommentRepliesServlet::handle(
 
         result->set("total", total);
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -26,37 +26,37 @@ int32_t UserAdminDeleteServlet::handle(
 
         auto info = UserMgr::GetInstance()->get(user_id);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (info->getIsDeleted()) {
-            result->setErrno(errcode::USER_ALREADY_DELETED);
+            result->setErrno(USER_ALREADY_DELETED);
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
         time_t now = chen::TimeUtil::GetCurrentSec();
         info->setIsDeleted(1);
         info->setState(UserManager::Status::INACTIVE);
         info->setUpdateTime(now);
-        if (data::UserInfoDao::Update(info, db)) {
+        if (DB::UserInfoDao::Update(info, db)) {
             ERROR(logger) << "update user fail";
-            result->setErrno(errcode::DB_OPERATION_FAILED, "delete user failed");
+            result->setErrno(DB_OPERATION_FAILED, "delete user failed");
             break;
         }
         if (!trans->commit()) {
             ERROR(logger) << "commit fail";
             info->setIsDeleted(0);
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
         UserMgr::GetInstance()->update(info);
@@ -69,7 +69,7 @@ int32_t UserAdminDeleteServlet::handle(
             data.type = "account_deleted";
             data.user_id = user_id;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_USER_ADMIN, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_ADMIN, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

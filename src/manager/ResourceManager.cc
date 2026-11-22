@@ -18,9 +18,9 @@ static std::string ResourceCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::ResourceInfo::ptr ParseResourceCache(const Json::Value& v)
+static DB::ResourceInfo::ptr ParseResourceCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::ResourceInfo>();
+    auto info = std::make_shared<DB::ResourceInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setName(CacheJsonString(v, "name"));
     info->setPath(CacheJsonString(v, "path"));
@@ -38,7 +38,7 @@ static data::ResourceInfo::ptr ParseResourceCache(const Json::Value& v)
     return info;
 }
 
-static data::ResourceInfo::ptr GetResourceCache(int64_t id)
+static DB::ResourceInfo::ptr GetResourceCache(int64_t id)
 {
     std::string key = ResourceCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -53,7 +53,7 @@ static data::ResourceInfo::ptr GetResourceCache(int64_t id)
     return ParseResourceCache(v);
 }
 
-static void SetResourceCache(const data::ResourceInfo::ptr& info)
+static void SetResourceCache(const DB::ResourceInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -86,17 +86,17 @@ ResourceManager::ResourceType ResourceManager::GetResourceType(const std::string
     }
 }
 
-data::ResourceInfo::ptr ResourceManager::ParseRow(chen::ISQLData::ptr rt)
+DB::ResourceInfo::ptr ResourceManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::ResourceInfoDao::ParseRow(rt);
+    return DB::ResourceInfoDao::ParseRow(rt);
 }
 
-void ResourceManager::add(blog::data::ResourceInfo::ptr info)
+void ResourceManager::add(DB::ResourceInfo::ptr info)
 {
     SetResourceCache(info);
 }
 
-data::ResourceInfo::ptr ResourceManager::get(int64_t id)
+DB::ResourceInfo::ptr ResourceManager::get(int64_t id)
 {
     auto v = GetResourceCache(id);
     if (v) {
@@ -107,47 +107,53 @@ data::ResourceInfo::ptr ResourceManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::ResourceInfoDao::Query(id, db);
+    v = DB::ResourceInfoDao::Query(id, db);
     if (v) {
         SetResourceCache(v);
     }
     return v;
 }
 
-void ResourceManager::getByBizUid(std::vector<data::ResourceInfo::ptr>& results, const std::string& biz_type, int64_t biz_id, int64_t uid)
+void ResourceManager::getByBizUid(std::vector<DB::ResourceInfo::ptr>& results,
+    const std::string& biz_type,
+    int64_t biz_id,
+    int64_t uid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::ResourceInfoDao::newQuery();
+    auto qb = DB::ResourceInfoDao::newQuery();
     qb->where("biz_type", "=", biz_type);
     qb->where("biz_id", "=", biz_id);
     qb->where("owner_id", "=", uid);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
-    if (data::ResourceInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::ResourceInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
 }
 
-data::ResourceInfo::ptr ResourceManager::getByBizUidName(const std::string& biz_type, int64_t biz_id, int64_t uid, const std::string& filename)
+DB::ResourceInfo::ptr ResourceManager::getByBizUidName(const std::string& biz_type,
+    int64_t biz_id,
+    int64_t uid,
+    const std::string& filename)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto qb = data::ResourceInfoDao::newQuery();
+    auto qb = DB::ResourceInfoDao::newQuery();
     qb->where("biz_type", "=", biz_type);
     qb->where("biz_id", "=", biz_id);
     qb->where("owner_id", "=", uid);
     qb->where("name", "=", filename);
     qb->limit(1);
-    std::vector<data::ResourceInfo::ptr> results;
-    if (data::ResourceInfoDao::QueryByBuilder(results, qb, db) || results.empty()) {
+    std::vector<DB::ResourceInfo::ptr> results;
+    if (DB::ResourceInfoDao::QueryByBuilder(results, qb, db) || results.empty()) {
         return nullptr;
     }
     auto info = results[0];
@@ -155,7 +161,7 @@ data::ResourceInfo::ptr ResourceManager::getByBizUidName(const std::string& biz_
     return info;
 }
 
-data::ResourceInfo::ptr ResourceManager::getByPath(const std::string& path)
+DB::ResourceInfo::ptr ResourceManager::getByPath(const std::string& path)
 {
     std::string ck = "res:path:" + path;
     int64_t cachedId = GetCachedIdMapping(ck);
@@ -167,11 +173,11 @@ data::ResourceInfo::ptr ResourceManager::getByPath(const std::string& path)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto qb = data::ResourceInfoDao::newQuery();
+    auto qb = DB::ResourceInfoDao::newQuery();
     qb->where("path", "=", path);
     qb->limit(1);
-    std::vector<data::ResourceInfo::ptr> results;
-    if (data::ResourceInfoDao::QueryByBuilder(results, qb, db) || results.empty()) {
+    std::vector<DB::ResourceInfo::ptr> results;
+    if (DB::ResourceInfoDao::QueryByBuilder(results, qb, db) || results.empty()) {
         return nullptr;
     }
     auto info = results[0];

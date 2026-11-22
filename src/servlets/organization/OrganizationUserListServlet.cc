@@ -30,24 +30,24 @@ int32_t OrganizationUserListServlet::handle(
             int64_t uid = getUserId(request);
             auto info = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
             if (!info) {
-                result->setErrno(errcode::ORG_NOT_MEMBER);
+                result->setErrno(ORG_NOT_MEMBER);
                 break;
             }
             auto current_user = UserMgr::GetInstance()->get(uid);
             if (!current_user) {
-                result->setErrno(errcode::USER_NOT_FOUND);
+                result->setErrno(USER_NOT_FOUND);
                 break;
             }
             if (info->getRole() != OrganizationManager::Role::ORG_ADMIN && info->getRole() != OrganizationManager::Role::DEV_LEAD
                 && current_user->getRole() != UserManager::Role::ADMIN) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         }
 
         uint64_t offset = (page_num - 1) * page_size;
 
-        std::vector<data::OrganizationUserRelInfo::ptr> rels;
+        std::vector<DB::OrganizationUserRelInfo::ptr> rels;
         int64_t total = OrganizationUserRelMgr::GetInstance()->getByPages(rels, id, offset, page_size, status, true);
 
         std::sort(rels.begin(), rels.end(), [](const auto& a, const auto& b) {

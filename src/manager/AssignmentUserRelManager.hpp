@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/assignment_user_rel_info.h"
+#include "DB/AssignmentUserRelInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -13,12 +13,12 @@ public:
         LATE = 3
     };
 
-    blog::data::AssignmentUserRelInfo::ptr get(int64_t id);
+    DB::AssignmentUserRelInfo::ptr get(int64_t id);
 
-    blog::data::AssignmentUserRelInfo::ptr getByAssignAndUser(int64_t assign_id, int64_t user_id);
+    DB::AssignmentUserRelInfo::ptr getByAssignAndUser(int64_t assign_id, int64_t user_id);
 
 private:
-    static data::AssignmentUserRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::AssignmentUserRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<AssignmentUserRelManager> AssignmentUserRelMgr;

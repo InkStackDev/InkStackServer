@@ -27,9 +27,9 @@ static std::string ArticleCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::ArticleInfo::ptr ParseArticleCache(const Json::Value& v)
+static DB::ArticleInfo::ptr ParseArticleCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::ArticleInfo>();
+    auto info = std::make_shared<DB::ArticleInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
     info->setTitle(CacheJsonString(v, "title"));
@@ -49,7 +49,7 @@ static data::ArticleInfo::ptr ParseArticleCache(const Json::Value& v)
     return info;
 }
 
-static data::ArticleInfo::ptr GetArticleCache(int64_t id)
+static DB::ArticleInfo::ptr GetArticleCache(int64_t id)
 {
     std::string key = ArticleCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -64,7 +64,7 @@ static data::ArticleInfo::ptr GetArticleCache(int64_t id)
     return ParseArticleCache(v);
 }
 
-static void SetArticleCache(const data::ArticleInfo::ptr& info)
+static void SetArticleCache(const DB::ArticleInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -77,12 +77,12 @@ static void DelArticleCache(int64_t id)
     RedisCacheDel(ArticleCacheKey(id));
 }
 
-data::ArticleInfo::ptr ArticleManager::ParseRow(chen::ISQLData::ptr rt)
+DB::ArticleInfo::ptr ArticleManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::ArticleInfoDao::ParseRow(rt);
+    return DB::ArticleInfoDao::ParseRow(rt);
 }
 
-void ArticleManager::add(blog::data::ArticleInfo::ptr info)
+void ArticleManager::add(DB::ArticleInfo::ptr info)
 {
     SetArticleCache(info);
 }
@@ -92,7 +92,7 @@ void ArticleManager::del(int64_t id)
     DelArticleCache(id);
 }
 
-blog::data::ArticleInfo::ptr ArticleManager::get(int64_t id)
+DB::ArticleInfo::ptr ArticleManager::get(int64_t id)
 {
     auto v = GetArticleCache(id);
     if (v) {
@@ -103,59 +103,68 @@ blog::data::ArticleInfo::ptr ArticleManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::ArticleInfoDao::Query(id, db);
+    v = DB::ArticleInfoDao::Query(id, db);
     if (v) {
         SetArticleCache(v);
     }
     return v;
 }
 
-bool ArticleManager::listByUserId(std::vector<data::ArticleInfo::ptr>& infos, int64_t id, bool valid)
+bool ArticleManager::listByUserId(std::vector<DB::ArticleInfo::ptr>& infos, int64_t id, bool valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::ArticleInfoDao::newQuery();
+    auto qb = DB::ArticleInfoDao::newQuery();
     qb->where("user_id", "=", id);
     qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
-    if (data::ArticleInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::ArticleInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }
     return true;
 }
 
-int64_t ArticleManager::listByUserIdPages(std::vector<data::ArticleInfo::ptr>& infos, int64_t id, int32_t offset, int32_t size, bool valid, int state)
+int64_t ArticleManager::listByUserIdPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t id,
+    int32_t offset,
+    int32_t size,
+    bool valid,
+    int state)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::ArticleInfoDao::newQuery();
+    auto qb = DB::ArticleInfoDao::newQuery();
     qb->whereIf(id != 0, "user_id", "=", id);
     qb->whereIf(state != 0, "state", "=", (int64_t)state);
     qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
         return 0;
     }
     return total;
 }
 
-int64_t ArticleManager::listByLabelPages(std::vector<data::ArticleInfo::ptr>& infos, int64_t label_id, int32_t offset, int32_t size, bool valid)
+int64_t ArticleManager::listByLabelPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t label_id,
+    int32_t offset,
+    int32_t size,
+    bool valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::ArticleInfoDao::newQuery("a");
+    auto qb = DB::ArticleInfoDao::newQuery("a");
     qb->select(
         "a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, a.weight, a.views, a.praise, a.favorites, "
         "a.create_time, a.update_time");
@@ -181,7 +190,7 @@ int64_t ArticleManager::listByLabelPages(std::vector<data::ArticleInfo::ptr>& in
     }
 
     int64_t total = 0;
-    if (data::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
         return 0;
     }
     std::vector<int64_t> ids;
@@ -192,14 +201,18 @@ int64_t ArticleManager::listByLabelPages(std::vector<data::ArticleInfo::ptr>& in
     return total;
 }
 
-int64_t ArticleManager::listByCategoryPages(std::vector<data::ArticleInfo::ptr>& infos, int64_t category_id, int32_t offset, int32_t size, bool valid)
+int64_t ArticleManager::listByCategoryPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t category_id,
+    int32_t offset,
+    int32_t size,
+    bool valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::ArticleInfoDao::newQuery("a");
+    auto qb = DB::ArticleInfoDao::newQuery("a");
     qb->select(
         "a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, a.weight, a.views, a.praise, a.favorites, "
         "a.create_time, a.update_time");
@@ -225,7 +238,7 @@ int64_t ArticleManager::listByCategoryPages(std::vector<data::ArticleInfo::ptr>&
     }
 
     int64_t total = 0;
-    if (data::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
         return 0;
     }
     std::vector<int64_t> ids;
@@ -236,8 +249,7 @@ int64_t ArticleManager::listByCategoryPages(std::vector<data::ArticleInfo::ptr>&
     return total;
 }
 
-int64_t ArticleManager::listByPages(
-    std::vector<data::ArticleInfo::ptr>& infos,
+int64_t ArticleManager::listByPages(std::vector<DB::ArticleInfo::ptr>& infos,
     int32_t offset,
     int state,
     int category,
@@ -252,7 +264,7 @@ int64_t ArticleManager::listByPages(
         return 0;
     }
 
-    auto qb = data::ArticleInfoDao::newQuery("a");
+    auto qb = DB::ArticleInfoDao::newQuery("a");
     qb->select(
         "a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, a.weight, a.views, a.praise, a.favorites, "
         "a.create_time, a.update_time");
@@ -279,7 +291,7 @@ int64_t ArticleManager::listByPages(
         std::stringstream ck;
         ck << "art:list:" << state << ":" << category << ":" << role << ":" << days << ":" << (valid ? "1" : "0");
         int64_t total = 0;
-        if (data::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
+        if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
             return 0;
         }
         return total;
@@ -291,24 +303,24 @@ void ArticleManager::delVerify(int64_t id)
     DelArticleCache(id);
 }
 
-void ArticleManager::addVerify(data::ArticleInfo::ptr info)
+void ArticleManager::addVerify(DB::ArticleInfo::ptr info)
 {
     SetArticleCache(info);
 }
 
-int64_t ArticleManager::listVerifyPages(std::vector<data::ArticleInfo::ptr>& infos, int32_t offset, int32_t size)
+int64_t ArticleManager::listVerifyPages(std::vector<DB::ArticleInfo::ptr>& infos, int32_t offset, int32_t size)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::ArticleInfoDao::newQuery();
+    auto qb = DB::ArticleInfoDao::newQuery();
     qb->where("state", "=", (int64_t)CHECKING);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
         return 0;
     }
     for (auto& info : infos) {
@@ -320,7 +332,7 @@ int64_t ArticleManager::listVerifyPages(std::vector<data::ArticleInfo::ptr>& inf
     return total;
 }
 
-std::pair<data::ArticleInfo::ptr, data::ArticleInfo::ptr> ArticleManager::nearby(int64_t id)
+std::pair<DB::ArticleInfo::ptr, DB::ArticleInfo::ptr> ArticleManager::nearby(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
@@ -329,31 +341,31 @@ std::pair<data::ArticleInfo::ptr, data::ArticleInfo::ptr> ArticleManager::nearby
     }
 
     // 查找上一篇（id 最大的小于给定 id 的已发布文章）
-    data::ArticleInfo::ptr prev;
+    DB::ArticleInfo::ptr prev;
     {
-        auto qb = data::ArticleInfoDao::newQuery();
+        auto qb = DB::ArticleInfoDao::newQuery();
         qb->whereSQL("id < ?", id);
         qb->where("state", "=", (int64_t)PUBLISHED);
         qb->where("is_deleted", "=", (int64_t)0);
         qb->orderBy("id", "DESC");
         qb->limit(1);
-        std::vector<data::ArticleInfo::ptr> results;
-        if (data::ArticleInfoDao::QueryByBuilder(results, qb, db) == 0 && !results.empty()) {
+        std::vector<DB::ArticleInfo::ptr> results;
+        if (DB::ArticleInfoDao::QueryByBuilder(results, qb, db) == 0 && !results.empty()) {
             prev = results[0];
         }
     }
 
     // 查找下一篇（id 最小的大于给定 id 的已发布文章）
-    data::ArticleInfo::ptr next;
+    DB::ArticleInfo::ptr next;
     {
-        auto qb = data::ArticleInfoDao::newQuery();
+        auto qb = DB::ArticleInfoDao::newQuery();
         qb->whereSQL("id > ?", id);
         qb->where("state", "=", (int64_t)PUBLISHED);
         qb->where("is_deleted", "=", (int64_t)0);
         qb->orderBy("id", "ASC");
         qb->limit(1);
-        std::vector<data::ArticleInfo::ptr> results;
-        if (data::ArticleInfoDao::QueryByBuilder(results, qb, db) == 0 && !results.empty()) {
+        std::vector<DB::ArticleInfo::ptr> results;
+        if (DB::ArticleInfoDao::QueryByBuilder(results, qb, db) == 0 && !results.empty()) {
             next = results[0];
         }
     }
@@ -390,7 +402,7 @@ ArticleManager::ArticleStats ArticleManager::getStats(int32_t category, int32_t 
         return stats;
     }
 
-    auto qb = data::ArticleInfoDao::newQuery("a");
+    auto qb = DB::ArticleInfoDao::newQuery("a");
     qb->select("a.state, COUNT(*) as cnt");
 
     if (category > 0) {
@@ -492,7 +504,7 @@ void ArticleManager::flushDirty()
         }
         return;
     }
-    std::vector<data::ArticleInfo::ptr> updated;
+    std::vector<DB::ArticleInfo::ptr> updated;
     for (auto& i : updates) {
         auto info = get(i);
         if (!info) {
@@ -502,7 +514,7 @@ void ArticleManager::flushDirty()
         info->setViews(info->getViews());
         info->setPraise(info->getPraise());
         info->setFavorites(info->getFavorites());
-        if (data::ArticleInfoDao::Update(info, conn)) {
+        if (DB::ArticleInfoDao::Update(info, conn)) {
             addUpdate(i);
         } else {
             updated.push_back(info);
@@ -791,7 +803,7 @@ int64_t ArticleManager::getTotalViews()
     if (!db) {
         return 0;
     }
-    auto qb = data::ArticleInfoDao::newQuery();
+    auto qb = DB::ArticleInfoDao::newQuery();
     qb->select("CAST(COALESCE(SUM(views), 0) AS SIGNED)");
     qb->where("state", "=", (int64_t)PUBLISHED);
     qb->where("is_deleted", "=", (int64_t)0);
@@ -852,7 +864,7 @@ void ArticleManager::getCalendarDays(int64_t user_id, int32_t year, int32_t mont
         return;
     }
 
-    auto qb = data::ArticleInfoDao::newQuery();
+    auto qb = DB::ArticleInfoDao::newQuery();
     qb->select("DISTINCT DAY(publish_time) as d");
     qb->where("user_id", "=", user_id);
     qb->where("state", "=", (int64_t)PUBLISHED);
@@ -923,7 +935,7 @@ void ArticleManager::doArticlePublishSchedule()
 
     // 逐个更新文章状态
     std::vector<int64_t> published_ids;
-    std::vector<data::ArticleInfo::ptr> published;
+    std::vector<DB::ArticleInfo::ptr> published;
     auto trans = db->openTransaction();
     if (!trans) {
         ERROR(logger) << "open transaction failed for scheduled publish";
@@ -941,7 +953,7 @@ void ArticleManager::doArticlePublishSchedule()
         info->setState(PUBLISHED);
         info->setUpdateTime(now);
 
-        if (data::ArticleInfoDao::Update(info, db)) {
+        if (DB::ArticleInfoDao::Update(info, db)) {
             ERROR(logger) << "Update error errno=" << db->getErrno() << " errstr=" << db->getErrStr() << " data=" << info->toJsonString();
             continue;
         }

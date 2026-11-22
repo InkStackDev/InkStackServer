@@ -22,12 +22,12 @@ int32_t RdBugServlet::handle(
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -36,18 +36,18 @@ int32_t RdBugServlet::handle(
         if (id) {
             auto info = BugMgr::GetInstance()->get(id);
             if (!info || info->getIsDeleted()) {
-                result->setErrno(errcode::BUG_NOT_FOUND);
+                result->setErrno(BUG_NOT_FOUND);
                 break;
             }
             int64_t info_org_id = info->getOrgId();
             if (!is_platform_admin) {
                 auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(info_org_id, uid);
                 if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
-                if (!permission::CanViewBug(rel->getRole(), uid, info->getCreatorId())) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                if (!CanViewBug(rel->getRole(), uid, info->getCreatorId())) {
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
             }
@@ -67,20 +67,20 @@ int32_t RdBugServlet::handle(
         std::string priority_str = request->getParam("priority");
         std::string severity_str = request->getParam("severity");
 
-        std::vector<data::BugInfo::ptr> all;
+        std::vector<DB::BugInfo::ptr> all;
         if (is_platform_admin && org_id) {
             BugMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
         } else if (!is_platform_admin) {
-            std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
             for (auto& rel : user_orgs) {
                 if (org_id && rel->getOrgId() != org_id) {
                     continue;
                 }
-                std::vector<data::BugInfo::ptr> org_bugs;
+                std::vector<DB::BugInfo::ptr> org_bugs;
                 BugMgr::GetInstance()->listByOrg(org_bugs, rel->getOrgId(), 0, INT32_MAX, -1, true);
                 for (auto& bug : org_bugs) {
-                    if (permission::CanViewBug(rel->getRole(), uid, bug->getCreatorId())) {
+                    if (CanViewBug(rel->getRole(), uid, bug->getCreatorId())) {
                         all.push_back(bug);
                     }
                 }
@@ -89,7 +89,7 @@ int32_t RdBugServlet::handle(
             BugMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
         }
 
-        std::vector<data::BugInfo::ptr> filtered;
+        std::vector<DB::BugInfo::ptr> filtered;
         for (auto& info : all) {
             if (!status_str.empty() && StringToBugStatus(status_str) != info->getStatus()) {
                 continue;

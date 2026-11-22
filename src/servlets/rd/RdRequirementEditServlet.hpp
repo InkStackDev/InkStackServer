@@ -1,7 +1,9 @@
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
-#include "blog/data/requirement_info.h"
+#include "DB/RequirementInfo.hpp"
 #include <json/json.h>
 
 class RdRequirementEditServlet : public BlogLoginedServlet {
@@ -17,5 +19,5 @@ protected:
         Result::ptr result) override;
 
 private:
-    void notifyAssignee(int64_t assignee_id, data::RequirementInfo::ptr requirement);
+    void notifyAssignee(int64_t assignee_id, DB::RequirementInfo::ptr requirement);
 };

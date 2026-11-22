@@ -29,40 +29,40 @@ int32_t OrganizationJoinServlet::handle(
 
         auto org = OrganizationMgr::GetInstance()->get(id);
         if (!org || org->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
         if (org->getStatus() == OrganizationManager::Status::INACTIVE) {
-            result->setErrno(errcode::ORG_DISABLED);
+            result->setErrno(ORG_DISABLED);
             break;
         }
 
         auto info = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
         if (!info) {
-            info = std::make_shared<data::OrganizationUserRelInfo>();
+            info = std::make_shared<DB::OrganizationUserRelInfo>();
             info->setOrgId(id);
             info->setUserId(uid);
             info->setCreateTime(time(0));
         } else if (info->getStatus() == OrganizationUserRelManager::Status::APPROVED) {
-            result->setErrno(errcode::ORG_ALREADY_JOINED);
+            result->setErrno(ORG_ALREADY_JOINED);
             break;
         } else if (info->getStatus() == OrganizationUserRelManager::Status::PENDING) {
-            result->setErrno(errcode::ORG_ALREADY_APPLIED);
+            result->setErrno(ORG_ALREADY_APPLIED);
             break;
         }
         info->setRole(OrganizationManager::Role::MEMBER);             // 普通成员
         info->setStatus(OrganizationUserRelManager::Status::PENDING); // 申请中
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::OrganizationUserRelInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::ORG_UPDATE_FAILED);
+        if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(ORG_UPDATE_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
@@ -77,7 +77,7 @@ int32_t OrganizationJoinServlet::handle(
             data.org_name = org->getName();
             data.applicant_id = uid;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_MEMBER, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_MEMBER, std::move(data));
         }
 
         result->set("id", org->getId());

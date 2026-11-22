@@ -21,11 +21,11 @@ int32_t RdOrganizationMembersServlet::handle(
         int64_t uid = getUserId(request);
         auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-            result->setErrno(errcode::ORG_NOT_MEMBER);
+            result->setErrno(ORG_NOT_MEMBER);
             break;
         }
 
-        std::vector<data::OrganizationUserRelInfo::ptr> members;
+        std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelMgr::GetInstance()->getByPages(members, org_id, 0, INT32_MAX, OrganizationUserRelManager::Status::APPROVED, true);
 
         Json::Value arr(Json::arrayValue);

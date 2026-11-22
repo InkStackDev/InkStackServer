@@ -26,7 +26,7 @@ int32_t AssignmentSubmissionListServlet::handle(
 
         auto assign_info = AssignmentMgr::GetInstance()->get(assign_id);
         if (!assign_info) {
-            result->setErrno(errcode::ASSIGNMENT_NOT_FOUND);
+            result->setErrno(ASSIGNMENT_NOT_FOUND);
             break;
         }
 
@@ -42,7 +42,7 @@ int32_t AssignmentSubmissionListServlet::handle(
 
             // 获取提交的资源信息
             std::string biz_type = "assignment_submission";
-            std::vector<data::ResourceInfo::ptr> resources;
+            std::vector<DB::ResourceInfo::ptr> resources;
             ResourceMgr::GetInstance()->getByBizUid(resources, biz_type, assign_id, uid);
 
             Json::Value list;

@@ -14,8 +14,8 @@ CommentListServlet::CommentListServlet()
 {
 }
 
-static Json::Value BuildCommentItem(data::CommentInfo::ptr c,
-    const std::unordered_map<int64_t, std::vector<data::CommentInfo::ptr>>& children,
+static Json::Value BuildCommentItem(DB::CommentInfo::ptr c,
+    const std::unordered_map<int64_t, std::vector<DB::CommentInfo::ptr>>& children,
     int64_t uid)
 {
     Json::Value item;
@@ -67,18 +67,18 @@ int32_t CommentListServlet::handle(
         // check article exists
         auto article = ArticleMgr::GetInstance()->get(article_id);
         if (!article || article->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_NOT_FOUND);
+            result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
         int64_t uid = getUserId(request);
 
         // fetch all approved comments for this article
-        std::vector<data::CommentInfo::ptr> allComments;
+        std::vector<DB::CommentInfo::ptr> allComments;
         CommentMgr::GetInstance()->listAllByArticle(allComments, article_id);
 
         // build parent_id -> [children] map
-        std::unordered_map<int64_t, std::vector<data::CommentInfo::ptr>> children;
+        std::unordered_map<int64_t, std::vector<DB::CommentInfo::ptr>> children;
         for (auto& c : allComments) {
             children[c->getParentId()].push_back(c);
         }
@@ -101,7 +101,7 @@ int32_t CommentListServlet::handle(
 
         result->set("total", it != children.end() ? it->second.size() : 0);
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -1,22 +1,22 @@
 #pragma once
 
-#include "blog/data/label_info.h"
+#include "DB/LabelInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 class LabelManager {
 public:
-    void add(data::LabelInfo::ptr info);
+    void add(DB::LabelInfo::ptr info);
 
-    data::LabelInfo::ptr get(int64_t id);
+    DB::LabelInfo::ptr get(int64_t id);
 
-    data::LabelInfo::ptr getByUserIdName(int64_t id, const std::string& name);
+    DB::LabelInfo::ptr getByUserIdName(int64_t id, const std::string& name);
 
-    bool listByUserId(std::vector<data::LabelInfo::ptr>& infos, int64_t id, bool valid);
+    bool listByUserId(std::vector<DB::LabelInfo::ptr>& infos, int64_t id, bool valid);
 
 private:
-    static data::LabelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::LabelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<LabelManager> LabelMgr;

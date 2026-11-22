@@ -20,7 +20,7 @@ int32_t NotificationReadServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -37,7 +37,7 @@ int32_t NotificationReadServlet::handle(
         } else {
             int64_t single_id = request->getParamAs<int64_t>("id", 0);
             if (!single_id) {
-                result->setErrno(errcode::PARAM_MISSING, "id or ids is required");
+                result->setErrno(PARAM_MISSING, "id or ids is required");
                 break;
             }
             ids.push_back(single_id);
@@ -45,7 +45,7 @@ int32_t NotificationReadServlet::handle(
 
         NotificationMgr::GetInstance()->markRead(ids);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -30,34 +30,34 @@ int32_t ArticleDetailServlet::handle(
 
         int64_t cur_uid = getUserId(request);
         if (!cur_uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
-        data::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
+        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
         int32_t state = info->getState();
         bool is_deleted = info->getIsDeleted();
         auto current_user = UserMgr::GetInstance()->get(cur_uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         bool is_author = (cur_uid == info->getUserId());
         if (is_deleted) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (state != ArticleManager::Status::PUBLISHED && role != UserManager::Role::ADMIN && !is_author) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         int64_t uid = info->getUserId();
         if (type == 1 && cur_uid != uid) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         auto author_info = UserMgr::GetInstance()->get(uid);
@@ -66,7 +66,7 @@ int32_t ArticleDetailServlet::handle(
         result->set("author_avatar", author_info->getAvatar());
 
         // author stats
-        std::vector<data::ArticleInfo::ptr> authorArticles;
+        std::vector<DB::ArticleInfo::ptr> authorArticles;
         ArticleMgr::GetInstance()->listByUserId(authorArticles, uid, true);
         int64_t author_praise_total = 0;
         int64_t author_article_count = 0;
@@ -91,7 +91,7 @@ int32_t ArticleDetailServlet::handle(
         result->set("praise", info->getPraise());
         result->set("favorites", info->getFavorites());
 
-        std::vector<data::ArticleCategoryRelInfo::ptr> cinfos;
+        std::vector<DB::ArticleCategoryRelInfo::ptr> cinfos;
         ArticleCategoryRelMgr::GetInstance()->listByArticleId(cinfos, id, true);
 
         for (auto& i : cinfos) {
@@ -105,7 +105,7 @@ int32_t ArticleDetailServlet::handle(
             }
         }
 
-        std::vector<data::ArticleLabelRelInfo::ptr> linfos;
+        std::vector<DB::ArticleLabelRelInfo::ptr> linfos;
         ArticleLabelRelMgr::GetInstance()->listByArticleId(linfos, id, true);
         for (auto& i : linfos) {
             auto l = LabelMgr::GetInstance()->get(i->getLabelId());

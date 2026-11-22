@@ -17,18 +17,18 @@ int32_t UserUnfollowServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, following_id, "following_id");
 
         if (!UserFollowRelMgr::GetInstance()->unfollow(uid, following_id)) {
-            result->setErrno(errcode::USER_NOT_FOLLOWING);
+            result->setErrno(USER_NOT_FOLLOWING);
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

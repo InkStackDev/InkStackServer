@@ -16,7 +16,7 @@ int32_t NotificationListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -24,7 +24,7 @@ int32_t NotificationListServlet::handle(
         int32_t size = request->getParamAs<int32_t>("size", 20);
         std::string type = request->getParam("type");
 
-        std::vector<data::NotificationInfo::ptr> notifications;
+        std::vector<DB::NotificationInfo::ptr> notifications;
         NotificationMgr::GetInstance()->listByUser(notifications, uid, offset, size, type);
 
         Json::Value arr(Json::arrayValue);
@@ -61,7 +61,7 @@ int32_t NotificationListServlet::handle(
 
         int64_t total = NotificationMgr::GetInstance()->countByUser(uid, type);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("list", arr);
         result->set("total", total);
         result->set("offset", offset);

@@ -22,35 +22,35 @@ int32_t PasskeyLoginFinishServlet::handle(
     do {
         AuthContext ctx = AuthService::Resolve(request, response, false);
         if (ctx.valid()) {
-            result->setErrno(errcode::USER_ALREADY_LOGIN);
+            result->setErrno(USER_ALREADY_LOGIN);
             break;
         }
 
         Json::Value credential;
         if (!chen::JsonUtil::FromString(credential, request->getBody()) || !credential.isObject()) {
-            result->setErrno(errcode::PARAM_INVALID);
+            result->setErrno(PARAM_INVALID);
             break;
         }
 
         std::string credential_id;
         if (!WebAuthnService::ExtractCredentialId(credential, credential_id)) {
-            result->setErrno(errcode::WEBAUTHN_INVALID_CREDENTIAL);
+            result->setErrno(WEBAUTHN_INVALID_CREDENTIAL);
             break;
         }
 
         auto passkey = PasskeyMgr::GetInstance()->getByCredentialId(credential_id);
         if (!passkey) {
-            result->setErrno(errcode::PASSKEY_NOT_FOUND);
+            result->setErrno(PASSKEY_NOT_FOUND);
             break;
         }
 
         auto user = UserMgr::GetInstance()->get(passkey->getUserId());
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
-            result->setErrno(errcode::ACCOUNT_INVALID);
+            result->setErrno(ACCOUNT_INVALID);
             break;
         }
 
@@ -62,7 +62,7 @@ int32_t PasskeyLoginFinishServlet::handle(
             break;
         }
         if (auth_result.credential_id != passkey->getCredentialId()) {
-            result->setErrno(errcode::WEBAUTHN_INVALID_CREDENTIAL);
+            result->setErrno(WEBAUTHN_INVALID_CREDENTIAL);
             break;
         }
 
@@ -70,7 +70,7 @@ int32_t PasskeyLoginFinishServlet::handle(
         passkey->setLastUsedAt(chen::TimeUtil::GetCurrentSec());
         passkey->setBackupState(auth_result.backup_state);
         if (PasskeyMgr::GetInstance()->update(passkey) != 0) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -88,7 +88,7 @@ int32_t PasskeyLoginFinishServlet::handle(
         result->set("avatar", user->getAvatar());
         result->set("role", user->getRole());
         result->set("user_verified", auth_result.user_verified);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

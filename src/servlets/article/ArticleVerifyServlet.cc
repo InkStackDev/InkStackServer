@@ -29,40 +29,40 @@ int32_t ArticleVerifyServlet::handle(
 
         // 传入参数state，决定文章的去留
         if (state != ArticleManager::Status::PUBLISHED && state != ArticleManager::Status::REJECTED) {
-            result->setErrno(errcode::ARTICLE_INVALID_STATE);
+            result->setErrno(ARTICLE_INVALID_STATE);
             break;
         }
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN && role != UserManager::Role::CHECKER) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
-        data::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
+        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
         if (info->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
         if (info->getState() != ArticleManager::Status::CHECKING) {
-            result->setErrno(errcode::ARTICLE_INVALID_STATE);
+            result->setErrno(ARTICLE_INVALID_STATE);
             break;
         }
 
@@ -77,13 +77,13 @@ int32_t ArticleVerifyServlet::handle(
         }
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        if (data::ArticleInfoDao::Update(info, db)) {
-            result->setErrno(errcode::ARTICLE_UPDATE_FAILED);
+        if (DB::ArticleInfoDao::Update(info, db)) {
+            result->setErrno(ARTICLE_UPDATE_FAILED);
             info->setState(ArticleManager::Status::CHECKING);
 
             ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
@@ -107,7 +107,7 @@ int32_t ArticleVerifyServlet::handle(
             data.author_id = info->getUserId();
             data.reviewer_id = uid;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ARTICLE_REVIEW, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_REVIEW, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

@@ -21,18 +21,18 @@ int32_t User2FAEnableServlet::handle(chen::http::HttpRequest::ptr request,
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto info = UserMgr::GetInstance()->get(uid);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         if (info->getTotpEnabled()) {
-            result->setErrno(errcode::TOTP_ALREADY_ENABLED);
+            result->setErrno(TOTP_ALREADY_ENABLED);
             break;
         }
 

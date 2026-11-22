@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/comment_info.h"
+#include "DB/CommentInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -14,12 +14,11 @@ public:
         SPAM = 4
     };
 
-    void add(data::CommentInfo::ptr info);
+    void add(DB::CommentInfo::ptr info);
 
-    data::CommentInfo::ptr get(int64_t id);
+    DB::CommentInfo::ptr get(int64_t id);
 
-    data::CommentInfo::ptr create(
-        int64_t article_id,
+    DB::CommentInfo::ptr create(int64_t article_id,
         int64_t user_id,
         const std::string& content,
         int64_t parent_id,
@@ -30,19 +29,18 @@ public:
 
     bool del(int64_t id);
 
-    void listAllByArticle(std::vector<data::CommentInfo::ptr>& results, int64_t article_id);
+    void listAllByArticle(std::vector<DB::CommentInfo::ptr>& results, int64_t article_id);
 
-    void listByArticle(std::vector<data::CommentInfo::ptr>& results, int64_t article_id, uint64_t offset, uint64_t size);
+    void listByArticle(std::vector<DB::CommentInfo::ptr>& results, int64_t article_id, uint64_t offset, uint64_t size);
 
-    void listReplies(std::vector<data::CommentInfo::ptr>& results, int64_t parent_id, uint64_t offset, uint64_t size);
+    void listReplies(std::vector<DB::CommentInfo::ptr>& results, int64_t parent_id, uint64_t offset, uint64_t size);
 
     int64_t countByArticle(int64_t article_id);
 
     int64_t countReplies(int64_t parent_id);
 
     // --- admin methods ---
-    int64_t listByAdmin(
-        std::vector<data::CommentInfo::ptr>& results,
+    int64_t listByAdmin(std::vector<DB::CommentInfo::ptr>& results,
         int64_t page_num,
         int64_t page_size,
         int32_t status,
@@ -65,7 +63,7 @@ public:
     CommentStats getStats();
 
 private:
-    static data::CommentInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::CommentInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<CommentManager> CommentMgr;

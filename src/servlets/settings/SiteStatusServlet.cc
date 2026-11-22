@@ -20,7 +20,7 @@ int32_t SiteStatusServlet::handle(
     do {
         auto settings = SystemSettingsMgr::GetInstance()->get();
         if (!settings) {
-            result->setErrno(errcode::SETTINGS_NOT_LOADED);
+            result->setErrno(SETTINGS_NOT_LOADED);
             break;
         }
         result->set("maintenanceMode", settings->getMaintenanceMode() ? true : false);

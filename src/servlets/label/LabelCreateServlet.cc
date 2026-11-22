@@ -26,26 +26,26 @@ int32_t LabelCreateServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        data::LabelInfo::ptr info;
+        DB::LabelInfo::ptr info;
         if (lid) {
             info = LabelMgr::GetInstance()->get(lid);
             if (!info) {
-                result->setErrno(errcode::PARAM_INVALID, "invalid lid");
+                result->setErrno(PARAM_INVALID, "invalid lid");
                 break;
             }
             if (info->getUserId() != uid) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
             info->setName(name);
         } else {
             info = LabelMgr::GetInstance()->getByUserIdName(uid, name);
             if (!info) {
-                info.reset(new data::LabelInfo);
+                info.reset(new DB::LabelInfo);
                 info->setUserId(uid);
                 info->setName(name);
                 info->setCreateTime(time(0));
@@ -58,14 +58,14 @@ int32_t LabelCreateServlet::handle(
         info->setIsDeleted(0);
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::LabelInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "label operation failed");
+        if (DB::LabelInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "label operation failed");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

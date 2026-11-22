@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "blog/data/badge_info.h"
+#include "DB/BadgeInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -25,7 +25,7 @@ public:
      * @brief 获取所有有效徽章定义
      * @param[out] badges 徽章列表，按 sort_order 升序
      */
-    void listAll(std::vector<data::BadgeInfo::ptr>& badges);
+    void listAll(std::vector<DB::BadgeInfo::ptr>& badges);
 
 private:
     void insertDefault(

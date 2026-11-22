@@ -23,7 +23,7 @@ int32_t CommentCreateServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -36,7 +36,7 @@ int32_t CommentCreateServlet::handle(
         // check article exists
         auto article = ArticleMgr::GetInstance()->get(article_id);
         if (!article || article->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_NOT_FOUND);
+            result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
@@ -44,7 +44,7 @@ int32_t CommentCreateServlet::handle(
         if (parent_id > 0) {
             auto parent = CommentMgr::GetInstance()->get(parent_id);
             if (!parent || parent->getIsDeleted()) {
-                result->setErrno(errcode::COMMENT_PARENT_NOT_FOUND);
+                result->setErrno(COMMENT_PARENT_NOT_FOUND);
                 break;
             }
         }
@@ -54,7 +54,7 @@ int32_t CommentCreateServlet::handle(
 
         auto info = CommentMgr::GetInstance()->create(article_id, uid, content, parent_id, ip, user_agent);
         if (!info) {
-            result->setErrno(errcode::COMMENT_CREATE_FAILED);
+            result->setErrno(COMMENT_CREATE_FAILED);
             break;
         }
 
@@ -80,7 +80,7 @@ int32_t CommentCreateServlet::handle(
         item["reply_count"] = 0;
 
         result->setData(item);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
 
         // Notify article author and parent comment author asynchronously
         {
@@ -100,7 +100,7 @@ int32_t CommentCreateServlet::handle(
                 }
             }
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_COMMENT_CREATED, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_COMMENT_CREATED, std::move(data));
         }
     } while (0);
 

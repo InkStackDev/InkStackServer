@@ -38,40 +38,40 @@ int32_t AssignmentOrganizationCreateServlet::handle(
         // check operator permission
         auto uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         std::string oper_name = current_user->getName();
         int32_t system_role = current_user->getRole();
         auto org_rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!org_rel) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         int32_t org_role = org_rel->getRole();
 
-        if (!permission::CanManageMembers(system_role, org_role)) {
-            result->setErrno(errcode::ACCESS_DENIED);
+        if (!CanManageMembers(system_role, org_role)) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         if (max_size > 96) {
-            result->setErrno(errcode::ASSIGNMENT_MAX_SIZE_EXCEED);
+            result->setErrno(ASSIGNMENT_MAX_SIZE_EXCEED);
             break;
         }
 
         // create or update assignment
         bool new_assignment = false;
-        data::AssignmentInfo::ptr assign_info;
+        DB::AssignmentInfo::ptr assign_info;
         if (assign_id) {
             assign_info = AssignmentMgr::GetInstance()->get(assign_id);
             if (!assign_info) {
-                result->setErrno(errcode::ASSIGNMENT_NOT_FOUND);
+                result->setErrno(ASSIGNMENT_NOT_FOUND);
                 break;
             }
             assign_info->setName(name);
@@ -79,7 +79,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
         } else {
             assign_info = AssignmentMgr::GetInstance()->getByName(subject_name, name);
             if (!assign_info) {
-                assign_info.reset(new data::AssignmentInfo);
+                assign_info.reset(new DB::AssignmentInfo);
                 assign_info->setName(name);
                 assign_info->setSubjectName(subject_name);
                 assign_info->setCreateTime(time(0));
@@ -97,14 +97,14 @@ int32_t AssignmentOrganizationCreateServlet::handle(
         assign_info->setIsDeleted(0);
         assign_info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::AssignmentInfoDao::InsertOrUpdate(assign_info, db)) {
-            result->setErrno(errcode::ASSIGNMENT_UPDATE_FAILED);
+        if (DB::AssignmentInfoDao::InsertOrUpdate(assign_info, db)) {
+            result->setErrno(ASSIGNMENT_UPDATE_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
@@ -115,7 +115,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
             // create organization assignment relation
             auto org_assign_rel = AssignmentOrganizationRelMgr::GetInstance()->getByOrgAndAssign(org_id, assign_info->getId());
             if (!org_assign_rel) {
-                org_assign_rel.reset(new data::AssignmentOrganizationRelInfo);
+                org_assign_rel.reset(new DB::AssignmentOrganizationRelInfo);
                 org_assign_rel->setOrganizationId(org_id);
                 org_assign_rel->setAssignmentId(assign_info->getId());
                 org_assign_rel->setCreateTime(time(0));
@@ -124,8 +124,8 @@ int32_t AssignmentOrganizationCreateServlet::handle(
             org_assign_rel->setIsDeleted(0);
             org_assign_rel->setUpdateTime(time(0));
 
-            if (data::AssignmentOrganizationRelInfoDao::InsertOrUpdate(org_assign_rel, db)) {
-                result->setErrno(errcode::ASSIGNMENT_UPDATE_FAILED);
+            if (DB::AssignmentOrganizationRelInfoDao::InsertOrUpdate(org_assign_rel, db)) {
+                result->setErrno(ASSIGNMENT_UPDATE_FAILED);
                 ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
@@ -136,7 +136,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
             // Notify org members about new assignment
             {
                 std::vector<int64_t> member_ids;
-                std::vector<data::OrganizationUserRelInfo::ptr> org_members;
+                std::vector<DB::OrganizationUserRelInfo::ptr> org_members;
                 OrganizationUserRelMgr::GetInstance()->getByPages(org_members, org_id, 0, 10000, -1, true);
                 for (auto& m : org_members) {
                     if (m->getStatus() != OrganizationUserRelManager::Status::APPROVED)
@@ -153,7 +153,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
                 data.subject_name = subject_name;
                 data.member_user_ids = member_ids;
 
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ASSIGNMENT, std::move(data));
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ASSIGNMENT, std::move(data));
             }
         }
         result->set("id", assign_info->getId());

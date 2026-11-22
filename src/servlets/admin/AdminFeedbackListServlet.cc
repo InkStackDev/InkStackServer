@@ -20,19 +20,19 @@ int32_t AdminFeedbackListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -40,11 +40,11 @@ int32_t AdminFeedbackListServlet::handle(
         int32_t page = request->getParamAs<int32_t>("page", 1);
         int32_t page_size = request->getParamAs<int32_t>("page_size", 20);
 
-        std::vector<data::UserFeedbackInfo::ptr> infos;
+        std::vector<DB::UserFeedbackInfo::ptr> infos;
         int64_t total = 0;
 
         if (!FeedbackMgr::GetInstance()->list(infos, type, page, page_size, &total)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "query feedbacks failed");
+            result->setErrno(DB_OPERATION_FAILED, "query feedbacks failed");
             break;
         }
 
@@ -61,7 +61,7 @@ int32_t AdminFeedbackListServlet::handle(
 
         result->set("total", total);
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     DEBUG(logger) << "AdminFeedbackListServlet handle result: " << result->toJsonString();

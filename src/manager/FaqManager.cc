@@ -10,37 +10,37 @@ FaqManager::FaqManager()
 {
 }
 
-bool FaqManager::listAll(std::vector<data::HelpFaqsInfo::ptr>& infos)
+bool FaqManager::listAll(std::vector<DB::HelpFaqsInfo::ptr>& infos)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::HelpFaqsInfoDao::newQuery();
+    auto qb = DB::HelpFaqsInfoDao::newQuery();
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("sort_order", "ASC");
     qb->orderBy("id", "ASC");
-    if (data::HelpFaqsInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::HelpFaqsInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }
     return true;
 }
 
-bool FaqManager::searchByKeyword(const std::string& keyword, std::vector<data::HelpFaqsInfo::ptr>& infos)
+bool FaqManager::searchByKeyword(const std::string& keyword, std::vector<DB::HelpFaqsInfo::ptr>& infos)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::HelpFaqsInfoDao::newQuery();
+    auto qb = DB::HelpFaqsInfoDao::newQuery();
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("sort_order", "ASC");
     qb->orderBy("id", "ASC");
-    std::vector<data::HelpFaqsInfo::ptr> all;
-    if (data::HelpFaqsInfoDao::QueryByBuilder(all, qb, db)) {
+    std::vector<DB::HelpFaqsInfo::ptr> all;
+    if (DB::HelpFaqsInfoDao::QueryByBuilder(all, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }
@@ -60,7 +60,7 @@ bool FaqManager::remove(int64_t id)
         return false;
     }
 
-    auto info = data::HelpFaqsInfoDao::Query(id, db);
+    auto info = DB::HelpFaqsInfoDao::Query(id, db);
     if (!info) {
         ERROR(logger) << "faq not found: " << id;
         return false;
@@ -69,7 +69,7 @@ bool FaqManager::remove(int64_t id)
     info->setIsDeleted(1);
     info->setUpdateTime(time(0));
 
-    if (data::HelpFaqsInfoDao::Update(info, db)) {
+    if (DB::HelpFaqsInfoDao::Update(info, db)) {
         ERROR(logger) << "soft delete faq failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
         return false;
     }
@@ -85,7 +85,7 @@ bool FaqManager::update(int64_t id, const std::string& q, const std::string& a, 
         return false;
     }
 
-    auto info = data::HelpFaqsInfoDao::Query(id, db);
+    auto info = DB::HelpFaqsInfoDao::Query(id, db);
     if (!info) {
         ERROR(logger) << "faq not found: " << id;
         return false;
@@ -102,7 +102,7 @@ bool FaqManager::update(int64_t id, const std::string& q, const std::string& a, 
     }
     info->setUpdateTime(time(0));
 
-    if (data::HelpFaqsInfoDao::Update(info, db)) {
+    if (DB::HelpFaqsInfoDao::Update(info, db)) {
         ERROR(logger) << "update faq failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
         return false;
     }

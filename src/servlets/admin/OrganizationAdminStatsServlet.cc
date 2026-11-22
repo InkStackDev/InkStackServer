@@ -17,18 +17,18 @@ int32_t OrganizationAdminStatsServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user || current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         auto stats = OrganizationMgr::GetInstance()->getStats();
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("total_organizations", stats.total);
         result->set("active_organizations", stats.active);
         result->set("inactive_organizations", stats.inactive);

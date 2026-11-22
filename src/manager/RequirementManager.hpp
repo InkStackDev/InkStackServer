@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/requirement_info.h"
+#include "DB/RequirementInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -21,15 +21,15 @@ public:
         STATUS_CLOSED = 4
     };
 
-    data::RequirementInfo::ptr get(int64_t id);
+    DB::RequirementInfo::ptr get(int64_t id);
 
-    uint64_t listByPages(std::vector<data::RequirementInfo::ptr>& infos,
+    uint64_t listByPages(std::vector<DB::RequirementInfo::ptr>& infos,
         uint64_t offset,
         uint64_t size,
         int32_t status,
         bool is_valid);
 
-    uint64_t listByOrg(std::vector<data::RequirementInfo::ptr>& infos,
+    uint64_t listByOrg(std::vector<DB::RequirementInfo::ptr>& infos,
         int64_t org_id,
         uint64_t offset,
         uint64_t size,
@@ -37,7 +37,7 @@ public:
         bool is_valid);
 
 private:
-    static data::RequirementInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::RequirementInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<RequirementManager> RequirementMgr;

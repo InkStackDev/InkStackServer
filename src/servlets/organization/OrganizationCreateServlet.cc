@@ -29,27 +29,27 @@ int32_t OrganizationCreateServlet::handle(
 
         int64_t user_id = getUserId(request);
         if (!user_id) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto uinfo = UserMgr::GetInstance()->get(user_id);
         if (!uinfo) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         if (uinfo->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         bool new_org = false;
-        data::OrganizationInfo::ptr info;
+        DB::OrganizationInfo::ptr info;
         if (oid) {
             info = OrganizationMgr::GetInstance()->get(oid);
             if (!info) {
-                result->setErrno(errcode::ORG_NOT_FOUND);
+                result->setErrno(ORG_NOT_FOUND);
                 break;
             }
 
@@ -57,7 +57,7 @@ int32_t OrganizationCreateServlet::handle(
         } else {
             info = OrganizationMgr::GetInstance()->getByName(name);
             if (!info) {
-                info = std::make_shared<data::OrganizationInfo>();
+                info = std::make_shared<DB::OrganizationInfo>();
                 info->setName(name);
                 info->setCreateTime(time(0));
                 new_org = true;
@@ -72,14 +72,14 @@ int32_t OrganizationCreateServlet::handle(
         info->setIsDeleted(0);
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::OrganizationInfoDao::InsertOrUpdate(info, db)) {
-            result->setErrno(errcode::ORG_UPDATE_FAILED);
+        if (DB::OrganizationInfoDao::InsertOrUpdate(info, db)) {
+            result->setErrno(ORG_UPDATE_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
@@ -87,7 +87,7 @@ int32_t OrganizationCreateServlet::handle(
         OrganizationMgr::GetInstance()->add(info);
 
         if (new_org) {
-            auto rel = std::make_shared<data::OrganizationUserRelInfo>();
+            auto rel = std::make_shared<DB::OrganizationUserRelInfo>();
             rel->setOrgId(info->getId());
             rel->setUserId(user_id);
             rel->setRole(OrganizationManager::Role::ORG_ADMIN);
@@ -95,8 +95,8 @@ int32_t OrganizationCreateServlet::handle(
             rel->setCreateTime(time(0));
             rel->setUpdateTime(time(0));
 
-            if (data::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
-                result->setErrno(errcode::ORG_USER_REL_FAILED);
+            if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
+                result->setErrno(ORG_USER_REL_FAILED);
                 ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }

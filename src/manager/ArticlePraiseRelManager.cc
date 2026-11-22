@@ -16,9 +16,9 @@ static std::string ArticlePraiseRelCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::ArticlePraiseRelInfo::ptr ParseArticlePraiseRelCache(const Json::Value& v)
+static DB::ArticlePraiseRelInfo::ptr ParseArticlePraiseRelCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::ArticlePraiseRelInfo>();
+    auto info = std::make_shared<DB::ArticlePraiseRelInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
     info->setArticleId(CacheJsonInt64(v, "article_id"));
@@ -29,7 +29,7 @@ static data::ArticlePraiseRelInfo::ptr ParseArticlePraiseRelCache(const Json::Va
     return info;
 }
 
-static data::ArticlePraiseRelInfo::ptr GetArticlePraiseRelCache(int64_t id)
+static DB::ArticlePraiseRelInfo::ptr GetArticlePraiseRelCache(int64_t id)
 {
     std::string key = ArticlePraiseRelCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -44,7 +44,7 @@ static data::ArticlePraiseRelInfo::ptr GetArticlePraiseRelCache(int64_t id)
     return ParseArticlePraiseRelCache(v);
 }
 
-static void SetArticlePraiseRelCache(const data::ArticlePraiseRelInfo::ptr& info)
+static void SetArticlePraiseRelCache(const DB::ArticlePraiseRelInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -52,17 +52,17 @@ static void SetArticlePraiseRelCache(const data::ArticlePraiseRelInfo::ptr& info
     RedisCacheSetex(ArticlePraiseRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::ParseRow(chen::ISQLData::ptr rt)
+DB::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::ArticlePraiseRelInfoDao::ParseRow(rt);
+    return DB::ArticlePraiseRelInfoDao::ParseRow(rt);
 }
 
-void ArticlePraiseRelManager::add(data::ArticlePraiseRelInfo::ptr info)
+void ArticlePraiseRelManager::add(DB::ArticlePraiseRelInfo::ptr info)
 {
     SetArticlePraiseRelCache(info);
 }
 
-data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::get(int64_t id)
+DB::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::get(int64_t id)
 {
     auto v = GetArticlePraiseRelCache(id);
     if (v) {
@@ -73,14 +73,14 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::ArticlePraiseRelInfoDao::Query(id, db);
+    v = DB::ArticlePraiseRelInfoDao::Query(id, db);
     if (v) {
         SetArticlePraiseRelCache(v);
     }
     return v;
 }
 
-data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::getByUserAndArticle(int64_t user_id, int64_t article_id)
+DB::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::getByUserAndArticle(int64_t user_id, int64_t article_id)
 {
     std::string ck = "pra:" + std::to_string(user_id) + ":" + std::to_string(article_id);
     int64_t cachedId = GetCachedIdMapping(ck);
@@ -92,7 +92,7 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::getByUserAndArticle(int
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::ArticlePraiseRelInfoDao::QueryByUserIdArticleId(user_id, article_id, db);
+    auto info = DB::ArticlePraiseRelInfoDao::QueryByUserIdArticleId(user_id, article_id, db);
     if (info) {
         SetArticlePraiseRelCache(info);
         CacheIdMapping(ck, info->getId());
@@ -100,7 +100,7 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::getByUserAndArticle(int
     return info;
 }
 
-data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::praise(int64_t user_id, int64_t article_id)
+DB::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::praise(int64_t user_id, int64_t article_id)
 {
     auto existing = getByUserAndArticle(user_id, article_id);
     if (existing) {
@@ -114,7 +114,7 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::praise(int64_t user_id,
         }
         existing->setIsDeleted(0);
         existing->setUpdateTime(time(0));
-        if (data::ArticlePraiseRelInfoDao::Update(existing, db)) {
+        if (DB::ArticlePraiseRelInfoDao::Update(existing, db)) {
             ERROR(logger) << "ArticlePraiseRelManager praise Update fail";
             return nullptr;
         }
@@ -128,14 +128,14 @@ data::ArticlePraiseRelInfo::ptr ArticlePraiseRelManager::praise(int64_t user_id,
         return nullptr;
     }
 
-    auto info = std::make_shared<data::ArticlePraiseRelInfo>();
+    auto info = std::make_shared<DB::ArticlePraiseRelInfo>();
     info->setUserId(user_id);
     info->setArticleId(article_id);
     info->setIsDeleted(0);
     info->setCreateTime(time(0));
     info->setUpdateTime(time(0));
 
-    if (data::ArticlePraiseRelInfoDao::Insert(info, db)) {
+    if (DB::ArticlePraiseRelInfoDao::Insert(info, db)) {
         ERROR(logger) << "ArticlePraiseRelManager praise Insert fail";
         return nullptr;
     }
@@ -159,7 +159,7 @@ bool ArticlePraiseRelManager::unpraise(int64_t user_id, int64_t article_id)
 
     info->setIsDeleted(1);
     info->setUpdateTime(time(0));
-    if (data::ArticlePraiseRelInfoDao::Update(info, db)) {
+    if (DB::ArticlePraiseRelInfoDao::Update(info, db)) {
         ERROR(logger) << "ArticlePraiseRelManager unpraise Update fail";
         return false;
     }
@@ -173,39 +173,45 @@ bool ArticlePraiseRelManager::isPraising(int64_t user_id, int64_t article_id)
     return info && !info->getIsDeleted();
 }
 
-void ArticlePraiseRelManager::listByArticle(std::vector<data::ArticlePraiseRelInfo::ptr>& results, int64_t article_id, uint64_t offset, uint64_t size)
+void ArticlePraiseRelManager::listByArticle(std::vector<DB::ArticlePraiseRelInfo::ptr>& results,
+    int64_t article_id,
+    uint64_t offset,
+    uint64_t size)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::ArticlePraiseRelInfoDao::newQuery();
+    auto qb = DB::ArticlePraiseRelInfoDao::newQuery();
     qb->where("article_id", "=", article_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
     qb->limit((int32_t)size);
     qb->offset((int32_t)offset);
-    if (data::ArticlePraiseRelInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::ArticlePraiseRelInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
 }
 
-void ArticlePraiseRelManager::listByUser(std::vector<data::ArticlePraiseRelInfo::ptr>& results, int64_t user_id, uint64_t offset, uint64_t size)
+void ArticlePraiseRelManager::listByUser(std::vector<DB::ArticlePraiseRelInfo::ptr>& results,
+    int64_t user_id,
+    uint64_t offset,
+    uint64_t size)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::ArticlePraiseRelInfoDao::newQuery();
+    auto qb = DB::ArticlePraiseRelInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
     qb->limit((int32_t)size);
     qb->offset((int32_t)offset);
-    if (data::ArticlePraiseRelInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::ArticlePraiseRelInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
@@ -218,7 +224,7 @@ int64_t ArticlePraiseRelManager::countByArticle(int64_t article_id)
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::ArticlePraiseRelInfoDao::newQuery();
+    auto qb = DB::ArticlePraiseRelInfoDao::newQuery();
     qb->where("article_id", "=", article_id);
     qb->where("is_deleted", "=", (int64_t)0);
     int64_t total = 0;
@@ -236,7 +242,7 @@ int64_t ArticlePraiseRelManager::countByUser(int64_t user_id)
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::ArticlePraiseRelInfoDao::newQuery();
+    auto qb = DB::ArticlePraiseRelInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->where("is_deleted", "=", (int64_t)0);
     int64_t total = 0;

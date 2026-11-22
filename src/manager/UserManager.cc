@@ -1,104 +1,34 @@
 #include "UserManager.hpp"
 
-#include "../Util/Util.hpp"
-#include "CacheUtil.hpp"
+#include <sstream>
 
 #include <Chen/Config/Config.hpp>
 #include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
+#include <Chen/Util/EncryptorUtil.hpp>
+#include <Chen/Util/RandomUtil.hpp>
 
 #include "../Config/AppConfig.hpp"
+#include "../Repository/UserRepository.hpp"
+#include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static const int kCacheTTL = 120;
-static const char* kCachePrefix = "cache:obj:usr:";
-
-static std::string UserCacheKey(int64_t id)
+void UserManager::add(DB::UserInfo::ptr info)
 {
-    return std::string(kCachePrefix) + std::to_string(id);
+    UserRepository::Put(info);
 }
 
-static data::UserInfo::ptr ParseUserCache(const Json::Value& v)
+void UserManager::update(DB::UserInfo::ptr info)
 {
-    auto info = std::make_shared<data::UserInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setName(CacheJsonString(v, "name"));
-    info->setAccount(CacheJsonString(v, "account"));
-    info->setAvatar(CacheJsonString(v, "avatar"));
-    info->setEmail(CacheJsonString(v, "email"));
-    info->setRole(CacheJsonInt32(v, "role"));
-    info->setPasswd(CacheJsonString(v, "passwd"));
-    info->setState(CacheJsonInt32(v, "state"));
-    info->setBio(CacheJsonString(v, "bio"));
-    info->setWebsite(CacheJsonString(v, "website"));
-    info->setGithub(CacheJsonString(v, "github"));
-    info->setLocation(CacheJsonString(v, "location"));
-    info->setToken(CacheJsonString(v, "token"));
-    info->setTokenTime(CacheJsonInt64(v, "token_time"));
-    info->setLoginTime(CacheJsonTime(v, "login_time"));
-    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->setTotpSecret(CacheJsonString(v, "totp_secret"));
-    info->setTotpEnabled(CacheJsonInt32(v, "totp_enabled"));
-    info->markClean();
-    return info;
-}
-
-static data::UserInfo::ptr GetUserCache(int64_t id)
-{
-    std::string key = UserCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseUserCache(v);
-}
-
-static void SetUserCache(const data::UserInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(UserCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
-
-data::UserInfo::ptr UserManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return data::UserInfoDao::ParseRow(rt);
-}
-
-void UserManager::add(blog::data::UserInfo::ptr info)
-{
-    SetUserCache(info);
-}
-
-void UserManager::update(blog::data::UserInfo::ptr info)
-{
-    SetUserCache(info);
+    UserRepository::Put(info);
 }
 
 void UserManager::getAllIds(std::vector<int64_t>& ids, bool is_valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return;
-    }
-    auto qb = data::UserInfoDao::newQuery();
-    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
-    qb->select("id");
-    qb->queryColumn<int64_t>(ids, db, "id");
+    UserRepository::GetAllIds(ids, is_valid, GetDB());
 }
 
-uint64_t UserManager::listByPages(
-    std::vector<blog::data::UserInfo::ptr>& infos,
+uint64_t UserManager::listByPages(std::vector<DB::UserInfo::ptr>& infos,
     uint64_t offset,
     uint64_t size,
     int32_t role,
@@ -106,87 +36,27 @@ uint64_t UserManager::listByPages(
     int32_t days,
     bool is_valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-
-    int64_t start_time = 0;
-    if (days > 0) {
-        start_time = time(0) - days * 24 * 3600;
-    }
-
-    auto qb = data::UserInfoDao::newQuery();
-    qb->whereIf(role != -1, "role", "=", (int64_t)role);
-    qb->whereIf(state != -1, "state", "=", (int64_t)state);
-    qb->whereIf(days > 0, "create_time", ">=", start_time);
-    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
-    qb->orderBy("id", "DESC");
-
-    int64_t total = 0;
-    if (data::UserInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
-        return 0;
-    }
-    return total;
+    return UserRepository::ListByPages(infos, offset, size, role, state, days, is_valid, GetDB());
 }
 
-blog::data::UserInfo::ptr UserManager::get(int64_t id)
+DB::UserInfo::ptr UserManager::get(int64_t id)
 {
-    auto v = GetUserCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = data::UserInfoDao::Query(id, db);
-    if (v) {
-        SetUserCache(v);
-    }
-    return v;
+    return UserRepository::Get(id, GetDB());
 }
 
-blog::data::UserInfo::ptr UserManager::getByAccount(const std::string& v)
+DB::UserInfo::ptr UserManager::getByAccount(const std::string& v)
 {
-    int64_t cachedId = GetCachedIdMapping("usr:acct:" + v);
-    if (cachedId > 0) {
-        return get(cachedId);
-    }
-    // Check cache first
-    // Since cache is only keyed by id, query DB directly via DAO
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    auto info = data::UserInfoDao::QueryByAccount(v, db);
-    if (info) {
-        SetUserCache(info);
-        CacheIdMapping("usr:acct:" + v, info->getId());
-    }
-    return info;
+    return UserRepository::GetByAccount(v, GetDB());
 }
 
-blog::data::UserInfo::ptr UserManager::getByEmail(const std::string& v)
+DB::UserInfo::ptr UserManager::getByEmail(const std::string& v)
 {
-    int64_t cachedId = GetCachedIdMapping("usr:eml:" + v);
-    if (cachedId > 0) {
-        return get(cachedId);
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    auto info = data::UserInfoDao::QueryByEmail(v, db);
-    if (info) {
-        SetUserCache(info);
-        CacheIdMapping("usr:eml:" + v, info->getId());
-    }
-    return info;
+    return UserRepository::GetByEmail(v, GetDB());
+}
+
+DB::UserInfo::ptr UserManager::getByName(const std::string& v)
+{
+    return UserRepository::GetByName(v, GetDB());
 }
 
 void UserManager::ensureSuperAdmin()
@@ -206,7 +76,7 @@ void UserManager::ensureSuperAdmin()
         return;
     }
 
-    auto info = data::UserInfoDao::QueryByEmail(email, db);
+    auto info = UserRepository::GetByEmail(email, db);
     bool is_new = false;
     if (!info) {
         // 仅在首次创建时要求配置初始密码，已有管理员不会被重置密码
@@ -220,7 +90,7 @@ void UserManager::ensureSuperAdmin()
             ERROR(logger) << "hash super admin password failed, skip seeding";
             return;
         }
-        info.reset(new data::UserInfo);
+        info.reset(new DB::UserInfo);
         info->setPasswd(passwd_hash);
         info->setName(account);
         info->setAccount(account);
@@ -232,11 +102,11 @@ void UserManager::ensureSuperAdmin()
     info->setState(Status::ACTIVE);
     info->setIsDeleted(0);
 
-    if (data::UserInfoDao::InsertOrUpdate(info, db)) {
+    if (!UserRepository::InsertOrUpdate(info, db)) {
         ERROR(logger) << "insert super admin failed: errno=" << db->getErrno() << " errstr=" << db->getErrStr();
         return;
     }
-    SetUserCache(info);
+    UserRepository::Put(info);
 
     if (is_new) {
         INFO(logger) << "seeded super admin account=" << account << " email=" << email;
@@ -245,27 +115,11 @@ void UserManager::ensureSuperAdmin()
     }
 }
 
-blog::data::UserInfo::ptr UserManager::getByName(const std::string& v)
+std::string UserManager::GetToken(DB::UserInfo::ptr info, int64_t us)
 {
-    int64_t cachedId = GetCachedIdMapping("usr:name:" + v);
-    if (cachedId > 0) {
-        return get(cachedId);
+    if (!info) {
+        return {};
     }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    auto info = data::UserInfoDao::QueryByName(v, db);
-    if (info) {
-        SetUserCache(info);
-        CacheIdMapping("usr:name:" + v, info->getId());
-    }
-    return info;
-}
-
-std::string UserManager::GetToken(data::UserInfo::ptr info, int64_t us)
-{
     std::stringstream ss;
     ss << info->getId() << "|" << info->getAccount() << "|" << info->getEmail() << "|" << info->getPasswd() << "|" << us;
     return chen::EncryptorUtil::MD5(ss.str());
@@ -273,7 +127,5 @@ std::string UserManager::GetToken(data::UserInfo::ptr info, int64_t us)
 
 std::string UserManager::GenerateToken()
 {
-    std::stringstream ss;
-    ss << std::hex << chen::TimeUtil::GetCurrentUs() << rand() << rand();
-    return chen::EncryptorUtil::MD5(ss.str());
+    return chen::EncryptorUtil::MD5(chen::RandomUtil::RandString(32));
 }

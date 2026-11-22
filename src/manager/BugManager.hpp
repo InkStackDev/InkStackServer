@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/bug_info.h"
+#include "DB/BugInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -27,15 +27,15 @@ public:
         STATUS_REOPENED = 4
     };
 
-    data::BugInfo::ptr get(int64_t id);
+    DB::BugInfo::ptr get(int64_t id);
 
-    uint64_t listByPages(std::vector<data::BugInfo::ptr>& infos,
+    uint64_t listByPages(std::vector<DB::BugInfo::ptr>& infos,
         uint64_t offset,
         uint64_t size,
         int32_t status,
         bool is_valid);
 
-    uint64_t listByOrg(std::vector<data::BugInfo::ptr>& infos,
+    uint64_t listByOrg(std::vector<DB::BugInfo::ptr>& infos,
         int64_t org_id,
         uint64_t offset,
         uint64_t size,
@@ -43,7 +43,7 @@ public:
         bool is_valid);
 
 private:
-    static data::BugInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::BugInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<BugManager> BugMgr;

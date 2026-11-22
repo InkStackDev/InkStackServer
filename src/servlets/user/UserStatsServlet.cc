@@ -24,11 +24,11 @@ int32_t UserStatsServlet::handle(
             uid = getUserId(request);
         }
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        std::vector<data::ArticleInfo::ptr> articles;
+        std::vector<DB::ArticleInfo::ptr> articles;
         ArticleMgr::GetInstance()->listByUserId(articles, uid, true);
 
         int64_t total_articles = 0;
@@ -55,7 +55,7 @@ int32_t UserStatsServlet::handle(
             total_views += a->getViews();
             total_likes += a->getPraise();
 
-            std::vector<data::ArticleLabelRelInfo::ptr> labels;
+            std::vector<DB::ArticleLabelRelInfo::ptr> labels;
             ArticleLabelRelMgr::GetInstance()->listByArticleId(labels, a->getId(), true);
             for (auto& l : labels) {
                 unique_labels.insert(l->getLabelId());
@@ -63,11 +63,11 @@ int32_t UserStatsServlet::handle(
         }
 
         // total_organizations
-        std::vector<data::OrganizationUserRelInfo::ptr> orgs;
+        std::vector<DB::OrganizationUserRelInfo::ptr> orgs;
         OrganizationUserRelMgr::GetInstance()->getOrgByUserId(orgs, uid, OrganizationUserRelManager::APPROVED, true);
         int64_t total_organizations = orgs.size();
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("total_articles", total_articles);
         result->set("published_articles", published_articles);
         result->set("private_articles", private_articles);
@@ -78,7 +78,7 @@ int32_t UserStatsServlet::handle(
         if (!published_ids.empty()) {
             auto db = GetDB();
             if (db) {
-                auto qb = data::CommentInfoDao::newQuery();
+                auto qb = DB::CommentInfoDao::newQuery();
                 qb->whereIn("article_id", published_ids);
                 qb->where("is_deleted", "=", (int64_t)0);
                 qb->executeCount(total_comments, db);

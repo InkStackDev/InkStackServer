@@ -56,7 +56,7 @@ int32_t WSGatewayServlet::onConnect(chen::http::HttpRequest::ptr header, chen::h
     }
 
     int64_t uid = 0;
-    db::UserInfo::ptr user;
+    DB::UserInfo::ptr user;
     if (!AuthService::ResolveWs(header, uid, user) || !user) {
         INFO(logger) << "[WS] onConnect FAIL: not logged in";
         SendError(session, NOT_LOGIN, "Please login first");

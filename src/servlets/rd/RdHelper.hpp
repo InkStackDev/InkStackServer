@@ -12,9 +12,9 @@
 #include "../../Manager/RequirementManager.hpp"
 #include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
-#include "blog/data/bug_info.h"
-#include "blog/data/requirement_info.h"
-#include "blog/data/task_info.h"
+#include "DB/BugInfo.hpp"
+#include "DB/RequirementInfo.hpp"
+#include "DB/TaskInfo.hpp"
 
 #include <Chen/Http/Http.hpp>
 #include <Chen/Util/TimeUtil.hpp>
@@ -296,7 +296,7 @@ inline std::string GetUserAvatar(int64_t user_id)
 // ============================================================================
 // 构建 JSON 响应对象
 // ============================================================================
-inline void BuildRequirementJson(Json::Value& item, data::RequirementInfo::ptr info)
+inline void BuildRequirementJson(Json::Value& item, DB::RequirementInfo::ptr info)
 {
     item["id"] = info->getId();
     item["title"] = info->getTitle();
@@ -318,7 +318,7 @@ inline void BuildRequirementJson(Json::Value& item, data::RequirementInfo::ptr i
     item["updated_at"] = info->getUpdateTime();
 }
 
-inline void BuildBugJson(Json::Value& item, data::BugInfo::ptr info)
+inline void BuildBugJson(Json::Value& item, DB::BugInfo::ptr info)
 {
     item["id"] = info->getId();
     item["title"] = info->getTitle();
@@ -341,7 +341,7 @@ inline void BuildBugJson(Json::Value& item, data::BugInfo::ptr info)
     item["updated_at"] = info->getUpdateTime();
 }
 
-inline void BuildTaskJson(Json::Value& item, data::TaskInfo::ptr info)
+inline void BuildTaskJson(Json::Value& item, DB::TaskInfo::ptr info)
 {
     item["id"] = info->getId();
     item["title"] = info->getTitle();

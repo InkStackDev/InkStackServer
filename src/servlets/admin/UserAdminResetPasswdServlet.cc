@@ -26,41 +26,41 @@ int32_t UserAdminResetPasswdServlet::handle(
         DEFINE_AND_CHECK_STRING(result, passwd_s, "passwd_s");
 
         if (passwd_f.empty() || passwd_s.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "password required");
+            result->setErrno(PARAM_MISSING, "password required");
             break;
         }
 
         if (passwd_f != passwd_s) {
-            result->setErrno(errcode::USER_PASSWORDS_DIFFER);
+            result->setErrno(USER_PASSWORDS_DIFFER);
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
         std::string passwd_hash = HashPassword(passwd_s);
         if (passwd_hash.empty()) {
-            result->setErrno(errcode::INTERNAL_ERROR);
+            result->setErrno(INTERNAL_ERROR);
             break;
         }
 
         chen::ITransaction::ptr trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
-        data::UserInfo::ptr info = UserMgr::GetInstance()->get(id);
+        DB::UserInfo::ptr info = UserMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         info->setPasswd(passwd_hash);
 
-        if (data::UserInfoDao::Update(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "insert user failed");
+        if (DB::UserInfoDao::Update(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "insert user failed");
             break;
         }
         trans->commit();
@@ -73,7 +73,7 @@ int32_t UserAdminResetPasswdServlet::handle(
             data.type = "password_reset";
             data.user_id = id;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_USER_ADMIN, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_ADMIN, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

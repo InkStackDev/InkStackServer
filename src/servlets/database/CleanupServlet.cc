@@ -6,8 +6,8 @@
 
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/backup_record_info.h"
-#include "blog/data/export_record_info.h"
+#include "DB/BackupRecordInfo.hpp"
+#include "DB/ExportRecordInfo.hpp"
 #include "../../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -26,16 +26,16 @@ int32_t CleanupServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -46,16 +46,16 @@ int32_t CleanupServlet::handle(
 
         auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
-        auto qb_old = data::BackupRecordInfoDao::newQuery();
+        auto qb_old = DB::BackupRecordInfoDao::newQuery();
         qb_old->where("is_deleted", "=", (int64_t)1);
         qb_old->where("create_time", "<", deadline);
 
-        std::vector<data::BackupRecordInfo::ptr> old_backups;
-        data::BackupRecordInfoDao::QueryByBuilder(old_backups, qb_old, db);
+        std::vector<DB::BackupRecordInfo::ptr> old_backups;
+        DB::BackupRecordInfoDao::QueryByBuilder(old_backups, qb_old, db);
         for (auto& b : old_backups) {
             if (!b->getFilePath().empty()) {
                 std::string fp = b->getFilePath();
@@ -67,16 +67,16 @@ int32_t CleanupServlet::handle(
                     freed += sz;
                 }
             }
-            data::BackupRecordInfoDao::DeleteById(b->getId(), db);
+            DB::BackupRecordInfoDao::DeleteById(b->getId(), db);
             cleaned++;
         }
 
-        auto qb_old_exp = data::ExportRecordInfoDao::newQuery();
+        auto qb_old_exp = DB::ExportRecordInfoDao::newQuery();
         qb_old_exp->where("is_deleted", "=", (int64_t)1);
         qb_old_exp->where("create_time", "<", deadline);
 
-        std::vector<data::ExportRecordInfo::ptr> old_exports;
-        data::ExportRecordInfoDao::QueryByBuilder(old_exports, qb_old_exp, db);
+        std::vector<DB::ExportRecordInfo::ptr> old_exports;
+        DB::ExportRecordInfoDao::QueryByBuilder(old_exports, qb_old_exp, db);
         for (auto& e : old_exports) {
             if (!e->getFilePath().empty()) {
                 std::string fp = e->getFilePath();
@@ -88,13 +88,13 @@ int32_t CleanupServlet::handle(
                     freed += sz;
                 }
             }
-            data::ExportRecordInfoDao::DeleteById(e->getId(), db);
+            DB::ExportRecordInfoDao::DeleteById(e->getId(), db);
             cleaned++;
         }
 
         result->set("cleaned", cleaned);
         result->set("freedBytes", freed);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

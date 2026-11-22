@@ -28,7 +28,7 @@ int32_t ArticleQueryServlet::handle(
         int64_t state = request->getParamAs<int64_t>("state", 0);
 
         int offset = (page_from - 1) * page_size;
-        std::vector<data::ArticleInfo::ptr> infos;
+        std::vector<DB::ArticleInfo::ptr> infos;
         auto total = ArticleMgr::GetInstance()->listByUserIdPages(infos, user_id, offset, page_size, true, state);
         result->set("total", total);
         Json::Value list;
@@ -48,7 +48,7 @@ int32_t ArticleQueryServlet::handle(
             item["comment_count"] = CommentMgr::GetInstance()->countByArticle(i->getId());
             // 查询文章分类
             {
-                std::vector<data::ArticleCategoryRelInfo::ptr> rels;
+                std::vector<DB::ArticleCategoryRelInfo::ptr> rels;
                 ArticleCategoryRelMgr::GetInstance()->listByArticleId(rels, i->getId(), true);
                 Json::Value categories(Json::arrayValue);
                 for (auto& rel : rels) {

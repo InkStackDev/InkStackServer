@@ -196,7 +196,7 @@ inline bool IsAdmin(int32_t system_role)
  * @param user 当前登录用户信息
  * @return 0 表示通过，否则返回需要下发的错误码
  */
-inline int32_t CheckAdminRoute(int64_t uid, const db::UserInfo::ptr& user)
+inline int32_t CheckAdminRoute(int64_t uid, const DB::UserInfo::ptr& user)
 {
     if (!uid) {
         return NOT_LOGIN;

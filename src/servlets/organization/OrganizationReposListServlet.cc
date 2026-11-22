@@ -33,26 +33,26 @@ int32_t OrganizationReposListServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         // 检查组织是否存在
         auto org = OrganizationMgr::GetInstance()->get(org_id);
         if (!org) {
-            result->setErrno(errcode::ORG_NOT_FOUND);
+            result->setErrno(ORG_NOT_FOUND);
             break;
         }
 
         // 检查用户是否是该组织成员（任意角色即可查看仓库）
         auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-            result->setErrno(errcode::ACCESS_DENIED, "无权访问该组织");
+            result->setErrno(ACCESS_DENIED, "无权访问该组织");
             break;
         }
 
         uint64_t offset = (page - 1) * page_size;
-        std::vector<data::OrganizationReposInfo::ptr> repos;
+        std::vector<DB::OrganizationReposInfo::ptr> repos;
         int64_t total = OrganizationRepoMgr::GetInstance()->listByOrgPages(repos, org_id, offset, page_size);
 
         result->set("total", total);

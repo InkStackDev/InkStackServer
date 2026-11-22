@@ -16,9 +16,9 @@ static std::string CategoryCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::CategoryInfo::ptr ParseCategoryCache(const Json::Value& v)
+static DB::CategoryInfo::ptr ParseCategoryCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::CategoryInfo>();
+    auto info = std::make_shared<DB::CategoryInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
     info->setName(CacheJsonString(v, "name"));
@@ -36,7 +36,7 @@ static data::CategoryInfo::ptr ParseCategoryCache(const Json::Value& v)
     return info;
 }
 
-static data::CategoryInfo::ptr GetCategoryCache(int64_t id)
+static DB::CategoryInfo::ptr GetCategoryCache(int64_t id)
 {
     std::string key = CategoryCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -51,7 +51,7 @@ static data::CategoryInfo::ptr GetCategoryCache(int64_t id)
     return ParseCategoryCache(v);
 }
 
-static void SetCategoryCache(const data::CategoryInfo::ptr& info)
+static void SetCategoryCache(const DB::CategoryInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -59,17 +59,17 @@ static void SetCategoryCache(const data::CategoryInfo::ptr& info)
     RedisCacheSetex(CategoryCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::CategoryInfo::ptr CategoryManager::ParseRow(chen::ISQLData::ptr rt)
+DB::CategoryInfo::ptr CategoryManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::CategoryInfoDao::ParseRow(rt);
+    return DB::CategoryInfoDao::ParseRow(rt);
 }
 
-void CategoryManager::add(blog::data::CategoryInfo::ptr info)
+void CategoryManager::add(DB::CategoryInfo::ptr info)
 {
     SetCategoryCache(info);
 }
 
-blog::data::CategoryInfo::ptr CategoryManager::get(int64_t id)
+DB::CategoryInfo::ptr CategoryManager::get(int64_t id)
 {
     auto v = GetCategoryCache(id);
     if (v) {
@@ -80,48 +80,48 @@ blog::data::CategoryInfo::ptr CategoryManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::CategoryInfoDao::Query(id, db);
+    v = DB::CategoryInfoDao::Query(id, db);
     if (v) {
         SetCategoryCache(v);
     }
     return v;
 }
 
-void CategoryManager::listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool is_valid)
+void CategoryManager::listAll(std::vector<DB::CategoryInfo::ptr>& infos, bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::CategoryInfoDao::newQuery();
+    auto qb = DB::CategoryInfoDao::newQuery();
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "ASC");
-    if (data::CategoryInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::CategoryInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
 }
 
-bool CategoryManager::listByUserId(std::vector<blog::data::CategoryInfo::ptr>& infos, int64_t user_id, bool is_valid)
+bool CategoryManager::listByUserId(std::vector<DB::CategoryInfo::ptr>& infos, int64_t user_id, bool is_valid)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::CategoryInfoDao::newQuery();
+    auto qb = DB::CategoryInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "ASC");
-    if (data::CategoryInfoDao::QueryByBuilder(infos, qb, db)) {
+    if (DB::CategoryInfoDao::QueryByBuilder(infos, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return false;
     }
     return true;
 }
 
-blog::data::CategoryInfo::ptr CategoryManager::getByUserIdName(int64_t user_id, const std::string& name)
+DB::CategoryInfo::ptr CategoryManager::getByUserIdName(int64_t user_id, const std::string& name)
 {
     std::string cache_key = "cat:uid_name:" + std::to_string(user_id) + ":" + name;
     int64_t cachedId = GetCachedIdMapping(cache_key);
@@ -137,7 +137,7 @@ blog::data::CategoryInfo::ptr CategoryManager::getByUserIdName(int64_t user_id, 
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = data::CategoryInfoDao::QueryByUserIdName(user_id, name, db);
+    auto info = DB::CategoryInfoDao::QueryByUserIdName(user_id, name, db);
     if (info) {
         SetCategoryCache(info);
         CacheIdMapping(cache_key, info->getId());

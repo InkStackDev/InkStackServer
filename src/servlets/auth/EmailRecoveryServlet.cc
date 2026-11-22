@@ -34,17 +34,17 @@ int32_t EmailRecoveryServlet::handle(
         DEFINE_AND_CHECK_STRING(result, auth_code, "auth_code");
 
         if (!IsEmail(email)) {
-            result->setErrno(errcode::USER_INVALID_EMAIL);
+            result->setErrno(USER_INVALID_EMAIL);
             break;
         }
 
         auto user = UserMgr::GetInstance()->getByEmail(email);
         if (!user) {
-            result->setErrno(errcode::USER_EMAIL_NOT_REGISTER);
+            result->setErrno(USER_EMAIL_NOT_REGISTER);
             break;
         }
         if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
-            result->setErrno(errcode::ACCOUNT_INVALID);
+            result->setErrno(ACCOUNT_INVALID);
             break;
         }
 
@@ -58,7 +58,7 @@ int32_t EmailRecoveryServlet::handle(
                 failures = 0;
             }
             if (failures >= kRecoveryFailLimit) {
-                result->setErrno(errcode::EMAIL_CODE_ATTEMPTS_EXCEEDED);
+                result->setErrno(EMAIL_CODE_ATTEMPTS_EXCEEDED);
                 break;
             }
         }
@@ -71,7 +71,7 @@ int32_t EmailRecoveryServlet::handle(
             if (inc_rpy && inc_rpy->integer == 1) {
                 chen::RedisUtil::Cmd(GetRedisPoolName(), "expire %s 600", fail_key.c_str());
             }
-            result->setErrno(errcode::AUTH_CODE_INVALID);
+            result->setErrno(AUTH_CODE_INVALID);
             break;
         }
 
@@ -94,7 +94,7 @@ int32_t EmailRecoveryServlet::handle(
         result->set("name", user->getName());
         result->set("avatar", user->getAvatar());
         result->set("role", user->getRole());
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         INFO(logger) << "email recovery login uid=" << user->getId();
     } while (0);
     response->setBody(result->toJsonString());

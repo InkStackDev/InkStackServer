@@ -81,7 +81,6 @@ struct RpcConf {
         ASSERT_RET(parts.size() == 2, 0);
 
         return atoi(parts.back().c_str());
-        ∑ =
     }
 
     bool operator==(const RpcConf& other) const

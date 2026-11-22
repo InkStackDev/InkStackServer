@@ -1,22 +1,22 @@
 #pragma once
 
-#include "blog/data/article_category_rel_info.h"
+#include "DB/ArticleCategoryRelInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 class ArticleCategoryRelManager {
 public:
-    data::ArticleCategoryRelInfo::ptr get(int64_t id);
+    DB::ArticleCategoryRelInfo::ptr get(int64_t id);
 
-    bool listByArticleId(std::vector<data::ArticleCategoryRelInfo::ptr>& infos, int64_t id, bool valid);
+    bool listByArticleId(std::vector<DB::ArticleCategoryRelInfo::ptr>& infos, int64_t id, bool valid);
 
-    bool listByCategoryId(std::vector<data::ArticleCategoryRelInfo::ptr>& infos, int64_t category_id, bool valid);
+    bool listByCategoryId(std::vector<DB::ArticleCategoryRelInfo::ptr>& infos, int64_t category_id, bool valid);
 
-    data::ArticleCategoryRelInfo::ptr getByArticleIdCategoryId(int64_t article_id, int64_t category_id);
+    DB::ArticleCategoryRelInfo::ptr getByArticleIdCategoryId(int64_t article_id, int64_t category_id);
 
 private:
-    static data::ArticleCategoryRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::ArticleCategoryRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<ArticleCategoryRelManager> ArticleCategoryRelMgr;

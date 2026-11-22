@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../BlogLoginedServlet.hpp"
+
 #include "../../SessionData.hpp"
 
 class AdminCommentStatsServlet : public BlogLoginedServlet {

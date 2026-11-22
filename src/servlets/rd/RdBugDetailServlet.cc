@@ -20,18 +20,18 @@ int32_t RdBugDetailServlet::handle(
     do {
         int64_t id = request->getParamAs<int64_t>("id", 0);
         if (!id) {
-            result->setErrno(errcode::PARAM_MISSING, "id is required");
+            result->setErrno(PARAM_MISSING, "id is required");
             break;
         }
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -39,7 +39,7 @@ int32_t RdBugDetailServlet::handle(
 
         auto info = BugMgr::GetInstance()->get(id);
         if (!info || info->getIsDeleted()) {
-            result->setErrno(errcode::BUG_NOT_FOUND);
+            result->setErrno(BUG_NOT_FOUND);
             break;
         }
 
@@ -47,11 +47,11 @@ int32_t RdBugDetailServlet::handle(
         if (!is_platform_admin) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(info_org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
-            if (!permission::CanViewBug(rel->getRole(), uid, info->getCreatorId())) {
-                result->setErrno(errcode::ACCESS_DENIED);
+            if (!CanViewBug(rel->getRole(), uid, info->getCreatorId())) {
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         }

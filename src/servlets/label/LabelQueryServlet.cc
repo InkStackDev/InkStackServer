@@ -2,7 +2,7 @@
 
 #include "../../Include/Managers.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/article_label_rel_info.h"
+#include "DB/ArticleLabelRelInfo.hpp"
 
 #include <Chen/Log/Log.hpp>
 
@@ -25,11 +25,11 @@ int32_t LabelQueryServlet::handle(
         int64_t user_id = request->getParamAs<int64_t>("user_id");
         std::string ids = request->getParam("ids");
         if (user_id == 0 && ids.empty()) {
-            result->setErrno(errcode::PARAM_MISSING);
+            result->setErrno(PARAM_MISSING);
             break;
         }
 
-        std::vector<data::LabelInfo::ptr> infos;
+        std::vector<DB::LabelInfo::ptr> infos;
         if (user_id) {
             LabelMgr::GetInstance()->listByUserId(infos, user_id, true);
         } else {
@@ -53,7 +53,7 @@ int32_t LabelQueryServlet::handle(
                 for (auto& i : infos) {
                     label_ids.push_back(i->getId());
                 }
-                auto qb = data::ArticleLabelRelInfoDao::newQuery("r");
+                auto qb = DB::ArticleLabelRelInfoDao::newQuery("r");
                 qb->select("r.label_id, COUNT(*) cnt");
                 qb->join("article a", "r.article_id = a.id");
                 qb->whereIn("r.label_id", label_ids);

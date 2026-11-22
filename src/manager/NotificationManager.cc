@@ -18,9 +18,9 @@ static std::string NotificationCacheKey(int64_t id)
     return std::string(kCachePrefix) + std::to_string(id);
 }
 
-static data::NotificationInfo::ptr ParseNotificationCache(const Json::Value& v)
+static DB::NotificationInfo::ptr ParseNotificationCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::NotificationInfo>();
+    auto info = std::make_shared<DB::NotificationInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
     info->setTitle(CacheJsonString(v, "title"));
@@ -42,7 +42,7 @@ static data::NotificationInfo::ptr ParseNotificationCache(const Json::Value& v)
     return info;
 }
 
-static data::NotificationInfo::ptr GetNotificationCache(int64_t id)
+static DB::NotificationInfo::ptr GetNotificationCache(int64_t id)
 {
     std::string key = NotificationCacheKey(id);
     std::string data = RedisCacheGet(key);
@@ -57,7 +57,7 @@ static data::NotificationInfo::ptr GetNotificationCache(int64_t id)
     return ParseNotificationCache(v);
 }
 
-static void SetNotificationCache(const data::NotificationInfo::ptr& info)
+static void SetNotificationCache(const DB::NotificationInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -65,9 +65,9 @@ static void SetNotificationCache(const data::NotificationInfo::ptr& info)
     RedisCacheSetex(NotificationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
 }
 
-data::NotificationInfo::ptr NotificationManager::ParseRow(chen::ISQLData::ptr rt)
+DB::NotificationInfo::ptr NotificationManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::NotificationInfoDao::ParseRow(rt);
+    return DB::NotificationInfoDao::ParseRow(rt);
 }
 
 // ========== WS推送 ==========
@@ -89,7 +89,7 @@ int32_t NotificationManager::getOnlineCount()
 
 // ========== DB persistence ==========
 
-data::NotificationInfo::ptr NotificationManager::addNotification(const NotificationData& data)
+DB::NotificationInfo::ptr NotificationManager::addNotification(const NotificationData& data)
 {
     auto db = GetDB();
     if (!db) {
@@ -97,7 +97,7 @@ data::NotificationInfo::ptr NotificationManager::addNotification(const Notificat
         return nullptr;
     }
 
-    auto info = std::make_shared<data::NotificationInfo>();
+    auto info = std::make_shared<DB::NotificationInfo>();
     info->setUserId(data.user_id);
     info->setTitle(data.title);
     info->setContent(data.content);
@@ -115,7 +115,7 @@ data::NotificationInfo::ptr NotificationManager::addNotification(const Notificat
     info->setCreateTime(time(0));
     info->setUpdateTime(time(0));
 
-    if (data::NotificationInfoDao::Insert(info, db)) {
+    if (DB::NotificationInfoDao::Insert(info, db)) {
         ERROR(logger) << "NotificationManager addNotification Insert fail";
         return nullptr;
     }
@@ -124,13 +124,12 @@ data::NotificationInfo::ptr NotificationManager::addNotification(const Notificat
     return info;
 }
 
-void NotificationManager::update(data::NotificationInfo::ptr info)
+void NotificationManager::update(DB::NotificationInfo::ptr info)
 {
     SetNotificationCache(info);
 }
 
-void NotificationManager::listByUser(
-    std::vector<data::NotificationInfo::ptr>& results,
+void NotificationManager::listByUser(std::vector<DB::NotificationInfo::ptr>& results,
     int64_t user_id,
     uint64_t offset,
     uint64_t size,
@@ -141,7 +140,7 @@ void NotificationManager::listByUser(
         ERROR(logger) << "Get DB connection fail";
         return;
     }
-    auto qb = data::NotificationInfoDao::newQuery();
+    auto qb = DB::NotificationInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->whereIf(!type.empty(), "type", "=", type);
     qb->orderBy("id", "DESC");
@@ -162,7 +161,7 @@ void NotificationManager::listByUser(
         return;
     }
 
-    if (data::NotificationInfoDao::QueryByBuilder(results, qb, db)) {
+    if (DB::NotificationInfoDao::QueryByBuilder(results, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return;
     }
@@ -180,7 +179,7 @@ int64_t NotificationManager::countByUser(int64_t user_id, const std::string& typ
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::NotificationInfoDao::newQuery();
+    auto qb = DB::NotificationInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->whereIf(!type.empty(), "type", "=", type);
     std::string ck = "notif:cnt:" + std::to_string(user_id) + ":" + (type.empty() ? "all" : type);
@@ -194,7 +193,7 @@ int64_t NotificationManager::unreadCount(int64_t user_id)
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::NotificationInfoDao::newQuery();
+    auto qb = DB::NotificationInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->where("is_read", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
@@ -216,7 +215,7 @@ bool NotificationManager::markRead(int64_t notification_id)
 
     info->setIsRead(1);
     info->setReadTime(time(0));
-    if (data::NotificationInfoDao::Update(info, db)) {
+    if (DB::NotificationInfoDao::Update(info, db)) {
         return false;
     }
     SetNotificationCache(info);
@@ -238,7 +237,7 @@ bool NotificationManager::markRead(const std::vector<int64_t>& ids)
         }
         info->setIsRead(1);
         info->setReadTime(time(0));
-        if (data::NotificationInfoDao::Update(info, db) == 0) {
+        if (DB::NotificationInfoDao::Update(info, db) == 0) {
             SetNotificationCache(info);
         }
     }
@@ -254,12 +253,12 @@ int64_t NotificationManager::markAllRead(int64_t user_id)
     }
 
     // Find all unread, non-deleted notifications for this user
-    auto qb = data::NotificationInfoDao::newQuery();
+    auto qb = DB::NotificationInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->where("is_read", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
-    std::vector<data::NotificationInfo::ptr> unread;
-    if (data::NotificationInfoDao::QueryByBuilder(unread, qb, db)) {
+    std::vector<DB::NotificationInfo::ptr> unread;
+    if (DB::NotificationInfoDao::QueryByBuilder(unread, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return 0;
     }
@@ -268,7 +267,7 @@ int64_t NotificationManager::markAllRead(int64_t user_id)
     for (auto& info : unread) {
         info->setIsRead(1);
         info->setReadTime(time(0));
-        if (data::NotificationInfoDao::Update(info, db) == 0) {
+        if (DB::NotificationInfoDao::Update(info, db) == 0) {
             SetNotificationCache(info);
             count++;
         }
@@ -284,13 +283,13 @@ int64_t NotificationManager::markReadByType(int64_t user_id, const std::string& 
         return 0;
     }
 
-    auto qb = data::NotificationInfoDao::newQuery();
+    auto qb = DB::NotificationInfoDao::newQuery();
     qb->where("user_id", "=", user_id);
     qb->where("is_read", "=", (int64_t)0);
     qb->where("is_deleted", "=", (int64_t)0);
     qb->where("type", "=", type);
-    std::vector<data::NotificationInfo::ptr> unread;
-    if (data::NotificationInfoDao::QueryByBuilder(unread, qb, db)) {
+    std::vector<DB::NotificationInfo::ptr> unread;
+    if (DB::NotificationInfoDao::QueryByBuilder(unread, qb, db)) {
         ERROR(logger) << "QueryByBuilder failed";
         return 0;
     }
@@ -299,7 +298,7 @@ int64_t NotificationManager::markReadByType(int64_t user_id, const std::string& 
     for (auto& info : unread) {
         info->setIsRead(1);
         info->setReadTime(time(0));
-        if (data::NotificationInfoDao::Update(info, db) == 0) {
+        if (DB::NotificationInfoDao::Update(info, db) == 0) {
             SetNotificationCache(info);
             count++;
         }
@@ -307,7 +306,7 @@ int64_t NotificationManager::markReadByType(int64_t user_id, const std::string& 
     return count;
 }
 
-data::NotificationInfo::ptr NotificationManager::get(int64_t id)
+DB::NotificationInfo::ptr NotificationManager::get(int64_t id)
 {
     auto v = GetNotificationCache(id);
     if (v) {
@@ -318,7 +317,7 @@ data::NotificationInfo::ptr NotificationManager::get(int64_t id)
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    v = data::NotificationInfoDao::Query(id, db);
+    v = DB::NotificationInfoDao::Query(id, db);
     if (v) {
         SetNotificationCache(v);
     }
@@ -333,7 +332,7 @@ void NotificationManager::cleanupExpiredBroadcasts()
     }
     int64_t now = time(0);
     // 将已过期的广播的 is_broadcast 置 0，前端 /broadcast/list 不再返回
-    auto qb = data::NotificationInfoDao::newQuery();
+    auto qb = DB::NotificationInfoDao::newQuery();
     qb->set("is_broadcast", (int64_t)0);
     qb->set("update_time", now);
     qb->where("is_broadcast", "=", (int64_t)1);

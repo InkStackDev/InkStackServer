@@ -46,17 +46,17 @@ int32_t DashboardRecentUsersServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -68,7 +68,7 @@ int32_t DashboardRecentUsersServlet::handle(
         std::vector<int64_t> ids;
         UserMgr::GetInstance()->getAllIds(ids, true);
 
-        std::vector<data::UserInfo::ptr> users;
+        std::vector<DB::UserInfo::ptr> users;
         for (auto id : ids) {
             auto u = UserMgr::GetInstance()->get(id);
             if (u) {
@@ -95,7 +95,7 @@ int32_t DashboardRecentUsersServlet::handle(
         }
 
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

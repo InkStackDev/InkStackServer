@@ -17,26 +17,26 @@ int32_t ExportCreateServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         if (current_user->getRole() != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         std::string type;
         if (!request->checkGetParamAs("type", type) || type.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "param type is required");
+            result->setErrno(PARAM_MISSING, "param type is required");
             break;
         }
         if (type != "articles" && type != "users" && type != "comments" && type != "full") {
-            result->setErrno(errcode::PARAM_INVALID, "type must be articles/users/comments/full");
+            result->setErrno(PARAM_INVALID, "type must be articles/users/comments/full");
             break;
         }
 
@@ -45,7 +45,7 @@ int32_t ExportCreateServlet::handle(
 
         auto info = ExportRecordMgr::GetInstance()->create(uid, type, name);
         if (!info) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "create export failed");
+            result->setErrno(DB_OPERATION_FAILED, "create export failed");
             break;
         }
 
@@ -65,7 +65,7 @@ int32_t ExportCreateServlet::handle(
         item["created_by"] = info->getCreatedBy();
 
         result->set("data", item);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

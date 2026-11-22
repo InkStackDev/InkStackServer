@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/article_info.h"
+#include "DB/ArticleInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -24,28 +24,40 @@ public:
         REPRINT = 2
     };
 
-    void add(blog::data::ArticleInfo::ptr info);
+    void add(DB::ArticleInfo::ptr info);
 
     void del(int64_t id);
 
-    blog::data::ArticleInfo::ptr get(int64_t id);
+    DB::ArticleInfo::ptr get(int64_t id);
 
-    bool listByUserId(std::vector<data::ArticleInfo::ptr>& infos, int64_t id, bool valid);
+    bool listByUserId(std::vector<DB::ArticleInfo::ptr>& infos, int64_t id, bool valid);
 
-    int64_t listByUserIdPages(std::vector<data::ArticleInfo::ptr>& infos, int64_t id, int32_t offset, int32_t size, bool valid, int state);
+    int64_t listByUserIdPages(std::vector<DB::ArticleInfo::ptr>& infos,
+        int64_t id,
+        int32_t offset,
+        int32_t size,
+        bool valid,
+        int state);
 
-    int64_t listByLabelPages(std::vector<data::ArticleInfo::ptr>& infos, int64_t label_id, int32_t offset, int32_t size, bool valid);
+    int64_t listByLabelPages(std::vector<DB::ArticleInfo::ptr>& infos,
+        int64_t label_id,
+        int32_t offset,
+        int32_t size,
+        bool valid);
 
-    int64_t listByCategoryPages(std::vector<data::ArticleInfo::ptr>& infos, int64_t category_id, int32_t offset, int32_t size, bool valid);
+    int64_t listByCategoryPages(std::vector<DB::ArticleInfo::ptr>& infos,
+        int64_t category_id,
+        int32_t offset,
+        int32_t size,
+        bool valid);
 
     void delVerify(int64_t id);
 
-    void addVerify(data::ArticleInfo::ptr info);
+    void addVerify(DB::ArticleInfo::ptr info);
 
-    int64_t listVerifyPages(std::vector<data::ArticleInfo::ptr>& infos, int32_t offset, int32_t size);
+    int64_t listVerifyPages(std::vector<DB::ArticleInfo::ptr>& infos, int32_t offset, int32_t size);
 
-    int64_t listByPages(
-        std::vector<data::ArticleInfo::ptr>& infos,
+    int64_t listByPages(std::vector<DB::ArticleInfo::ptr>& infos,
         int32_t offset,
         int state,
         int category,
@@ -54,7 +66,7 @@ public:
         int32_t size,
         bool valid);
 
-    std::pair<data::ArticleInfo::ptr, data::ArticleInfo::ptr> nearby(int64_t id);
+    std::pair<DB::ArticleInfo::ptr, DB::ArticleInfo::ptr> nearby(int64_t id);
 
     std::string statusString();
 
@@ -148,7 +160,7 @@ private:
 
     void addUpdate(int64_t id);
 
-    static data::ArticleInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::ArticleInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 
     void doArticlePublishSchedule();
 

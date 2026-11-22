@@ -17,7 +17,7 @@ int32_t CommentDeleteServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -25,22 +25,22 @@ int32_t CommentDeleteServlet::handle(
 
         auto comment = CommentMgr::GetInstance()->get(id);
         if (!comment || comment->getIsDeleted()) {
-            result->setErrno(errcode::COMMENT_NOT_FOUND);
+            result->setErrno(COMMENT_NOT_FOUND);
             break;
         }
 
         // only the comment author can delete
         if (comment->getUserId() != uid) {
-            result->setErrno(errcode::COMMENT_PERMISSION_DENIED);
+            result->setErrno(COMMENT_PERMISSION_DENIED);
             break;
         }
 
         if (!CommentMgr::GetInstance()->del(id)) {
-            result->setErrno(errcode::COMMENT_DELETE_FAILED);
+            result->setErrno(COMMENT_DELETE_FAILED);
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/organization_user_rel_info.h"
+#include "DB/OrganizationUserRelInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -14,21 +14,20 @@ public:
         EXITED = 3
     };
 
-    void add(data::OrganizationUserRelInfo::ptr info);
+    void add(DB::OrganizationUserRelInfo::ptr info);
 
-    data::OrganizationUserRelInfo::ptr get(int64_t id);
+    DB::OrganizationUserRelInfo::ptr get(int64_t id);
 
-    data::OrganizationUserRelInfo::ptr getByOrgAndUser(int64_t o_id, int64_t u_id);
+    DB::OrganizationUserRelInfo::ptr getByOrgAndUser(int64_t o_id, int64_t u_id);
 
-    int64_t getByPages(
-        std::vector<data::OrganizationUserRelInfo::ptr>& results,
+    int64_t getByPages(std::vector<DB::OrganizationUserRelInfo::ptr>& results,
         int64_t o_id,
         uint64_t offset,
         uint64_t size,
         int32_t status,
         bool is_valid);
 
-    int64_t getOrgByUserId(std::vector<data::OrganizationUserRelInfo::ptr>& results,
+    int64_t getOrgByUserId(std::vector<DB::OrganizationUserRelInfo::ptr>& results,
         int64_t u_id,
         int32_t status,
         bool is_valid);
@@ -45,7 +44,7 @@ public:
     Stats getStats(int64_t org_id);
 
 private:
-    static data::OrganizationUserRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::OrganizationUserRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationUserRelManager> OrganizationUserRelMgr;

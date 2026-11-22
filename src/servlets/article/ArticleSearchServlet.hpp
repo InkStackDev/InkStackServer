@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../BlogServlet.hpp"
+
 #include "../../SessionData.hpp"
 
 class ArticleSearchServlet : public BlogServlet {

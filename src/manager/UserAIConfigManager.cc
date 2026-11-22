@@ -23,9 +23,9 @@ static std::string AIConfigCacheKey(int64_t user_id)
     return std::string(kCachePrefix) + std::to_string(user_id);
 }
 
-static data::UserAiConfigInfo::ptr ParseAIConfigCache(const Json::Value& v)
+static DB::UserAiConfigInfo::ptr ParseAIConfigCache(const Json::Value& v)
 {
-    auto info = std::make_shared<data::UserAiConfigInfo>();
+    auto info = std::make_shared<DB::UserAiConfigInfo>();
     info->setId(CacheJsonInt64(v, "id"));
     info->setUserId(CacheJsonInt64(v, "user_id"));
     info->setType(CacheJsonString(v, "type"));
@@ -39,7 +39,7 @@ static data::UserAiConfigInfo::ptr ParseAIConfigCache(const Json::Value& v)
     return info;
 }
 
-static data::UserAiConfigInfo::ptr GetAIConfigCache(int64_t user_id)
+static DB::UserAiConfigInfo::ptr GetAIConfigCache(int64_t user_id)
 {
     std::string key = AIConfigCacheKey(user_id);
     std::string data = RedisCacheGet(key);
@@ -54,7 +54,7 @@ static data::UserAiConfigInfo::ptr GetAIConfigCache(int64_t user_id)
     return ParseAIConfigCache(v);
 }
 
-static void SetAIConfigCache(const data::UserAiConfigInfo::ptr& info)
+static void SetAIConfigCache(const DB::UserAiConfigInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -62,7 +62,7 @@ static void SetAIConfigCache(const data::UserAiConfigInfo::ptr& info)
     RedisCacheSetex(AIConfigCacheKey(info->getUserId()), info->toJsonString(), kCacheTTL);
 }
 
-blog::data::UserAiConfigInfo::ptr UserAIConfigManager::getByUserId(int64_t user_id)
+DB::UserAiConfigInfo::ptr UserAIConfigManager::getByUserId(int64_t user_id)
 {
     auto v = GetAIConfigCache(user_id);
     if (v) {
@@ -75,14 +75,14 @@ blog::data::UserAiConfigInfo::ptr UserAIConfigManager::getByUserId(int64_t user_
         return nullptr;
     }
 
-    v = data::UserAiConfigInfoDao::QueryByUserId(user_id, db);
+    v = DB::UserAiConfigInfoDao::QueryByUserId(user_id, db);
     if (v) {
         SetAIConfigCache(v);
     }
     return v;
 }
 
-bool UserAIConfigManager::save(blog::data::UserAiConfigInfo::ptr info)
+bool UserAIConfigManager::save(DB::UserAiConfigInfo::ptr info)
 {
     auto db = GetDB();
     if (!db) {
@@ -95,13 +95,13 @@ bool UserAIConfigManager::save(blog::data::UserAiConfigInfo::ptr info)
         info->setCreateTime(time(0));
     }
 
-    if (data::UserAiConfigInfoDao::InsertOrUpdate(info, db)) {
+    if (DB::UserAiConfigInfoDao::InsertOrUpdate(info, db)) {
         ERROR(logger) << "UserAIConfigManager save fail";
         return false;
     }
 
     // save 之后需要重新查询以获取 DB 生成的 id
-    auto saved = data::UserAiConfigInfoDao::QueryByUserId(info->getUserId(), db);
+    auto saved = DB::UserAiConfigInfoDao::QueryByUserId(info->getUserId(), db);
     if (saved) {
         SetAIConfigCache(saved);
     }

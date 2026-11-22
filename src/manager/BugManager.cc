@@ -6,22 +6,22 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::BugInfo::ptr BugManager::ParseRow(chen::ISQLData::ptr rt)
+DB::BugInfo::ptr BugManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::BugInfoDao::ParseRow(rt);
+    return DB::BugInfoDao::ParseRow(rt);
 }
 
-data::BugInfo::ptr BugManager::get(int64_t id)
+DB::BugInfo::ptr BugManager::get(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    return data::BugInfoDao::Query(id, db);
+    return DB::BugInfoDao::Query(id, db);
 }
 
-uint64_t BugManager::listByPages(std::vector<data::BugInfo::ptr>& infos,
+uint64_t BugManager::listByPages(std::vector<DB::BugInfo::ptr>& infos,
     uint64_t offset,
     uint64_t size,
     int32_t status,
@@ -32,19 +32,19 @@ uint64_t BugManager::listByPages(std::vector<data::BugInfo::ptr>& infos,
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::BugInfoDao::newQuery();
+    auto qb = DB::BugInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::BugInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::BugInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;
 }
 
-uint64_t BugManager::listByOrg(std::vector<data::BugInfo::ptr>& infos,
+uint64_t BugManager::listByOrg(std::vector<DB::BugInfo::ptr>& infos,
     int64_t org_id,
     uint64_t offset,
     uint64_t size,
@@ -56,14 +56,14 @@ uint64_t BugManager::listByOrg(std::vector<data::BugInfo::ptr>& infos,
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::BugInfoDao::newQuery();
+    auto qb = DB::BugInfoDao::newQuery();
     qb->where("org_id", "=", org_id);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::BugInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::BugInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;

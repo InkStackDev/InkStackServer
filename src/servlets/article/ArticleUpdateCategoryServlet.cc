@@ -27,22 +27,22 @@ int32_t ArticleUpdateCategoryServlet::handle(
         std::string dels = request->getParam("del_category_ids");
 
         if (adds.empty() && dels.empty()) {
-            result->setErrno(errcode::ARTICLE_CATEGORY_EMPTY);
+            result->setErrno(ARTICLE_CATEGORY_EMPTY);
             break;
         }
 
         auto ainfo = ArticleMgr::GetInstance()->get(id);
         if (!ainfo) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         if (ainfo->getUserId() != uid) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
@@ -51,22 +51,22 @@ int32_t ArticleUpdateCategoryServlet::handle(
             tmps = chen::StringUtil::Split(adds, ',');
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
 
         time_t now = time(0);
-        std::vector<data::ArticleCategoryRelInfo::ptr> new_infos;
-        std::vector<data::ArticleCategoryRelInfo::ptr> update_add_infos;
-        std::vector<data::ArticleCategoryRelInfo::ptr> update_del_infos;
+        std::vector<DB::ArticleCategoryRelInfo::ptr> new_infos;
+        std::vector<DB::ArticleCategoryRelInfo::ptr> update_add_infos;
+        std::vector<DB::ArticleCategoryRelInfo::ptr> update_del_infos;
 
         for (auto& i : tmps) {
             int64_t cid = chen::TypeUtil::Atoi(i);
@@ -81,17 +81,17 @@ int32_t ArticleUpdateCategoryServlet::handle(
                     acinfo->setIsDeleted(0);
                     acinfo->setUpdateTime(now);
                     update_add_infos.push_back(acinfo);
-                    if (data::ArticleCategoryRelInfoDao::Update(acinfo, db)) {
+                    if (DB::ArticleCategoryRelInfoDao::Update(acinfo, db)) {
                         ERROR(logger) << "db error errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
                     }
                 }
             } else {
-                acinfo.reset(new data::ArticleCategoryRelInfo);
+                acinfo.reset(new DB::ArticleCategoryRelInfo);
                 acinfo->setArticleId(id);
                 acinfo->setCategoryId(cid);
                 acinfo->setUpdateTime(now);
                 new_infos.push_back(acinfo);
-                if (data::ArticleCategoryRelInfoDao::Insert(acinfo, db)) {
+                if (DB::ArticleCategoryRelInfoDao::Insert(acinfo, db)) {
                     ERROR(logger) << "db error errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
                 }
             }
@@ -114,7 +114,7 @@ int32_t ArticleUpdateCategoryServlet::handle(
                     acinfo->setUpdateTime(now);
                     new_infos.push_back(acinfo);
                     update_del_infos.push_back(acinfo);
-                    if (data::ArticleCategoryRelInfoDao::Update(acinfo, db)) {
+                    if (DB::ArticleCategoryRelInfoDao::Update(acinfo, db)) {
                         ERROR(logger) << "db error errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
                     }
                 }
@@ -128,7 +128,7 @@ int32_t ArticleUpdateCategoryServlet::handle(
             for (auto& i : update_del_infos) {
                 i->setIsDeleted(0);
             }
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
 

@@ -25,7 +25,7 @@ int32_t ArticleListByLabelServlet::handle(
         int64_t page_size = request->getParamAs<int64_t>("page_size", 6);
 
         int offset = (page_from - 1) * page_size;
-        std::vector<data::ArticleInfo::ptr> infos;
+        std::vector<DB::ArticleInfo::ptr> infos;
         auto total = ArticleMgr::GetInstance()->listByLabelPages(infos, label_id, offset, page_size, true);
         result->set("total", total);
         Json::Value list;

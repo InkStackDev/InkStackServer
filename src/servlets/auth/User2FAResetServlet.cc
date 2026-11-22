@@ -5,7 +5,7 @@
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/TotpUtil.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/user_recovery_code_info.h"
+#include "DB/UserRecoveryCodeInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -24,57 +24,57 @@ int32_t User2FAResetServlet::handle(chen::http::HttpRequest::ptr request,
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto info = UserMgr::GetInstance()->get(uid);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         if (!info->getTotpEnabled()) {
-            result->setErrno(errcode::TOTP_NOT_ENABLED);
+            result->setErrno(TOTP_NOT_ENABLED);
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         // 查找匹配且未使用的恢复码
         std::string codeHash = TotpUtil::HashRecoveryCode(recoveryCode);
-        auto qb = data::UserRecoveryCodeInfoDao::newQuery();
+        auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
         qb->where("user_id", "=", uid);
         qb->where("code_hash", "=", codeHash);
         qb->where("used", "=", (int64_t)0);
 
-        std::vector<data::UserRecoveryCodeInfo::ptr> codes;
-        if (data::UserRecoveryCodeInfoDao::QueryByBuilder(codes, qb, db)) {
-            result->setErrno(errcode::RECOVERY_CODE_INVALID);
+        std::vector<DB::UserRecoveryCodeInfo::ptr> codes;
+        if (DB::UserRecoveryCodeInfoDao::QueryByBuilder(codes, qb, db)) {
+            result->setErrno(RECOVERY_CODE_INVALID);
             break;
         }
 
         if (codes.empty()) {
-            result->setErrno(errcode::RECOVERY_CODE_INVALID);
+            result->setErrno(RECOVERY_CODE_INVALID);
             break;
         }
 
         // 标记恢复码为已使用
         auto matchedCode = codes[0];
         matchedCode->setUsed(1);
-        data::UserRecoveryCodeInfoDao::Update(matchedCode, db);
+        DB::UserRecoveryCodeInfoDao::Update(matchedCode, db);
 
         // 禁用2FA
         info->setTotpEnabled(0);
         info->setTotpSecret("");
         info->setUpdateTime(time(0));
 
-        if (data::UserInfoDao::Update(info, db)) {
-            result->setErrno(errcode::TOTP_ENABLE_FAILED, "reset 2fa failed");
+        if (DB::UserInfoDao::Update(info, db)) {
+            result->setErrno(TOTP_ENABLE_FAILED, "reset 2fa failed");
             ERROR(logger) << "reset 2fa: Update failed"
                           << " errstr=" << db->getErrStr() << " errno=" << db->getErrno();
             break;

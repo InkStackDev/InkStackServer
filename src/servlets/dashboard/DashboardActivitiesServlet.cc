@@ -42,17 +42,17 @@ int32_t DashboardActivitiesServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto current_user = UserMgr::GetInstance()->get(uid);
         if (!current_user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t role = current_user->getRole();
         if (role != UserManager::Role::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -68,7 +68,7 @@ int32_t DashboardActivitiesServlet::handle(
         {
             std::vector<int64_t> ids;
             UserMgr::GetInstance()->getAllIds(ids, true);
-            std::vector<data::UserInfo::ptr> users;
+            std::vector<DB::UserInfo::ptr> users;
             for (auto id : ids) {
                 auto u = UserMgr::GetInstance()->get(id);
                 if (u) {
@@ -89,7 +89,7 @@ int32_t DashboardActivitiesServlet::handle(
 
         // recent articles
         {
-            std::vector<data::ArticleInfo::ptr> articles;
+            std::vector<DB::ArticleInfo::ptr> articles;
             ArticleMgr::GetInstance()->listByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true);
             std::sort(articles.begin(), articles.end(), [](auto& a, auto& b) {
                 return a->getCreateTime() > b->getCreateTime();
@@ -108,7 +108,7 @@ int32_t DashboardActivitiesServlet::handle(
 
         // recent comments
         {
-            std::vector<data::CommentInfo::ptr> comments;
+            std::vector<DB::CommentInfo::ptr> comments;
             CommentMgr::GetInstance()->listByAdmin(comments, 1, fetch_count, 0, "", 0, -1);
             for (auto& c : comments) {
                 ActivityItem act;
@@ -145,7 +145,7 @@ int32_t DashboardActivitiesServlet::handle(
         }
 
         result->set("list", list);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

@@ -59,7 +59,7 @@ int32_t ArticleSearchServlet::handle(
         tagSearchResult search_result;
         if (!SearchSyncMgr::GetInstance()->query(query, search_result)) {
             WARN(logger) << "article search unavailable, keyword=" << keyword;
-            result->setErrno(errcode::ARTICLE_SEARCH_UNAVAILABLE);
+            result->setErrno(ARTICLE_SEARCH_UNAVAILABLE);
             result->set("total", 0);
             result->set("list", Json::Value(Json::arrayValue));
             break;

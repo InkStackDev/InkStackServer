@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "blog/data/assignment_info.h"
+#include "DB/AssignmentInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -17,17 +17,17 @@ public:
         INACTIVE = 2,
     };
 
-    void add(data::AssignmentInfo::ptr info);
+    void add(DB::AssignmentInfo::ptr info);
 
-    uint64_t listByPages(std::vector<data::AssignmentInfo::ptr>& infos,
+    uint64_t listByPages(std::vector<DB::AssignmentInfo::ptr>& infos,
         uint64_t offset,
         uint64_t size,
         int32_t status,
         bool is_valid);
 
-    data::AssignmentInfo::ptr get(int64_t id);
+    DB::AssignmentInfo::ptr get(int64_t id);
 
-    data::AssignmentInfo::ptr getByName(const std::string& subject_name, const std::string& name);
+    DB::AssignmentInfo::ptr getByName(const std::string& subject_name, const std::string& name);
 
     struct AssignmentStats {
         int64_t total = 0;
@@ -39,7 +39,7 @@ public:
     AssignmentStats getStats();
 
 private:
-    static data::AssignmentInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::AssignmentInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<AssignmentManager> AssignmentMgr;

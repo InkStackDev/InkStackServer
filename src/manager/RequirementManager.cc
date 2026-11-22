@@ -6,22 +6,22 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::RequirementInfo::ptr RequirementManager::ParseRow(chen::ISQLData::ptr rt)
+DB::RequirementInfo::ptr RequirementManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::RequirementInfoDao::ParseRow(rt);
+    return DB::RequirementInfoDao::ParseRow(rt);
 }
 
-data::RequirementInfo::ptr RequirementManager::get(int64_t id)
+DB::RequirementInfo::ptr RequirementManager::get(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    return data::RequirementInfoDao::Query(id, db);
+    return DB::RequirementInfoDao::Query(id, db);
 }
 
-uint64_t RequirementManager::listByPages(std::vector<data::RequirementInfo::ptr>& infos,
+uint64_t RequirementManager::listByPages(std::vector<DB::RequirementInfo::ptr>& infos,
     uint64_t offset,
     uint64_t size,
     int32_t status,
@@ -32,20 +32,19 @@ uint64_t RequirementManager::listByPages(std::vector<data::RequirementInfo::ptr>
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::RequirementInfoDao::newQuery();
+    auto qb = DB::RequirementInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::RequirementInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::RequirementInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;
 }
 
-uint64_t RequirementManager::listByOrg(
-    std::vector<data::RequirementInfo::ptr>& infos,
+uint64_t RequirementManager::listByOrg(std::vector<DB::RequirementInfo::ptr>& infos,
     int64_t org_id,
     uint64_t offset,
     uint64_t size,
@@ -57,14 +56,14 @@ uint64_t RequirementManager::listByOrg(
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::RequirementInfoDao::newQuery();
+    auto qb = DB::RequirementInfoDao::newQuery();
     qb->where("org_id", "=", org_id);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::RequirementInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::RequirementInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;

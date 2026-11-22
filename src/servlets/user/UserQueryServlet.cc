@@ -4,7 +4,7 @@
 
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/user_info.h"
+#include "DB/UserInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -23,10 +23,10 @@ int32_t UserQueryServlet::handle(
         DEFINE_AND_CHECK_STRING(result, user_ids, "user_ids");
 
         auto ids = chen::StringUtil::Split(user_ids, ',');
-        std::vector<data::UserInfo::ptr> infos;
+        std::vector<DB::UserInfo::ptr> infos;
 
         for (auto& i : ids) {
-            data::UserInfo::ptr info = UserMgr::GetInstance()->get(chen::TypeUtil::Atoi(i));
+            DB::UserInfo::ptr info = UserMgr::GetInstance()->get(chen::TypeUtil::Atoi(i));
             if (info) {
                 infos.push_back(info);
             }

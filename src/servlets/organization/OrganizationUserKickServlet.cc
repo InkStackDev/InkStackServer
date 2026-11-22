@@ -31,46 +31,46 @@ int32_t OrganizationUserKickServlet::handle(
         // 操作者权限检查
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
 
         auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
         if (!rel) {
-            result->setErrno(errcode::ORG_NOT_MEMBER);
+            result->setErrno(ORG_NOT_MEMBER);
             break;
         }
         int32_t org_role = rel->getRole();
 
-        if (!permission::CanManageMembers(system_role, org_role)) {
-            result->setErrno(errcode::ACCESS_DENIED);
+        if (!CanManageMembers(system_role, org_role)) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         // 踢出用户
         rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, user_id);
         if (!rel) {
-            result->setErrno(errcode::ARTICLE_INVALID_ID);
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
         rel->setStatus(OrganizationUserRelManager::Status::EXITED);
         rel->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
-            result->setErrno(errcode::ORG_USER_REL_FAILED);
+        if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
+            result->setErrno(ORG_USER_REL_FAILED);
             ERROR(logger) << "db error, errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
             break;
         }
@@ -95,7 +95,7 @@ int32_t OrganizationUserKickServlet::handle(
             data.kicked_user_id = user_id;
             data.applicant_name = kicked_name;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ORG_MEMBER, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_MEMBER, std::move(data));
         }
 
         result->set("success", true);

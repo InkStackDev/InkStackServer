@@ -22,12 +22,12 @@ int32_t RdTaskServlet::handle(
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -36,19 +36,19 @@ int32_t RdTaskServlet::handle(
         if (id) {
             auto info = TaskMgr::GetInstance()->get(id);
             if (!info || info->getIsDeleted()) {
-                result->setErrno(errcode::TASK_NOT_FOUND);
+                result->setErrno(TASK_NOT_FOUND);
                 break;
             }
             int64_t info_org_id = info->getOrgId();
             if (!is_platform_admin) {
                 auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(info_org_id, uid);
                 if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
                 bool is_related = (uid == info->getCreatorId() || uid == info->getAssigneeId());
-                if (!permission::CanViewTask(rel->getRole(), is_related)) {
-                    result->setErrno(errcode::ACCESS_DENIED);
+                if (!CanViewTask(rel->getRole(), is_related)) {
+                    result->setErrno(ACCESS_DENIED);
                     break;
                 }
             }
@@ -68,21 +68,21 @@ int32_t RdTaskServlet::handle(
         std::string priority_str = request->getParam("priority");
         int64_t filter_assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
 
-        std::vector<data::TaskInfo::ptr> all;
+        std::vector<DB::TaskInfo::ptr> all;
         if (is_platform_admin && org_id) {
             TaskMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
         } else if (!is_platform_admin) {
-            std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
             for (auto& rel : user_orgs) {
                 if (org_id && rel->getOrgId() != org_id) {
                     continue;
                 }
-                std::vector<data::TaskInfo::ptr> org_tasks;
+                std::vector<DB::TaskInfo::ptr> org_tasks;
                 TaskMgr::GetInstance()->listByOrg(org_tasks, rel->getOrgId(), 0, INT32_MAX, -1, true);
                 for (auto& task : org_tasks) {
                     bool is_related = (uid == task->getCreatorId() || uid == task->getAssigneeId());
-                    if (permission::CanViewTask(rel->getRole(), is_related)) {
+                    if (CanViewTask(rel->getRole(), is_related)) {
                         all.push_back(task);
                     }
                 }
@@ -91,7 +91,7 @@ int32_t RdTaskServlet::handle(
             TaskMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
         }
 
-        std::vector<data::TaskInfo::ptr> filtered;
+        std::vector<DB::TaskInfo::ptr> filtered;
         for (auto& info : all) {
             if (!status_str.empty() && StringToTaskStatus(status_str) != info->getStatus()) {
                 continue;

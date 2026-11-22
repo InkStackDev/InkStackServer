@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blog/data/help_faqs_info.h"
+#include "DB/HelpFaqsInfo.hpp"
 
 #include <Chen/Util/Singleton.hpp>
 
@@ -8,9 +8,9 @@ class FaqManager {
 public:
     FaqManager();
 
-    bool listAll(std::vector<data::HelpFaqsInfo::ptr>& infos);
+    bool listAll(std::vector<DB::HelpFaqsInfo::ptr>& infos);
 
-    bool searchByKeyword(const std::string& keyword, std::vector<data::HelpFaqsInfo::ptr>& infos);
+    bool searchByKeyword(const std::string& keyword, std::vector<DB::HelpFaqsInfo::ptr>& infos);
 
     /**
      * @brief 软删除 FAQ（设置 is_deleted = 1）

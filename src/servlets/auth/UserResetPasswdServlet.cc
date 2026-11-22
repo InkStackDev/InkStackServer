@@ -28,50 +28,50 @@ int32_t UserResetPasswdServlet::handle(
         DEFINE_AND_CHECK_STRING(result, auth_code, "auth_code");
 
         if (passwd.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "password required");
+            result->setErrno(PARAM_MISSING, "password required");
             break;
         }
 
         if (!IsEmail(email)) {
-            result->setErrno(errcode::USER_INVALID_EMAIL);
+            result->setErrno(USER_INVALID_EMAIL);
             break;
         }
         if (!UserMgr::GetInstance()->getByEmail(email)) {
-            result->setErrno(errcode::USER_EMAIL_NOT_REGISTER);
+            result->setErrno(USER_EMAIL_NOT_REGISTER);
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
         if (!verificationEmailCode(email, auth_code)) {
-            result->setErrno(errcode::AUTH_CODE_INVALID);
+            result->setErrno(AUTH_CODE_INVALID);
             break;
         }
 
         std::string passwd_hash = HashPassword(passwd);
         if (passwd_hash.empty()) {
-            result->setErrno(errcode::INTERNAL_ERROR);
+            result->setErrno(INTERNAL_ERROR);
             break;
         }
 
         chen::ITransaction::ptr trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
-        data::UserInfo::ptr info = UserMgr::GetInstance()->getByEmail(email);
+        DB::UserInfo::ptr info = UserMgr::GetInstance()->getByEmail(email);
         if (!info) {
-            result->setErrno(errcode::USER_EMAIL_NOT_REGISTER);
+            result->setErrno(USER_EMAIL_NOT_REGISTER);
             break;
         }
         info->setPasswd(passwd_hash);
 
-        if (data::UserInfoDao::Update(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "insert user failed");
+        if (DB::UserInfoDao::Update(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "insert user failed");
             break;
         }
         trans->commit();

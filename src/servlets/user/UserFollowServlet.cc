@@ -21,21 +21,21 @@ int32_t UserFollowServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, following_id, "following_id");
 
         if (following_id == uid) {
-            result->setErrno(errcode::USER_CANNOT_FOLLOW_SELF);
+            result->setErrno(USER_CANNOT_FOLLOW_SELF);
             break;
         }
 
         // check the target user exists
         auto targetUser = UserMgr::GetInstance()->get(following_id);
         if (!targetUser || targetUser->getIsDeleted()) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
@@ -43,7 +43,7 @@ int32_t UserFollowServlet::handle(
 
         auto info = UserFollowRelMgr::GetInstance()->follow(uid, following_id);
         if (!info) {
-            result->setErrno(errcode::USER_FOLLOW_FAILED);
+            result->setErrno(USER_FOLLOW_FAILED);
             break;
         }
 
@@ -55,10 +55,10 @@ int32_t UserFollowServlet::handle(
             data.follower_name = follower_info ? follower_info->getName() : "someone";
             data.following_id = following_id;
 
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_USER_FOLLOW, std::move(data));
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_FOLLOW, std::move(data));
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

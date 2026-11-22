@@ -30,7 +30,7 @@ int32_t ArticleCalendarServlet::handle(
         int64_t month = request->getParamAs<int64_t>("month");
 
         if (year <= 0 || month < 1 || month > 12) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid year or month");
+            result->setErrno(PARAM_INVALID, "invalid year or month");
             break;
         }
 
@@ -44,7 +44,7 @@ int32_t ArticleCalendarServlet::handle(
             daysArray.append(d);
         }
         result->set("articleDays", daysArray);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

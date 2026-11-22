@@ -21,7 +21,7 @@ int32_t ErrorCodesServlet::handle(
 
         auto manager = ErrorCodeMgr::GetInstance();
         if (manager->getCount() == 0) {
-            result->setErrno(errcode::SETTINGS_NOT_LOADED);
+            result->setErrno(SETTINGS_NOT_LOADED);
             break;
         }
 

@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "blog/data/user_ai_config_info.h"
+#include "DB/UserAiConfigInfo.hpp"
 
 #include <Chen/Util/Singleton.hpp>
 
@@ -18,14 +18,14 @@ public:
      * @param user_id 用户ID
      * @return 配置信息，未配置返回nullptr
      */
-    blog::data::UserAiConfigInfo::ptr getByUserId(int64_t user_id);
+    DB::UserAiConfigInfo::ptr getByUserId(int64_t user_id);
 
     /**
      * @brief 保存用户AI配置（写DB同时更新缓存）
      * @param info 配置信息
      * @return true成功 false失败
      */
-    bool save(blog::data::UserAiConfigInfo::ptr info);
+    bool save(DB::UserAiConfigInfo::ptr info);
 };
 
 typedef chen::Singleton<UserAIConfigManager> UserAIConfigMgr;

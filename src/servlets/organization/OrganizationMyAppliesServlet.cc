@@ -25,12 +25,12 @@ int32_t OrganizationMyAppliesServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<data::OrganizationApplyInfo::ptr> applies;
+        std::vector<DB::OrganizationApplyInfo::ptr> applies;
         int64_t total = OrganizationApplyMgr::GetInstance()->listByUserId(applies, uid, offset, page_size, true);
 
         result->set("total", total);

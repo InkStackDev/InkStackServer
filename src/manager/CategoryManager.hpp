@@ -1,24 +1,24 @@
 #pragma once
 
-#include "blog/data/category_info.h"
+#include "DB/CategoryInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 class CategoryManager {
 public:
-    void listAll(std::vector<blog::data::CategoryInfo::ptr>& infos, bool is_valid = false);
+    void listAll(std::vector<DB::CategoryInfo::ptr>& infos, bool is_valid = false);
 
-    bool listByUserId(std::vector<blog::data::CategoryInfo::ptr>& infos, int64_t user_id, bool is_valid = false);
+    bool listByUserId(std::vector<DB::CategoryInfo::ptr>& infos, int64_t user_id, bool is_valid = false);
 
-    void add(blog::data::CategoryInfo::ptr info);
+    void add(DB::CategoryInfo::ptr info);
 
-    blog::data::CategoryInfo::ptr get(int64_t id);
+    DB::CategoryInfo::ptr get(int64_t id);
 
-    blog::data::CategoryInfo::ptr getByUserIdName(int64_t user_id, const std::string& name);
+    DB::CategoryInfo::ptr getByUserIdName(int64_t user_id, const std::string& name);
 
 private:
-    static data::CategoryInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    static DB::CategoryInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<CategoryManager> CategoryMgr;

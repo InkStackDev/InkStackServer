@@ -25,7 +25,7 @@ int32_t FeedbackServlet::handle(
 
         int64_t uid = getUserId(request);
 
-        data::UserFeedbackInfo::ptr info(new data::UserFeedbackInfo);
+        DB::UserFeedbackInfo::ptr info(new DB::UserFeedbackInfo);
         info->setType(type);
         info->setContent(content);
         info->setContact(contact);
@@ -33,14 +33,14 @@ int32_t FeedbackServlet::handle(
         info->setCreateTime(time(0));
         info->setUpdateTime(time(0));
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        if (data::UserFeedbackInfoDao::Insert(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "feedback insert failed");
+        if (DB::UserFeedbackInfoDao::Insert(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "feedback insert failed");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

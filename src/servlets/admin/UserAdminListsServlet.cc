@@ -7,8 +7,8 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
 
-#include "blog/data/article_info.h"
-#include "blog/data/comment_info.h"
+#include "DB/ArticleInfo.hpp"
+#include "DB/CommentInfo.hpp"
 
 static chen::Logger::ptr g_logger = LOG_ROOT();
 
@@ -31,12 +31,12 @@ int32_t UserAdminListsServlet::handle(
         int32_t days = request->getParamAs<int32_t>("days", 0);
 
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<data::UserInfo::ptr> users;
+        std::vector<DB::UserInfo::ptr> users;
         uint64_t total = UserMgr::GetInstance()->listByPages(users, offset, page_size, rrole, state, days, true);
 
         // 批量查询文章数和评论数，避免逐用户查询
         std::map<int64_t, int64_t> article_counts, comment_counts;
-        auto db = getDB();
+        auto db = GetDB();
         if (db && !users.empty()) {
             std::vector<int64_t> user_ids;
             for (auto& u : users) {
@@ -45,7 +45,7 @@ int32_t UserAdminListsServlet::handle(
 
             std::vector<std::pair<int64_t, int64_t>> rows;
 
-            auto aqb = data::ArticleInfoDao::newQuery();
+            auto aqb = DB::ArticleInfoDao::newQuery();
             aqb->select("user_id, COUNT(*) as cnt");
             aqb->whereIn("user_id", user_ids);
             aqb->where("is_deleted", "=", (int64_t)0);
@@ -57,7 +57,7 @@ int32_t UserAdminListsServlet::handle(
             }
 
             rows.clear();
-            auto cqb = data::CommentInfoDao::newQuery();
+            auto cqb = DB::CommentInfoDao::newQuery();
             cqb->select("user_id, COUNT(*) as cnt");
             cqb->whereIn("user_id", user_ids);
             cqb->where("is_deleted", "=", (int64_t)0);

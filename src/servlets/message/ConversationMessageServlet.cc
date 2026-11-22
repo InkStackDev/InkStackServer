@@ -20,31 +20,31 @@ int32_t ConversationMessageServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
-        if (CheckChatPermission(result, uid) != errcode::SUCCESS) {
+        if (CheckChatPermission(result, uid) != SUCCESS) {
             break;
         }
 
         std::string id_str = request->getParam("id");
         if (id_str.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "param id is required");
+            result->setErrno(PARAM_MISSING, "param id is required");
             break;
         }
         int64_t conversation_id = chen::TypeUtil::Atoi(id_str);
         if (!conversation_id) {
-            result->setErrno(errcode::PARAM_INVALID, "invalid id");
+            result->setErrno(PARAM_INVALID, "invalid id");
             break;
         }
 
         auto conv = MessageMgr::GetInstance()->get(conversation_id);
         if (!conv) {
-            result->setErrno(errcode::MESSAGE_CONVERSATION_NOT_FOUND);
+            result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
             break;
         }
         if (uid != conv->getUserAId() && uid != conv->getUserBId()) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         int64_t peer_id = (conv->getUserAId() == uid) ? conv->getUserBId() : conv->getUserAId();
@@ -54,7 +54,7 @@ int32_t ConversationMessageServlet::handle(
             int32_t offset = request->getParamAs<int32_t>("offset", 0);
             int32_t size = request->getParamAs<int32_t>("size", 50);
 
-            std::vector<data::ConversationMessageInfo::ptr> msgs;
+            std::vector<DB::ConversationMessageInfo::ptr> msgs;
             MessageMgr::GetInstance()->listMessages(msgs, conversation_id, offset, size);
 
             Json::Value arr(Json::arrayValue);
@@ -64,7 +64,7 @@ int32_t ConversationMessageServlet::handle(
                 arr.append(item);
             }
 
-            result->setErrno(errcode::SUCCESS);
+            result->setErrno(SUCCESS);
             result->set("list", arr);
             break;
         }
@@ -73,17 +73,17 @@ int32_t ConversationMessageServlet::handle(
             // 发送消息
             std::string text = request->getParam("text");
             if (text.empty()) {
-                result->setErrno(errcode::PARAM_MISSING, "param text is required");
+                result->setErrno(PARAM_MISSING, "param text is required");
                 break;
             }
             if (text.size() > MessageManager::kMaxMessageLen) {
-                result->setErrno(errcode::MESSAGE_TEXT_TOO_LONG);
+                result->setErrno(MESSAGE_TEXT_TOO_LONG);
                 break;
             }
 
             auto msg = MessageMgr::GetInstance()->sendMessage(conversation_id, uid, text);
             if (!msg) {
-                result->setErrno(errcode::MESSAGE_SEND_FAILED);
+                result->setErrno(MESSAGE_SEND_FAILED);
                 break;
             }
 
@@ -91,7 +91,7 @@ int32_t ConversationMessageServlet::handle(
             BuildMessageJson(data, msg, uid);
             result->set("data", data);
 
-            result->setErrno(errcode::SUCCESS);
+            result->setErrno(SUCCESS);
 
             // HTTP 兜底发送也走聊天 WS 推送给接收方
             Json::Value frame;
@@ -104,7 +104,7 @@ int32_t ConversationMessageServlet::handle(
             break;
         }
 
-        result->setErrno(errcode::INVALID_METHOD);
+        result->setErrno(INVALID_METHOD);
     } while (0);
 
     response->setBody(result->toJsonString());

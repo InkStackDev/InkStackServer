@@ -7,7 +7,7 @@
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/TotpUtil.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/user_recovery_code_info.h"
+#include "DB/UserRecoveryCodeInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -26,18 +26,18 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         auto info = UserMgr::GetInstance()->get(uid);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         if (info->getTotpEnabled()) {
-            result->setErrno(errcode::TOTP_ALREADY_ENABLED);
+            result->setErrno(TOTP_ALREADY_ENABLED);
             break;
         }
 
@@ -45,20 +45,20 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
         auto sdata = getSessionData(request, response);
         std::string secret = sdata->getData<std::string>("totp_pending_secret");
         if (secret.empty()) {
-            result->setErrno(errcode::TOTP_ENABLE_FAILED, "please call /api/v1/user/2fa/enable first");
+            result->setErrno(TOTP_ENABLE_FAILED, "please call /api/v1/user/2fa/enable first");
             break;
         }
 
         // 验证TOTP码
         if (!TotpUtil::VerifyCode(secret, code, 1)) {
-            result->setErrno(errcode::TOTP_INVALID_CODE);
+            result->setErrno(TOTP_INVALID_CODE);
             break;
         }
 
         // 验证通过，写入DB
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -66,8 +66,8 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
         info->setTotpEnabled(1);
         info->setUpdateTime(time(0));
 
-        if (data::UserInfoDao::Update(info, db)) {
-            result->setErrno(errcode::TOTP_ENABLE_FAILED);
+        if (DB::UserInfoDao::Update(info, db)) {
+            result->setErrno(TOTP_ENABLE_FAILED);
             ERROR(logger) << "confirm 2fa: Update failed"
                           << " errstr=" << db->getErrStr() << " errno=" << db->getErrno();
             break;
@@ -84,11 +84,11 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
         // 将恢复码哈希存入DB
         auto trans = db->openTransaction();
         for (auto& hash : hashed_codes) {
-            auto rc = std::make_shared<data::UserRecoveryCodeInfo>();
+            auto rc = std::make_shared<DB::UserRecoveryCodeInfo>();
             rc->setUserId(uid);
             rc->setCodeHash(hash);
             rc->setUsed(0);
-            if (data::UserRecoveryCodeInfoDao::Insert(rc, db)) {
+            if (DB::UserRecoveryCodeInfoDao::Insert(rc, db)) {
                 ERROR(logger) << "confirm 2fa: insert recovery code failed"
                               << " errstr=" << db->getErrStr();
             }

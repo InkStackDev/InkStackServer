@@ -29,7 +29,7 @@ int32_t StatsServlet::handle(
         result->set("today_visits", today_visits);
         result->set("total_visits", total_visits);
         result->set("total_visitors", total_visitors);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

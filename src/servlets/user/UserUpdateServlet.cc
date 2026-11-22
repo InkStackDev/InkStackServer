@@ -1,13 +1,8 @@
 #include "UserUpdateServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/TimeUtil.hpp>
-
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserUpdateServlet::UserUpdateServlet()
     : BlogServlet("UserUpdateServlet")
@@ -30,80 +25,52 @@ int32_t UserUpdateServlet::handle(
         std::string old_passwd = request->getParam("old_passwd");
 
         if (name.empty() && passwd.empty() && bio.empty() && website.empty() && avatar.empty()) {
-            result->setErrno(errcode::USER_NO_PARAM);
+            result->setErrno(USER_NO_PARAM);
             break;
         }
 
         if (!passwd.empty() && passwd.length() < 6) {
-            result->setErrno(errcode::USER_INVALID_PASSWORD);
+            result->setErrno(USER_INVALID_PASSWORD);
             break;
         }
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        data::UserInfo::ptr info = UserMgr::GetInstance()->get(uid);
-        if (!info) {
-            result->setErrno(errcode::ACCOUNT_INVALID);
+        UserService::ProfileUpdate update;
+        update.name = name;
+        update.passwd = passwd;
+        update.bio = bio;
+        update.website = website;
+        update.github = github;
+        update.avatar = avatar;
+        update.old_passwd = old_passwd;
+
+        bool password_changed = false;
+        auto rt = UserService::UpdateProfile(uid, update, password_changed);
+        if (rt == UserService::UpdateProfileResult::Ok) {
+            result->setErrno(SUCCESS);
+        } else if (rt == UserService::UpdateProfileResult::UserNotFound) {
+            result->setErrno(ACCOUNT_INVALID);
+        } else if (rt == UserService::UpdateProfileResult::OldPasswordRequired) {
+            result->setErrno(PARAM_MISSING, "old password required");
+        } else if (rt == UserService::UpdateProfileResult::OldPasswordWrong) {
+            result->setErrno(USER_OLD_PASSWORD_WRONG);
+        } else if (rt == UserService::UpdateProfileResult::InvalidPassword) {
+            result->setErrno(USER_INVALID_PASSWORD);
+        } else if (rt == UserService::UpdateProfileResult::InternalError) {
+            result->setErrno(INTERNAL_ERROR);
+        } else {
+            result->setErrno(DB_OPERATION_FAILED, "update user failed");
             break;
         }
 
-        // 修改密码时必须提供旧密码校验
-        if (!passwd.empty()) {
-            if (old_passwd.empty()) {
-                result->setErrno(errcode::PARAM_MISSING, "old password required");
-                break;
-            }
-            if (!VerifyPassword(old_passwd, info->getPasswd())) {
-                result->setErrno(errcode::USER_OLD_PASSWORD_WRONG);
-                break;
-            }
-        }
-
-        if (!name.empty()) {
-            info->setName(name);
-        }
-        if (!passwd.empty()) {
-            std::string passwd_hash = HashPassword(passwd);
-            if (passwd_hash.empty()) {
-                result->setErrno(errcode::INTERNAL_ERROR);
-                break;
-            }
-            info->setPasswd(passwd_hash);
-        }
-        if (!bio.empty()) {
-            info->setBio(bio);
-        }
-        if (!website.empty()) {
-            info->setWebsite(website);
-        }
-        if (!avatar.empty()) {
-            info->setAvatar(avatar);
-        }
-        if (!github.empty()) {
-            info->setGithub(github);
-        }
-        info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
-
-        auto db = getDB();
-        if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
-            break;
-        }
-        if (data::UserInfoDao::Update(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "update user failed");
-            ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-            break;
-        }
-        UserMgr::GetInstance()->update(info);
-        result->setErrno(errcode::SUCCESS);
-
-        if (!passwd.empty()) {
+        if (password_changed) {
             // 密码变更后全端下线，要求重新登录
-            AuthService::RevokeAllSessions(info->getId());
+            AuthService::RevokeAllSessions(uid);
             AuthService::ClearSessionCookie(response);
             result->set("relogin", true);
         }

@@ -6,22 +6,22 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::TaskInfo::ptr TaskManager::ParseRow(chen::ISQLData::ptr rt)
+DB::TaskInfo::ptr TaskManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::TaskInfoDao::ParseRow(rt);
+    return DB::TaskInfoDao::ParseRow(rt);
 }
 
-data::TaskInfo::ptr TaskManager::get(int64_t id)
+DB::TaskInfo::ptr TaskManager::get(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    return data::TaskInfoDao::Query(id, db);
+    return DB::TaskInfoDao::Query(id, db);
 }
 
-uint64_t TaskManager::listByPages(std::vector<data::TaskInfo::ptr>& infos,
+uint64_t TaskManager::listByPages(std::vector<DB::TaskInfo::ptr>& infos,
     uint64_t offset,
     uint64_t size,
     int32_t status,
@@ -32,19 +32,19 @@ uint64_t TaskManager::listByPages(std::vector<data::TaskInfo::ptr>& infos,
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::TaskInfoDao::newQuery();
+    auto qb = DB::TaskInfoDao::newQuery();
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::TaskInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::TaskInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;
 }
 
-uint64_t TaskManager::listByOrg(std::vector<data::TaskInfo::ptr>& infos,
+uint64_t TaskManager::listByOrg(std::vector<DB::TaskInfo::ptr>& infos,
     int64_t org_id,
     uint64_t offset,
     uint64_t size,
@@ -56,14 +56,14 @@ uint64_t TaskManager::listByOrg(std::vector<data::TaskInfo::ptr>& infos,
         ERROR(logger) << "Get DB connection fail";
         return 0;
     }
-    auto qb = data::TaskInfoDao::newQuery();
+    auto qb = DB::TaskInfoDao::newQuery();
     qb->where("org_id", "=", org_id);
     qb->whereIf(status != -1, "status", "=", (int64_t)status);
     qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
     qb->orderBy("id", "DESC");
 
     int64_t total = 0;
-    if (data::TaskInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
+    if (DB::TaskInfoDao::QueryByBuilderPages(infos, total, qb, (int32_t)offset, (int32_t)size, db)) {
         return 0;
     }
     return total;

@@ -6,23 +6,22 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-data::BackupRecordInfo::ptr BackupRecordManager::ParseRow(chen::ISQLData::ptr rt)
+DB::BackupRecordInfo::ptr BackupRecordManager::ParseRow(chen::ISQLData::ptr rt)
 {
-    return data::BackupRecordInfoDao::ParseRow(rt);
+    return DB::BackupRecordInfoDao::ParseRow(rt);
 }
 
-data::BackupRecordInfo::ptr BackupRecordManager::get(int64_t id)
+DB::BackupRecordInfo::ptr BackupRecordManager::get(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    return data::BackupRecordInfoDao::Query(id, db);
+    return DB::BackupRecordInfoDao::Query(id, db);
 }
 
-bool BackupRecordManager::list(
-    std::vector<data::BackupRecordInfo::ptr>& results,
+bool BackupRecordManager::list(std::vector<DB::BackupRecordInfo::ptr>& results,
     int64_t& total,
     const std::string& search,
     const std::string& type,
@@ -35,7 +34,7 @@ bool BackupRecordManager::list(
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = data::BackupRecordInfoDao::newQuery();
+    auto qb = DB::BackupRecordInfoDao::newQuery();
     qb->where("is_deleted", "=", (int64_t)0);
     if (!search.empty()) {
         qb->where("name", "LIKE", "%" + search + "%");
@@ -47,21 +46,24 @@ bool BackupRecordManager::list(
         qb->where("status", "=", status);
     }
     qb->orderBy("id", "DESC");
-    if (data::BackupRecordInfoDao::QueryByBuilderPages(results, total, qb, offset, limit, db)) {
+    if (DB::BackupRecordInfoDao::QueryByBuilderPages(results, total, qb, offset, limit, db)) {
         ERROR(logger) << "backup_record QueryByBuilderPages failed";
         return false;
     }
     return true;
 }
 
-data::BackupRecordInfo::ptr BackupRecordManager::create(int64_t uid, const std::string& type, const std::string& name, const std::string& description)
+DB::BackupRecordInfo::ptr BackupRecordManager::create(int64_t uid,
+    const std::string& type,
+    const std::string& name,
+    const std::string& description)
 {
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = std::make_shared<data::BackupRecordInfo>();
+    auto info = std::make_shared<DB::BackupRecordInfo>();
     info->setCreatedBy(uid);
     info->setType(type);
     info->setName(name);
@@ -71,7 +73,7 @@ data::BackupRecordInfo::ptr BackupRecordManager::create(int64_t uid, const std::
     info->setSize(0);
     info->setFileCount(0);
     info->setCreateTime(time(0));
-    if (data::BackupRecordInfoDao::Insert(info, db)) {
+    if (DB::BackupRecordInfoDao::Insert(info, db)) {
         ERROR(logger) << "Insert backup_record failed";
         return nullptr;
     }
@@ -90,7 +92,7 @@ bool BackupRecordManager::remove(int64_t id)
         return false;
     }
     info->setIsDeleted(1);
-    if (data::BackupRecordInfoDao::Update(info, db)) {
+    if (DB::BackupRecordInfoDao::Update(info, db)) {
         ERROR(logger) << "Delete backup_record failed";
         return false;
     }

@@ -17,9 +17,9 @@ int32_t RdCheckAccessServlet::handle(
 {
     do {
         int64_t current_uid = getUserId(request);
-        data::UserInfo::ptr currentUser = UserMgr::GetInstance()->get(current_uid);
+        DB::UserInfo::ptr currentUser = UserMgr::GetInstance()->get(current_uid);
         if (!currentUser || currentUser->getState() != 1) {
-            result->setErrno(errcode::RD_INVALID_USER);
+            result->setErrno(RD_INVALID_USER);
             break;
         }
 
@@ -29,21 +29,21 @@ int32_t RdCheckAccessServlet::handle(
             target_uid = atol(uidParam.c_str());
             // 只有管理员可以查询其他用户的平台访问权限
             if (target_uid != current_uid && currentUser->getRole() != UserManager::Role::ADMIN) {
-                result->setErrno(errcode::ACCESS_DENIED);
+                result->setErrno(ACCESS_DENIED);
                 break;
             }
         }
 
-        data::UserInfo::ptr targetUser = UserMgr::GetInstance()->get(target_uid);
+        DB::UserInfo::ptr targetUser = UserMgr::GetInstance()->get(target_uid);
         if (!targetUser || targetUser->getState() != 1) {
-            result->setErrno(errcode::SUCCESS);
+            result->setErrno(SUCCESS);
             result->set("can_access", "0");
             result->set("reason", "user not found or disabled");
             break;
         }
 
         int32_t system_role = targetUser->getRole();
-        std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+        std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
         OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, target_uid, OrganizationUserRelManager::APPROVED, true);
 
         int32_t highest_org_role = 0;
@@ -53,9 +53,9 @@ int32_t RdCheckAccessServlet::handle(
             }
         }
 
-        bool canAccess = permission::CanAccessPlatform(system_role, highest_org_role);
+        bool canAccess = CanAccessPlatform(system_role, highest_org_role);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("can_access", canAccess ? "1" : "0");
         if (!canAccess) {
             result->set("reason", "requires system admin or organization role >= reporter");

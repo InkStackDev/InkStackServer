@@ -22,7 +22,7 @@ int32_t ArticlePraiseServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -31,7 +31,7 @@ int32_t ArticlePraiseServlet::handle(
         // check article exists
         auto article = ArticleMgr::GetInstance()->get(article_id);
         if (!article || article->getIsDeleted()) {
-            result->setErrno(errcode::ARTICLE_NOT_FOUND);
+            result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
@@ -40,7 +40,7 @@ int32_t ArticlePraiseServlet::handle(
         if (already_praising) {
             // unlike
             if (!ArticlePraiseRelMgr::GetInstance()->unpraise(uid, article_id)) {
-                result->setErrno(errcode::ARTICLE_UNPRAISE_FAILED);
+                result->setErrno(ARTICLE_UNPRAISE_FAILED);
                 break;
             }
             ArticleMgr::GetInstance()->decPraiseCount(article_id);
@@ -49,7 +49,7 @@ int32_t ArticlePraiseServlet::handle(
             // like
             auto info = ArticlePraiseRelMgr::GetInstance()->praise(uid, article_id);
             if (!info) {
-                result->setErrno(errcode::ARTICLE_PRAISE_FAILED);
+                result->setErrno(ARTICLE_PRAISE_FAILED);
                 break;
             }
             ArticleMgr::GetInstance()->incPraiseCount(article_id);
@@ -67,13 +67,13 @@ int32_t ArticlePraiseServlet::handle(
                     data.article_id = article_id;
                     data.article_title = article->getTitle();
 
-                    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_ID_ARTICLE_PRAISE, std::move(data));
+                    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_PRAISE, std::move(data));
                 }
             }
         }
 
         result->set("praise_count", (int64_t)article->getPraise());
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -17,18 +17,18 @@ int32_t MetricsAdminServlet::handle(
     do {
         auto* registry = chen::metrics::RegistryMgr::GetInstance();
         if (!registry) {
-            result->setErrno(errcode::INTERNAL_ERROR);
+            result->setErrno(INTERNAL_ERROR);
             break;
         }
 
         Json::Value data;
         if (!chen::JsonUtil::FromString(data, registry->RenderJson())) {
-            result->setErrno(errcode::INTERNAL_ERROR);
+            result->setErrno(INTERNAL_ERROR);
             break;
         }
 
         result->setData(data);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

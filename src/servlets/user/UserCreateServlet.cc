@@ -29,30 +29,30 @@ int32_t UserCreateServlet::handle(
         DEFINE_AND_CHECK_STRING(result, auth_code, "auth_code");
 
         if (account.empty() || passwd.empty()) {
-            result->setErrno(errcode::PARAM_MISSING, "account and password required");
+            result->setErrno(PARAM_MISSING, "account and password required");
             break;
         }
 
         if (UserMgr::GetInstance()->getByAccount(account)) {
-            result->setErrno(errcode::USER_ACCOUNT_EXISTS);
+            result->setErrno(USER_ACCOUNT_EXISTS);
             break;
         }
         if (UserMgr::GetInstance()->getByEmail(email)) {
-            result->setErrno(errcode::USER_EMAIL_EXISTS);
+            result->setErrno(USER_EMAIL_EXISTS);
             break;
         }
         if (!IsEmail(email)) {
-            result->setErrno(errcode::USER_INVALID_EMAIL);
+            result->setErrno(USER_INVALID_EMAIL);
             break;
         }
         if (!IsValidAccount(account)) {
-            result->setErrno(errcode::USER_INVALID_ACCOUNT);
+            result->setErrno(USER_INVALID_ACCOUNT);
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
 
@@ -64,28 +64,28 @@ int32_t UserCreateServlet::handle(
         }
         if (require_verification) {
             if (!verificationEmailCode(email, auth_code)) {
-                result->setErrno(errcode::AUTH_CODE_INVALID);
+                result->setErrno(AUTH_CODE_INVALID);
                 break;
             }
         }
 
         std::string passwd_hash = HashPassword(passwd);
         if (passwd_hash.empty()) {
-            result->setErrno(errcode::INTERNAL_ERROR);
+            result->setErrno(INTERNAL_ERROR);
             break;
         }
 
         // 开启事务
         chen::ITransaction::ptr trans = db->openTransaction();
-        data::UserInfo::ptr info(new data::UserInfo);
+        DB::UserInfo::ptr info(new DB::UserInfo);
         info->setAccount(account);
         info->setEmail(email);
         info->setPasswd(passwd_hash);
         info->setState(UserManager::Status::ACTIVE);
         info->setName(account);
 
-        if (data::UserInfoDao::Insert(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "insert user failed");
+        if (DB::UserInfoDao::Insert(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "insert user failed");
             break;
         }
         trans->commit();

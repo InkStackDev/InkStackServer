@@ -31,42 +31,42 @@ int32_t OrganizationReposAddServlet::handle(
 
         // 校验 name 长度
         if (name.size() > 128) {
-            result->setErrno(errcode::PARAM_INVALID, "仓库名称最长128字符");
+            result->setErrno(PARAM_INVALID, "仓库名称最长128字符");
             break;
         }
         // 校验 url 长度
         if (url.size() > 512) {
-            result->setErrno(errcode::PARAM_INVALID, "仓库地址最长512字符");
+            result->setErrno(PARAM_INVALID, "仓库地址最长512字符");
             break;
         }
         // 仅支持 GitHub 仓库
         if (url.find("github.com") == std::string::npos) {
-            result->setErrno(errcode::PARAM_INVALID, "仅支持 GitHub 仓库");
+            result->setErrno(PARAM_INVALID, "仅支持 GitHub 仓库");
             break;
         }
         // 校验 language 长度
         if (language.size() > 64) {
-            result->setErrno(errcode::PARAM_INVALID, "编程语言最长64字符");
+            result->setErrno(PARAM_INVALID, "编程语言最长64字符");
             break;
         }
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         // 检查组织是否存在
         auto org = OrganizationMgr::GetInstance()->get(org_id);
         if (!org) {
-            result->setErrno(errcode::ORG_NOT_FOUND);
+            result->setErrno(ORG_NOT_FOUND);
             break;
         }
 
         // 检查用户权限：需要研发主管及以上（role >= 4），系统管理员可管理任意组织仓库
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
@@ -75,12 +75,12 @@ int32_t OrganizationReposAddServlet::handle(
         if (!is_admin) {
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED, "无权访问该组织");
+                result->setErrno(ACCESS_DENIED, "无权访问该组织");
                 break;
             }
             int32_t org_role = rel->getRole();
             if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
-                result->setErrno(errcode::ACCESS_DENIED, "仅研发主管及以上角色可添加仓库");
+                result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可添加仓库");
                 break;
             }
         }
@@ -88,17 +88,17 @@ int32_t OrganizationReposAddServlet::handle(
         // 检查同组织下名称是否重复
         auto existing = OrganizationRepoMgr::GetInstance()->getByOrgAndName(org_id, name);
         if (existing) {
-            result->setErrno(errcode::ORG_REPO_NAME_EXISTS, "该组织下已存在同名仓库");
+            result->setErrno(ORG_REPO_NAME_EXISTS, "该组织下已存在同名仓库");
             break;
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        data::OrganizationReposInfo::ptr info(new data::OrganizationReposInfo);
+        DB::OrganizationReposInfo::ptr info(new DB::OrganizationReposInfo);
         info->setOrgId(org_id);
         info->setName(name);
         info->setUrl(url);
@@ -136,8 +136,8 @@ int32_t OrganizationReposAddServlet::handle(
             }
         }
 
-        if (data::OrganizationReposInfoDao::Insert(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED, "添加仓库失败");
+        if (DB::OrganizationReposInfoDao::Insert(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED, "添加仓库失败");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }

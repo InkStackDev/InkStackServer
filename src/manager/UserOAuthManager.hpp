@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "blog/data/user_oauth_info.h"
+#include "DB/UserOauthInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
@@ -20,13 +20,13 @@ public:
      * @brief 按第三方平台唯一标识查询绑定记录
      * @return 绑定记录，不存在返回 nullptr
      */
-    data::UserOauthInfo::ptr getByOpenId(const std::string& provider, const std::string& open_id);
+    DB::UserOauthInfo::ptr getByOpenId(const std::string& provider, const std::string& open_id);
 
     /**
      * @brief 查询某用户在某平台的绑定记录
      * @return 绑定记录，不存在返回 nullptr
      */
-    data::UserOauthInfo::ptr getByUser(int64_t user_id, const std::string& provider);
+    DB::UserOauthInfo::ptr getByUser(int64_t user_id, const std::string& provider);
 
     /**
      * @brief 绑定第三方账号到本地用户

@@ -41,7 +41,7 @@ int32_t User2FAVerifyServlet::handle(chen::http::HttpRequest::ptr request,
             }
         }
         if (!uid) {
-            result->setErrno(errcode::TEMP_TOKEN_INVALID);
+            result->setErrno(TEMP_TOKEN_INVALID);
             break;
         }
 
@@ -50,18 +50,18 @@ int32_t User2FAVerifyServlet::handle(chen::http::HttpRequest::ptr request,
 
         auto info = UserMgr::GetInstance()->get(uid);
         if (!info) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
 
         if (info->getState() != 1 || info->getIsDeleted()) {
-            result->setErrno(errcode::ACCOUNT_INVALID);
+            result->setErrno(ACCOUNT_INVALID);
             break;
         }
 
         // 验证TOTP码
         if (!TotpUtil::VerifyCode(info->getTotpSecret(), code, 1)) {
-            result->setErrno(errcode::TOTP_INVALID_CODE);
+            result->setErrno(TOTP_INVALID_CODE);
             break;
         }
 

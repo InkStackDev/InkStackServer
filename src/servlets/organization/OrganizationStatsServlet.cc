@@ -24,14 +24,14 @@ int32_t OrganizationStatsServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         // 检查组织是否存在
         auto org = OrganizationMgr::GetInstance()->get(id);
         if (!org) {
-            result->setErrno(errcode::ORG_NOT_FOUND);
+            result->setErrno(ORG_NOT_FOUND);
             break;
         }
 

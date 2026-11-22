@@ -23,7 +23,7 @@ int32_t BroadcastCloseServlet::handle(
         int64_t uid = getUserId(request);
         auto uinfo = UserMgr::GetInstance()->get(uid);
         if (!uinfo || uinfo->getRole() != UserManager::ADMIN) {
-            result->setErrno(errcode::ACCESS_DENIED);
+            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -31,7 +31,7 @@ int32_t BroadcastCloseServlet::handle(
 
         auto info = NotificationMgr::GetInstance()->get(id);
         if (!info) {
-            result->setErrno(errcode::NOTIFICATION_SEND_FAILED);
+            result->setErrno(NOTIFICATION_SEND_FAILED);
             break;
         }
 
@@ -40,16 +40,16 @@ int32_t BroadcastCloseServlet::handle(
 
         auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_CONNECTION_FAILED);
+            result->setErrno(DB_CONNECTION_FAILED);
             break;
         }
-        if (data::NotificationInfoDao::Update(info, db)) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+        if (DB::NotificationInfoDao::Update(info, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
         NotificationMgr::GetInstance()->update(info);
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("msg", "已关闭");
     } while (0);
     response->setBody(result->toJsonString());

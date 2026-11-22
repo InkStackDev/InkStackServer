@@ -17,7 +17,7 @@ int32_t UserInfoServlet::handle(
     do {
         int64_t viewer_uid = getUserId(request);
         if (!viewer_uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -27,13 +27,13 @@ int32_t UserInfoServlet::handle(
             target_uid = id;
         }
 
-        data::UserInfo::ptr info = UserMgr::GetInstance()->get(target_uid);
+        DB::UserInfo::ptr info = UserMgr::GetInstance()->get(target_uid);
         if (!info) {
-            result->setErrno(errcode::ACCOUNT_INVALID);
+            result->setErrno(ACCOUNT_INVALID);
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("id", info->getId());
         result->set("name", info->getName());
         result->set("account", info->getAccount());

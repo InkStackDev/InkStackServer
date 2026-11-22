@@ -18,17 +18,17 @@ int32_t PasskeyListServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        std::vector<data::UserPasskeyInfo::ptr> passkeys;
+        std::vector<DB::UserPasskeyInfo::ptr> passkeys;
         if (PasskeyMgr::GetInstance()->listByUser(passkeys, uid) < 0) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
         result->set("total", passkeys.size());
         Json::Value list;
         for (const auto& passkey : passkeys) {

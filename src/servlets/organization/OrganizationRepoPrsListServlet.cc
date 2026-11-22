@@ -43,25 +43,25 @@ int32_t OrganizationRepoPrsListServlet::handle(
 
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
         uint64_t offset = (page - 1) * page_size;
-        std::vector<data::OrganizationRepoPrsInfo::ptr> prs;
+        std::vector<DB::OrganizationRepoPrsInfo::ptr> prs;
         int64_t total = 0;
 
         if (repo_id) {
             // 模式1: 按仓库查
             auto repo = OrganizationRepoMgr::GetInstance()->get(repo_id);
             if (!repo) {
-                result->setErrno(errcode::ORG_REPO_NOT_FOUND);
+                result->setErrno(ORG_REPO_NOT_FOUND);
                 break;
             }
             int64_t rid = repo->getOrgId();
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(rid, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED, "无权访问该组织");
+                result->setErrno(ACCESS_DENIED, "无权访问该组织");
                 break;
             }
             total = OrganizationRepoPrMgr::GetInstance()->listByRepoPages(prs, repo_id, state, offset, page_size);
@@ -69,12 +69,12 @@ int32_t OrganizationRepoPrsListServlet::handle(
             // 模式2: 按组织查
             auto org = OrganizationMgr::GetInstance()->get(org_id);
             if (!org) {
-                result->setErrno(errcode::ORG_NOT_FOUND);
+                result->setErrno(ORG_NOT_FOUND);
                 break;
             }
             auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
             if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
-                result->setErrno(errcode::ACCESS_DENIED, "无权访问该组织");
+                result->setErrno(ACCESS_DENIED, "无权访问该组织");
                 break;
             }
             total = OrganizationRepoPrMgr::GetInstance()->listByOrgPages(prs, org_id, state, offset, page_size);

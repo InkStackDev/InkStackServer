@@ -5,7 +5,7 @@
 #include "../../Manager/ArticleManager.hpp"
 #include "../../Search/SearchSync.hpp"
 #include "../../Util/Util.hpp"
-#include "blog/data/article_info.h"
+#include "DB/ArticleInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -29,7 +29,7 @@ int32_t ArticleDeleteServlet::handle(
         }
 
         int64_t uid = getUserId(request);
-        std::vector<data::ArticleInfo::ptr> infos;
+        std::vector<DB::ArticleInfo::ptr> infos;
         for (auto& id : art_ids) {
             auto info = ArticleMgr::GetInstance()->get(id);
             if (!info) {
@@ -44,25 +44,25 @@ int32_t ArticleDeleteServlet::handle(
             infos.push_back(info);
         }
 
-        auto db = getDB();
+        auto db = GetDB();
         if (!db) {
-            result->setErrno(errcode::DB_OPERATION_FAILED);
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
         auto trans = db->openTransaction();
         if (!trans) {
-            result->setErrno(errcode::DB_TRANSACTION_FAILED);
+            result->setErrno(DB_TRANSACTION_FAILED);
             break;
         }
         time_t now = time(0);
         for (auto& i : infos) {
             i->setIsDeleted(1);
             i->setUpdateTime(now);
-            data::ArticleInfoDao::Update(i, db);
+            DB::ArticleInfoDao::Update(i, db);
         }
         if (!trans->commit()) {
             ERROR(logger) << "commit fail";
-            result->setErrno(errcode::DB_COMMIT_FAILED);
+            result->setErrno(DB_COMMIT_FAILED);
 
             for (auto& i : infos) {
                 i->setIsDeleted(0);

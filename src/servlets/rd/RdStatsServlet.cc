@@ -21,21 +21,21 @@ int32_t RdStatsServlet::handle(
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
         auto user = UserMgr::GetInstance()->get(uid);
         if (!user) {
-            result->setErrno(errcode::USER_NOT_FOUND);
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
         int32_t system_role = user->getRole();
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
         time_t now = time(0);
 
-        std::vector<data::RequirementInfo::ptr> reqs;
-        std::vector<data::BugInfo::ptr> bugs;
-        std::vector<data::TaskInfo::ptr> tasks;
+        std::vector<DB::RequirementInfo::ptr> reqs;
+        std::vector<DB::BugInfo::ptr> bugs;
+        std::vector<DB::TaskInfo::ptr> tasks;
 
         if (is_platform_admin) {
             if (org_id) {
@@ -48,19 +48,19 @@ int32_t RdStatsServlet::handle(
                 TaskMgr::GetInstance()->listByPages(tasks, 0, INT32_MAX, -1, true);
             }
         } else {
-            std::vector<data::OrganizationUserRelInfo::ptr> user_orgs;
+            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
             for (auto& rel : user_orgs) {
                 if (org_id && rel->getOrgId() != org_id) {
                     continue;
                 }
-                std::vector<data::RequirementInfo::ptr> oReqs;
+                std::vector<DB::RequirementInfo::ptr> oReqs;
                 RequirementMgr::GetInstance()->listByOrg(oReqs, rel->getOrgId(), 0, INT32_MAX, -1, true);
                 reqs.insert(reqs.end(), oReqs.begin(), oReqs.end());
-                std::vector<data::BugInfo::ptr> oBugs;
+                std::vector<DB::BugInfo::ptr> oBugs;
                 BugMgr::GetInstance()->listByOrg(oBugs, rel->getOrgId(), 0, INT32_MAX, -1, true);
                 bugs.insert(bugs.end(), oBugs.begin(), oBugs.end());
-                std::vector<data::TaskInfo::ptr> oTasks;
+                std::vector<DB::TaskInfo::ptr> oTasks;
                 TaskMgr::GetInstance()->listByOrg(oTasks, rel->getOrgId(), 0, INT32_MAX, -1, true);
                 tasks.insert(tasks.end(), oTasks.begin(), oTasks.end());
             }

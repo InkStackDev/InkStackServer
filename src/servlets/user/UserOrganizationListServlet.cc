@@ -23,7 +23,7 @@ int32_t UserOrganizationListServlet::handle(
     do {
         int64_t uid = getUserId(request);
 
-        std::vector<data::OrganizationUserRelInfo::ptr> orgs;
+        std::vector<DB::OrganizationUserRelInfo::ptr> orgs;
         OrganizationUserRelMgr::GetInstance()->getOrgByUserId(orgs, uid, -1, true);
 
         std::sort(orgs.begin(), orgs.end(), [](const auto& a, const auto& b) {

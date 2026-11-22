@@ -22,7 +22,7 @@ int32_t PasskeyLoginBeginServlet::handle(
     do {
         AuthContext ctx = AuthService::Resolve(request, response, false);
         if (ctx.valid()) {
-            result->setErrno(errcode::USER_ALREADY_LOGIN);
+            result->setErrno(USER_ALREADY_LOGIN);
             break;
         }
 
@@ -30,32 +30,32 @@ int32_t PasskeyLoginBeginServlet::handle(
         std::vector<std::string> credential_ids;
         std::string auth_id = request->getParam("auth_id");
         if (!auth_id.empty()) {
-            data::UserInfo::ptr user;
+            DB::UserInfo::ptr user;
             if (IsEmail(auth_id)) {
                 user = UserMgr::GetInstance()->getByEmail(auth_id);
             } else if (IsValidAccount(auth_id)) {
                 user = UserMgr::GetInstance()->getByAccount(auth_id);
             } else {
-                result->setErrno(errcode::USER_INVALID_ACCOUNT);
+                result->setErrno(USER_INVALID_ACCOUNT);
                 break;
             }
 
             if (!user) {
-                result->setErrno(errcode::USER_NOT_FOUND);
+                result->setErrno(USER_NOT_FOUND);
                 break;
             }
             if (user->getState() != UserManager::Status::ACTIVE || user->getIsDeleted()) {
-                result->setErrno(errcode::ACCOUNT_INVALID);
+                result->setErrno(ACCOUNT_INVALID);
                 break;
             }
 
-            std::vector<data::UserPasskeyInfo::ptr> passkeys;
+            std::vector<DB::UserPasskeyInfo::ptr> passkeys;
             if (PasskeyMgr::GetInstance()->listByUser(passkeys, user->getId()) < 0) {
-                result->setErrno(errcode::DB_OPERATION_FAILED);
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
             if (passkeys.empty()) {
-                result->setErrno(errcode::PASSKEY_NOT_FOUND);
+                result->setErrno(PASSKEY_NOT_FOUND);
                 break;
             }
 
@@ -66,7 +66,7 @@ int32_t PasskeyLoginBeginServlet::handle(
                 }
             }
             if (credential_ids.empty()) {
-                result->setErrno(errcode::PASSKEY_NOT_FOUND);
+                result->setErrno(PASSKEY_NOT_FOUND);
                 break;
             }
         }
@@ -79,7 +79,7 @@ int32_t PasskeyLoginBeginServlet::handle(
         }
 
         result->setData(options);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
