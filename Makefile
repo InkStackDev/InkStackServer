@@ -59,11 +59,11 @@ orm:
 # ---- 依赖同步 / 一键出产物 ----
 #   make deps                 → 下载 chen-sdk + 三方依赖（deps.py sync，架构按本机自动识别）
 #   make apply                → 用 SDK 的 apply.sh 同步 bin/tools/protocol/resources
-#   make collect [ENV=prod]   → 打包单实例部署产物（collect.sh）
+#   make collect [ENV=prod]   → 旧版单实例包（collect.sh，仅本地保留；CI 不再使用）
 #   make cluster [ENV=prod] [INSTANCES=3] [DEPLOY_PATH=/opt/techhaven] [LOG_ROOT=/data/apps]
-#                             → 多实例部署产物（每个实例的配置已渲染好）
-#   make dist [ENV=prod]      → deps + apply + orm + build + collect 一条龙
-#   make dist-cluster [ENV=prod] [INSTANCES=3] → deps + apply + orm + build + cluster 一条龙
+#                             → 集群包（每个实例的配置已渲染好；INSTANCES=1 即单实例）
+#   make dist [ENV=prod] [INSTANCES=3] → deps + apply + orm + build + cluster 一条龙
+#   make dist-cluster         → dist 的别名（保留兼容）
 
 .PHONY: deps apply collect cluster dist dist-cluster
 deps:
@@ -93,11 +93,6 @@ dist:
 	@$(MAKE) apply
 	@$(MAKE) orm
 	@$(MAKE) build
-	@$(MAKE) collect ENV=$(if $(ENV),$(ENV),prod)
-
-dist-cluster:
-	@$(MAKE) deps
-	@$(MAKE) apply
-	@$(MAKE) orm
-	@$(MAKE) build
 	@$(MAKE) cluster ENV=$(if $(ENV),$(ENV),prod)
+
+dist-cluster: dist

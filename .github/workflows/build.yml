@@ -1,8 +1,11 @@
 name: Build & Package
 
 # 触发：
-#   - 手动 workflow_dispatch（可选 dev/prod，出 Actions artifact）
+#   - 手动 workflow_dispatch（可选 dev/prod、实例数、部署路径，出 Actions artifact）
 #   - 打 tag v* → 额外发布到 GitHub Release
+#
+# 产物只有"集群包"一种形态：techhaven-cluster-<tag>-<arch>.tar.gz
+#   instances=1 即单实例包
 on:
   workflow_dispatch:
     inputs:
@@ -11,6 +14,18 @@ on:
         type: choice
         default: prod
         options: [prod, dev]
+      instances:
+        description: 实例数量（1 即单实例）
+        type: string
+        default: "3"
+      deploy_path:
+        description: 目标部署目录（写入实例配置）
+        type: string
+        default: /opt/techhaven
+      log_root:
+        description: 日志根目录（仅日志单独存放）
+        type: string
+        default: /data/apps
   push:
     branches:
       - master
@@ -23,6 +38,9 @@ permissions:
 
 env:
   PKG_ENV: ${{ github.event.inputs.env || 'prod' }}
+  PKG_INSTANCES: ${{ github.event.inputs.instances || vars.CLUSTER_INSTANCES || '3' }}
+  PKG_DEPLOY_PATH: ${{ github.event.inputs.deploy_path || vars.DEPLOY_PATH || '/opt/techhaven' }}
+  PKG_LOG_ROOT: ${{ github.event.inputs.log_root || vars.CLUSTER_LOG_ROOT || '/data/apps' }}
 
 jobs:
   build:
@@ -106,7 +124,12 @@ jobs:
         if: env.PKG_ENV == 'prod'
         env:
           WORK_PATH: ${{ vars.WORK_PATH }}
+          DATA_PATH: ${{ vars.DATA_PATH || '/data/apps/data' }}
+          LOG_DIR: ${{ vars.LOG_DIR || '/data/apps/logs' }}
+          PROCESS_NAME: ${{ vars.PROCESS_NAME || 'techhaven' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+          HTTP_PORT: ${{ vars.HTTP_PORT || '8090' }}
+          WS_PORT: ${{ vars.WS_PORT || '8091' }}
           MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
           MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
@@ -114,6 +137,10 @@ jobs:
           MYSQL_DBNAME: ${{ secrets.MYSQL_DBNAME }}
           REDIS_HOST: ${{ secrets.REDIS_HOST }}
           REDIS_DBNAME: ${{ secrets.REDIS_DBNAME }}
+          SEARCH_HUB_ADDRESS: ${{ vars.SEARCH_HUB_ADDRESS || '127.0.0.1:9010' }}
+          INSTANCE_ID: ${{ vars.INSTANCE_ID || '1' }}
+          RPC_HUB_ADDRESS: ${{ vars.RPC_HUB_ADDRESS || '127.0.0.1:9010' }}
+          RPC_BUS_ID: ${{ vars.RPC_BUS_ID || '1.1.2.1' }}
           ADMIN_PASSWD: ${{ secrets.ADMIN_PASSWD }}
           GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
@@ -126,8 +153,13 @@ jobs:
           WEBAUTHN_USER_HANDLE_SECRET: ${{ secrets.WEBAUTHN_USER_HANDLE_SECRET }}
         run: |
           {
-            echo "WORK_PATH=${WORK_PATH:-/home/path/to/apps}"
+            echo "WORK_PATH=${WORK_PATH:-/opt/techhaven}"
+            echo "DATA_PATH=${DATA_PATH:-/data/apps/data}"
+            echo "LOG_DIR=${LOG_DIR:-/data/apps/logs}"
+            echo "PROCESS_NAME=${PROCESS_NAME:-techhaven}"
             echo "LOG_LEVEL=${LOG_LEVEL:-info}"
+            echo "HTTP_PORT=${HTTP_PORT:-8090}"
+            echo "WS_PORT=${WS_PORT:-8091}"
             echo "MYSQL_HOST=${MYSQL_HOST:-change.me}"
             echo "MYSQL_PORT=${MYSQL_PORT:-3306}"
             echo "MYSQL_USER=${MYSQL_USER:-change.me}"
@@ -135,6 +167,10 @@ jobs:
             echo "MYSQL_DBNAME=${MYSQL_DBNAME:-techhaven}"
             echo "REDIS_HOST=${REDIS_HOST:-127.0.0.1:6379}"
             echo "REDIS_DBNAME=${REDIS_DBNAME:-blog}"
+            echo "SEARCH_HUB_ADDRESS=${SEARCH_HUB_ADDRESS:-127.0.0.1:9010}"
+            echo "INSTANCE_ID=${INSTANCE_ID:-1}"
+            echo "RPC_HUB_ADDRESS=${RPC_HUB_ADDRESS:-127.0.0.1:9010}"
+            echo "RPC_BUS_ID=${RPC_BUS_ID:-1.1.2.1}"
             echo "ADMIN_PASSWD=${ADMIN_PASSWD:-}"
             echo "GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}"
             echo "GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}"
@@ -147,19 +183,28 @@ jobs:
             echo "WEBAUTHN_USER_HANDLE_SECRET=${WEBAUTHN_USER_HANDLE_SECRET:-}"
           } > bin/conf/prod.env
 
-      - name: Package
-        run: ./collect.sh "${PKG_ENV}"
+      - name: Package cluster
+        run: |
+          ./scripts/cluster/package-cluster.sh "${PKG_ENV}" \
+            --instances "${PKG_INSTANCES}" \
+            --deploy-path "${PKG_DEPLOY_PATH}" \
+            --log-root "${PKG_LOG_ROOT}"
 
-      - name: Rename package (tag + arch)
+      - name: Rename cluster package (tag + arch)
         run: |
           tag="${{ github.ref_type == 'tag' && github.ref_name || 'latest' }}"
-          mv techhaven-server-*.tar.gz "techhaven-server-${tag}-${{ matrix.arch }}.tar.gz"
+          mv techhaven-cluster-*.tar.gz "techhaven-cluster-${tag}-${{ matrix.arch }}.tar.gz"
+          sha256sum "techhaven-cluster-${tag}-${{ matrix.arch }}.tar.gz" \
+            > "techhaven-cluster-${tag}-${{ matrix.arch }}.tar.gz.sha256"
 
-      - name: Upload package
+      - name: Upload cluster package
         uses: actions/upload-artifact@v4
         with:
-          name: techhaven-server-${{ matrix.arch }}
-          path: techhaven-server-*.tar.gz
+          name: techhaven-cluster-${{ matrix.arch }}
+          path: |
+            techhaven-cluster-*.tar.gz
+            techhaven-cluster-*.tar.gz.sha256
+          retention-days: 7
           if-no-files-found: error
 
   release:
@@ -209,5 +254,5 @@ jobs:
               --notes-file /tmp/release_body.md
           fi
 
-          gh release upload "${GITHUB_REF_NAME}" artifacts/*.tar.gz \
+          gh release upload "${GITHUB_REF_NAME}" artifacts/*.tar.gz artifacts/*.sha256 \
             --repo "${GITHUB_REPOSITORY}" --clobber

@@ -107,6 +107,31 @@ cd /opt/techhaven
 - 进程管理用框架自带的 `-d` 与 `-s reload|stop`，`clusterctl.sh` 的所有命令都带同一个 `-c`，不会误停其它实例。
 - 业务只作为 RPC Hub 客户端，不再监听 rpc 端口；`RPC_BUS_ID` 末段与 `--instance-id` 保持一致。
 
+CI（GitHub Actions）：
+
+- `Build & Package` 只产出集群包：`techhaven-cluster-<tag>-<arch>.tar.gz` + `.sha256`（`instances=1` 即单实例）。
+  `workflow_dispatch` 可填 `instances` / `deploy_path` / `log_root`。
+- `Deploy` 支持：
+  - `cold`：首次全量解压并 `start all`
+  - `hot`：替换 `module/`、`errors.json`、`locale/`、`scripts/` 后 `rolling-restart all`
+  - `module`：**只替换 `module/*.so`**（旧文件备份为 `*.so.prev`），不重启任何实例，
+    由用户登录服务器自行 `clusterctl.sh reload <name>`，适合灰度验证
+  - `stop`：`stop all`
+
+  灰度示例：
+
+  ```bash
+  cd /opt/techhaven
+  ./scripts/clusterctl.sh reload a && ./scripts/clusterctl.sh health a   # 先切一个实例
+  ./scripts/clusterctl.sh rolling-restart all                            # 确认后全量
+  ```
+
+  回滚：`cd module && for f in *.so.prev; do mv "$f" "${f%.prev}"; done`，再 reload。
+- `Deploy` 使用的仓库变量 `DEPLOY_PATH` 必须与打包时的 `deploy_path` 一致，否则实例配置里的
+  `work_path`/pid 路径与运行目录不匹配。
+- 集群包里 `instances/*/conf/*.yml` 是预渲染的，**包含真实密码与密钥**：仓库保持 private，
+  artifact 保留期设短，Release 资产按敏感文件管理。
+
 ## 3. 定时任务与计数
 
 ### 3.1 租约任务（全局一份）

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #
-# collect.sh — 收集部署所需文件并打包
+# collect.sh — 收集部署所需文件并打包（旧版单实例包）
+#
+# 注意: 新部署请用 ./scripts/cluster/package-cluster.sh（make cluster）；
+#       CI 已不再使用本脚本。
 #
 # 用法:
 #   ./collect.sh [ENV]
