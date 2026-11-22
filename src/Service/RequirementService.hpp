@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../Domain/AccessTypes.hpp"
+
 #include "DB/RequirementInfo.hpp"
 
 #include <cstdint>
@@ -36,15 +38,21 @@ public:
     enum class SaveResult {
         Ok,
         NotFound,
+        NotMember,
+        AccessDenied,
         DbError
     };
 
-    static SaveResult Save(const RequirementInput& input, DB::RequirementInfo::ptr& out);
+    enum class DeleteResult {
+        Ok,
+        AccessDenied,
+        DbError
+    };
 
-    static bool DeleteMany(int64_t org_id,
+    static SaveResult Save(const Viewer& viewer, const RequirementInput& input, DB::RequirementInfo::ptr& out);
+
+    static DeleteResult DeleteMany(const Viewer& viewer,
+        int64_t org_id,
         const std::set<int64_t>& ids,
-        int64_t uid,
-        int32_t org_role,
-        bool is_platform_admin,
         std::vector<DB::RequirementInfo::ptr>& deleted);
 };

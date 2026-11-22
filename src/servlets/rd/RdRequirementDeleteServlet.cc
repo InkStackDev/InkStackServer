@@ -1,16 +1,11 @@
 #include "RdRequirementDeleteServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 
 #include <set>
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 RdRequirementDeleteServlet::RdRequirementDeleteServlet()
     : BlogLoginedServlet("RdRequirementDeleteServlet")
@@ -37,31 +32,19 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
             }
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserRole::ADMIN);
-
-        int32_t org_role = 0;
-        if (!is_platform_admin) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            org_role = rel->getRole();
-        }
 
         std::vector<DB::RequirementInfo::ptr> delItems;
-        if (!RequirementService::DeleteMany(org_id, delIds, uid, org_role, is_platform_admin, delItems)) {
+        auto rt = RequirementService::DeleteMany(viewer, org_id, delIds, delItems);
+        if (rt == RequirementService::DeleteResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (rt != RequirementService::DeleteResult::Ok) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
@@ -73,6 +56,7 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
             result->set("ids", json_ids);
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

@@ -1,13 +1,9 @@
 #include "RdBugEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Permission.hpp"
 #include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/BugRepository.hpp"
 
 RdBugEditServlet::RdBugEditServlet()
     : BlogLoginedServlet("RdBugEditServlet")
@@ -24,31 +20,9 @@ int32_t RdBugEditServlet::handle(
         int64_t id = request->getParamAs<int64_t>("id", 0);
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-            result->setErrno(ORG_NOT_MEMBER);
-            break;
-        }
-        int32_t org_role = rel->getRole();
-
-        if (id) {
-            auto existing = BugRepository::Get(id, GetDB());
-            if (!existing || existing->getOrgId() != org_id) {
-                result->setErrno(BUG_NOT_FOUND);
-                break;
-            }
-            if (!CanEditBug(org_role, uid, existing->getCreatorId())) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-        } else if (!CanCreateBug(org_role)) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -57,7 +31,7 @@ int32_t RdBugEditServlet::handle(
         BugInput input;
         input.id = id;
         input.org_id = org_id;
-        input.creator_id = uid;
+        input.creator_id = viewer.user_id;
         input.title = title;
         input.description = request->getParam("description");
 
@@ -92,9 +66,17 @@ int32_t RdBugEditServlet::handle(
         input.environment = request->getParam("environment");
 
         DB::BugInfo::ptr info;
-        auto rt = BugService::Save(input, info);
+        auto rt = BugService::Save(viewer, input, info);
         if (rt == BugService::SaveResult::NotFound) {
             result->setErrno(BUG_NOT_FOUND);
+            break;
+        }
+        if (rt == BugService::SaveResult::NotMember) {
+            result->setErrno(ORG_NOT_MEMBER);
+            break;
+        }
+        if (rt == BugService::SaveResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != BugService::SaveResult::Ok) {

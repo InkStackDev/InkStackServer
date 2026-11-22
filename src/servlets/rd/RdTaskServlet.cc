@@ -1,13 +1,11 @@
 #include "RdTaskServlet.hpp"
 
-#include "../../Permission.hpp"
-#include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Util/Util.hpp"
+#include "../../Access/AccessPolicy.hpp"
+#include "../../Access/AccessScopeResolver.hpp"
+#include "../../Repository/RdListQueryRepository.hpp"
 #include "../../Repository/TaskRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
+#include "RdHelper.hpp"
 
 RdTaskServlet::RdTaskServlet()
     : BlogLoginedServlet("RdTaskServlet")
@@ -23,37 +21,35 @@ int32_t RdTaskServlet::handle(
     do {
         int64_t id = request->getParamAs<int64_t>("id", 0);
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
-        int64_t uid = getUserId(request);
-        if (!uid) {
+
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+
+        auto db = GetDB();
+        if (!db) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserRole::ADMIN);
+
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         if (id) {
-            auto info = TaskRepository::Get(id, GetDB());
+            auto info = TaskRepository::Get(id, db);
             if (!info || info->getIsDeleted()) {
                 result->setErrno(TASK_NOT_FOUND);
                 break;
             }
-            int64_t info_org_id = info->getOrgId();
-            if (!is_platform_admin) {
-                auto rel = OrganizationUserRelRepository::GetByOrgAndUser(info_org_id, uid, GetDB());
-                if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
-                bool is_related = (uid == info->getCreatorId() || uid == info->getAssigneeId());
-                if (!CanViewTask(rel->getRole(), is_related)) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
+            if (!AccessPolicy::CanViewTask(
+                    viewer, scope, info->getOrgId(), info->getCreatorId(), info->getAssigneeId())) {
+                result->setErrno(ACCESS_DENIED);
+                break;
             }
             Json::Value data;
             BuildTaskJson(data, info);
@@ -63,62 +59,35 @@ int32_t RdTaskServlet::handle(
 
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
-        uint64_t offset, size;
+        uint64_t offset = 0;
+        uint64_t size = 0;
         ParsePagination(page, page_size, offset, size);
 
-        std::string search = request->getParam("search");
+        RdListQueryRepository::Filter filter;
+        filter.offset = offset;
+        filter.limit = size;
+        filter.assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
+        filter.search = request->getParam("search");
         std::string status_str = request->getParam("status");
+        if (!status_str.empty()) {
+            filter.status = StringToTaskStatus(status_str);
+        }
         std::string priority_str = request->getParam("priority");
-        int64_t filter_assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
-
-        std::vector<DB::TaskInfo::ptr> all;
-        if (is_platform_admin && org_id) {
-            TaskRepository::ListByOrg(all, org_id, 0, INT32_MAX, -1, true, GetDB());
-        } else if (!is_platform_admin) {
-            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-            OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
-            for (auto& rel : user_orgs) {
-                if (org_id && rel->getOrgId() != org_id) {
-                    continue;
-                }
-                std::vector<DB::TaskInfo::ptr> org_tasks;
-                TaskRepository::ListByOrg(org_tasks, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
-                for (auto& task : org_tasks) {
-                    bool is_related = (uid == task->getCreatorId() || uid == task->getAssigneeId());
-                    if (CanViewTask(rel->getRole(), is_related)) {
-                        all.push_back(task);
-                    }
-                }
-            }
-        } else {
-            TaskRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
+        if (!priority_str.empty()) {
+            filter.priority = StringToPriority(priority_str);
         }
 
-        std::vector<DB::TaskInfo::ptr> filtered;
-        for (auto& info : all) {
-            if (!status_str.empty() && StringToTaskStatus(status_str) != info->getStatus()) {
-                continue;
-            }
-            if (!priority_str.empty() && StringToPriority(priority_str) != info->getPriority()) {
-                continue;
-            }
-            if (filter_assignee_id && info->getAssigneeId() != filter_assignee_id) {
-                continue;
-            }
-            if (!search.empty()) {
-                std::string title = info->getTitle();
-                if (title.find(search) == std::string::npos) {
-                    continue;
-                }
-            }
-            filtered.push_back(info);
+        std::vector<DB::TaskInfo::ptr> tasks;
+        int64_t total = 0;
+        if (!RdListQueryRepository::ListTasks(tasks, total, viewer, scope, org_id, filter, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        uint64_t total = filtered.size();
         Json::Value arr(Json::arrayValue);
-        for (uint64_t i = offset; i < filtered.size() && arr.size() < size; ++i) {
+        for (const auto& info : tasks) {
             Json::Value item;
-            BuildTaskJson(item, filtered[i]);
+            BuildTaskJson(item, info);
             arr.append(item);
         }
         result->set("total", total);

@@ -1,16 +1,11 @@
 #include "RdTaskDeleteServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Service/TaskService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 
 #include <set>
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 RdTaskDeleteServlet::RdTaskDeleteServlet()
     : BlogLoginedServlet("RdTaskDeleteServlet")
@@ -38,31 +33,19 @@ int32_t RdTaskDeleteServlet::handle(
             }
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserRole::ADMIN);
-
-        int32_t org_role = 0;
-        if (!is_platform_admin) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            org_role = rel->getRole();
-        }
 
         std::vector<DB::TaskInfo::ptr> delItems;
-        if (!TaskService::DeleteMany(org_id, delIds, uid, org_role, is_platform_admin, delItems)) {
+        auto rt = TaskService::DeleteMany(viewer, org_id, delIds, delItems);
+        if (rt == TaskService::DeleteResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (rt != TaskService::DeleteResult::Ok) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
@@ -74,6 +57,7 @@ int32_t RdTaskDeleteServlet::handle(
             result->set("ids", json_ids);
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

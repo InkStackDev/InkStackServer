@@ -26,4 +26,10 @@ public:
         int64_t org_id,
         int64_t creator_id,
         int64_t assignee_id);
+
+    static bool CanCreateRdItem(const Viewer& viewer, const OrgScope& scope, int64_t org_id);
+
+    static bool CanEditRdItem(const Viewer& viewer, const OrgScope& scope, int64_t org_id);
+
+    static bool CanDeleteRdItem(const Viewer& viewer, const OrgScope& scope, int64_t org_id, int64_t creator_id);
 };

@@ -1,13 +1,11 @@
 #include "RdRequirementServlet.hpp"
 
-#include "../../Permission.hpp"
-#include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Util/Util.hpp"
+#include "../../Access/AccessPolicy.hpp"
+#include "../../Access/AccessScopeResolver.hpp"
+#include "../../Repository/RdListQueryRepository.hpp"
 #include "../../Repository/RequirementRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
+#include "RdHelper.hpp"
 
 RdRequirementServlet::RdRequirementServlet()
     : BlogLoginedServlet("RdRequirementServlet")
@@ -24,36 +22,33 @@ int32_t RdRequirementServlet::handle(
         int64_t id = request->getParamAs<int64_t>("id", 0);
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+
+        auto db = GetDB();
+        if (!db) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserRole::ADMIN);
+
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         if (id) {
-            auto info = RequirementRepository::Get(id, GetDB());
+            auto info = RequirementRepository::Get(id, db);
             if (!info || info->getIsDeleted()) {
                 result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;
             }
-            int64_t info_org_id = info->getOrgId();
-            if (!is_platform_admin) {
-                auto rel = OrganizationUserRelRepository::GetByOrgAndUser(info_org_id, uid, GetDB());
-                if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
-                if (!CanViewRequirement(rel->getRole(), uid, info->getCreatorId())) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
+            if (!AccessPolicy::CanViewRequirement(viewer, scope, info->getOrgId())) {
+                result->setErrno(ACCESS_DENIED);
+                break;
             }
             Json::Value data;
             BuildRequirementJson(data, info);
@@ -63,59 +58,34 @@ int32_t RdRequirementServlet::handle(
 
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
-        uint64_t offset, size;
+        uint64_t offset = 0;
+        uint64_t size = 0;
         ParsePagination(page, page_size, offset, size);
 
-        std::string search = request->getParam("search");
+        RdListQueryRepository::Filter filter;
+        filter.offset = offset;
+        filter.limit = size;
+        filter.search = request->getParam("search");
         std::string status_str = request->getParam("status");
+        if (!status_str.empty()) {
+            filter.status = StringToRequirementStatus(status_str);
+        }
         std::string priority_str = request->getParam("priority");
-
-        std::vector<DB::RequirementInfo::ptr> all;
-        if (is_platform_admin && org_id) {
-            RequirementRepository::ListByOrg(all, org_id, 0, INT32_MAX, -1, true, GetDB());
-        } else if (!is_platform_admin) {
-            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-            OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
-            for (auto& rel : user_orgs) {
-                if (org_id && rel->getOrgId() != org_id) {
-                    continue;
-                }
-                std::vector<DB::RequirementInfo::ptr> org_reqs;
-                RequirementRepository::ListByOrg(org_reqs, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
-                for (auto& req : org_reqs) {
-                    if (CanViewRequirement(rel->getRole(), uid, req->getCreatorId())) {
-                        all.push_back(req);
-                    }
-                }
-            }
-        } else {
-            RequirementRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
+        if (!priority_str.empty()) {
+            filter.priority = StringToPriority(priority_str);
         }
 
-        std::vector<DB::RequirementInfo::ptr> filtered;
-        for (auto& info : all) {
-            if (!status_str.empty() && StringToRequirementStatus(status_str) != info->getStatus()) {
-                continue;
-            }
-            if (!priority_str.empty() && StringToPriority(priority_str) != info->getPriority()) {
-                continue;
-            }
-            if (!search.empty()) {
-                std::string title = info->getTitle();
-                std::string desc = info->getDescription();
-                std::string creator = GetUserName(info->getCreatorId());
-                if (title.find(search) == std::string::npos && desc.find(search) == std::string::npos && creator.find(search) == std::string::npos) {
-                    continue;
-                }
-            }
-            filtered.push_back(info);
+        std::vector<DB::RequirementInfo::ptr> requirements;
+        int64_t total = 0;
+        if (!RdListQueryRepository::ListRequirements(requirements, total, scope, org_id, filter, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        uint64_t total = filtered.size();
         Json::Value arr(Json::arrayValue);
-        for (uint64_t i = offset; i < filtered.size() && arr.size() < size; ++i) {
+        for (const auto& info : requirements) {
             Json::Value item;
-            BuildRequirementJson(item, filtered[i]);
+            BuildRequirementJson(item, info);
             arr.append(item);
         }
 

@@ -5,18 +5,33 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
-#include "../Permission.hpp"
+#include "../Access/AccessPolicy.hpp"
+#include "../Access/AccessScopeResolver.hpp"
+#include "../Domain/OrganizationTypes.hpp"
 #include "../Repository/BugRepository.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-BugService::SaveResult BugService::Save(const BugInput& input, DB::BugInfo::ptr& out)
+BugService::SaveResult BugService::Save(const Viewer& viewer, const BugInput& input, DB::BugInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return SaveResult::AccessDenied;
+    }
+
     auto db = GetDB();
     if (!db) {
         return SaveResult::DbError;
+    }
+
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return SaveResult::DbError;
+    }
+
+    if (!viewer.is_platform_admin && !scope.allows(input.org_id, OrgRole::MEMBER)) {
+        return SaveResult::NotMember;
     }
 
     DB::BugInfo::ptr info;
@@ -25,7 +40,13 @@ BugService::SaveResult BugService::Save(const BugInput& input, DB::BugInfo::ptr&
         if (!info || info->getOrgId() != input.org_id) {
             return SaveResult::NotFound;
         }
+        if (!AccessPolicy::CanEditRdItem(viewer, scope, input.org_id)) {
+            return SaveResult::AccessDenied;
+        }
     } else {
+        if (!AccessPolicy::CanCreateRdItem(viewer, scope, input.org_id)) {
+            return SaveResult::AccessDenied;
+        }
         info = std::make_shared<DB::BugInfo>();
         info->setOrgId(input.org_id);
         info->setCreatorId(input.creator_id);
@@ -73,19 +94,29 @@ BugService::SaveResult BugService::Save(const BugInput& input, DB::BugInfo::ptr&
     return SaveResult::Ok;
 }
 
-bool BugService::DeleteMany(int64_t org_id,
+BugService::DeleteResult BugService::DeleteMany(const Viewer& viewer,
+    int64_t org_id,
     const std::set<int64_t>& ids,
-    int64_t uid,
-    int32_t org_role,
-    bool is_platform_admin,
     std::vector<DB::BugInfo::ptr>& deleted)
 {
     if (ids.empty()) {
-        return true;
+        return DeleteResult::Ok;
     }
+    if (!viewer.valid()) {
+        return DeleteResult::AccessDenied;
+    }
+
     auto db = GetDB();
     if (!db) {
-        return false;
+        return DeleteResult::DbError;
+    }
+
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return DeleteResult::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return DeleteResult::AccessDenied;
     }
 
     std::vector<DB::BugInfo::ptr> all;
@@ -94,18 +125,18 @@ bool BugService::DeleteMany(int64_t org_id,
         if (!ids.count(info->getId())) {
             continue;
         }
-        if (!is_platform_admin && uid != info->getCreatorId() && !CanDeleteBug(org_role)) {
+        if (!AccessPolicy::CanDeleteRdItem(viewer, scope, org_id, info->getCreatorId())) {
             continue;
         }
         deleted.push_back(info);
     }
     if (deleted.empty()) {
-        return true;
+        return DeleteResult::Ok;
     }
 
     auto trans = db->openTransaction();
     if (!trans) {
-        return false;
+        return DeleteResult::DbError;
     }
     int64_t now = chen::TimeUtil::GetCurrentSec();
     for (auto& info : deleted) {
@@ -114,12 +145,12 @@ bool BugService::DeleteMany(int64_t org_id,
         if (!BugRepository::Update(info, db)) {
             ERROR(logger) << "BugService::DeleteMany update failed, id=" << info->getId();
             trans->rollback();
-            return false;
+            return DeleteResult::DbError;
         }
     }
     if (!trans->commit()) {
         ERROR(logger) << "BugService::DeleteMany commit failed";
-        return false;
+        return DeleteResult::DbError;
     }
-    return true;
+    return DeleteResult::Ok;
 }

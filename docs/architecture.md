@@ -66,6 +66,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 - `AssignmentQueryRepository`、`OrganizationRepository` 内的 Query 部分
 - `PrStatsQueryRepository`：PR 报表聚合
 - `RdStatsQueryRepository`：需求/缺陷/任务趋势与概览统计
+- `RdListQueryRepository`：需求/缺陷/任务列表的数据范围、过滤与分页
 
 报表 SQL 不允许出现在 Servlet 中。
 

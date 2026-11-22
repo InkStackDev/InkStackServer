@@ -1,13 +1,11 @@
 #include "RdBugServlet.hpp"
 
-#include "../../Permission.hpp"
-#include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Util/Util.hpp"
+#include "../../Access/AccessPolicy.hpp"
+#include "../../Access/AccessScopeResolver.hpp"
 #include "../../Repository/BugRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Repository/RdListQueryRepository.hpp"
+#include "../../Util/Util.hpp"
+#include "RdHelper.hpp"
 
 RdBugServlet::RdBugServlet()
     : BlogLoginedServlet("RdBugServlet")
@@ -23,36 +21,34 @@ int32_t RdBugServlet::handle(
     do {
         int64_t id = request->getParamAs<int64_t>("id", 0);
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
-        int64_t uid = getUserId(request);
-        if (!uid) {
+
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+
+        auto db = GetDB();
+        if (!db) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserRole::ADMIN);
+
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         if (id) {
-            auto info = BugRepository::Get(id, GetDB());
+            auto info = BugRepository::Get(id, db);
             if (!info || info->getIsDeleted()) {
                 result->setErrno(BUG_NOT_FOUND);
                 break;
             }
-            int64_t info_org_id = info->getOrgId();
-            if (!is_platform_admin) {
-                auto rel = OrganizationUserRelRepository::GetByOrgAndUser(info_org_id, uid, GetDB());
-                if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
-                if (!CanViewBug(rel->getRole(), uid, info->getCreatorId())) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
+            if (!AccessPolicy::CanViewBug(viewer, scope, info->getOrgId())) {
+                result->setErrno(ACCESS_DENIED);
+                break;
             }
             Json::Value data;
             BuildBugJson(data, info);
@@ -62,64 +58,41 @@ int32_t RdBugServlet::handle(
 
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
-        uint64_t offset, size;
+        uint64_t offset = 0;
+        uint64_t size = 0;
         ParsePagination(page, page_size, offset, size);
 
-        std::string search = request->getParam("search");
+        RdListQueryRepository::Filter filter;
+        filter.offset = offset;
+        filter.limit = size;
+        filter.search = request->getParam("search");
         std::string status_str = request->getParam("status");
+        if (!status_str.empty()) {
+            filter.status = StringToBugStatus(status_str);
+        }
         std::string priority_str = request->getParam("priority");
+        if (!priority_str.empty()) {
+            filter.priority = StringToPriority(priority_str);
+        }
         std::string severity_str = request->getParam("severity");
-
-        std::vector<DB::BugInfo::ptr> all;
-        if (is_platform_admin && org_id) {
-            BugRepository::ListByOrg(all, org_id, 0, INT32_MAX, -1, true, GetDB());
-        } else if (!is_platform_admin) {
-            std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-            OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
-            for (auto& rel : user_orgs) {
-                if (org_id && rel->getOrgId() != org_id) {
-                    continue;
-                }
-                std::vector<DB::BugInfo::ptr> org_bugs;
-                BugRepository::ListByOrg(org_bugs, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
-                for (auto& bug : org_bugs) {
-                    if (CanViewBug(rel->getRole(), uid, bug->getCreatorId())) {
-                        all.push_back(bug);
-                    }
-                }
-            }
-        } else {
-            BugRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
+        if (!severity_str.empty()) {
+            filter.severity = StringToSeverity(severity_str);
         }
 
-        std::vector<DB::BugInfo::ptr> filtered;
-        for (auto& info : all) {
-            if (!status_str.empty() && StringToBugStatus(status_str) != info->getStatus()) {
-                continue;
-            }
-            if (!priority_str.empty() && StringToPriority(priority_str) != info->getPriority()) {
-                continue;
-            }
-            if (!severity_str.empty() && StringToSeverity(severity_str) != info->getSeverity()) {
-                continue;
-            }
-            if (!search.empty()) {
-                std::string title = info->getTitle();
-                std::string desc = info->getDescription();
-                if (title.find(search) == std::string::npos && desc.find(search) == std::string::npos) {
-                    continue;
-                }
-            }
-            filtered.push_back(info);
+        std::vector<DB::BugInfo::ptr> bugs;
+        int64_t total = 0;
+        if (!RdListQueryRepository::ListBugs(bugs, total, scope, org_id, filter, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        uint64_t total = filtered.size();
         Json::Value arr(Json::arrayValue);
-        for (uint64_t i = offset; i < filtered.size() && arr.size() < size; ++i) {
+        for (const auto& info : bugs) {
             Json::Value item;
-            BuildBugJson(item, filtered[i]);
+            BuildBugJson(item, info);
             arr.append(item);
         }
+
         result->set("total", total);
         result->set("list", arr);
     } while (0);

@@ -1,13 +1,9 @@
 #include "RdTaskEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Permission.hpp"
 #include "../../Service/TaskService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/TaskRepository.hpp"
 
 RdTaskEditServlet::RdTaskEditServlet()
     : BlogLoginedServlet("RdTaskEditServlet")
@@ -24,31 +20,9 @@ int32_t RdTaskEditServlet::handle(
         int64_t id = request->getParamAs<int64_t>("id", 0);
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-            result->setErrno(ORG_NOT_MEMBER);
-            break;
-        }
-        int32_t org_role = rel->getRole();
-
-        if (id) {
-            auto existing = TaskRepository::Get(id, GetDB());
-            if (!existing || existing->getOrgId() != org_id) {
-                result->setErrno(TASK_NOT_FOUND);
-                break;
-            }
-            if (!CanEditTask(org_role, uid, existing->getAssigneeId())) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-        } else if (!CanCreateTask(org_role)) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -57,7 +31,7 @@ int32_t RdTaskEditServlet::handle(
         TaskInput input;
         input.id = id;
         input.org_id = org_id;
-        input.creator_id = uid;
+        input.creator_id = viewer.user_id;
         input.title = title;
         input.description = request->getParam("description");
 
@@ -84,9 +58,17 @@ int32_t RdTaskEditServlet::handle(
         input.estimated_hours = request->getParamAs<int64_t>("estimated_hours", 0);
 
         DB::TaskInfo::ptr info;
-        auto rt = TaskService::Save(input, info);
+        auto rt = TaskService::Save(viewer, input, info);
         if (rt == TaskService::SaveResult::NotFound) {
             result->setErrno(TASK_NOT_FOUND);
+            break;
+        }
+        if (rt == TaskService::SaveResult::NotMember) {
+            result->setErrno(ORG_NOT_MEMBER);
+            break;
+        }
+        if (rt == TaskService::SaveResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != TaskService::SaveResult::Ok) {

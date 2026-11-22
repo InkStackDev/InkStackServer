@@ -8,6 +8,7 @@
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Domain/AccessTypes.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
 
@@ -42,6 +43,11 @@ int32_t AdminFeedbackConvertServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
+
+        Viewer viewer;
+        viewer.user_id = uid;
+        viewer.system_role = role;
+        viewer.is_platform_admin = true;
 
         DEFINE_AND_CHECK_STRING(result, id_str, "id");
         DEFINE_AND_CHECK_STRING(result, target, "target");
@@ -113,7 +119,7 @@ int32_t AdminFeedbackConvertServlet::handle(
             input.description = content;
 
             DB::RequirementInfo::ptr req;
-            if (RequirementService::Save(input, req) != RequirementService::SaveResult::Ok) {
+            if (RequirementService::Save(viewer, input, req) != RequirementService::SaveResult::Ok) {
                 result->setErrno(DB_OPERATION_FAILED, "insert requirement failed");
                 break;
             }
@@ -139,7 +145,7 @@ int32_t AdminFeedbackConvertServlet::handle(
             input.description = content;
 
             DB::BugInfo::ptr bug;
-            if (BugService::Save(input, bug) != BugService::SaveResult::Ok) {
+            if (BugService::Save(viewer, input, bug) != BugService::SaveResult::Ok) {
                 result->setErrno(DB_OPERATION_FAILED, "insert bug failed");
                 break;
             }

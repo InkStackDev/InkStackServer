@@ -1,13 +1,9 @@
 #include "RdRequirementEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Permission.hpp"
 #include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/RequirementRepository.hpp"
 
 RdRequirementEditServlet::RdRequirementEditServlet()
     : BlogLoginedServlet("RdRequirementEditServlet")
@@ -24,31 +20,9 @@ int32_t RdRequirementEditServlet::handle(
         int64_t id = request->getParamAs<int64_t>("id", 0);
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-            result->setErrno(ORG_NOT_MEMBER);
-            break;
-        }
-        int32_t org_role = rel->getRole();
-
-        if (id) {
-            auto existing = RequirementRepository::Get(id, GetDB());
-            if (!existing || existing->getOrgId() != org_id) {
-                result->setErrno(REQUIREMENT_NOT_FOUND);
-                break;
-            }
-            if (!CanEditRequirement(org_role)) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-        } else if (!CanCreateRequirement(org_role)) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -57,7 +31,7 @@ int32_t RdRequirementEditServlet::handle(
         RequirementInput input;
         input.id = id;
         input.org_id = org_id;
-        input.creator_id = uid;
+        input.creator_id = viewer.user_id;
         input.title = title;
         input.description = request->getParam("description");
 
@@ -84,9 +58,17 @@ int32_t RdRequirementEditServlet::handle(
         input.source = request->getParam("source");
 
         DB::RequirementInfo::ptr info;
-        auto rt = RequirementService::Save(input, info);
+        auto rt = RequirementService::Save(viewer, input, info);
         if (rt == RequirementService::SaveResult::NotFound) {
             result->setErrno(REQUIREMENT_NOT_FOUND);
+            break;
+        }
+        if (rt == RequirementService::SaveResult::NotMember) {
+            result->setErrno(ORG_NOT_MEMBER);
+            break;
+        }
+        if (rt == RequirementService::SaveResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != RequirementService::SaveResult::Ok) {
