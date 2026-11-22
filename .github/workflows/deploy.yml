@@ -74,18 +74,58 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Upload cluster package
+      - name: Upload package
         if: inputs.mode != 'stop'
+        timeout-minutes: 20
         run: |
-          SCP_OPTS=(-P "${SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new)
+          set -euo pipefail
           pkg="$(find pkg -name '*amd64*.tar.gz' | head -1)"
-          scp "${SCP_OPTS[@]}" "${pkg}" "${SSH_USER}@${SSH_HOST}:/tmp/techhaven-cluster.tar.gz"
+          test -n "${pkg}"
+          size=$(stat -c%s "${pkg}")
+          echo "==> 开始上传 $(basename "${pkg}") ($(numfmt --to=iec "${size}")) -> ${SSH_HOST}"
+
+          SSH_BASE=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519
+            -o StrictHostKeyChecking=accept-new
+            -o ConnectTimeout=10
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=4)
+
+          REMOTE_TMP=/tmp/techhaven-cluster.tar.gz.part
+          REMOTE_DST=/tmp/techhaven-cluster.tar.gz
+
+          if ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" 'command -v rsync >/dev/null 2>&1'; then
+            echo "==> 使用 rsync（带进度、支持续传）"
+            rsync -az --partial --progress --info=progress2 --timeout=60 \
+              -e "ssh -p ${SSH_PORT} -i ${HOME}/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=4" \
+              "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}"
+          else
+            echo "==> 远端没有 rsync，使用 scp + 轮询进度"
+            scp -C "${SSH_BASE[@]}" "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}" &
+            up_pid=$!
+            while kill -0 "${up_pid}" 2>/dev/null; do
+              sleep 5
+              cur=$(ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" \
+                "stat -c%s ${REMOTE_TMP} 2>/dev/null || echo 0" 2>/dev/null || echo 0)
+              cur=${cur//[!0-9]/}
+              [ -z "${cur}" ] && cur=0
+              if [ "${size}" -gt 0 ]; then
+                echo "  上传进度: $(( cur * 100 / size ))% ($(numfmt --to=iec "${cur}") / $(numfmt --to=iec "${size}"))"
+              fi
+            done
+            wait "${up_pid}"
+          fi
+
+          ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" "mv -f ${REMOTE_TMP} ${REMOTE_DST}"
+          echo "==> 上传完成: ${REMOTE_DST}"
 
       - name: Run deploy on server
         run: |
-          SSH_OPTS=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new)
+          SSH_OPTS=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519
+            -o StrictHostKeyChecking=accept-new
+            -o ConnectTimeout=10
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
           MODE='${{ inputs.mode }}'
-          DP='${DEPLOY_PATH}'
+          DP="${DEPLOY_PATH}"
           ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" \
             "MODE='${MODE}' DEPLOY_PATH='${DP}' bash -s" <<'REMOTE'
             set -euo pipefail
