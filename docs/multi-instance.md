@@ -109,8 +109,9 @@ cd /opt/techhaven
 
 CI（GitHub Actions）：
 
-- `Build & Package` 只产出集群包：`techhaven-cluster-<tag>-<arch>.tar.gz` + `.sha256`（`instances=1` 即单实例）。
-  `workflow_dispatch` 可填 `instances` / `deploy_path` / `log_root`。
+- `Build & Package` 只产出集群包：`techhaven-cluster-<tag>-<arch>.tar.gz` + `.sha256`
+  （`CLUSTER_INSTANCES=1` 即单实例）。打包参数全部来自仓库 Variables，触发时无需填写：
+  `PKG_ENV`（默认 `prod`）、`CLUSTER_INSTANCES`、`DEPLOY_PATH`、`CLUSTER_LOG_ROOT`。
 - `Deploy` 支持：
   - `cold`：首次全量解压并 `start all`
   - `hot`：替换 `module/`、`errors.json`、`locale/`、`scripts/` 后 `rolling-restart all`

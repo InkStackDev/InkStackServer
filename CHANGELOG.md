@@ -117,6 +117,8 @@ All notable changes to this project will be documented in this file.
   程序目录默认 `/opt/techhaven`，**只有日志**单独放在 `/data/apps/instances/<name>/logs`
   （可用 `--deploy-path` / `--log-root` 调整）；
   另含 `clusterctl.sh`、`render-instance.sh`、Nginx 示例与多实例说明；`make dist` 现在直接产出集群包。
+- `Build & Package` 去掉触发时的打包输入参数，统一读仓库 Variables（`PKG_ENV` / `CLUSTER_INSTANCES` /
+  `DEPLOY_PATH` / `CLUSTER_LOG_ROOT`）；`Deploy` 只保留 `mode` 输入。
 - CI 只发行集群包：`Build & Package` 产出 `techhaven-cluster-<tag>-<arch>.tar.gz`（含 `.sha256`），
   支持 `instances` / `deploy_path` / `log_root` 输入；`Deploy` 改为集群部署（`cold` 全量 / `hot` 只换
   `module`、`errors.json`、`locale`、`scripts` 后滚动重启 / `stop`），不再下载单实例包。

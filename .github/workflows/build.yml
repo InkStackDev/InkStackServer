@@ -1,31 +1,16 @@
 name: Build & Package
 
 # 触发：
-#   - 手动 workflow_dispatch（可选 dev/prod、实例数、部署路径，出 Actions artifact）
+#   - 手动 workflow_dispatch（直接出 Actions artifact）
 #   - 打 tag v* → 额外发布到 GitHub Release
 #
+# 打包参数全部取自仓库 Variables，无需在触发时填写：
+#   PKG_ENV（默认 prod）/ CLUSTER_INSTANCES / DEPLOY_PATH / CLUSTER_LOG_ROOT
+#
 # 产物只有"集群包"一种形态：techhaven-cluster-<tag>-<arch>.tar.gz
-#   instances=1 即单实例包
+#   CLUSTER_INSTANCES=1 即单实例包
 on:
   workflow_dispatch:
-    inputs:
-      env:
-        description: 打包环境
-        type: choice
-        default: prod
-        options: [prod, dev]
-      instances:
-        description: 实例数量（1 即单实例）
-        type: string
-        default: "3"
-      deploy_path:
-        description: 目标部署目录（写入实例配置）
-        type: string
-        default: /opt/techhaven
-      log_root:
-        description: 日志根目录（仅日志单独存放）
-        type: string
-        default: /data/apps
   push:
     branches:
       - master
@@ -37,10 +22,10 @@ permissions:
   contents: write
 
 env:
-  PKG_ENV: ${{ github.event.inputs.env || 'prod' }}
-  PKG_INSTANCES: ${{ github.event.inputs.instances || vars.CLUSTER_INSTANCES || '3' }}
-  PKG_DEPLOY_PATH: ${{ github.event.inputs.deploy_path || vars.DEPLOY_PATH || '/opt/techhaven' }}
-  PKG_LOG_ROOT: ${{ github.event.inputs.log_root || vars.CLUSTER_LOG_ROOT || '/data/apps' }}
+  PKG_ENV: ${{ vars.PKG_ENV || 'prod' }}
+  PKG_INSTANCES: ${{ vars.CLUSTER_INSTANCES || '3' }}
+  PKG_DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/techhaven' }}
+  PKG_LOG_ROOT: ${{ vars.CLUSTER_LOG_ROOT || '/data/apps' }}
 
 jobs:
   build:
