@@ -90,10 +90,6 @@ void BlogModule::onTick()
     if (tick % 50 == 0) {
         SampleRates();
     }
-    // 5s 刷一次日志缓冲，保证 access/root 日志能及时落盘
-    if (tick % 50 == 0) {
-        chen::LoggerMgr::GetInstance()->flushAll();
-    }
     // 60s 清理一次进程内会话缓存，避免长跑内存只增不减
     if (tick % 600 == 0) {
         chen::http::SessionDataMgr::GetInstance()->check(3600);

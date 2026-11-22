@@ -50,18 +50,24 @@ logs:
     appenders:
       - type: FileLogAppender
         file: ${LOG_DIR}/root.log
+        time_rotate: day
+        retention_days: 14
       - type: StdoutLogAppender
   - name: system
     level: info
     appenders:
       - type: FileLogAppender
         file: ${LOG_DIR}/system.log
+        time_rotate: day
+        retention_days: 14
       - type: StdoutLogAppender
   - name: access
     level: info
     appenders:
       - type: FileLogAppender
         file: ${LOG_DIR}/access.log
+        time_rotate: day
+        retention_days: 14
       - type: StdoutLogAppender
 
 mysql:
