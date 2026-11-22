@@ -89,6 +89,7 @@ void BlogModule::onTick()
     // 5s 采样一次路由 QPS
     if (tick % 50 == 0) {
         SampleRates();
+        PublishSnapshot();
     }
     // 60s 清理一次进程内会话缓存，避免长跑内存只增不减
     if (tick % 600 == 0) {
@@ -154,6 +155,7 @@ bool BlogModule::onServerReady()
     }
 
     Init(getName(), getVersion(), http_servers, ws_servers);
+    PublishSnapshot();
 
     client_ = std::make_shared<chen::rpc::RpcClient>();
     ASSERT_RET(client_, false);

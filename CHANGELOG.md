@@ -163,6 +163,10 @@ All notable changes to this project will be documented in this file.
   `ErrorCodeMgr::load`，`onServerReady` 恢复 `Init(...)` 服务指标注册，`onTick` 恢复 `SampleRates()` 与
   `SessionDataMgr::check()`，`onUnload` 补 `RedisMgr::freeAll()`。
 - 访问日志改用独立的 `access` logger（之前写到 root.log）。
+- 运行指标改为集群聚合：每个实例每 5s 把 `Registry::RenderJson()` 快照写入 Redis
+  `metrics:inst:<instance>:<pid>`（TTL 30s，`metrics:instances` zset 维护存活列表），
+  `/api/v1/admin/metrics` 汇总所有存活实例：counter/gauge/histogram 求和、`blog_info` 取实例编号最小的一份、
+  在线用户/系统内存取最大、运行时长取最小。响应结构保持 `{metrics:[...]}`，另带 `instanceCount`。
 - 日志文件开启按天轮换：`time_rotate: day` + `retention_days: 14`，文件名形如
   `root_2026-11-23.log` / `access_2026-11-23.log`，避免单文件无限增长。
 - 修复 `BlogLoginedServlet::handlePre` 会话判断写反导致**带 session cookie 的请求全部返回

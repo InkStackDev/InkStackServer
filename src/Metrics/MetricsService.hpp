@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <json/json.h>
+
 #include <Chen/Http/HttpServer.hpp>
 #include <Chen/Http/WSServer.hpp>
 #include <Chen/Metrics/Metrics.hpp>
@@ -38,6 +40,21 @@ void Init(
     const std::string& version,
     const std::vector<chen::http::HttpServer::ptr>& http_servers,
     const std::vector<chen::http::WSServer::ptr>& ws_servers);
+
+/**
+ * @brief 把本进程指标快照写入 Redis（多实例聚合用）
+ * @details key 为 metrics:inst:<instance_id>:<pid>，TTL 30s；同时写入 metrics:instances zset。
+ */
+void PublishSnapshot();
+
+/**
+ * @brief 汇总集群内所有存活实例的指标
+ * @details 以本进程 registry 为基准，合并 Redis 中其它实例的快照：
+ *          counter / gauge / histogram 默认求和；blog_info 取实例编号最小的一份；
+ *          blog_online_users 取最大；系统内存取最大；运行时长取最小。
+ * @param[out] out 与 Registry::RenderJson 相同结构：{ "metrics": [ ... ] }
+ */
+bool CollectClusterMetrics(Json::Value& out);
 
 /**
  * @brief 获取指定路由的指标，首次调用时完成注册

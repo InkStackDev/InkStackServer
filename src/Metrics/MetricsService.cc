@@ -1,15 +1,22 @@
 #include "MetricsService.hpp"
 
+#include <algorithm>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
+#include <Chen/DB/Redis.hpp>
 #include <Chen/Fiber/Fiber.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
 #include <unistd.h>
 
+#include "../Config/AppConfig.hpp"
 #include "../Message/MessageRouter.hpp"
 #include "../Manager/WSConnectionManager.hpp"
 #include "../Util/Util.hpp"
@@ -205,4 +212,196 @@ void SampleRates()
         state->sampled_requests = total;
         state->sampled_at_ms = now;
     }
+}
+
+
+namespace {
+
+/// 快照 TTL：实例异常退出后最多 30s 从聚合里消失
+constexpr int kSnapshotTtlSec = 30;
+const char* kSnapshotIndexKey = "metrics:instances";
+const char* kSnapshotPrefix = "metrics:inst:";
+
+std::string SnapshotKey()
+{
+    return std::string(kSnapshotPrefix) + std::to_string(GetServerInstanceId()) + ":" + std::to_string(getpid());
+}
+
+std::string LabelsKey(const Json::Value& labels)
+{
+    std::string key;
+    if (!labels.isObject()) {
+        return key;
+    }
+    for (Json::ValueConstIterator it = labels.begin(); it != labels.end(); ++it) {
+        key += it.name();
+        key += '=';
+        key += it->asString();
+        key += '\x1f';
+    }
+    return key;
+}
+
+enum class MergeMode {
+    Sum,
+    Max,
+    Min,
+    First
+};
+
+MergeMode ModeFor(const std::string& name)
+{
+    if (name == "blog_info") {
+        return MergeMode::First;
+    }
+    if (name == "blog_online_users" || name.rfind("blog_system_memory_", 0) == 0) {
+        return MergeMode::Max;
+    }
+    if (name == "blog_process_uptime_seconds") {
+        return MergeMode::Min;
+    }
+    return MergeMode::Sum;
+}
+
+void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& item)
+{
+    const std::string name = item["name"].asString();
+    std::string key = name;
+    key += '\x1f';
+    key += LabelsKey(item["labels"]);
+
+    auto it = merged.find(key);
+    if (it == merged.end()) {
+        merged.emplace(key, item);
+        return;
+    }
+
+    MergeMode mode = ModeFor(name);
+    if (mode == MergeMode::First) {
+        return;
+    }
+
+    Json::Value& dst = it->second;
+
+    if (dst.isMember("buckets") && dst["buckets"].isArray()) {
+        for (const auto& src_bucket : item["buckets"]) {
+            bool found = false;
+            for (auto& bucket : dst["buckets"]) {
+                if (bucket.isMember("le") && src_bucket.isMember("le")
+                    && bucket["le"].asDouble() == src_bucket["le"].asDouble()) {
+                    bucket["cumulative"] = Json::Value::UInt64(
+                        bucket["cumulative"].asUInt64() + src_bucket["cumulative"].asUInt64());
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                dst["buckets"].append(src_bucket);
+            }
+        }
+        const Json::UInt64 count = dst["count"].asUInt64() + item["count"].asUInt64();
+        dst["count"] = Json::Value::UInt64(count);
+        dst["sum"] = dst["sum"].asDouble() + item["sum"].asDouble();
+        return;
+    }
+
+    const int64_t lhs = dst.isMember("value") ? dst["value"].asInt64() : 0;
+    const int64_t rhs = item.isMember("value") ? item["value"].asInt64() : 0;
+    int64_t value = lhs + rhs;
+    if (mode == MergeMode::Max) {
+        value = std::max(lhs, rhs);
+    } else if (mode == MergeMode::Min) {
+        value = std::min(lhs, rhs);
+    }
+    dst["value"] = Json::Value::Int64(value);
+}
+
+} // namespace
+
+void PublishSnapshot()
+{
+    auto* registry = RegistryMgr::GetInstance();
+    if (!registry) {
+        return;
+    }
+
+    const std::string key = SnapshotKey();
+    const std::string ttl = std::to_string(kSnapshotTtlSec);
+    const std::string now = std::to_string(chen::TimeUtil::GetCurrentSec());
+    const std::string cleanup_before = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec * 2);
+
+    chen::RedisUtil::Cmd(GetRedisPoolName(), {"setex", key, ttl, registry->RenderJson()});
+    chen::RedisUtil::Cmd(GetRedisPoolName(), {"zadd", kSnapshotIndexKey, now, key});
+    chen::RedisUtil::Cmd(
+        GetRedisPoolName(), {"zremrangebyscore", kSnapshotIndexKey, "-inf", cleanup_before});
+}
+
+bool CollectClusterMetrics(Json::Value& out)
+{
+    auto* registry = RegistryMgr::GetInstance();
+    if (!registry) {
+        return false;
+    }
+
+    struct Snapshot {
+        std::string key;
+        Json::Value value;
+    };
+    std::vector<Snapshot> snapshots;
+
+    Json::Value own;
+    if (!chen::JsonUtil::FromString(own, registry->RenderJson())) {
+        return false;
+    }
+    snapshots.push_back({SnapshotKey(), std::move(own)});
+
+    const std::string min_score = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec);
+    auto index = chen::RedisUtil::Cmd(
+        GetRedisPoolName(), {"zrangebyscore", kSnapshotIndexKey, min_score, "+inf"});
+    if (index && index->type == REDIS_REPLY_ARRAY) {
+        const std::string own_key = SnapshotKey();
+        for (size_t i = 0; i < index->elements; ++i) {
+            const auto* element = index->element[i];
+            if (!element || !element->str) {
+                continue;
+            }
+            std::string key(element->str, element->len);
+            if (key == own_key) {
+                continue;
+            }
+            auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), {"get", key});
+            if (!rpy || rpy->type != REDIS_REPLY_STRING) {
+                continue;
+            }
+            Json::Value value;
+            if (!chen::JsonUtil::FromString(value, std::string(rpy->str, rpy->len))) {
+                continue;
+            }
+            snapshots.push_back({std::move(key), std::move(value)});
+        }
+    }
+
+    // 按快照 key 排序，保证 blog_info 等 pick 类指标的选择是确定性的
+    std::sort(snapshots.begin(), snapshots.end(), [](const Snapshot& lhs, const Snapshot& rhs) {
+        return lhs.key < rhs.key;
+    });
+
+    std::map<std::string, Json::Value> merged;
+    for (const auto& snapshot : snapshots) {
+        if (!snapshot.value.isMember("metrics") || !snapshot.value["metrics"].isArray()) {
+            continue;
+        }
+        for (const auto& item : snapshot.value["metrics"]) {
+            MergeItem(merged, item);
+        }
+    }
+
+    Json::Value list(Json::arrayValue);
+    for (auto& entry : merged) {
+        list.append(std::move(entry.second));
+    }
+    out = Json::Value(Json::objectValue);
+    out["metrics"] = std::move(list);
+    out["instanceCount"] = static_cast<Json::UInt64>(snapshots.size());
+    return true;
 }

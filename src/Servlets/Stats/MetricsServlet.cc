@@ -1,7 +1,6 @@
 #include "MetricsServlet.hpp"
 
-#include <Chen/Metrics/Metrics.hpp>
-#include <Chen/Util/JsonUtil.hpp>
+#include "../../Metrics/MetricsService.hpp"
 
 MetricsAdminServlet::MetricsAdminServlet()
     : BlogAdminServlet("MetricsAdminServlet")
@@ -15,14 +14,8 @@ int32_t MetricsAdminServlet::handle(
     Result::ptr result)
 {
     do {
-        auto* registry = chen::metrics::RegistryMgr::GetInstance();
-        if (!registry) {
-            result->setErrno(INTERNAL_ERROR);
-            break;
-        }
-
         Json::Value data;
-        if (!chen::JsonUtil::FromString(data, registry->RenderJson())) {
+        if (!CollectClusterMetrics(data)) {
             result->setErrno(INTERNAL_ERROR);
             break;
         }
