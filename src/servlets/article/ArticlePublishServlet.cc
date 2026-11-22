@@ -1,15 +1,7 @@
 #include "ArticlePublishServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Permission.hpp"
-#include "../../Event/EventDefine.hpp"
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/UserManager.hpp"
-#include "../../Search/SearchSync.hpp"
+#include "../../Service/ArticleService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticlePublishServlet::ArticlePublishServlet()
     : BlogLoginedServlet("ArticlePublishServlet")
@@ -31,75 +23,16 @@ int32_t ArticlePublishServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
-        if (!info) {
-            result->setErrno(ARTICLE_INVALID_ID);
-            break;
-        }
 
-        if (info->getIsDeleted()) {
+        auto rt = ArticleService::PublishArticle(uid, id, publish_time);
+        if (rt == ArticleService::PublishArticleResult::Ok) {
+            result->setErrno(SUCCESS);
+        } else if (rt == ArticleService::PublishArticleResult::ArticleNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
-            break;
-        }
-        if (info->getState() == ArticleManager::Status::PUBLISHED || info->getState() == ArticleManager::Status::CHECKING) {
+        } else if (rt == ArticleService::PublishArticleResult::InvalidState) {
             result->setErrno(ARTICLE_INVALID_STATE);
-            break;
-        }
-        info->setState(ArticleManager::Status::CHECKING);
-        time_t now = time(0);
-        if (publish_time > now) {
-            info->setPublishTime(publish_time);
         } else {
-            info->setPublishTime(now);
-        }
-        info->setUpdateTime(now);
-
-        // 检查是否可以跳过审核（管理员和审核员直接发布）
-        auto author = UserMgr::GetInstance()->get(uid);
-        bool bypass_review = false;
-        if (author) {
-            bypass_review = CanBypassReview(author->getRole());
-        }
-
-        if (bypass_review) {
-            // 跳过审核，直接发布或设为私密（定时发布）
-            if (info->getPublishTime() <= now) {
-                info->setState(ArticleManager::Status::PUBLISHED);
-            } else {
-                info->setState(ArticleManager::Status::PRIVATE);
-            }
-        }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
-        }
-        if (DB::ArticleInfoDao::Update(info, db)) {
             result->setErrno(ARTICLE_UPDATE_FAILED);
-            break;
-        }
-        ArticleMgr::GetInstance()->add(info);
-        SearchSyncMgr::GetInstance()->markDirty(info->getId(), SearchSync::OP_UPSERT);
-
-        // 清除对应月份的日历缓存
-        ArticleMgr::GetInstance()->clearCalendarCache(info->getUserId(), info->getPublishTime());
-
-        // 定时发布文章加入 Redis sorted set 调度
-        if (info->getPublishTime() > now && info->getState() != ArticleManager::Status::PUBLISHED) {
-            ArticleMgr::GetInstance()->scheduleArticle(id, info->getPublishTime());
-        }
-
-        // 未跳过审核时，通知审核员
-        if (!bypass_review) {
-            EventArticleReviewData data = {};
-            data.type = "request";
-            data.article_id = id;
-            data.article_title = info->getTitle();
-            data.author_id = uid;
-            data.author_name = author ? author->getName() : std::to_string(uid);
-
-            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_REVIEW, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

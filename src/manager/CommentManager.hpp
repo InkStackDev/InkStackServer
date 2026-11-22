@@ -61,9 +61,6 @@ public:
     };
 
     CommentStats getStats();
-
-private:
-    static DB::CommentInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<CommentManager> CommentMgr;

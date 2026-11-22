@@ -1,6 +1,6 @@
 #include "CommentDeleteServlet.hpp"
 
-#include "../../Manager/CommentManager.hpp"
+#include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 CommentDeleteServlet::CommentDeleteServlet()
@@ -23,24 +23,16 @@ int32_t CommentDeleteServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
-        auto comment = CommentMgr::GetInstance()->get(id);
-        if (!comment || comment->getIsDeleted()) {
+        auto rt = CommentService::DeleteComment(uid, id);
+        if (rt == CommentService::DeleteCommentResult::Ok) {
+            result->setErrno(SUCCESS);
+        } else if (rt == CommentService::DeleteCommentResult::CommentNotFound) {
             result->setErrno(COMMENT_NOT_FOUND);
-            break;
-        }
-
-        // only the comment author can delete
-        if (comment->getUserId() != uid) {
+        } else if (rt == CommentService::DeleteCommentResult::AccessDenied) {
             result->setErrno(COMMENT_PERMISSION_DENIED);
-            break;
-        }
-
-        if (!CommentMgr::GetInstance()->del(id)) {
+        } else {
             result->setErrno(COMMENT_DELETE_FAILED);
-            break;
         }
-
-        result->setErrno(SUCCESS);
     } while (0);
 
     response->setBody(result->toJsonString());

@@ -1,90 +1,21 @@
 #include "CommentManager.hpp"
 
 #include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
 
 #include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
+#include "../Repository/CommentRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static const int kCacheTTL = 300;
-static const char* kCachePrefix = "cache:obj:cmt:";
-
-static std::string CommentCacheKey(int64_t id)
-{
-    return std::string(kCachePrefix) + std::to_string(id);
-}
-
-static DB::CommentInfo::ptr ParseCommentCache(const Json::Value& v)
-{
-    auto info = std::make_shared<DB::CommentInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setArticleId(CacheJsonInt64(v, "article_id"));
-    info->setUserId(CacheJsonInt64(v, "user_id"));
-    info->setParentId(CacheJsonInt64(v, "parent_id"));
-    info->setContent(CacheJsonString(v, "content"));
-    info->setIp(CacheJsonString(v, "ip"));
-    info->setUserAgent(CacheJsonString(v, "user_agent"));
-    info->setStatus(CacheJsonInt32(v, "status"));
-    info->setIsReported(CacheJsonInt32(v, "is_reported"));
-    info->setReportCount(CacheJsonInt32(v, "report_count"));
-    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->markClean();
-    return info;
-}
-
-static DB::CommentInfo::ptr GetCommentCache(int64_t id)
-{
-    std::string key = CommentCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseCommentCache(v);
-}
-
-static void SetCommentCache(const DB::CommentInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(CommentCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
-
-DB::CommentInfo::ptr CommentManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return DB::CommentInfoDao::ParseRow(rt);
-}
-
 void CommentManager::add(DB::CommentInfo::ptr info)
 {
-    SetCommentCache(info);
+    CommentRepository::Put(info);
 }
 
 DB::CommentInfo::ptr CommentManager::get(int64_t id)
 {
-    auto v = GetCommentCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = DB::CommentInfoDao::Query(id, db);
-    if (v) {
-        SetCommentCache(v);
-    }
-    return v;
+    return CommentRepository::Get(id, GetDB());
 }
 
 DB::CommentInfo::ptr CommentManager::create(int64_t article_id,
@@ -114,12 +45,12 @@ DB::CommentInfo::ptr CommentManager::create(int64_t article_id,
     info->setCreateTime(time(0));
     info->setUpdateTime(time(0));
 
-    if (DB::CommentInfoDao::Insert(info, db)) {
+    if (!CommentRepository::Insert(info, db)) {
         ERROR(logger) << "CommentManager create Insert fail";
         return nullptr;
     }
 
-    SetCommentCache(info);
+    CommentRepository::Put(info);
     return info;
 }
 
@@ -138,11 +69,11 @@ bool CommentManager::update(int64_t id, const std::string& content)
 
     info->setContent(content);
     info->setUpdateTime(time(0));
-    if (DB::CommentInfoDao::Update(info, db)) {
+    if (!CommentRepository::Update(info, db)) {
         ERROR(logger) << "CommentManager update fail";
         return false;
     }
-    SetCommentCache(info);
+    CommentRepository::Put(info);
     return true;
 }
 
@@ -161,11 +92,11 @@ bool CommentManager::del(int64_t id)
 
     info->setIsDeleted(1);
     info->setUpdateTime(time(0));
-    if (DB::CommentInfoDao::Update(info, db)) {
+    if (!CommentRepository::Update(info, db)) {
         ERROR(logger) << "CommentManager del Update fail";
         return false;
     }
-    SetCommentCache(info);
+    CommentRepository::Put(info);
     return true;
 }
 
@@ -336,7 +267,7 @@ int64_t CommentManager::batchUpdateStatus(const std::vector<int64_t>& ids, int32
         if (info) {
             info->setStatus(status);
             info->setUpdateTime(time(0));
-            SetCommentCache(info);
+            CommentRepository::Put(info);
         }
     }
     return ids.size();
@@ -366,7 +297,7 @@ int64_t CommentManager::batchDelete(const std::vector<int64_t>& ids)
         if (info) {
             info->setIsDeleted(1);
             info->setUpdateTime(time(0));
-            SetCommentCache(info);
+            CommentRepository::Put(info);
         }
     }
     return ids.size();

@@ -1,0 +1,243 @@
+#include "ArticleQueryRepository.hpp"
+
+#include <sstream>
+
+#include <Chen/Util/TimeUtil.hpp>
+#include <Chen/Util/TypeUtil.hpp>
+
+#include "../Manager/CacheUtil.hpp"
+
+namespace {
+constexpr int32_t kStateChecking = 1;
+constexpr int32_t kStatePublished = 2;
+constexpr int32_t kStateRejected = 3;
+} // namespace
+
+bool ArticleQueryRepository::ListByUserId(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t user_id,
+    bool valid,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return false;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->where("user_id", "=", user_id);
+    qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
+    qb->orderBy("id", "DESC");
+    return DB::ArticleInfoDao::QueryByBuilder(infos, qb, conn) == 0;
+}
+
+int64_t ArticleQueryRepository::ListByUserIdPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t user_id,
+    int32_t offset,
+    int32_t size,
+    bool valid,
+    int32_t state,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return 0;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return 0;
+    }
+    qb->whereIf(user_id != 0, "user_id", "=", user_id);
+    qb->whereIf(state != 0, "state", "=", (int64_t)state);
+    qb->whereIf(valid, "is_deleted", "=", (int64_t)0);
+    qb->orderBy("id", "DESC");
+
+    int64_t total = 0;
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, conn)) {
+        return 0;
+    }
+    return total;
+}
+
+int64_t ArticleQueryRepository::ListVerifyPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int32_t offset,
+    int32_t size,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return 0;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return 0;
+    }
+    qb->where("state", "=", (int64_t)kStateChecking);
+    qb->orderBy("id", "DESC");
+
+    int64_t total = 0;
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, conn)) {
+        return 0;
+    }
+    return total;
+}
+
+int64_t ArticleQueryRepository::ListByPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int32_t offset,
+    int32_t state,
+    int32_t category,
+    int32_t role,
+    int32_t days,
+    int32_t size,
+    bool valid,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return 0;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery("a");
+    if (!qb) {
+        return 0;
+    }
+    qb->select("a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, "
+               "a.weight, a.views, a.praise, a.favorites, "
+               "a.create_time, a.update_time");
+
+    if (category > 0) {
+        qb->join("article_category_rel acr", "a.id = acr.article_id");
+        qb->where("acr.category_id", "=", (int64_t)category);
+        qb->where("acr.is_deleted", "=", (int64_t)0);
+    }
+    if (role != -1) {
+        qb->join("user u", "a.user_id = u.id");
+        qb->where("u.role", "=", (int64_t)role);
+        qb->where("u.is_deleted", "=", (int64_t)0);
+    }
+    qb->whereIf(state != 0, "a.state", "=", (int64_t)state);
+    qb->whereIf(valid, "a.is_deleted", "=", (int64_t)0);
+    if (days > 0) {
+        qb->whereSQL("a.create_time >= ?", (int64_t)(chen::TimeUtil::GetCurrentSec() - days * 24 * 3600));
+    }
+    qb->orderBy("a.id", "DESC");
+
+    int64_t total = 0;
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, conn)) {
+        return 0;
+    }
+    return total;
+}
+
+std::pair<DB::ArticleInfo::ptr, DB::ArticleInfo::ptr> ArticleQueryRepository::Nearby(int64_t id, chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return std::pair(nullptr, nullptr);
+    }
+
+    DB::ArticleInfo::ptr prev;
+    {
+        auto qb = DB::ArticleInfoDao::newQuery();
+        if (qb) {
+            qb->whereSQL("id < ?", id);
+            qb->where("state", "=", (int64_t)kStatePublished);
+            qb->where("is_deleted", "=", (int64_t)0);
+            qb->orderBy("id", "DESC");
+            qb->limit(1);
+            std::vector<DB::ArticleInfo::ptr> results;
+            if (DB::ArticleInfoDao::QueryByBuilder(results, qb, conn) == 0 && !results.empty()) {
+                prev = results[0];
+            }
+        }
+    }
+
+    DB::ArticleInfo::ptr next;
+    {
+        auto qb = DB::ArticleInfoDao::newQuery();
+        if (qb) {
+            qb->whereSQL("id > ?", id);
+            qb->where("state", "=", (int64_t)kStatePublished);
+            qb->where("is_deleted", "=", (int64_t)0);
+            qb->orderBy("id", "ASC");
+            qb->limit(1);
+            std::vector<DB::ArticleInfo::ptr> results;
+            if (DB::ArticleInfoDao::QueryByBuilder(results, qb, conn) == 0 && !results.empty()) {
+                next = results[0];
+            }
+        }
+    }
+    return std::pair(prev, next);
+}
+
+ArticleQueryRepository::Stats ArticleQueryRepository::GetStats(int32_t category,
+    int32_t role,
+    int32_t days,
+    const std::string& keyword,
+    chen::IDB::ptr conn)
+{
+    Stats stats;
+    if (!conn) {
+        return stats;
+    }
+
+    if (category <= 0 && role == -1 && days <= 0 && keyword.empty()) {
+        std::string cached;
+        if (GetCachedStringResult("art:stats", cached)) {
+            std::stringstream ss(cached);
+            std::string token;
+            auto next = [&]() -> int64_t {
+                std::getline(ss, token, '|');
+                return chen::TypeUtil::Atoi(token);
+            };
+            stats.total = next();
+            stats.pending = next();
+            stats.published = next();
+            stats.rejected = next();
+            stats.reported = next();
+            return stats;
+        }
+    }
+
+    auto qb = DB::ArticleInfoDao::newQuery("a");
+    if (!qb) {
+        return stats;
+    }
+    qb->select("a.state, COUNT(*) as cnt");
+    if (category > 0) {
+        qb->join("article_category_rel acr", "a.id = acr.article_id");
+        qb->where("acr.category_id", "=", (int64_t)category);
+        qb->where("acr.is_deleted", "=", (int64_t)0);
+    }
+    if (role != -1) {
+        qb->join("user u", "a.user_id = u.id");
+        qb->where("u.role", "=", (int64_t)role);
+        qb->where("u.is_deleted", "=", (int64_t)0);
+    }
+    qb->where("a.is_deleted", "=", (int64_t)0);
+    if (days > 0) {
+        qb->whereSQL("a.create_time >= ?", (int64_t)(chen::TimeUtil::GetCurrentSec() - days * 24 * 3600));
+    }
+    if (!keyword.empty()) {
+        qb->where("a.title", "LIKE", "%" + keyword + "%");
+    }
+    qb->groupBy("a.state");
+
+    std::vector<std::pair<int32_t, int64_t>> rows;
+    if (qb->queryPairs<int32_t, int64_t>(rows, conn)) {
+        return stats;
+    }
+    for (auto& [st, cnt] : rows) {
+        stats.total += cnt;
+        if (st == kStateChecking) {
+            stats.pending += cnt;
+        } else if (st == kStatePublished) {
+            stats.published += cnt;
+        } else if (st == kStateRejected) {
+            stats.rejected += cnt;
+        }
+    }
+
+    if (category <= 0 && role == -1 && days <= 0 && keyword.empty()) {
+        std::stringstream ss;
+        ss << stats.total << "|" << stats.pending << "|" << stats.published << "|" << stats.rejected << "|"
+           << stats.reported;
+        CacheStringResult("art:stats", ss.str());
+    }
+    return stats;
+}

@@ -13,8 +13,13 @@ All notable changes to this project will be documented in this file.
 - 搜索全量重建和单条 PR 同步增加 Redis 租约，避免多 worker 重复执行。
 - 新增 `UserRepository` / `UserService` / `EntityCache` 样板：Repository 只做单表读写并显式接收 `conn`，Service 负责业务校验、事务和
   commit 后缓存失效；用户注册/创建、GitHub OAuth 用户创建、个人资料修改、2FA 启用/关闭/恢复码登录、密码设置、软删除/恢复、管理端资料更新已迁移到该路径。
-- 新增 `ArticleRepository` / `ArticleService` 样板，文章对象缓存收敛到 `EntityCache`，文章删除路径已迁移（事务、缓存、搜索同步、定时发布/日历清理统一在
+- 新增 `ArticleRepository` / `ArticleService` 样板，文章对象缓存收敛到 `EntityCache`
+  ，文章创建、更新、删除、状态切换、审核、发布已迁移（文章 + 分类/标签关系、事务、缓存、搜索同步、定时发布/日历清理、审核/状态事件统一在
   Service 内完成）。
+- 新增 `ArticleScheduleService`，定时发布、发布日历缓存从 `ArticleManager` 拆出。
+- 新增 `ArticleCounterService`，浏览/点赞/收藏计数、内存脏集合与刷盘从 `ArticleManager` 拆出。
+- 新增 `ArticleQueryRepository`，文章列表/审核列表/后台分页/统计/上一篇下一篇查询从 `ArticleManager` 拆出。
+- 新增 `CommentRepository` / `CommentService` 样板，评论对象缓存收敛到 `EntityCache`，评论创建/删除已迁移。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。

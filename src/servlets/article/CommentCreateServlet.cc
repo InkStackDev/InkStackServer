@@ -4,6 +4,7 @@
 #include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Util/Util.hpp>
@@ -52,8 +53,25 @@ int32_t CommentCreateServlet::handle(
         std::string ip = session->getRemoteAddressString();
         std::string user_agent = request->getHeader("User-Agent");
 
-        auto info = CommentMgr::GetInstance()->create(article_id, uid, content, parent_id, ip, user_agent);
-        if (!info) {
+        CommentService::CreateCommentInput input;
+        input.article_id = article_id;
+        input.user_id = uid;
+        input.parent_id = parent_id;
+        input.content = content;
+        input.ip = ip;
+        input.user_agent = user_agent;
+
+        DB::CommentInfo::ptr info;
+        auto rt = CommentService::CreateComment(input, info);
+        if (rt == CommentService::CreateCommentResult::ArticleNotFound) {
+            result->setErrno(ARTICLE_NOT_FOUND);
+            break;
+        }
+        if (rt == CommentService::CreateCommentResult::ParentNotFound) {
+            result->setErrno(COMMENT_PARENT_NOT_FOUND);
+            break;
+        }
+        if (rt != CommentService::CreateCommentResult::Ok) {
             result->setErrno(COMMENT_CREATE_FAILED);
             break;
         }

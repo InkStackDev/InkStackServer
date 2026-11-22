@@ -2,13 +2,12 @@
 
 #include "DB/ArticleInfo.hpp"
 
+#include "../Repository/ArticleQueryRepository.hpp"
+
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
 #include <map>
-#include <mutex>
-#include <set>
-#include <shared_mutex>
 
 class ArticleManager {
 public:
@@ -119,13 +118,7 @@ public:
 
     bool listArticlePra(int64_t id, std::map<int64_t, int64_t>& users);
 
-    struct ArticleStats {
-        int64_t total = 0;
-        int64_t pending = 0;
-        int64_t published = 0;
-        int64_t rejected = 0;
-        int64_t reported = 0;
-    };
+    using ArticleStats = ArticleQueryRepository::Stats;
     ArticleStats getStats(int32_t category, int32_t role, int32_t days, const std::string& keyword);
 
     int64_t getTodayViews();
@@ -147,26 +140,6 @@ public:
      * @param publish_time 文章发布时间戳（Unix timestamp）
      */
     void clearCalendarCache(int64_t user_id, int64_t publish_time);
-
-private:
-    /**
-     * @brief 启动时从 DB 同步统计数到 Redis，覆盖可能存在的旧实例残留数据
-     */
-    void syncStatsFromDB();
-
-    bool addViews(uint64_t id, const std::string& cookie_id);
-
-    void addUpdate(int64_t id);
-
-    void doArticlePublishSchedule();
-
-private:
-    /// 待更新到 DB 的文章 ID 集合锁
-    std::shared_mutex updates_mutex_;
-    /// 文章计数（浏览/点赞/收藏）读改写锁，避免 Redis 缓存下的并发丢更新
-    std::mutex counter_mutex_;
-    /// 待更新到 DB 的文章 ID 集合
-    std::set<int64_t> updates_;
 };
 
 typedef chen::Singleton<ArticleManager> ArticleMgr;

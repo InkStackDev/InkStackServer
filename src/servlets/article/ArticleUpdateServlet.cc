@@ -1,19 +1,7 @@
 #include "ArticleUpdateServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include <set>
-
-#include "../../Permission.hpp"
-#include "../../Manager/ArticleCategoryRelManager.hpp"
-#include "../../Manager/ArticleLabelRelManager.hpp"
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CategoryManager.hpp"
-#include "../../Manager/LabelManager.hpp"
-#include "../../Search/SearchSync.hpp"
+#include "../../Service/ArticleService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleUpdateServlet::ArticleUpdateServlet()
     : BlogLoginedServlet("ArticleUpdateServlet")
@@ -37,241 +25,58 @@ int32_t ArticleUpdateServlet::handle(
             break;
         }
 
-        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
-        if (!info) {
-            result->setErrno(ARTICLE_NOT_FOUND);
-            break;
-        }
-        if (uid != info->getUserId()) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
+        ArticleService::UpdateArticleInput input;
+        input.article_id = id;
+        input.user_id = uid;
+        input.title = title;
+        input.content = content;
 
-        int32_t old_state = info->getState();
-        info->setTitle(title);
-        info->setContent(content);
-
-        if (updateOptionalFields(request, info, result)) {
-            break;
+        std::string type_str = request->getParam("type");
+        if (!type_str.empty()) {
+            input.has_type = true;
+            input.type = static_cast<int32_t>(chen::TypeUtil::Atoi(type_str));
         }
-
-        // 检查文章作者是否可以跳过审核（管理员和审核员编辑后直接发布）
-        bool bypass_review = false;
-        auto article_author = UserMgr::GetInstance()->get(info->getUserId());
-        if (article_author) {
-            bypass_review = CanBypassReview(article_author->getRole());
+        std::string channel_str = request->getParam("channel");
+        if (!channel_str.empty()) {
+            input.has_channel = true;
+            input.channel = chen::TypeUtil::Atoi(channel_str);
         }
 
-        if (old_state == ArticleManager::Status::PUBLISHED) {
-            // 可以跳过审核时，保持已发布状态不变
-            if (!bypass_review) {
-                info->setState(ArticleManager::Status::CHECKING);
+        std::string category = request->getParam("category");
+        if (!category.empty()) {
+            input.has_category = true;
+            for (auto& s : chen::StringUtil::Split(category, ',')) {
+                int64_t cid = chen::TypeUtil::Atoi(s);
+                if (cid > 0) {
+                    input.category_ids.push_back(cid);
+                }
             }
-        } else if (old_state == ArticleManager::Status::REJECTED) {
-            info->setState(ArticleManager::Status::PRIVATE);
         }
-        info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
-        }
-
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
+        std::string label = request->getParam("label");
+        if (!label.empty()) {
+            input.has_label = true;
+            for (auto& s : chen::StringUtil::Split(label, ',')) {
+                int64_t lid = chen::TypeUtil::Atoi(s);
+                if (lid > 0) {
+                    input.label_ids.push_back(lid);
+                }
+            }
         }
 
-        if (DB::ArticleInfoDao::Update(info, db)) {
-            ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
+        DB::ArticleInfo::ptr info;
+        auto rt = ArticleService::UpdateArticle(input, info);
+        if (rt == ArticleService::UpdateArticleResult::Ok) {
+            result->setErrno(SUCCESS);
+        } else if (rt == ArticleService::UpdateArticleResult::NotFound) {
+            result->setErrno(ARTICLE_NOT_FOUND);
+        } else if (rt == ArticleService::UpdateArticleResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+        } else if (rt == ArticleService::UpdateArticleResult::InvalidType) {
+            result->setErrno(ARTICLE_INVALID_TYPE);
+        } else {
             result->setErrno(ARTICLE_UPDATE_FAILED);
-            break;
-        }
-
-        time_t now = chen::TimeUtil::GetCurrentSec();
-
-        if (syncCategoryRels(request, id, db, now, result)) {
-            break;
-        }
-        if (syncLabelRels(request, id, db, now, result)) {
-            break;
-        }
-
-        if (!trans->commit()) {
-            result->setErrno(DB_COMMIT_FAILED);
-            break;
-        }
-
-        ArticleMgr::GetInstance()->add(info);
-
-        // 更新定时发布调度：先移除旧的，再按需添加新的
-        ArticleMgr::GetInstance()->unscheduleArticle(id);
-        time_t now_publish = chen::TimeUtil::GetCurrentSec();
-        int32_t new_state = info->getState();
-        if ((new_state == ArticleManager::Status::CHECKING || new_state == ArticleManager::Status::PRIVATE) && info->getPublishTime() > now_publish) {
-            ArticleMgr::GetInstance()->scheduleArticle(id, info->getPublishTime());
-        }
-
-        SearchSyncMgr::GetInstance()->markDirty(info->getId(), SearchSync::OP_UPSERT);
-
-        if (old_state == ArticleManager::Status::PUBLISHED && info->getPublishTime() > 0) {
-            ArticleMgr::GetInstance()->clearCalendarCache(info->getUserId(), info->getPublishTime());
         }
     } while (0);
     response->setBody(result->toJsonString());
-    return 0;
-}
-
-int32_t ArticleUpdateServlet::updateOptionalFields(chen::http::HttpRequest::ptr request,
-    std::shared_ptr<DB::ArticleInfo> info,
-    Result::ptr result)
-{
-    std::string type_str = request->getParam("type");
-    if (!type_str.empty()) {
-        int32_t type = chen::TypeUtil::Atoi(type_str);
-        if (type != ArticleManager::Type::ORIGINAL && type != ArticleManager::Type::REPRINT) {
-            result->setErrno(ARTICLE_INVALID_TYPE);
-            return -1;
-        }
-        info->setType(type);
-    }
-
-    std::string channel_str = request->getParam("channel");
-    if (!channel_str.empty()) {
-        int64_t channel = chen::TypeUtil::Atoi(channel_str);
-        info->setChannel(channel);
-    }
-
-    return 0;
-}
-
-int32_t ArticleUpdateServlet::syncCategoryRels(chen::http::HttpRequest::ptr request, int64_t id, chen::IDB::ptr db, time_t now, Result::ptr result)
-{
-    std::string category = request->getParam("category");
-    if (category.empty()) {
-        return 0;
-    }
-
-    std::vector<DB::ArticleCategoryRelInfo::ptr> old_rels;
-    ArticleCategoryRelMgr::GetInstance()->listByArticleId(old_rels, id, true);
-
-    int64_t uid = getUserId(request);
-    if (!uid) {
-        return 0;
-    }
-
-    std::set<int64_t> new_cat_ids;
-    auto cat_id_strs = chen::StringUtil::Split(category, ',');
-    for (auto& s : cat_id_strs) {
-        int64_t cid = chen::TypeUtil::Atoi(s);
-        auto cinfo = CategoryMgr::GetInstance()->get(cid);
-        if (cinfo && cinfo->getUserId() == uid) {
-            new_cat_ids.insert(cid);
-        }
-    }
-
-    std::set<int64_t> old_cat_ids;
-    for (auto& rel : old_rels) {
-        old_cat_ids.insert(rel->getCategoryId());
-    }
-
-    for (int64_t cid : new_cat_ids) {
-        if (old_cat_ids.find(cid) == old_cat_ids.end()) {
-            auto existing = ArticleCategoryRelMgr::GetInstance()->getByArticleIdCategoryId(id, cid);
-            if (existing && existing->getIsDeleted()) {
-                existing->setIsDeleted(0);
-                existing->setUpdateTime(now);
-                if (DB::ArticleCategoryRelInfoDao::Update(existing, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                }
-            } else if (!existing) {
-                DB::ArticleCategoryRelInfo::ptr rel(new DB::ArticleCategoryRelInfo);
-                rel->setArticleId(id);
-                rel->setCategoryId(cid);
-                rel->setUpdateTime(now);
-                if (DB::ArticleCategoryRelInfoDao::Insert(rel, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                }
-            }
-        }
-    }
-
-    for (int64_t cid : old_cat_ids) {
-        if (new_cat_ids.find(cid) == new_cat_ids.end()) {
-            auto existing = ArticleCategoryRelMgr::GetInstance()->getByArticleIdCategoryId(id, cid);
-            if (existing && !existing->getIsDeleted()) {
-                existing->setIsDeleted(1);
-                existing->setUpdateTime(now);
-                if (DB::ArticleCategoryRelInfoDao::Update(existing, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-int32_t ArticleUpdateServlet::syncLabelRels(chen::http::HttpRequest::ptr request, int64_t id, chen::IDB::ptr db, time_t now, Result::ptr result)
-{
-    std::string label = request->getParam("label");
-    if (label.empty()) {
-        return 0;
-    }
-
-    std::vector<DB::ArticleLabelRelInfo::ptr> old_rels;
-    ArticleLabelRelMgr::GetInstance()->listByArticleId(old_rels, id, true);
-
-    std::set<int64_t> new_label_ids;
-    auto label_id_strs = chen::StringUtil::Split(label, ',');
-    for (auto& s : label_id_strs) {
-        int64_t lid = chen::TypeUtil::Atoi(s);
-        auto linfo = LabelMgr::GetInstance()->get(lid);
-        if (linfo) {
-            new_label_ids.insert(lid);
-        }
-    }
-
-    std::set<int64_t> old_label_ids;
-    for (auto& rel : old_rels) {
-        old_label_ids.insert(rel->getLabelId());
-    }
-
-    for (int64_t lid : new_label_ids) {
-        if (old_label_ids.find(lid) == old_label_ids.end()) {
-            auto existing = ArticleLabelRelMgr::GetInstance()->getByArticleIdLabelId(id, lid);
-            if (existing && existing->getIsDeleted()) {
-                existing->setIsDeleted(0);
-                existing->setUpdateTime(now);
-                if (DB::ArticleLabelRelInfoDao::Update(existing, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                }
-            } else if (!existing) {
-                DB::ArticleLabelRelInfo::ptr rel(new DB::ArticleLabelRelInfo);
-                rel->setArticleId(id);
-                rel->setLabelId(lid);
-                rel->setUpdateTime(now);
-                if (DB::ArticleLabelRelInfoDao::Insert(rel, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                }
-            }
-        }
-    }
-
-    for (int64_t lid : old_label_ids) {
-        if (new_label_ids.find(lid) == new_label_ids.end()) {
-            auto existing = ArticleLabelRelMgr::GetInstance()->getByArticleIdLabelId(id, lid);
-            if (existing && !existing->getIsDeleted()) {
-                existing->setIsDeleted(1);
-                existing->setUpdateTime(now);
-                if (DB::ArticleLabelRelInfoDao::Update(existing, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                }
-            }
-        }
-    }
-
     return 0;
 }
