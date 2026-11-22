@@ -44,6 +44,12 @@ All notable changes to this project will be documented in this file.
   与
   `FaqService` / `FeedbackService`：徽章、常见问题、反馈、备份/导出记录读写从 Manager 与 Servlet 拆出；FAQ 转换、反馈提交、
   过期记录物理清理改为走 Repository / Service。
+- 新增 `OrganizationRepoRepository` / `OrganizationRepoService`：组织仓库的增删、Token 更新、GitHub 元数据同步从
+  `OrganizationRepoManager` 与 Servlet 拆出；PR 同步相关的仓库状态回写与 `github_full_name` 反查也改为走该 Repository。
+- 新增 `OrganizationRepoPrRepository`：PR 单表读写、按仓库/组织/用户分页与对象缓存从 `OrganizationRepoPrManager` 拆出；
+  PR webhook 写入、后台同步、删除与单条 PR 同步的持久化统一走 Repository。
+- 新增 `PasskeyRepository` / `ResourceRepository` / `UserAIConfigRepository` 与 `UserAIConfigService`：Passkey 凭据、资源元数据、
+  用户 AI 配置的读写从 Manager 拆出，AI 配置保存仍保留“按 user_id 回查主键后刷新缓存”的行为。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。
