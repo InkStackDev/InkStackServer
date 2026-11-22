@@ -13,7 +13,7 @@ ai:
 admin:
   account: admin
   passwd: ${ADMIN_PASSWD}
-  email: admin@example.com
+  email: admin@inkstack.com
 
 # 搜索服务（InkStackSearchServer）客户端配置
 search:
