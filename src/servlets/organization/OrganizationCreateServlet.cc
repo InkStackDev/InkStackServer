@@ -2,8 +2,6 @@
 
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 OrganizationCreateServlet::OrganizationCreateServlet()
     : BlogLoginedServlet("OrganizationCreateServlet")
@@ -23,20 +21,9 @@ int32_t OrganizationCreateServlet::handle(
         std::string desc = request->getParamAs<std::string>("desc");
         int64_t oid = request->getParamAs<int64_t>("id", 0);
 
-        int64_t user_id = getUserId(request);
-        if (!user_id) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto uinfo = UserRepository::Get(user_id, GetDB());
-        if (!uinfo) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-
-        if (uinfo->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -46,13 +33,17 @@ int32_t OrganizationCreateServlet::handle(
         input.type = type;
         input.description = desc;
         input.status = status;
-        input.owner_id = user_id;
+        input.owner_id = viewer.user_id;
 
         DB::OrganizationInfo::ptr info;
         bool created = false;
-        auto rt = OrganizationService::CreateOrUpdate(input, info, created);
+        auto rt = OrganizationService::CreateOrUpdate(viewer, input, info, created);
         if (rt == OrganizationService::Result::NotFound) {
             result->setErrno(ORG_NOT_FOUND);
+            break;
+        }
+        if (rt == OrganizationService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationService::Result::Ok) {
@@ -67,6 +58,7 @@ int32_t OrganizationCreateServlet::handle(
         result->set("description", info->getDescription());
         result->set("create_time", info->getCreateTime());
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

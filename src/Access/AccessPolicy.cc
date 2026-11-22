@@ -10,6 +10,33 @@ bool AccessPolicy::CanAccessPlatform(const Viewer& viewer, const OrgScope& scope
     return !scope.orgIds(OrgRole::REPORTER).empty();
 }
 
+bool AccessPolicy::CanAdminOrganization(const Viewer& viewer)
+{
+    return viewer.is_platform_admin;
+}
+
+bool AccessPolicy::CanManageOrgMembers(const Viewer& viewer, const OrgScope& scope, int64_t org_id)
+{
+    if (viewer.is_platform_admin) {
+        return true;
+    }
+    return scope.allows(org_id, OrgRole::DEV_LEAD);
+}
+
+bool AccessPolicy::CanSwitchOrgRole(const Viewer& viewer, const OrgScope& scope, int64_t org_id, int32_t target_role)
+{
+    if (viewer.is_platform_admin) {
+        return true;
+    }
+    if (scope.allows(org_id, OrgRole::ORG_ADMIN)) {
+        return true;
+    }
+    if (!scope.allows(org_id, OrgRole::DEV_LEAD)) {
+        return false;
+    }
+    return target_role == OrgRole::MEMBER || target_role == OrgRole::REPORTER || target_role == OrgRole::DEVELOPER;
+}
+
 bool AccessPolicy::CanViewRequirement(const Viewer& viewer, const OrgScope& scope, int64_t org_id)
 {
     return viewer.is_platform_admin || scope.allows(org_id, OrgRole::REPORTER);

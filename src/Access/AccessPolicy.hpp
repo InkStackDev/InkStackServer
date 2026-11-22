@@ -19,6 +19,12 @@ class AccessPolicy {
 public:
     static bool CanAccessPlatform(const Viewer& viewer, const OrgScope& scope);
 
+    static bool CanAdminOrganization(const Viewer& viewer);
+
+    static bool CanManageOrgMembers(const Viewer& viewer, const OrgScope& scope, int64_t org_id);
+
+    static bool CanSwitchOrgRole(const Viewer& viewer, const OrgScope& scope, int64_t org_id, int32_t target_role);
+
     static bool CanViewRequirement(const Viewer& viewer, const OrgScope& scope, int64_t org_id);
 
     static bool CanViewBug(const Viewer& viewer, const OrgScope& scope, int64_t org_id);

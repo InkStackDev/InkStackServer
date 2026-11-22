@@ -7,6 +7,7 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
+#include "../Access/AccessPolicy.hpp"
 #include "../Access/AccessScopeResolver.hpp"
 #include "../Domain/OrganizationTypes.hpp"
 #include "../Repository/OrganizationApplyRepository.hpp"
@@ -97,12 +98,16 @@ OrganizationService::ListResult OrganizationService::ListMembers(const Viewer& v
     return ListResult::Ok;
 }
 
-OrganizationService::Result OrganizationService::CreateOrUpdate(const OrganizationInput& input,
+OrganizationService::Result OrganizationService::CreateOrUpdate(const Viewer& viewer,
+    const OrganizationInput& input,
     DB::OrganizationInfo::ptr& out,
     bool& created)
 {
     out.reset();
     created = false;
+    if (!AccessPolicy::CanAdminOrganization(viewer)) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return Result::DbError;
@@ -183,16 +188,20 @@ OrganizationService::Result OrganizationService::CreateOrUpdate(const Organizati
     return Result::Ok;
 }
 
-bool OrganizationService::DeleteMany(const std::vector<int64_t>& ids,
+OrganizationService::DeleteResult OrganizationService::DeleteMany(const Viewer& viewer,
+    const std::vector<int64_t>& ids,
     std::vector<DB::OrganizationInfo::ptr>& orgs,
     std::vector<DB::OrganizationUserRelInfo::ptr>& rels)
 {
+    if (!AccessPolicy::CanAdminOrganization(viewer)) {
+        return DeleteResult::AccessDenied;
+    }
     if (ids.empty()) {
-        return true;
+        return DeleteResult::Ok;
     }
     auto db = GetDB();
     if (!db) {
-        return false;
+        return DeleteResult::DbError;
     }
 
     for (auto id : ids) {
@@ -204,12 +213,12 @@ bool OrganizationService::DeleteMany(const std::vector<int64_t>& ids,
         OrganizationUserRelRepository::ListByOrg(rels, id, true, db);
     }
     if (orgs.empty()) {
-        return true;
+        return DeleteResult::NoValidOrgs;
     }
 
     auto trans = db->openTransaction();
     if (!trans) {
-        return false;
+        return DeleteResult::DbError;
     }
     int64_t now = chen::TimeUtil::GetCurrentSec();
     for (auto& org : orgs) {
@@ -218,7 +227,7 @@ bool OrganizationService::DeleteMany(const std::vector<int64_t>& ids,
         if (!OrganizationRepository::Update(org, db)) {
             ERROR(logger) << "DeleteMany org update failed, id=" << org->getId();
             trans->rollback();
-            return false;
+            return DeleteResult::DbError;
         }
     }
     for (auto& rel : rels) {
@@ -227,12 +236,12 @@ bool OrganizationService::DeleteMany(const std::vector<int64_t>& ids,
         if (!OrganizationUserRelRepository::Update(rel, db)) {
             ERROR(logger) << "DeleteMany rel update failed, id=" << rel->getId();
             trans->rollback();
-            return false;
+            return DeleteResult::DbError;
         }
     }
     if (!trans->commit()) {
         ERROR(logger) << "DeleteMany commit failed";
-        return false;
+        return DeleteResult::DbError;
     }
 
     for (auto& org : orgs) {
@@ -242,7 +251,7 @@ bool OrganizationService::DeleteMany(const std::vector<int64_t>& ids,
         OrganizationUserRelRepository::Put(rel);
     }
     OrganizationQueryRepository::InvalidateStats();
-    return true;
+    return DeleteResult::Ok;
 }
 
 OrganizationService::Result OrganizationService::SubmitApply(int64_t uid,
@@ -275,7 +284,8 @@ OrganizationService::Result OrganizationService::SubmitApply(int64_t uid,
     return Result::Ok;
 }
 
-OrganizationService::Result OrganizationService::ReviewApply(int64_t apply_id,
+OrganizationService::Result OrganizationService::ReviewApply(const Viewer& viewer,
+    int64_t apply_id,
     bool approve,
     const std::string& reason,
     DB::OrganizationInfo::ptr& org_out,
@@ -283,6 +293,9 @@ OrganizationService::Result OrganizationService::ReviewApply(int64_t apply_id,
 {
     org_out.reset();
     apply_out.reset();
+    if (!AccessPolicy::CanAdminOrganization(viewer)) {
+        return Result::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return Result::DbError;
@@ -405,16 +418,31 @@ OrganizationService::JoinResult OrganizationService::Join(int64_t org_id,
     return JoinResult::Ok;
 }
 
-OrganizationService::MemberResult OrganizationService::SetMemberState(int64_t org_id,
+OrganizationService::MemberResult OrganizationService::SetMemberState(const Viewer& viewer,
+    int64_t org_id,
     int64_t uid,
     int32_t state,
     DB::OrganizationUserRelInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return MemberResult::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return MemberResult::DbError;
     }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return MemberResult::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return MemberResult::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgMembers(viewer, scope, org_id)) {
+        return MemberResult::AccessDenied;
+    }
+
     auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, db);
     if (!rel || rel->getIsDeleted()) {
         return MemberResult::RelNotFound;
@@ -434,15 +462,30 @@ OrganizationService::MemberResult OrganizationService::SetMemberState(int64_t or
     return MemberResult::Ok;
 }
 
-OrganizationService::MemberResult OrganizationService::Kick(int64_t org_id,
+OrganizationService::MemberResult OrganizationService::Kick(const Viewer& viewer,
+    int64_t org_id,
     int64_t uid,
     DB::OrganizationUserRelInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return MemberResult::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return MemberResult::DbError;
     }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return MemberResult::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return MemberResult::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgMembers(viewer, scope, org_id)) {
+        return MemberResult::AccessDenied;
+    }
+
     auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, db);
     if (!rel || rel->getIsDeleted()) {
         return MemberResult::RelNotFound;
@@ -458,17 +501,32 @@ OrganizationService::MemberResult OrganizationService::Kick(int64_t org_id,
     return MemberResult::Ok;
 }
 
-OrganizationService::MemberResult OrganizationService::SwitchRole(int64_t rel_id,
+OrganizationService::MemberResult OrganizationService::SwitchRole(const Viewer& viewer,
+    int64_t rel_id,
     int64_t org_id,
     int64_t uid,
     int32_t role,
     DB::OrganizationUserRelInfo::ptr& out)
 {
     out.reset();
+    if (!viewer.valid()) {
+        return MemberResult::AccessDenied;
+    }
     auto db = GetDB();
     if (!db) {
         return MemberResult::DbError;
     }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return MemberResult::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return MemberResult::NotMember;
+    }
+    if (!AccessPolicy::CanSwitchOrgRole(viewer, scope, org_id, role)) {
+        return MemberResult::AccessDenied;
+    }
+
     auto rel = OrganizationUserRelRepository::Get(rel_id, db);
     if (!rel || rel->getOrgId() != org_id || rel->getUserId() != uid) {
         return MemberResult::RelNotFound;

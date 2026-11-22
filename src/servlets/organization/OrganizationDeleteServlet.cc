@@ -7,8 +7,6 @@
 #include <json/json.h>
 
 #include <set>
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 OrganizationDeleteServlet::OrganizationDeleteServlet()
     : BlogLoginedServlet("OrganizationDeleteServlet")
@@ -31,25 +29,25 @@ int32_t OrganizationDeleteServlet::handle(
         }
         std::vector<int64_t> org_ids(id_set.begin(), id_set.end());
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user || current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         std::vector<DB::OrganizationInfo::ptr> orgs;
         std::vector<DB::OrganizationUserRelInfo::ptr> rels;
-        if (!OrganizationService::DeleteMany(org_ids, orgs, rels)) {
-            result->setErrno(DB_COMMIT_FAILED);
+        auto rt = OrganizationService::DeleteMany(viewer, org_ids, orgs, rels);
+        if (rt == OrganizationService::DeleteResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (orgs.empty()) {
+        if (rt == OrganizationService::DeleteResult::NoValidOrgs) {
             result->setErrno(ORG_NO_VALID_ORGS);
+            break;
+        }
+        if (rt != OrganizationService::DeleteResult::Ok) {
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
 
@@ -80,6 +78,7 @@ int32_t OrganizationDeleteServlet::handle(
             }
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

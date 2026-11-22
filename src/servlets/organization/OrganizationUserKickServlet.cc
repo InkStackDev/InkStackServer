@@ -2,12 +2,10 @@
 
 #include <json/json.h>
 
-#include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 
 OrganizationUserKickServlet::OrganizationUserKickServlet()
@@ -26,33 +24,22 @@ int32_t OrganizationUserKickServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");   // organization id
         DEFINE_AND_CHECK_TYPE(result, int64_t, user_id, "user_id"); // user_id
 
-        // 操作者权限检查
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t system_role = user->getRole();
-
-        auto operator_rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!operator_rel) {
-            result->setErrno(ORG_NOT_MEMBER);
-            break;
-        }
-        int32_t org_role = operator_rel->getRole();
-
-        if (!CanManageMembers(system_role, org_role)) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         DB::OrganizationUserRelInfo::ptr rel;
-        auto rt = OrganizationService::Kick(org_id, user_id, rel);
+        auto rt = OrganizationService::Kick(viewer, org_id, user_id, rel);
+        if (rt == OrganizationService::MemberResult::NotMember) {
+            result->setErrno(ORG_NOT_MEMBER);
+            break;
+        }
+        if (rt == OrganizationService::MemberResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
         if (rt == OrganizationService::MemberResult::RelNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
@@ -66,16 +53,16 @@ int32_t OrganizationUserKickServlet::handle(
         {
             auto org = OrganizationRepository::Get(org_id, GetDB());
             auto kicked_user = UserRepository::Get(user_id, GetDB());
-            auto oper_user = UserRepository::Get(uid, GetDB());
+            auto oper_user = UserRepository::Get(viewer.user_id, GetDB());
             std::string org_name = org ? org->getName() : std::to_string(org_id);
             std::string kicked_name = kicked_user ? kicked_user->getName() : std::to_string(user_id);
-            std::string oper_name = oper_user ? oper_user->getName() : std::to_string(uid);
+            std::string oper_name = oper_user ? oper_user->getName() : std::to_string(viewer.user_id);
 
             EventOrgMemberData data = {};
             data.type = "kicked";
             data.org_id = org_id;
             data.org_name = org_name;
-            data.operator_id = uid;
+            data.operator_id = viewer.user_id;
             data.operator_name = oper_name;
             data.kicked_user_id = user_id;
             data.applicant_name = kicked_name;
@@ -85,6 +72,7 @@ int32_t OrganizationUserKickServlet::handle(
 
         result->set("success", true);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

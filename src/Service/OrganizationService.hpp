@@ -32,6 +32,14 @@ public:
         Ok,
         NotFound,
         Conflict,
+        AccessDenied,
+        DbError
+    };
+
+    enum class DeleteResult {
+        Ok,
+        AccessDenied,
+        NoValidOrgs,
         DbError
     };
 
@@ -48,6 +56,8 @@ public:
         Ok,
         RelNotFound,
         InvalidState,
+        NotMember,
+        AccessDenied,
         DbError
     };
 
@@ -80,12 +90,16 @@ public:
      */
     static ListResult ListMembers(const Viewer& viewer, int64_t org_id, std::vector<OrganizationMemberView>& out);
 
-    static Result CreateOrUpdate(const OrganizationInput& input, DB::OrganizationInfo::ptr& out, bool& created);
+    static Result CreateOrUpdate(const Viewer& viewer,
+        const OrganizationInput& input,
+        DB::OrganizationInfo::ptr& out,
+        bool& created);
 
     /**
      * @brief 批量软删除组织及其成员关系
      */
-    static bool DeleteMany(const std::vector<int64_t>& ids,
+    static DeleteResult DeleteMany(const Viewer& viewer,
+        const std::vector<int64_t>& ids,
         std::vector<DB::OrganizationInfo::ptr>& orgs,
         std::vector<DB::OrganizationUserRelInfo::ptr>& rels);
 
@@ -98,7 +112,8 @@ public:
     /**
      * @brief 审核组织申请；通过时创建组织并把申请人设为组织管理员
      */
-    static Result ReviewApply(int64_t apply_id,
+    static Result ReviewApply(const Viewer& viewer,
+        int64_t apply_id,
         bool approve,
         const std::string& reason,
         DB::OrganizationInfo::ptr& org_out,
@@ -109,14 +124,16 @@ public:
     /**
      * @brief 审核成员加入申请（仅 PENDING 可变更）
      */
-    static MemberResult SetMemberState(int64_t org_id,
+    static MemberResult SetMemberState(const Viewer& viewer,
+        int64_t org_id,
         int64_t uid,
         int32_t state,
         DB::OrganizationUserRelInfo::ptr& out);
 
-    static MemberResult Kick(int64_t org_id, int64_t uid, DB::OrganizationUserRelInfo::ptr& out);
+    static MemberResult Kick(const Viewer& viewer, int64_t org_id, int64_t uid, DB::OrganizationUserRelInfo::ptr& out);
 
-    static MemberResult SwitchRole(int64_t rel_id,
+    static MemberResult SwitchRole(const Viewer& viewer,
+        int64_t rel_id,
         int64_t org_id,
         int64_t uid,
         int32_t role,

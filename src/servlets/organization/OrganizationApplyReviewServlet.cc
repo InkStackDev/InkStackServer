@@ -3,8 +3,6 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 OrganizationApplyReviewServlet::OrganizationApplyReviewServlet()
     : BlogLoginedServlet("OrganizationApplyReviewServlet")
@@ -35,28 +33,26 @@ int32_t OrganizationApplyReviewServlet::handle(
             break;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto uinfo = UserRepository::Get(uid, GetDB());
-        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
         bool approve = action == "approve";
         DB::OrganizationInfo::ptr org;
         DB::OrganizationApplyInfo::ptr apply;
-        auto rt = OrganizationService::ReviewApply(apply_id, approve, reason, org, apply);
+        auto rt = OrganizationService::ReviewApply(viewer, apply_id, approve, reason, org, apply);
         if (rt == OrganizationService::Result::NotFound) {
             result->setErrno(ORG_APPLY_NOT_FOUND);
             break;
         }
         if (rt == OrganizationService::Result::Conflict) {
             result->setErrno(ORG_APPLY_ALREADY_REVIEWED);
+            break;
+        }
+        if (rt == OrganizationService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationService::Result::Ok) {
@@ -84,6 +80,7 @@ int32_t OrganizationApplyReviewServlet::handle(
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

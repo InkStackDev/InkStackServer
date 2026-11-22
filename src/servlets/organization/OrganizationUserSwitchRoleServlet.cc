@@ -2,13 +2,11 @@
 
 #include <json/json.h>
 
-#include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 
 OrganizationUserSwitchRoleServlet::OrganizationUserSwitchRoleServlet()
@@ -28,28 +26,9 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int32_t, role, "role");       // new role
         DEFINE_AND_CHECK_TYPE(result, int64_t, user_id, "user_id"); // user_id
 
-        // 操作者权限检查
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t system_role = current_user->getRole();
-
-        auto operator_rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!operator_rel) {
-            result->setErrno(ORG_NOT_MEMBER);
-            break;
-        }
-        int32_t org_role = operator_rel->getRole();
-
-        if (!CanSwitchRole(system_role, org_role, role)) {
-            result->setErrno(ACCESS_DENIED);
             break;
         }
 
@@ -60,7 +39,15 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         }
 
         DB::OrganizationUserRelInfo::ptr rel;
-        auto rt = OrganizationService::SwitchRole(id, org_id, user_id, role, rel);
+        auto rt = OrganizationService::SwitchRole(viewer, id, org_id, user_id, role, rel);
+        if (rt == OrganizationService::MemberResult::NotMember) {
+            result->setErrno(ORG_NOT_MEMBER);
+            break;
+        }
+        if (rt == OrganizationService::MemberResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
         if (rt == OrganizationService::MemberResult::RelNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
@@ -89,7 +76,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             data.type = "role_change";
             data.org_id = org_id;
             data.org_name = org_name;
-            data.operator_id = uid;
+            data.operator_id = viewer.user_id;
             data.target_user_id = user_id;
             data.new_role_name = role_name;
 
@@ -99,13 +86,14 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         auto user = UserRepository::Get(rel->getUserId(), GetDB());
         result->set("id", rel->getId());
         result->set("user_id", rel->getUserId());
-        result->set("name", user->getName());
-        result->set("avatar", user->getAvatar());
-        result->set("email", user->getEmail());
+        result->set("name", user ? user->getName() : "");
+        result->set("avatar", user ? user->getAvatar() : "");
+        result->set("email", user ? user->getEmail() : "");
         result->set("role", rel->getRole());
         result->set("status", rel->getStatus());
         result->set("join_time", rel->getCreateTime());
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }
