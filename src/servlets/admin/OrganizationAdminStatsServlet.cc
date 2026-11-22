@@ -1,12 +1,10 @@
 #include "OrganizationAdminStatsServlet.hpp"
 
-#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 OrganizationAdminStatsServlet::OrganizationAdminStatsServlet()
-    : BlogLoginedServlet("OrganizationAdminStatsServlet")
+    : BlogAdminServlet("OrganizationAdminStatsServlet")
 {
 }
 
@@ -17,24 +15,17 @@ int32_t OrganizationAdminStatsServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user || current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
+        OrganizationService::OrganizationGlobalStats stats;
+        if (!OrganizationService::GetGlobalStats(stats)) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        auto stats = OrganizationQueryRepository::GetStats(GetDB());
-
-        result->setErrno(SUCCESS);
         result->set("total_organizations", stats.total);
         result->set("active_organizations", stats.active);
         result->set("inactive_organizations", stats.inactive);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

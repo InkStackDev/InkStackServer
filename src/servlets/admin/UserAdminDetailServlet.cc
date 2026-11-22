@@ -1,9 +1,7 @@
 #include "UserAdminDetailServlet.hpp"
 
+#include "../../Service/AdminUserService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/CommentQueryRepository.hpp"
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 UserAdminDetailServlet::UserAdminDetailServlet()
     : BlogAdminServlet("UserAdminDetailServlet")
@@ -19,34 +17,27 @@ int32_t UserAdminDetailServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, user_id, "user_id");
 
-        auto info = UserRepository::Get(user_id, GetDB());
-        if (!info) {
+        AdminUserService::Detail detail;
+        if (!AdminUserService::GetDetail(user_id, detail)) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
 
-        std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleQueryRepository::ListByUserId(articles, user_id, false, GetDB());
-        int64_t article_count = articles.size();
-
-        std::vector<DB::CommentInfo::ptr> comments;
-        CommentQueryRepository::ListByUserId(comments, user_id, GetDB());
-        int64_t comment_count = comments.size();
-
-        result->set("id", info->getId());
-        result->set("account", info->getAccount());
-        result->set("name", info->getName());
-        result->set("email", info->getEmail());
-        result->set("avatar", info->getAvatar());
-        result->set("role", info->getRole());
-        result->set("state", info->getState());
-        result->set("create_time", info->getCreateTime());
-        result->set("login_time", info->getLoginTime());
-        result->set("article_count", article_count);
-        result->set("comment_count", comment_count);
-        result->set("bio", info->getBio());
-        result->set("website", info->getWebsite());
+        result->set("id", detail.id);
+        result->set("account", detail.account);
+        result->set("name", detail.name);
+        result->set("email", detail.email);
+        result->set("avatar", detail.avatar);
+        result->set("role", detail.role);
+        result->set("state", detail.state);
+        result->set("create_time", detail.create_time);
+        result->set("login_time", detail.login_time);
+        result->set("article_count", detail.article_count);
+        result->set("comment_count", detail.comment_count);
+        result->set("bio", detail.bio);
+        result->set("website", detail.website);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

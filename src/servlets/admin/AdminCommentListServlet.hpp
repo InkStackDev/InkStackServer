@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../../SessionData.hpp"
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
-class AdminCommentListServlet : public BlogLoginedServlet {
+class AdminCommentListServlet : public BlogAdminServlet {
 public:
     AdminCommentListServlet();
 

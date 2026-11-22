@@ -1,12 +1,10 @@
 #include "ArticleAdminStatsServlet.hpp"
 
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Service/AdminArticleService.hpp"
 #include "../../Util/Util.hpp"
 
 ArticleAdminStatsServlet::ArticleAdminStatsServlet()
-    : BlogLoginedServlet("ArticleAdminStatsServlet")
+    : BlogAdminServlet("ArticleAdminStatsServlet")
 {
 }
 
@@ -22,31 +20,19 @@ int32_t ArticleAdminStatsServlet::handle(
         int32_t days = request->getParamAs<int32_t>("days", 0);
         std::string keyword = request->getParam("keyword");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t user_role = current_user->getRole();
-        if (user_role != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
+        AdminArticleService::Stats stats;
+        if (!AdminArticleService::GetStats(category, role, days, keyword, stats)) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        auto stats = ArticleQueryRepository::GetStats(category, role, days, keyword, GetDB());
-
-        result->setErrno(SUCCESS);
         result->set("total_articles", stats.total);
         result->set("pending_articles", stats.pending);
         result->set("published_articles", stats.published);
         result->set("rejected_articles", stats.rejected);
         result->set("reported_articles", stats.reported);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

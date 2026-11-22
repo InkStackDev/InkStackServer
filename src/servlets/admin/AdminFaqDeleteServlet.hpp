@@ -7,11 +7,11 @@
  */
 #pragma once
 
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-class AdminFaqDeleteServlet : public BlogLoginedServlet {
+class AdminFaqDeleteServlet : public BlogAdminServlet {
 public:
     typedef std::shared_ptr<AdminFaqDeleteServlet> ptr;
     AdminFaqDeleteServlet();

@@ -119,6 +119,12 @@ public:
         int64_t regular_count = 0;
     };
 
+    struct OrganizationGlobalStats {
+        int64_t total = 0;
+        int64_t active = 0;
+        int64_t inactive = 0;
+    };
+
     struct UserBrief {
         std::string name;
         std::string avatar;
@@ -197,6 +203,8 @@ public:
         int64_t& total);
 
     static Result GetStats(int64_t org_id, OrganizationStatsView& out);
+
+    static bool GetGlobalStats(OrganizationGlobalStats& out);
 
     static std::string GetOrgName(int64_t org_id);
 

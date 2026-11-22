@@ -7,11 +7,11 @@
  */
 #pragma once
 
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-class AdminFeedbackConvertServlet : public BlogLoginedServlet {
+class AdminFeedbackConvertServlet : public BlogAdminServlet {
 public:
     typedef std::shared_ptr<AdminFeedbackConvertServlet> ptr;
     AdminFeedbackConvertServlet();

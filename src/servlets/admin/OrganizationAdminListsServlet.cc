@@ -1,18 +1,10 @@
 #include "OrganizationAdminListsServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationAdminListsServlet::OrganizationAdminListsServlet()
-    : BlogLoginedServlet("OrganizationAdminListsServlet")
+    : BlogAdminServlet("OrganizationAdminListsServlet")
 {
 }
 
@@ -27,42 +19,29 @@ int32_t OrganizationAdminListsServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, uint64_t, page_num, "page_num");
         int32_t status = request->getParamAs<int32_t>("status", -1);
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t role = current_user->getRole();
-        if (role != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
-
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<DB::OrganizationInfo::ptr> orgs;
-        uint64_t total = OrganizationQueryRepository::ListByPages(orgs, offset, page_size, status, true, GetDB());
+        std::vector<OrganizationService::OrganizationListItem> orgs;
+        int64_t total = 0;
+        if (!OrganizationService::ListOrganizations(status, offset, page_size, orgs, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         result->set("total", total);
         Json::Value list;
-        for (auto& i : orgs) {
+        for (const auto& org : orgs) {
             Json::Value item;
-            item["id"] = i->getId();
-            item["name"] = i->getName();
-            item["type"] = i->getType();
-            item["status"] = i->getStatus();
-            item["description"] = i->getDescription();
-            item["create_time"] = i->getCreateTime();
-            int32_t sts = OrgMemberStatus::APPROVED;
-            item["count"] = OrganizationUserRelRepository::CountByOrg(i->getId(), sts, true, GetDB());
+            item["id"] = org.id;
+            item["name"] = org.name;
+            item["status"] = org.status;
+            item["type"] = org.type;
+            item["description"] = org.description;
+            item["count"] = org.member_count;
             list.append(item);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

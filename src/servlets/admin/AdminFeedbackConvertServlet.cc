@@ -15,7 +15,7 @@
 static chen::Logger::ptr logger = LOG_ROOT();
 
 AdminFeedbackConvertServlet::AdminFeedbackConvertServlet()
-    : BlogLoginedServlet("AdminFeedbackConvertServlet")
+    : BlogAdminServlet("AdminFeedbackConvertServlet")
 {
 }
 
@@ -26,28 +26,12 @@ int32_t AdminFeedbackConvertServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-
-        int32_t role = current_user->getRole();
-        if (role != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
-
-        Viewer viewer;
-        viewer.user_id = uid;
-        viewer.system_role = role;
-        viewer.is_platform_admin = true;
+        int64_t uid = viewer.user_id;
 
         DEFINE_AND_CHECK_STRING(result, id_str, "id");
         DEFINE_AND_CHECK_STRING(result, target, "target");
@@ -78,12 +62,6 @@ int32_t AdminFeedbackConvertServlet::handle(
         std::string content = request->getParam("content");
         if (content.empty()) {
             content = feedback->getContent();
-        }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
         }
 
         int64_t converted_id = 0;

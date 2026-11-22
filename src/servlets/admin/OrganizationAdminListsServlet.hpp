@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-class OrganizationAdminListsServlet : public BlogLoginedServlet {
+class OrganizationAdminListsServlet : public BlogAdminServlet {
 public:
     typedef std::shared_ptr<OrganizationAdminListsServlet> ptr;
     OrganizationAdminListsServlet();

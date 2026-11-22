@@ -1,7 +1,6 @@
 #include "UserAdminStatsServlet.hpp"
 
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Service/AdminUserService.hpp"
 #include "../../Util/Util.hpp"
 
 UserAdminStatsServlet::UserAdminStatsServlet()
@@ -16,36 +15,18 @@ int32_t UserAdminStatsServlet::handle(
     Result::ptr result)
 {
     do {
-        std::vector<int64_t> ids;
-        UserRepository::GetAllIds(ids, false, GetDB());
-
-        int64_t total_users = 0;
-        int64_t active_users = 0;
-        int64_t inactive_users = 0;
-        int64_t new_users_30d = 0;
-        int64_t threshold = time(0) - 30 * 24 * 3600;
-
-        for (auto& id : ids) {
-            auto user = UserRepository::Get(id, GetDB());
-            if (!user || user->getIsDeleted()) {
-                continue;
-            }
-            total_users++;
-            if (user->getState() == UserState::ACTIVE) {
-                active_users++;
-            } else {
-                inactive_users++;
-            }
-            if (user->getCreateTime() >= threshold) {
-                new_users_30d++;
-            }
+        AdminUserService::Stats stats;
+        if (!AdminUserService::GetStats(stats)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        result->set("total_users", total_users);
-        result->set("active_users", active_users);
-        result->set("new_users_30d", new_users_30d);
-        result->set("inactive_users", inactive_users);
+        result->set("total_users", stats.total);
+        result->set("active_users", stats.active);
+        result->set("new_users_30d", stats.new_30d);
+        result->set("inactive_users", stats.inactive);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

@@ -1,18 +1,17 @@
 #include "AdminCommentDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
+#include "../../Service/AdminCommentService.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 
 #include <sstream>
-#include "../../Repository/CommentRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
 
 AdminCommentDeleteServlet::AdminCommentDeleteServlet()
-    : BlogLoginedServlet("AdminCommentDeleteServlet")
+    : BlogAdminServlet("AdminCommentDeleteServlet")
 {
 }
 
@@ -24,20 +23,6 @@ int32_t AdminCommentDeleteServlet::handle(
 {
     do {
         int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t role = current_user->getRole();
-        if (role != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         DEFINE_AND_CHECK_STRING(result, ids_str, "ids");
 
@@ -63,8 +48,8 @@ int32_t AdminCommentDeleteServlet::handle(
 
         // Notify comment authors
         for (auto& cid : ids) {
-            auto comment = CommentRepository::Get(cid, GetDB());
-            if (!comment) {
+            DB::CommentInfo::ptr comment;
+            if (!AdminCommentService::GetComment(cid, comment)) {
                 continue;
             }
             int64_t author_id = comment->getUserId();

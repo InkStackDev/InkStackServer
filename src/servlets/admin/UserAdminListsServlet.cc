@@ -1,16 +1,7 @@
 #include "UserAdminListsServlet.hpp"
 
+#include "../../Service/AdminUserService.hpp"
 #include "../../Util/Util.hpp"
-
-#include <Chen/DB/QueryBuilder.hpp>
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
-
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/CommentQueryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-
-static chen::Logger::ptr g_logger = LOG_ROOT();
 
 UserAdminListsServlet::UserAdminListsServlet()
     : BlogAdminServlet("UserAdminListsServlet")
@@ -26,54 +17,37 @@ int32_t UserAdminListsServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, uint64_t, page_size, "page_size");
         DEFINE_AND_CHECK_TYPE(result, uint64_t, page_num, "page_num");
-        int32_t rrole = request->getParamAs<int32_t>("role", -1);
+        int32_t role = request->getParamAs<int32_t>("role", -1);
         int32_t state = request->getParamAs<int32_t>("state", -1);
         int32_t days = request->getParamAs<int32_t>("days", 0);
 
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<DB::UserInfo::ptr> users;
-        uint64_t total = UserRepository::ListByPages(users, offset, page_size, rrole, state, days, true, GetDB());
-
-        // 批量查询文章数和评论数，避免逐用户查询
-        std::map<int64_t, int64_t> article_counts, comment_counts;
-        auto db = GetDB();
-        if (db && !users.empty()) {
-            std::vector<int64_t> user_ids;
-            for (auto& u : users) {
-                user_ids.push_back(u->getId());
-            }
-
-            std::vector<std::pair<int64_t, int64_t>> rows;
-            ArticleQueryRepository::CountByUsers(user_ids, rows, db);
-            for (auto& [uid, cnt] : rows) {
-                article_counts[uid] = cnt;
-            }
-
-            rows.clear();
-            CommentQueryRepository::CountByUsers(user_ids, rows, db);
-            for (auto& [uid, cnt] : rows) {
-                comment_counts[uid] = cnt;
-            }
+        std::vector<AdminUserService::ListItem> users;
+        uint64_t total = 0;
+        if (!AdminUserService::List(offset, page_size, role, state, days, users, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
         result->set("total", total);
         Json::Value list;
         for (const auto& user : users) {
             Json::Value item;
-            item["id"] = user->getId();
-            item["name"] = user->getName();
-            item["email"] = user->getEmail();
-            item["avatar"] = user->getAvatar();
-            item["role"] = user->getRole();
-            item["state"] = user->getState();
-            item["create_time"] = user->getCreateTime();
-            item["login_time"] = user->getLoginTime();
-            item["article_count"] = article_counts[user->getId()];
-            item["comment_count"] = comment_counts[user->getId()];
+            item["id"] = user.id;
+            item["name"] = user.name;
+            item["email"] = user.email;
+            item["avatar"] = user.avatar;
+            item["role"] = user.role;
+            item["state"] = user.state;
+            item["create_time"] = user.create_time;
+            item["login_time"] = user.login_time;
+            item["article_count"] = user.article_count;
+            item["comment_count"] = user.comment_count;
             list.append(item);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

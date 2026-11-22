@@ -11,7 +11,7 @@
 static chen::Logger::ptr logger = LOG_ROOT();
 
 AdminFeedbackListServlet::AdminFeedbackListServlet()
-    : BlogLoginedServlet("AdminFeedbackListServlet")
+    : BlogAdminServlet("AdminFeedbackListServlet")
 {
 }
 
@@ -22,23 +22,6 @@ int32_t AdminFeedbackListServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-
-        int32_t role = current_user->getRole();
-        if (role != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         std::string type = request->getParam("type");
         int32_t page = request->getParamAs<int32_t>("page", 1);

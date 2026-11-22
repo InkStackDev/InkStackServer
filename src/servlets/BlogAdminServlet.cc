@@ -1,9 +1,5 @@
 #include "BlogAdminServlet.hpp"
 
-#include "../Repository/UserRepository.hpp"
-#include "../Domain/UserTypes.hpp"
-#include "../Util/Util.hpp"
-
 BlogAdminServlet::BlogAdminServlet(const std::string& name)
     : BlogLoginedServlet(name)
 {
@@ -19,27 +15,14 @@ bool BlogAdminServlet::handlePre(
         return false;
     }
 
-    int64_t uid = getUserId(request);
-    if (!uid) {
-        result->setErrno(NOT_LOGIN);
-        return false;
-    }
-
-    auto user = UserRepository::Get(uid, GetDB());
-    if (!user) {
-        result->setErrno(USER_NOT_FOUND);
-        return false;
-    }
-
-    if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
+    Viewer viewer = getViewer(request);
+    if (!viewer.valid()) {
         result->setErrno(ACCOUNT_INVALID);
         return false;
     }
-
-    if (user->getRole() != UserRole::ADMIN) {
+    if (!viewer.is_platform_admin) {
         result->setErrno(ACCESS_DENIED);
         return false;
     }
-
     return true;
 }

@@ -41,6 +41,9 @@ All notable changes to this project will be documented in this file.
 - 新增 `RdListService` / `RdAccessService` / `RdTicketService` 与 RD 详情 Service：`src/Servlets/Rd/` 已不再
   出现 `GetDB()`、Repository 或 `AccessScopeResolver` 直接调用；列表、详情、准入检查和“我的单据”均由 Service
   完成连接获取与数据范围解析。
+- 新增 `AdminCommentService` / `AdminArticleService` / `AdminAssignmentService` / `AdminUserService`：
+  `src/Servlets/Admin/` 已不再出现 `GetDB()`；管理端统一继承 `BlogAdminServlet`，评论/文章/作业/用户/组织
+  列表与统计由 Service 完成 DB 访问。
 - 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
   worker 直接投递作为快路径，长连接本身不经过 RPC。
 - 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多

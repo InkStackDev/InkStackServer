@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-class AdminCommentRejectServlet : public BlogLoginedServlet {
+class AdminCommentRejectServlet : public BlogAdminServlet {
 public:
     AdminCommentRejectServlet();
 

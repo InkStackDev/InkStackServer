@@ -297,6 +297,20 @@ OrganizationService::Result OrganizationService::GetStats(int64_t org_id, Organi
     return Result::Ok;
 }
 
+bool OrganizationService::GetGlobalStats(OrganizationGlobalStats& out)
+{
+    out = OrganizationGlobalStats{};
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    auto stats = OrganizationQueryRepository::GetStats(db);
+    out.total = stats.total;
+    out.active = stats.active;
+    out.inactive = stats.inactive;
+    return true;
+}
+
 std::string OrganizationService::GetOrgName(int64_t org_id)
 {
     auto db = GetDB();
