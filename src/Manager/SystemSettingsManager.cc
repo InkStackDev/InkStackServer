@@ -100,7 +100,7 @@ bool SystemSettingsManager::update(DB::SystemSettingsInfo::ptr info)
     }
     info->setId(1);
     if (SystemSettingsRepository::InsertOrUpdate(info, db)) {
-        ERROR(logger) << "SystemSettingsManager update fail";
+        ERROR(logger) << "SystemSettingsManager update fail, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
         return false;
     }
     int64_t new_version = BumpRemoteVersion();

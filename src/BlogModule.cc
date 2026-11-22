@@ -19,9 +19,12 @@
 #include "./Service/OrganizationRepoService.hpp"
 #include "./Service/UserService.hpp"
 
+#include <vector>
+
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -96,18 +99,49 @@ void BlogModule::onTick()
         chen::http::SessionDataMgr::GetInstance()->check(3600);
     }
 
-    if (client_->isConnected()) {
+    if (!client_->isConnected()) {
+        std::string hub_ip = GetRpcConf().getHubIP();
+        uint16_t hub_port = GetRpcConf().getHubPort();
+        chen::Address::ptr address = chen::IPv4Address::Create(hub_ip.c_str(), hub_port);
+        ASSERT_RET(address);
+
+        uint64_t conn_timeout = GetRpcConf().connect_timeout_ms;
+        if (!client_->connect(address, conn_timeout)) {
+            ERROR(LOG_ROOT()) << "Failed to connect to hub server";
+            return;
+        }
+        hub_registered_.store(false);
+        // 重连后重新注册本地 handler（registerMethod 幂等）
+        BlogMsgFromBotInit(client_);
+    }
+
+    SyncHubRegistration();
+}
+
+void BlogModule::SyncHubRegistration()
+{
+    if (!client_ || !client_->isConnected()) {
+        hub_registered_.store(false);
+        return;
+    }
+    if (hub_registered_.load()) {
         return;
     }
 
-    std::string hub_ip = GetRpcConf().getHubIP();
-    uint16_t hub_port = GetRpcConf().getHubPort();
-    chen::Address::ptr address = chen::IPv4Address::Create(hub_ip.c_str(), hub_port);
-    ASSERT_RET(address);
+    uint64_t now = chen::TimeUtil::GetCurrentMs();
+    if (hub_register_attempt_ms_ != 0 && now < hub_register_attempt_ms_ + 5000) {
+        return;
+    }
+    hub_register_attempt_ms_ = now;
 
-    uint64_t conn_timeout = GetRpcConf().connect_timeout_ms;
-    if (!client_->connect(address, conn_timeout)) {
-        ERROR(LOG_ROOT()) << "Failed to connect to hub server";
+    const RpcConf rpc_conf = GetRpcConf();
+    if (client_->registerService(
+            rpc_conf.bus_id.peerId(), rpc_conf.bus_id.funcId(), rpc_conf.bus_id.instance, std::vector<uint32_t>{})) {
+        hub_registered_.store(true);
+        INFO(LOG_ROOT()) << "rpc hub registered, bus_id=" << rpc_conf.bus_id.toString();
+    } else {
+        WARN(LOG_ROOT()) << "rpc registerService pending (peer_id occupied by old worker?), bus_id="
+                         << rpc_conf.bus_id.toString();
     }
 }
 
@@ -173,6 +207,8 @@ bool BlogModule::onServerReady()
         ERROR(LOG_ROOT()) << "Failed to connect to hub server";
         return false;
     }
+
+    SyncHubRegistration();
 
     if (!BlogMsgFromBotInit(client_)) {
         ERROR(LOG_ROOT()) << "BlogMsgFromBotInit failed";
