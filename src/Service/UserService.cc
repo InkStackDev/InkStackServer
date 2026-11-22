@@ -10,6 +10,7 @@
 #include "DB/UserRecoveryCodeInfo.hpp"
 
 #include "../Manager/UserManager.hpp"
+#include "../Repository/UserRecoveryCodeRepository.hpp"
 #include "../Repository/UserRepository.hpp"
 #include "../Util/TotpUtil.hpp"
 #include "../Util/Util.hpp"
@@ -17,23 +18,6 @@
 static chen::Logger::ptr logger = LOG_ROOT();
 
 namespace {
-
-DB::UserRecoveryCodeInfo::ptr FindUnusedRecoveryCode(chen::IDB::ptr db, int64_t uid, const std::string& code_hash)
-{
-    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
-    if (!qb) {
-        return nullptr;
-    }
-    qb->where("user_id", "=", uid);
-    qb->where("code_hash", "=", code_hash);
-    qb->where("used", "=", (int64_t)0);
-
-    std::vector<DB::UserRecoveryCodeInfo::ptr> codes;
-    if (DB::UserRecoveryCodeInfoDao::QueryByBuilder(codes, qb, db)) {
-        return nullptr;
-    }
-    return codes.empty() ? nullptr : codes[0];
-}
 
 std::string BuildOAuthAccount(chen::IDB::ptr db, const std::string& open_id, const std::string& login)
 {
@@ -205,14 +189,8 @@ UserService::Disable2faResult UserService::Disable2FA(int64_t uid, const std::st
         return Disable2faResult::DbError;
     }
 
-    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
-    if (!qb) {
-        ERROR(logger) << "Disable2FA: create recovery code query failed, uid=" << uid;
-        return Disable2faResult::DbError;
-    }
-    qb->where("user_id", "=", uid);
-    if (qb->executeDelete(db)) {
-        ERROR(logger) << "Disable2FA: delete recovery codes failed, uid=" << uid;
+    if (!UserRecoveryCodeRepository::DeleteByUser(uid, db)) {
+        ERROR(logger) << "Disable2FA: clear recovery codes failed, uid=" << uid;
         return Disable2faResult::DbError;
     }
 
@@ -540,12 +518,7 @@ UserService::Confirm2faResult UserService::ConfirmEnable2FA(int64_t uid,
     }
 
     // 清理历史恢复码，避免重复绑定后旧码仍然可用
-    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
-    if (!qb) {
-        return Confirm2faResult::DbError;
-    }
-    qb->where("user_id", "=", uid);
-    if (qb->executeDelete(db)) {
+    if (!UserRecoveryCodeRepository::DeleteByUser(uid, db)) {
         ERROR(logger) << "ConfirmEnable2FA clear old recovery codes failed, uid=" << uid;
         return Confirm2faResult::DbError;
     }
@@ -557,7 +530,7 @@ UserService::Confirm2faResult UserService::ConfirmEnable2FA(int64_t uid,
         rc->setUserId(uid);
         rc->setCodeHash(hash);
         rc->setUsed(0);
-        if (DB::UserRecoveryCodeInfoDao::Insert(rc, db)) {
+        if (UserRecoveryCodeRepository::Insert(rc, db)) {
             ERROR(logger) << "ConfirmEnable2FA insert recovery code failed, uid=" << uid;
             return Confirm2faResult::DbError;
         }
@@ -591,7 +564,7 @@ UserService::Reset2faResult UserService::Reset2FA(int64_t uid,
         return Reset2faResult::NotEnabled;
     }
 
-    auto matched = FindUnusedRecoveryCode(db, uid, TotpUtil::HashRecoveryCode(recovery_code));
+    auto matched = UserRecoveryCodeRepository::FindUnused(uid, TotpUtil::HashRecoveryCode(recovery_code), db);
     if (!matched) {
         return Reset2faResult::InvalidCode;
     }
@@ -610,12 +583,7 @@ UserService::Reset2faResult UserService::Reset2FA(int64_t uid,
     }
 
     // 旧恢复码已全部失效，直接清空，避免重新绑定后继续可用
-    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
-    if (!qb) {
-        return Reset2faResult::DbError;
-    }
-    qb->where("user_id", "=", uid);
-    if (qb->executeDelete(db)) {
+    if (!UserRecoveryCodeRepository::DeleteByUser(uid, db)) {
         ERROR(logger) << "Reset2FA clear recovery codes failed, uid=" << uid;
         return Reset2faResult::DbError;
     }
@@ -648,7 +616,7 @@ UserService::ConsumeRecoveryResult UserService::ConsumeRecoveryCode(int64_t uid,
         return ConsumeRecoveryResult::NotEnabled;
     }
 
-    auto matched = FindUnusedRecoveryCode(db, uid, TotpUtil::HashRecoveryCode(recovery_code));
+    auto matched = UserRecoveryCodeRepository::FindUnused(uid, TotpUtil::HashRecoveryCode(recovery_code), db);
     if (!matched) {
         return ConsumeRecoveryResult::InvalidCode;
     }
@@ -658,7 +626,7 @@ UserService::ConsumeRecoveryResult UserService::ConsumeRecoveryCode(int64_t uid,
         return ConsumeRecoveryResult::DbError;
     }
     matched->setUsed(1);
-    if (DB::UserRecoveryCodeInfoDao::Update(matched, db)) {
+    if (UserRecoveryCodeRepository::Update(matched, db)) {
         ERROR(logger) << "ConsumeRecoveryCode update failed, uid=" << uid;
         return ConsumeRecoveryResult::DbError;
     }

@@ -80,41 +80,7 @@ DB::ConversationInfo::ptr ConversationService::GetOrCreate(int64_t uid_a, int64_
 
 void ConversationService::ListConversations(std::vector<DB::ConversationInfo::ptr>& results, int64_t uid)
 {
-    auto db = GetDB();
-    if (!db || uid <= 0) {
-        return;
-    }
-
-    // 分两次查询（user_a_id / user_b_id），避免 OR 优先级问题；并按本端隐藏标志过滤
-    auto qb = DB::ConversationInfoDao::newQuery();
-    if (!qb) {
-        return;
-    }
-    qb->where("user_a_id", "=", uid);
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->where("user_a_deleted", "=", (int64_t)0);
-    if (DB::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
-        ERROR(logger) << "ListConversations query a failed";
-        return;
-    }
-
-    auto qb2 = DB::ConversationInfoDao::newQuery();
-    if (!qb2) {
-        return;
-    }
-    qb2->where("user_b_id", "=", uid);
-    qb2->where("is_deleted", "=", (int64_t)0);
-    qb2->where("user_b_deleted", "=", (int64_t)0);
-    std::vector<DB::ConversationInfo::ptr> part;
-    if (DB::ConversationInfoDao::QueryByBuilder(part, qb2, db)) {
-        ERROR(logger) << "ListConversations query b failed";
-        return;
-    }
-    results.insert(results.end(), part.begin(), part.end());
-
-    std::sort(results.begin(), results.end(), [](const auto& a, const auto& b) {
-        return a->getLastMessageTime() > b->getLastMessageTime();
-    });
+    ConversationRepository::ListForUser(results, uid, GetDB());
 }
 
 void ConversationService::ListMessages(std::vector<DB::ConversationMessageInfo::ptr>& results,

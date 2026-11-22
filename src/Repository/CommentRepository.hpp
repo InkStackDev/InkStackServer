@@ -12,6 +12,7 @@
 #include <Chen/DB/DB.hpp>
 
 #include <cstdint>
+#include <vector>
 
 class CommentRepository {
 public:
@@ -26,4 +27,17 @@ public:
     static void Put(const DB::CommentInfo::ptr& info);
 
     static void Evict(int64_t id);
+
+    /**
+     * @brief 批量修改评论状态（绕过对象缓存，调用方负责刷新缓存）
+     */
+    static bool BatchSetStatus(const std::vector<int64_t>& ids,
+        int32_t status,
+        int64_t update_time,
+        chen::IDB::ptr conn);
+
+    /**
+     * @brief 批量软删除评论
+     */
+    static bool BatchSoftDelete(const std::vector<int64_t>& ids, int64_t update_time, chen::IDB::ptr conn);
 };

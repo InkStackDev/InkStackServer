@@ -16,6 +16,7 @@
 
 #include "../Config/AppConfig.hpp"
 #include "../Manager/ArticleManager.hpp"
+#include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Search/SearchSync.hpp"
 #include "../Util/Util.hpp"
@@ -136,18 +137,7 @@ void ArticleScheduleService::GetCalendarDays(int64_t user_id, int32_t year, int3
         ERROR(logger) << "GetCalendarDays: get db failed";
         return;
     }
-    auto qb = DB::ArticleInfoDao::newQuery();
-    if (!qb) {
-        return;
-    }
-    qb->select("DISTINCT DAY(publish_time) as d");
-    qb->where("user_id", "=", user_id);
-    qb->where("state", "=", (int64_t)ArticleManager::Status::PUBLISHED);
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->where("publish_time", ">=", std::string(start_str));
-    qb->where("publish_time", "<", std::string(end_str));
-    qb->orderBy("d", "ASC");
-    qb->queryColumn<int32_t>(days, db, "d");
+    ArticleQueryRepository::ListPublishedDays(user_id, start_str, end_str, days, db);
 
     if (!days.empty()) {
         Json::Value days_json(Json::arrayValue);

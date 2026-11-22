@@ -28,6 +28,11 @@ public:
 
     static void Evict(int64_t id);
 
+    /**
+     * @brief 某用户可见的会话（按最后消息时间倒序）
+     */
+    static void ListForUser(std::vector<DB::ConversationInfo::ptr>& results, int64_t uid, chen::IDB::ptr conn);
+
     /// 参与者归一化：user_a_id 恒为较小值
     static int64_t NormalizeUserA(int64_t uid_a, int64_t uid_b) { return uid_a < uid_b ? uid_a : uid_b; }
 

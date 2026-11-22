@@ -131,15 +131,8 @@ int64_t NotificationService::MarkAllRead(int64_t uid)
         return 0;
     }
 
-    auto qb = DB::NotificationInfoDao::newQuery();
-    if (!qb) {
-        return 0;
-    }
-    qb->where("user_id", "=", uid);
-    qb->where("is_read", "=", (int64_t)0);
-    qb->where("is_deleted", "=", (int64_t)0);
     std::vector<DB::NotificationInfo::ptr> unread;
-    if (DB::NotificationInfoDao::QueryByBuilder(unread, qb, db)) {
+    if (!NotificationRepository::ListUnreadByUser(unread, uid, db)) {
         ERROR(logger) << "MarkAllRead query failed, user_id=" << uid;
         return 0;
     }
@@ -163,16 +156,8 @@ int64_t NotificationService::MarkReadByType(int64_t uid, const std::string& type
         return 0;
     }
 
-    auto qb = DB::NotificationInfoDao::newQuery();
-    if (!qb) {
-        return 0;
-    }
-    qb->where("user_id", "=", uid);
-    qb->where("is_read", "=", (int64_t)0);
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->where("type", "=", type);
     std::vector<DB::NotificationInfo::ptr> unread;
-    if (DB::NotificationInfoDao::QueryByBuilder(unread, qb, db)) {
+    if (!NotificationRepository::ListUnreadByUserType(unread, uid, type, db)) {
         ERROR(logger) << "MarkReadByType query failed, user_id=" << uid << " type=" << type;
         return 0;
     }
@@ -213,22 +198,7 @@ bool NotificationService::CleanupExpiredBroadcasts()
         return false;
     }
     int64_t now = chen::TimeUtil::GetCurrentSec();
-    auto qb = DB::NotificationInfoDao::newQuery();
-    if (!qb) {
-        return false;
-    }
-    qb->set("is_broadcast", (int64_t)0);
-    qb->set("update_time", now);
-    qb->where("is_broadcast", "=", (int64_t)1);
-    qb->whereSQL("end_time > ?", (int64_t)0);
-    qb->where("end_time", "<=", now);
-    auto stmt = db->prepare(qb->buildUpdateSQL());
-    if (!stmt) {
-        ERROR(logger) << "CleanupExpiredBroadcasts prepare failed";
-        return false;
-    }
-    qb->bindUpdateParams(stmt);
-    if (stmt->execute()) {
+    if (!NotificationRepository::ClearExpiredBroadcasts(now, db)) {
         ERROR(logger) << "CleanupExpiredBroadcasts execute failed";
         return false;
     }

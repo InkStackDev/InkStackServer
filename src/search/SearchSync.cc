@@ -19,6 +19,7 @@
 #include "DB/ArticleInfo.hpp"
 #include "DB/ArticleLabelRelInfo.hpp"
 
+#include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRelRepository.hpp"
 #include "../Manager/ArticleLabelRelManager.hpp"
 #include "../Manager/ArticleCategoryRelManager.hpp"
@@ -593,11 +594,8 @@ bool SearchSync::runSnapshot()
                 return false;
             }
 
-            auto qb = DB::ArticleInfoDao::newQuery();
-            qb->where("is_deleted", "=", (int64_t)0)->where("id", ">", last_id)->orderBy("id", "ASC")->limit(page_size);
-
             std::vector<DB::ArticleInfo::ptr> infos;
-            if (DB::ArticleInfoDao::QueryByBuilder(infos, qb, db) != 0) {
+            if (!ArticleQueryRepository::ListSnapshotAfter(last_id, page_size, infos, db)) {
                 ERROR(logger) << "search snapshot query article failed, last_id=" << last_id;
                 return false;
             }

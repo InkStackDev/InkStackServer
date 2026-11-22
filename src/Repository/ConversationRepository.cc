@@ -1,5 +1,6 @@
 #include "ConversationRepository.hpp"
 
+#include <algorithm>
 #include <memory>
 
 #include "../Cache/EntityCache.hpp"
@@ -90,4 +91,41 @@ void ConversationRepository::Put(const DB::ConversationInfo::ptr& info)
 void ConversationRepository::Evict(int64_t id)
 {
     g_conversation_cache.Evict(id);
+}
+
+void ConversationRepository::ListForUser(std::vector<DB::ConversationInfo::ptr>& results,
+    int64_t uid,
+    chen::IDB::ptr conn)
+{
+    if (!conn || uid <= 0) {
+        return;
+    }
+
+    auto qb = DB::ConversationInfoDao::newQuery();
+    if (!qb) {
+        return;
+    }
+    qb->where("user_a_id", "=", uid);
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->where("user_a_deleted", "=", (int64_t)0);
+    if (DB::ConversationInfoDao::QueryByBuilder(results, qb, conn)) {
+        return;
+    }
+
+    auto qb2 = DB::ConversationInfoDao::newQuery();
+    if (!qb2) {
+        return;
+    }
+    qb2->where("user_b_id", "=", uid);
+    qb2->where("is_deleted", "=", (int64_t)0);
+    qb2->where("user_b_deleted", "=", (int64_t)0);
+    std::vector<DB::ConversationInfo::ptr> part;
+    if (DB::ConversationInfoDao::QueryByBuilder(part, qb2, conn)) {
+        return;
+    }
+    results.insert(results.end(), part.begin(), part.end());
+
+    std::sort(results.begin(), results.end(), [](const auto& a, const auto& b) {
+        return a->getLastMessageTime() > b->getLastMessageTime();
+    });
 }

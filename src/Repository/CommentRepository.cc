@@ -76,3 +76,36 @@ void CommentRepository::Evict(int64_t id)
 {
     g_comment_cache.Evict(id);
 }
+
+bool CommentRepository::BatchSetStatus(const std::vector<int64_t>& ids,
+    int32_t status,
+    int64_t update_time,
+    chen::IDB::ptr conn)
+{
+    if (!conn || ids.empty()) {
+        return false;
+    }
+    auto qb = DB::CommentInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->set("status", (int64_t)status);
+    qb->set("update_time", update_time);
+    qb->whereIn("id", ids);
+    return qb->executeUpdate(conn) == 0;
+}
+
+bool CommentRepository::BatchSoftDelete(const std::vector<int64_t>& ids, int64_t update_time, chen::IDB::ptr conn)
+{
+    if (!conn || ids.empty()) {
+        return false;
+    }
+    auto qb = DB::CommentInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->set("is_deleted", (int64_t)1);
+    qb->set("update_time", update_time);
+    qb->whereIn("id", ids);
+    return qb->executeUpdate(conn) == 0;
+}

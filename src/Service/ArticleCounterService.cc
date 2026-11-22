@@ -15,6 +15,7 @@
 
 #include "../Config/AppConfig.hpp"
 #include "../Manager/ArticleManager.hpp"
+#include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Util/Util.hpp"
 
@@ -271,15 +272,7 @@ int64_t ArticleCounterService::GetTotalViews()
     if (!db) {
         return 0;
     }
-    auto qb = DB::ArticleInfoDao::newQuery();
-    if (!qb) {
-        return 0;
-    }
-    qb->select("CAST(COALESCE(SUM(views), 0) AS SIGNED)");
-    qb->where("state", "=", (int64_t)ArticleManager::Status::PUBLISHED);
-    qb->where("is_deleted", "=", (int64_t)0);
-    int64_t total = 0;
-    qb->queryScalarInt64(total, db);
+    int64_t total = ArticleQueryRepository::SumPublishedViews(db);
     chen::RedisUtil::Cmd(GetRedisPoolName(), "set blog:total_visits %lld", total);
     return total;
 }

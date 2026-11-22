@@ -13,6 +13,7 @@
 #include "../Config/AuthConfig.hpp"
 #include "../Manager/SessionManager.hpp"
 #include "../Manager/UserManager.hpp"
+#include "../Repository/UserRepository.hpp"
 #include "../Util/Util.hpp"
 #include "SessionStore.hpp"
 
@@ -183,7 +184,7 @@ int32_t AuthService::IssueSession(
     if (options.update_login_time) {
         user->setLoginTime(chen::TimeUtil::GetCurrentSec());
         auto db = GetDB();
-        if (db && DB::UserInfoDao::Update(user, db) == 0) {
+        if (db && UserRepository::Update(user, db)) {
             UserMgr::GetInstance()->update(user);
         } else {
             WARN(logger) << "update login time failed user=" << user->getId();

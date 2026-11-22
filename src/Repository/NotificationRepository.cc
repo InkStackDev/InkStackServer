@@ -71,3 +71,56 @@ void NotificationRepository::Evict(int64_t id)
 {
     g_notification_cache.Evict(id);
 }
+
+bool NotificationRepository::ListUnreadByUser(std::vector<DB::NotificationInfo::ptr>& results,
+    int64_t user_id,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_id <= 0) {
+        return false;
+    }
+    auto qb = DB::NotificationInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->where("user_id", "=", user_id);
+    qb->where("is_read", "=", (int64_t)0);
+    qb->where("is_deleted", "=", (int64_t)0);
+    return DB::NotificationInfoDao::QueryByBuilder(results, qb, conn) == 0;
+}
+
+bool NotificationRepository::ListUnreadByUserType(std::vector<DB::NotificationInfo::ptr>& results,
+    int64_t user_id,
+    const std::string& type,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_id <= 0 || type.empty()) {
+        return false;
+    }
+    auto qb = DB::NotificationInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->where("user_id", "=", user_id);
+    qb->where("is_read", "=", (int64_t)0);
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->where("type", "=", type);
+    return DB::NotificationInfoDao::QueryByBuilder(results, qb, conn) == 0;
+}
+
+bool NotificationRepository::ClearExpiredBroadcasts(int64_t now, chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return false;
+    }
+    auto qb = DB::NotificationInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->set("is_broadcast", (int64_t)0);
+    qb->set("update_time", now);
+    qb->where("is_broadcast", "=", (int64_t)1);
+    qb->whereSQL("end_time > ?", (int64_t)0);
+    qb->where("end_time", "<=", now);
+    return qb->executeUpdate(conn) == 0;
+}

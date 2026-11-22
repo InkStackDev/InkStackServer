@@ -155,19 +155,12 @@ int64_t CommentService::BatchUpdateStatus(const std::vector<int64_t>& ids, int32
         return 0;
     }
 
-    auto qb = DB::CommentInfoDao::newQuery();
-    if (!qb) {
-        return 0;
-    }
-    qb->set("status", (int64_t)status);
-    qb->set("update_time", (int64_t)chen::TimeUtil::GetCurrentSec());
-    qb->whereIn("id", ids);
-    if (qb->executeUpdate(db)) {
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    if (!CommentRepository::BatchSetStatus(ids, status, now, db)) {
         ERROR(logger) << "BatchUpdateStatus executeUpdate fail errno=" << db->getErrno();
         return 0;
     }
 
-    int64_t now = chen::TimeUtil::GetCurrentSec();
     for (auto& info : infos) {
         info->setStatus(status);
         info->setUpdateTime(now);
@@ -199,19 +192,12 @@ int64_t CommentService::BatchDelete(const std::vector<int64_t>& ids)
         return 0;
     }
 
-    auto qb = DB::CommentInfoDao::newQuery();
-    if (!qb) {
-        return 0;
-    }
-    qb->set("is_deleted", (int64_t)1);
-    qb->set("update_time", (int64_t)chen::TimeUtil::GetCurrentSec());
-    qb->whereIn("id", ids);
-    if (qb->executeUpdate(db)) {
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    if (!CommentRepository::BatchSoftDelete(ids, now, db)) {
         ERROR(logger) << "BatchDelete executeUpdate fail errno=" << db->getErrno();
         return 0;
     }
 
-    int64_t now = chen::TimeUtil::GetCurrentSec();
     for (auto& info : infos) {
         info->setIsDeleted(1);
         info->setUpdateTime(now);

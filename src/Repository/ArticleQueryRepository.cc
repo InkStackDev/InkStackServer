@@ -364,3 +364,62 @@ void ArticleQueryRepository::CountByUsers(const std::vector<int64_t>& user_ids,
     qb->groupBy("user_id");
     qb->queryPairs<int64_t, int64_t>(rows, conn);
 }
+
+int64_t ArticleQueryRepository::SumPublishedViews(chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return 0;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return 0;
+    }
+    qb->select("CAST(COALESCE(SUM(views), 0) AS SIGNED)");
+    qb->where("state", "=", (int64_t)kStatePublished);
+    qb->where("is_deleted", "=", (int64_t)0);
+    int64_t total = 0;
+    qb->queryScalarInt64(total, conn);
+    return total;
+}
+
+void ArticleQueryRepository::ListPublishedDays(int64_t user_id,
+    const std::string& start_time,
+    const std::string& end_time,
+    std::vector<int32_t>& days,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_id <= 0) {
+        return;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return;
+    }
+    qb->select("DISTINCT DAY(publish_time) as d");
+    qb->where("user_id", "=", user_id);
+    qb->where("state", "=", (int64_t)kStatePublished);
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->where("publish_time", ">=", start_time);
+    qb->where("publish_time", "<", end_time);
+    qb->orderBy("d", "ASC");
+    qb->queryColumn<int32_t>(days, conn, "d");
+}
+
+bool ArticleQueryRepository::ListSnapshotAfter(int64_t last_id,
+    int32_t limit,
+    std::vector<DB::ArticleInfo::ptr>& infos,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return false;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return false;
+    }
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->where("id", ">", last_id);
+    qb->orderBy("id", "ASC");
+    qb->limit(limit);
+    return DB::ArticleInfoDao::QueryByBuilder(infos, qb, conn) == 0;
+}

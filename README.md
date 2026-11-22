@@ -228,6 +228,7 @@ curl 'http://127.0.0.1:8090/api/v1/error-codes?lang=en'
 - `src/Servlets/` 下的 servlet 注册即接口定义
 - `dbproxy/xml/` 下的 XML 文件定义所有表结构，`dbproxy/data/` 为生成的数据访问层
 - `docs/` 下按功能划分的流程与接口说明
+- [docs/architecture.md](docs/architecture.md) 分层架构与 Repository / Service 约定
 - [CONFIG.md](CONFIG.md) 配置项与热重载机制
 
 ## 贡献与交流

@@ -8,6 +8,7 @@
 #include <Chen/Util/TypeUtil.hpp>
 
 #include "../Config/AppConfig.hpp"
+#include "../Repository/SystemSettingsRepository.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -64,12 +65,12 @@ DB::SystemSettingsInfo::ptr SystemSettingsManager::get()
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
-    auto info = DB::SystemSettingsInfoDao::Query(1, db);
+    auto info = SystemSettingsRepository::Get(1, db);
     if (!info) {
         // 创建默认行
         info.reset(new DB::SystemSettingsInfo);
         info->setId(1);
-        if (DB::SystemSettingsInfoDao::Insert(info, db)) {
+        if (SystemSettingsRepository::Insert(info, db)) {
             ERROR(logger) << "SystemSettingsManager insert default row fail";
             return info;
         }
@@ -98,7 +99,7 @@ bool SystemSettingsManager::update(DB::SystemSettingsInfo::ptr info)
         return false;
     }
     info->setId(1);
-    if (DB::SystemSettingsInfoDao::InsertOrUpdate(info, db)) {
+    if (SystemSettingsRepository::InsertOrUpdate(info, db)) {
         ERROR(logger) << "SystemSettingsManager update fail";
         return false;
     }

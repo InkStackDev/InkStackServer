@@ -1,8 +1,12 @@
 #include "UserOAuthManager.hpp"
 
+#include <memory>
+
+#include "../Repository/UserOAuthRepository.hpp"
 #include "../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -20,19 +24,7 @@ DB::UserOauthInfo::ptr UserOAuthManager::getByOpenId(const std::string& provider
         ERROR(logger) << "getByOpenId: GetDB failed";
         return nullptr;
     }
-    std::vector<DB::UserOauthInfo::ptr> results;
-    auto qb = DB::UserOauthInfoDao::newQuery();
-    qb->where("provider", "=", provider);
-    qb->where("open_id", "=", open_id);
-    if (DB::UserOauthInfoDao::QueryByBuilder(results, qb, db)) {
-        ERROR(logger) << "getByOpenId: query failed"
-                      << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
-        return nullptr;
-    }
-    if (results.empty()) {
-        return nullptr;
-    }
-    return results[0];
+    return UserOAuthRepository::GetByOpenId(provider, open_id, db);
 }
 
 DB::UserOauthInfo::ptr UserOAuthManager::getByUser(int64_t user_id, const std::string& provider)
@@ -45,19 +37,7 @@ DB::UserOauthInfo::ptr UserOAuthManager::getByUser(int64_t user_id, const std::s
         ERROR(logger) << "getByUser: GetDB failed";
         return nullptr;
     }
-    std::vector<DB::UserOauthInfo::ptr> results;
-    auto qb = DB::UserOauthInfoDao::newQuery();
-    qb->where("user_id", "=", user_id);
-    qb->where("provider", "=", provider);
-    if (DB::UserOauthInfoDao::QueryByBuilder(results, qb, db)) {
-        ERROR(logger) << "getByUser: query failed"
-                      << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
-        return nullptr;
-    }
-    if (results.empty()) {
-        return nullptr;
-    }
-    return results[0];
+    return UserOAuthRepository::GetByUser(user_id, provider, db);
 }
 
 int UserOAuthManager::bind(int64_t user_id, const std::string& provider, const std::string& open_id, const std::string& login_name)
@@ -75,9 +55,10 @@ int UserOAuthManager::bind(int64_t user_id, const std::string& provider, const s
     info->setProvider(provider);
     info->setOpenId(open_id);
     info->setLoginName(login_name);
-    info->setCreateTime(time(0));
-    info->setUpdateTime(time(0));
-    if (DB::UserOauthInfoDao::Insert(info, db)) {
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    info->setCreateTime(now);
+    info->setUpdateTime(now);
+    if (!UserOAuthRepository::Insert(info, db)) {
         ERROR(logger) << "bind: Insert failed"
                       << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
         return -1;
