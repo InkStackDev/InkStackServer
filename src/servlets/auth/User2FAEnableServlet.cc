@@ -1,12 +1,7 @@
 #include "User2FAEnableServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/UserManager.hpp"
-#include "../../Util/TotpUtil.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 User2FAEnableServlet::User2FAEnableServlet()
     : BlogLoginedServlet("User2FAEnableServlet")
@@ -25,20 +20,18 @@ int32_t User2FAEnableServlet::handle(chen::http::HttpRequest::ptr request,
             break;
         }
 
-        auto info = UserMgr::GetInstance()->get(uid);
-        if (!info) {
+        // 生成新密钥（不立即写入DB，等用户confirm后才正式启用）
+        std::string secret;
+        std::string otpUri;
+        auto rt = UserService::BeginEnable2FA(uid, secret, otpUri);
+        if (rt == UserService::Begin2faResult::UserNotFound) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-
-        if (info->getTotpEnabled()) {
+        if (rt == UserService::Begin2faResult::AlreadyEnabled) {
             result->setErrno(TOTP_ALREADY_ENABLED);
             break;
         }
-
-        // 生成新密钥（不立即写入DB，等用户confirm后才正式启用）
-        std::string secret = TotpUtil::GenerateSecret();
-        std::string otpUri = TotpUtil::GetOtpUri(secret, info->getAccount());
 
         // 将密钥临时存入session，等待confirm步骤确认
         auto sdata = getSessionData(request, response);

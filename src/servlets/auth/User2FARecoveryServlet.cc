@@ -2,16 +2,11 @@
 
 #include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
-#include <Chen/Log/Log.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/UserManager.hpp"
-#include "../../Util/TotpUtil.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/UserRecoveryCodeInfo.hpp"
 #include "../../Config/AppConfig.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 /// Redis 2FA 临时凭证 key 前缀（5分钟有效）
 static const char* k2faPendingPrefix = "2fa_pending:";
@@ -49,45 +44,33 @@ int32_t User2FARecoveryServlet::handle(chen::http::HttpRequest::ptr request,
         // 删除临时凭证（一次性）
         chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.c_str());
 
-        auto info = UserMgr::GetInstance()->get(uid);
-        if (!info) {
+        auto rt = UserService::ConsumeRecoveryCode(uid, recoveryCode);
+        if (rt == UserService::ConsumeRecoveryResult::UserNotFound) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
-
-        if (info->getState() != 1 || info->getIsDeleted()) {
+        if (rt == UserService::ConsumeRecoveryResult::AccountInvalid) {
             result->setErrno(ACCOUNT_INVALID);
             break;
         }
-
-        auto db = GetDB();
-        if (!db) {
+        if (rt == UserService::ConsumeRecoveryResult::NotEnabled) {
+            result->setErrno(TOTP_NOT_ENABLED);
+            break;
+        }
+        if (rt == UserService::ConsumeRecoveryResult::InvalidCode) {
+            result->setErrno(RECOVERY_CODE_INVALID);
+            break;
+        }
+        if (rt != UserService::ConsumeRecoveryResult::Ok) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        // 查找匹配且未使用的恢复码
-        std::string codeHash = TotpUtil::HashRecoveryCode(recoveryCode);
-        auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
-        qb->where("user_id", "=", uid);
-        qb->where("code_hash", "=", codeHash);
-        qb->where("used", "=", (int64_t)0);
-
-        std::vector<DB::UserRecoveryCodeInfo::ptr> codes;
-        if (DB::UserRecoveryCodeInfoDao::QueryByBuilder(codes, qb, db)) {
-            result->setErrno(RECOVERY_CODE_INVALID);
+        auto info = UserService::Get(uid);
+        if (!info) {
+            result->setErrno(USER_NOT_FOUND);
             break;
         }
-
-        if (codes.empty()) {
-            result->setErrno(RECOVERY_CODE_INVALID);
-            break;
-        }
-
-        // 标记恢复码为已使用
-        auto matchedCode = codes[0];
-        matchedCode->setUsed(1);
-        DB::UserRecoveryCodeInfoDao::Update(matchedCode, db);
 
         // 完成登录
         IssueOptions options;
@@ -96,7 +79,6 @@ int32_t User2FARecoveryServlet::handle(chen::http::HttpRequest::ptr request,
             result->setErrno(ret);
             break;
         }
-        INFO(logger) << "2fa recovery login user=" << info->getId();
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

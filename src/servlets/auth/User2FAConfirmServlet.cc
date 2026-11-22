@@ -1,15 +1,7 @@
 #include "User2FAConfirmServlet.hpp"
 
-#include <Chen/Config/Config.hpp>
-#include <Chen/DB/Redis.hpp>
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/UserManager.hpp"
-#include "../../Util/TotpUtil.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/UserRecoveryCodeInfo.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 User2FAConfirmServlet::User2FAConfirmServlet()
     : BlogLoginedServlet("User2FAConfirmServlet")
@@ -30,17 +22,6 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
             break;
         }
 
-        auto info = UserMgr::GetInstance()->get(uid);
-        if (!info) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-
-        if (info->getTotpEnabled()) {
-            result->setErrno(TOTP_ALREADY_ENABLED);
-            break;
-        }
-
         // 从session获取待确认的密钥
         auto sdata = getSessionData(request, response);
         std::string secret = sdata->getData<std::string>("totp_pending_secret");
@@ -49,56 +30,31 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
             break;
         }
 
-        // 验证TOTP码
-        if (!TotpUtil::VerifyCode(secret, code, 1)) {
+        std::vector<std::string> recoveryCodes;
+        auto rt = UserService::ConfirmEnable2FA(uid, secret, code, recoveryCodes);
+        if (rt == UserService::Confirm2faResult::UserNotFound) {
+            result->setErrno(USER_NOT_FOUND);
+            break;
+        }
+        if (rt == UserService::Confirm2faResult::AlreadyEnabled) {
+            result->setErrno(TOTP_ALREADY_ENABLED);
+            break;
+        }
+        if (rt == UserService::Confirm2faResult::SecretMissing) {
+            result->setErrno(TOTP_ENABLE_FAILED, "please call /api/v1/user/2fa/enable first");
+            break;
+        }
+        if (rt == UserService::Confirm2faResult::InvalidCode) {
             result->setErrno(TOTP_INVALID_CODE);
             break;
         }
-
-        // 验证通过，写入DB
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        info->setTotpSecret(secret);
-        info->setTotpEnabled(1);
-        info->setUpdateTime(time(0));
-
-        if (DB::UserInfoDao::Update(info, db)) {
+        if (rt != UserService::Confirm2faResult::Ok) {
             result->setErrno(TOTP_ENABLE_FAILED);
-            ERROR(logger) << "confirm 2fa: Update failed"
-                          << " errstr=" << db->getErrStr() << " errno=" << db->getErrno();
             break;
         }
-        UserMgr::GetInstance()->update(info);
 
         // 清除session中的待确认密钥
         sdata->setData("totp_pending_secret", std::string(""));
-
-        // 生成恢复码
-        std::vector<std::string> hashed_codes;
-        std::vector<std::string> recoveryCodes = TotpUtil::GenerateRecoveryCodes(10, hashed_codes);
-
-        // 将恢复码哈希存入DB
-        auto trans = db->openTransaction();
-        for (auto& hash : hashed_codes) {
-            auto rc = std::make_shared<DB::UserRecoveryCodeInfo>();
-            rc->setUserId(uid);
-            rc->setCodeHash(hash);
-            rc->setUsed(0);
-            if (DB::UserRecoveryCodeInfoDao::Insert(rc, db)) {
-                ERROR(logger) << "confirm 2fa: insert recovery code failed"
-                              << " errstr=" << db->getErrStr();
-            }
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "confirm 2fa: commit recovery codes failed";
-        }
-
-        // 更新缓存
-        UserMgr::GetInstance()->update(info);
 
         // 返回恢复码（仅此一次展示）
         Json::Value codesArr;
@@ -106,7 +62,6 @@ int32_t User2FAConfirmServlet::handle(chen::http::HttpRequest::ptr request,
             codesArr.append(c);
         }
         result->set("recovery_codes", codesArr);
-        INFO(logger) << "user=" << uid << " enabled 2fa";
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

@@ -109,6 +109,38 @@ public:
         DbError
     };
 
+    enum class Begin2faResult {
+        Ok,
+        UserNotFound,
+        AlreadyEnabled
+    };
+
+    enum class Confirm2faResult {
+        Ok,
+        UserNotFound,
+        AlreadyEnabled,
+        SecretMissing,
+        InvalidCode,
+        DbError
+    };
+
+    enum class Reset2faResult {
+        Ok,
+        UserNotFound,
+        NotEnabled,
+        InvalidCode,
+        DbError
+    };
+
+    enum class ConsumeRecoveryResult {
+        Ok,
+        UserNotFound,
+        AccountInvalid,
+        NotEnabled,
+        InvalidCode,
+        DbError
+    };
+
     static DB::UserInfo::ptr Get(int64_t uid);
 
     /**
@@ -154,4 +186,30 @@ public:
      * @brief 创建用户（注册 / 管理端创建共用）
      */
     static CreateUserResult CreateUser(const CreateUserInput& input, DB::UserInfo::ptr& out);
+
+    /**
+     * @brief 生成待确认的 2FA 密钥（不落库）
+     */
+    static Begin2faResult BeginEnable2FA(int64_t uid, std::string& secret, std::string& otp_uri);
+
+    /**
+     * @brief 确认启用 2FA，并生成恢复码
+     */
+    static Confirm2faResult ConfirmEnable2FA(int64_t uid,
+        const std::string& secret,
+        const std::string& code,
+        std::vector<std::string>& recovery_codes);
+
+    /**
+     * @brief 使用恢复码关闭 2FA，并生成新的待确认密钥
+     */
+    static Reset2faResult Reset2FA(int64_t uid,
+        const std::string& recovery_code,
+        std::string& new_secret,
+        std::string& new_otp_uri);
+
+    /**
+     * @brief 使用恢复码完成 2FA 登录（只消费恢复码）
+     */
+    static ConsumeRecoveryResult ConsumeRecoveryCode(int64_t uid, const std::string& recovery_code);
 };

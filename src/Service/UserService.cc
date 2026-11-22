@@ -15,6 +15,27 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+namespace {
+
+DB::UserRecoveryCodeInfo::ptr FindUnusedRecoveryCode(chen::IDB::ptr db, int64_t uid, const std::string& code_hash)
+{
+    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
+    if (!qb) {
+        return nullptr;
+    }
+    qb->where("user_id", "=", uid);
+    qb->where("code_hash", "=", code_hash);
+    qb->where("used", "=", (int64_t)0);
+
+    std::vector<DB::UserRecoveryCodeInfo::ptr> codes;
+    if (DB::UserRecoveryCodeInfoDao::QueryByBuilder(codes, qb, db)) {
+        return nullptr;
+    }
+    return codes.empty() ? nullptr : codes[0];
+}
+
+} // namespace
+
 DB::UserInfo::ptr UserService::Get(int64_t uid)
 {
     auto db = GetDB();
@@ -395,4 +416,194 @@ UserService::CreateUserResult UserService::CreateUser(const CreateUserInput& inp
     UserRepository::Put(info);
     out = info;
     return CreateUserResult::Ok;
+}
+
+UserService::Begin2faResult UserService::BeginEnable2FA(int64_t uid, std::string& secret, std::string& otp_uri)
+{
+    secret.clear();
+    otp_uri.clear();
+
+    auto db = GetDB();
+    if (!db) {
+        return Begin2faResult::UserNotFound;
+    }
+    auto info = UserRepository::Get(uid, db);
+    if (!info) {
+        return Begin2faResult::UserNotFound;
+    }
+    if (info->getTotpEnabled()) {
+        return Begin2faResult::AlreadyEnabled;
+    }
+
+    secret = TotpUtil::GenerateSecret();
+    otp_uri = TotpUtil::GetOtpUri(secret, info->getAccount());
+    return Begin2faResult::Ok;
+}
+
+UserService::Confirm2faResult UserService::ConfirmEnable2FA(int64_t uid,
+    const std::string& secret,
+    const std::string& code,
+    std::vector<std::string>& recovery_codes)
+{
+    recovery_codes.clear();
+    if (secret.empty()) {
+        return Confirm2faResult::SecretMissing;
+    }
+
+    auto db = GetDB();
+    if (!db) {
+        return Confirm2faResult::DbError;
+    }
+    auto info = UserRepository::Get(uid, db);
+    if (!info) {
+        return Confirm2faResult::UserNotFound;
+    }
+    if (info->getTotpEnabled()) {
+        return Confirm2faResult::AlreadyEnabled;
+    }
+    if (!TotpUtil::VerifyCode(secret, code, 1)) {
+        return Confirm2faResult::InvalidCode;
+    }
+
+    auto trans = db->openTransaction();
+    if (!trans) {
+        return Confirm2faResult::DbError;
+    }
+
+    info->setTotpSecret(secret);
+    info->setTotpEnabled(1);
+    info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
+    if (!UserRepository::Update(info, db)) {
+        ERROR(logger) << "ConfirmEnable2FA update failed, uid=" << uid;
+        return Confirm2faResult::DbError;
+    }
+
+    // 清理历史恢复码，避免重复绑定后旧码仍然可用
+    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
+    if (!qb) {
+        return Confirm2faResult::DbError;
+    }
+    qb->where("user_id", "=", uid);
+    if (qb->executeDelete(db)) {
+        ERROR(logger) << "ConfirmEnable2FA clear old recovery codes failed, uid=" << uid;
+        return Confirm2faResult::DbError;
+    }
+
+    std::vector<std::string> hashed_codes;
+    recovery_codes = TotpUtil::GenerateRecoveryCodes(10, hashed_codes);
+    for (const auto& hash : hashed_codes) {
+        auto rc = std::make_shared<DB::UserRecoveryCodeInfo>();
+        rc->setUserId(uid);
+        rc->setCodeHash(hash);
+        rc->setUsed(0);
+        if (DB::UserRecoveryCodeInfoDao::Insert(rc, db)) {
+            ERROR(logger) << "ConfirmEnable2FA insert recovery code failed, uid=" << uid;
+            return Confirm2faResult::DbError;
+        }
+    }
+
+    if (!trans->commit()) {
+        ERROR(logger) << "ConfirmEnable2FA commit failed, uid=" << uid;
+        return Confirm2faResult::DbError;
+    }
+    UserRepository::Put(info);
+    return Confirm2faResult::Ok;
+}
+
+UserService::Reset2faResult UserService::Reset2FA(int64_t uid,
+    const std::string& recovery_code,
+    std::string& new_secret,
+    std::string& new_otp_uri)
+{
+    new_secret.clear();
+    new_otp_uri.clear();
+
+    auto db = GetDB();
+    if (!db) {
+        return Reset2faResult::DbError;
+    }
+    auto info = UserRepository::Get(uid, db);
+    if (!info) {
+        return Reset2faResult::UserNotFound;
+    }
+    if (!info->getTotpEnabled()) {
+        return Reset2faResult::NotEnabled;
+    }
+
+    auto matched = FindUnusedRecoveryCode(db, uid, TotpUtil::HashRecoveryCode(recovery_code));
+    if (!matched) {
+        return Reset2faResult::InvalidCode;
+    }
+
+    auto trans = db->openTransaction();
+    if (!trans) {
+        return Reset2faResult::DbError;
+    }
+
+    info->setTotpEnabled(0);
+    info->setTotpSecret("");
+    info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
+    if (!UserRepository::Update(info, db)) {
+        ERROR(logger) << "Reset2FA update user failed, uid=" << uid;
+        return Reset2faResult::DbError;
+    }
+
+    // 旧恢复码已全部失效，直接清空，避免重新绑定后继续可用
+    auto qb = DB::UserRecoveryCodeInfoDao::newQuery();
+    if (!qb) {
+        return Reset2faResult::DbError;
+    }
+    qb->where("user_id", "=", uid);
+    if (qb->executeDelete(db)) {
+        ERROR(logger) << "Reset2FA clear recovery codes failed, uid=" << uid;
+        return Reset2faResult::DbError;
+    }
+
+    if (!trans->commit()) {
+        ERROR(logger) << "Reset2FA commit failed, uid=" << uid;
+        return Reset2faResult::DbError;
+    }
+    UserRepository::Put(info);
+
+    new_secret = TotpUtil::GenerateSecret();
+    new_otp_uri = TotpUtil::GetOtpUri(new_secret, info->getAccount());
+    return Reset2faResult::Ok;
+}
+
+UserService::ConsumeRecoveryResult UserService::ConsumeRecoveryCode(int64_t uid, const std::string& recovery_code)
+{
+    auto db = GetDB();
+    if (!db) {
+        return ConsumeRecoveryResult::DbError;
+    }
+    auto info = UserRepository::Get(uid, db);
+    if (!info) {
+        return ConsumeRecoveryResult::UserNotFound;
+    }
+    if (info->getState() != UserManager::Status::ACTIVE || info->getIsDeleted()) {
+        return ConsumeRecoveryResult::AccountInvalid;
+    }
+    if (!info->getTotpEnabled()) {
+        return ConsumeRecoveryResult::NotEnabled;
+    }
+
+    auto matched = FindUnusedRecoveryCode(db, uid, TotpUtil::HashRecoveryCode(recovery_code));
+    if (!matched) {
+        return ConsumeRecoveryResult::InvalidCode;
+    }
+
+    auto trans = db->openTransaction();
+    if (!trans) {
+        return ConsumeRecoveryResult::DbError;
+    }
+    matched->setUsed(1);
+    if (DB::UserRecoveryCodeInfoDao::Update(matched, db)) {
+        ERROR(logger) << "ConsumeRecoveryCode update failed, uid=" << uid;
+        return ConsumeRecoveryResult::DbError;
+    }
+    if (!trans->commit()) {
+        ERROR(logger) << "ConsumeRecoveryCode commit failed, uid=" << uid;
+        return ConsumeRecoveryResult::DbError;
+    }
+    return ConsumeRecoveryResult::Ok;
 }
