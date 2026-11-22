@@ -1,14 +1,12 @@
 #include "UserAdminRecoverServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include <set>
-
-static chen::Logger::ptr logger = LOG_ROOT();
+#include <utility>
+#include <vector>
 
 UserAdminRecoverServlet::UserAdminRecoverServlet()
     : BlogAdminServlet("UserAdminRecoverServlet")
@@ -24,65 +22,29 @@ int32_t UserAdminRecoverServlet::handle(
     do {
         DEFINE_AND_CHECK_STRING(result, ids, "ids");
 
-        std::set<int64_t> user_ids;
+        std::set<int64_t> unique_ids;
         auto tmp = chen::StringUtil::Split(ids, ',');
         for (auto& i : tmp) {
-            user_ids.insert(chen::TypeUtil::Atoi(i));
+            unique_ids.insert(chen::TypeUtil::Atoi(i));
         }
+        std::vector<int64_t> user_ids(unique_ids.begin(), unique_ids.end());
 
-        std::vector<DB::UserInfo::ptr> infos;
-        for (const int64_t& id : user_ids) {
-            auto info = UserMgr::GetInstance()->get(id);
-            if (!info || !info->getIsDeleted()) {
-                continue;
-            }
-            infos.emplace_back(info);
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        std::vector<int64_t> recovered;
+        if (!UserService::RecoverUsers(user_ids, recovered)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = time(0);
-        for (auto& i : infos) {
-            i->setIsDeleted(0);
-            i->setState(UserManager::Status::ACTIVE);
-            i->setUpdateTime(now);
-            DB::UserInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            result->setErrno(DB_COMMIT_FAILED);
-
-            for (auto& i : infos) {
-                i->setIsDeleted(0);
-            }
-            break;
-        }
-        for (auto& i : infos) {
-            UserMgr::GetInstance()->update(i);
-        }
-        if (!infos.empty()) {
+        if (!recovered.empty()) {
             Json::Value json_ids;
-            for (auto& i : infos) {
-                json_ids.append(i->getId());
-            }
-            result->set("ids", json_ids);
+            for (auto id : recovered) {
+                json_ids.append(id);
 
-            // Notify recovered users
-            for (auto& u : infos) {
                 EventUserAdminData data = {};
                 data.type = "account_recovered";
-                data.user_id = u->getId();
-
+                data.user_id = id;
                 chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_ADMIN, std::move(data));
             }
+            result->set("ids", json_ids);
         }
     } while (0);
     response->setBody(result->toJsonString());

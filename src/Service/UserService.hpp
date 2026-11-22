@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 /**
  * @brief 用户业务服务
@@ -47,6 +48,67 @@ public:
         DbError
     };
 
+    enum class SetPasswordResult {
+        Ok,
+        UserNotFound,
+        InvalidPassword,
+        InternalError,
+        DbError
+    };
+
+    enum class DeleteUserResult {
+        Ok,
+        UserNotFound,
+        AlreadyDeleted,
+        DbError
+    };
+
+    struct AdminUpdateInput {
+        std::string account;
+        std::string email;
+        std::string passwd;
+        int32_t role = 0;
+        int32_t state = 0;
+        bool has_role = false;
+        bool has_state = false;
+    };
+
+    enum class AdminUpdateResult {
+        Ok,
+        UserNotFound,
+        NoParam,
+        InvalidAccount,
+        AccountExists,
+        InvalidEmail,
+        EmailExists,
+        InvalidPassword,
+        InvalidRole,
+        InvalidState,
+        InternalError,
+        DbError
+    };
+
+    struct CreateUserInput {
+        std::string account;
+        std::string email;
+        std::string passwd;
+        int32_t role = 1;  // UserManager::Role::USER
+        int32_t state = 1; // UserManager::Status::ACTIVE
+    };
+
+    enum class CreateUserResult {
+        Ok,
+        AccountExists,
+        EmailExists,
+        InvalidAccount,
+        InvalidEmail,
+        InvalidPassword,
+        InvalidRole,
+        InvalidState,
+        InternalError,
+        DbError
+    };
+
     static DB::UserInfo::ptr Get(int64_t uid);
 
     /**
@@ -59,4 +121,37 @@ public:
      * @brief 关闭 TOTP 2FA，并清理恢复码
      */
     static Disable2faResult Disable2FA(int64_t uid, const std::string& code);
+
+    /**
+     * @brief 设置密码（管理员重置 / 邮箱找回共用）
+     */
+    static SetPasswordResult SetPassword(int64_t uid, const std::string& plain, DB::UserInfo::ptr& out);
+
+    static SetPasswordResult SetPasswordByEmail(const std::string& email,
+        const std::string& plain,
+        DB::UserInfo::ptr& out);
+
+    /**
+     * @brief 软删除用户
+     */
+    static DeleteUserResult DeleteUser(int64_t uid);
+
+    /**
+     * @brief 批量恢复已删除用户
+     */
+    static bool RecoverUsers(const std::vector<int64_t>& ids, std::vector<int64_t>& recovered);
+
+    /**
+     * @brief 管理端修改用户资料/角色/状态
+     * @param[out] revoke_sessions 是否需要撤销该用户全部会话
+     */
+    static AdminUpdateResult AdminUpdate(int64_t uid,
+        const AdminUpdateInput& input,
+        DB::UserInfo::ptr& out,
+        bool& revoke_sessions);
+
+    /**
+     * @brief 创建用户（注册 / 管理端创建共用）
+     */
+    static CreateUserResult CreateUser(const CreateUserInput& input, DB::UserInfo::ptr& out);
 };

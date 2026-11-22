@@ -1,13 +1,11 @@
 #include "UserAdminResetPasswdServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
+#include <utility>
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserAdminResetPasswdServlet::UserAdminResetPasswdServlet()
     : BlogAdminServlet("UserAdminResetPasswdServlet")
@@ -35,45 +33,23 @@ int32_t UserAdminResetPasswdServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
-        }
+        DB::UserInfo::ptr info;
+        auto rt = UserService::SetPassword(id, passwd_s, info);
+        if (rt == UserService::SetPasswordResult::Ok) {
+            AuthService::RevokeAllSessions(info->getId());
 
-        std::string passwd_hash = HashPassword(passwd_s);
-        if (passwd_hash.empty()) {
-            result->setErrno(INTERNAL_ERROR);
-            break;
-        }
-
-        chen::ITransaction::ptr trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        DB::UserInfo::ptr info = UserMgr::GetInstance()->get(id);
-        if (!info) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        info->setPasswd(passwd_hash);
-
-        if (DB::UserInfoDao::Update(info, db)) {
-            result->setErrno(DB_OPERATION_FAILED, "insert user failed");
-            break;
-        }
-        trans->commit();
-        UserMgr::GetInstance()->update(info);
-        AuthService::RevokeAllSessions(info->getId());
-
-        // Notify affected user
-        {
             EventUserAdminData data = {};
             data.type = "password_reset";
             data.user_id = id;
-
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_ADMIN, std::move(data));
+        } else if (rt == UserService::SetPasswordResult::UserNotFound) {
+            result->setErrno(USER_NOT_FOUND);
+        } else if (rt == UserService::SetPasswordResult::InvalidPassword) {
+            result->setErrno(USER_INVALID_PASSWORD);
+        } else if (rt == UserService::SetPasswordResult::InternalError) {
+            result->setErrno(INTERNAL_ERROR);
+        } else {
+            result->setErrno(DB_OPERATION_FAILED, "reset password failed");
         }
     } while (0);
     response->setBody(result->toJsonString());

@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
   worker 下同一任务只跑一份。
 - 搜索全量重建和单条 PR 同步增加 Redis 租约，避免多 worker 重复执行。
 - 新增 `UserRepository` / `UserService` / `EntityCache` 样板：Repository 只做单表读写并显式接收 `conn`，Service 负责业务校验、事务和
-  commit 后缓存失效；个人资料修改与 2FA 关闭已迁移到该路径。
+  commit 后缓存失效；用户注册/创建、个人资料修改、2FA 关闭、密码设置、软删除/恢复、管理端资料更新已迁移到该路径。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。

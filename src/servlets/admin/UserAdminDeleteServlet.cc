@@ -1,14 +1,11 @@
 #include "UserAdminDeleteServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/TimeUtil.hpp>
+#include <utility>
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserAdminDeleteServlet::UserAdminDeleteServlet()
     : BlogAdminServlet("UserAdminDeleteServlet")
@@ -24,52 +21,21 @@ int32_t UserAdminDeleteServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, user_id, "user_id");
 
-        auto info = UserMgr::GetInstance()->get(user_id);
-        if (!info) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (info->getIsDeleted()) {
-            result->setErrno(USER_ALREADY_DELETED);
-            break;
-        }
+        auto rt = UserService::DeleteUser(user_id);
+        if (rt == UserService::DeleteUserResult::Ok) {
+            AuthService::RevokeAllSessions(user_id);
+            result->set("user_id", user_id);
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = chen::TimeUtil::GetCurrentSec();
-        info->setIsDeleted(1);
-        info->setState(UserManager::Status::INACTIVE);
-        info->setUpdateTime(now);
-        if (DB::UserInfoDao::Update(info, db)) {
-            ERROR(logger) << "update user fail";
-            result->setErrno(DB_OPERATION_FAILED, "delete user failed");
-            break;
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            info->setIsDeleted(0);
-            result->setErrno(DB_COMMIT_FAILED);
-            break;
-        }
-        UserMgr::GetInstance()->update(info);
-        AuthService::RevokeAllSessions(user_id);
-        result->set("user_id", user_id);
-
-        // Notify affected user
-        {
             EventUserAdminData data = {};
             data.type = "account_deleted";
             data.user_id = user_id;
-
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_ADMIN, std::move(data));
+        } else if (rt == UserService::DeleteUserResult::UserNotFound) {
+            result->setErrno(USER_NOT_FOUND);
+        } else if (rt == UserService::DeleteUserResult::AlreadyDeleted) {
+            result->setErrno(USER_ALREADY_DELETED);
+        } else {
+            result->setErrno(DB_OPERATION_FAILED, "delete user failed");
         }
     } while (0);
     response->setBody(result->toJsonString());

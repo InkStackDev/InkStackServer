@@ -2,14 +2,11 @@
 
 #include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
-#include <Chen/Log/Log.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserResetPasswdServlet::UserResetPasswdServlet()
     : BlogServlet("UserResetPasswdServlet")
@@ -36,47 +33,25 @@ int32_t UserResetPasswdServlet::handle(
             result->setErrno(USER_INVALID_EMAIL);
             break;
         }
-        if (!UserMgr::GetInstance()->getByEmail(email)) {
-            result->setErrno(USER_EMAIL_NOT_REGISTER);
-            break;
-        }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
-        }
 
         if (!verificationEmailCode(email, auth_code)) {
             result->setErrno(AUTH_CODE_INVALID);
             break;
         }
 
-        std::string passwd_hash = HashPassword(passwd);
-        if (passwd_hash.empty()) {
-            result->setErrno(INTERNAL_ERROR);
-            break;
-        }
-
-        chen::ITransaction::ptr trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        DB::UserInfo::ptr info = UserMgr::GetInstance()->getByEmail(email);
-        if (!info) {
+        DB::UserInfo::ptr info;
+        auto rt = UserService::SetPasswordByEmail(email, passwd, info);
+        if (rt == UserService::SetPasswordResult::Ok) {
+            AuthService::RevokeAllSessions(info->getId());
+        } else if (rt == UserService::SetPasswordResult::UserNotFound) {
             result->setErrno(USER_EMAIL_NOT_REGISTER);
-            break;
+        } else if (rt == UserService::SetPasswordResult::InvalidPassword) {
+            result->setErrno(USER_INVALID_PASSWORD);
+        } else if (rt == UserService::SetPasswordResult::InternalError) {
+            result->setErrno(INTERNAL_ERROR);
+        } else {
+            result->setErrno(DB_OPERATION_FAILED, "reset password failed");
         }
-        info->setPasswd(passwd_hash);
-
-        if (DB::UserInfoDao::Update(info, db)) {
-            result->setErrno(DB_OPERATION_FAILED, "insert user failed");
-            break;
-        }
-        trans->commit();
-        UserMgr::GetInstance()->update(info);
-        AuthService::RevokeAllSessions(info->getId());
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
