@@ -8,6 +8,8 @@
 #include <Chen/IOManager/Worker.hpp>
 #include <Chen/Log/Log.hpp>
 
+#include "OrganizationRepoService.hpp"
+
 #include "../Client/GitHubClient.hpp"
 #include "../Job/RedisLease.hpp"
 #include "../Repository/OrganizationRepoPrRepository.hpp"
@@ -28,6 +30,113 @@ void OrganizationRepoPrService::SyncAll()
         }
         SyncFromGitHub(repo->getId(), repo->getUrl(), repo->getToken(), kMaxPrCount);
     }
+}
+
+bool OrganizationRepoPrService::GetPR(int64_t pr_id, DB::OrganizationRepoPrsInfo::ptr& out)
+{
+    out.reset();
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    out = OrganizationRepoPrRepository::Get(pr_id, db);
+    return out != nullptr;
+}
+
+OrganizationRepoPrService::ListStatus OrganizationRepoPrService::List(const Viewer& viewer,
+    int64_t repo_id,
+    int64_t org_id,
+    const std::string& state,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<DB::OrganizationRepoPrsInfo::ptr>& out,
+    int64_t& total)
+{
+    out.clear();
+    total = 0;
+    if (!viewer.valid()) {
+        return ListStatus::ACCESS_DENIED;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ListStatus::DB_ERROR;
+    }
+
+    if (repo_id) {
+        DB::OrganizationReposInfo::ptr repo;
+        auto rt = OrganizationRepoService::CheckRepoAccess(viewer, repo_id, false, repo);
+        if (rt == OrganizationRepoService::Result::NotFound) {
+            return ListStatus::REPO_NOT_FOUND;
+        }
+        if (rt == OrganizationRepoService::Result::NotMember) {
+            return ListStatus::NOT_MEMBER;
+        }
+        if (rt == OrganizationRepoService::Result::AccessDenied) {
+            return ListStatus::ACCESS_DENIED;
+        }
+        if (rt != OrganizationRepoService::Result::Ok) {
+            return ListStatus::DB_ERROR;
+        }
+        total = OrganizationRepoPrRepository::ListByRepoPages(out, repo_id, state, offset, limit, db);
+        return ListStatus::OK;
+    }
+
+    if (org_id) {
+        auto rt = OrganizationRepoService::CheckOrgAccess(viewer, org_id, false);
+        if (rt == OrganizationRepoService::Result::OrgNotFound) {
+            return ListStatus::ORG_NOT_FOUND;
+        }
+        if (rt == OrganizationRepoService::Result::NotMember) {
+            return ListStatus::NOT_MEMBER;
+        }
+        if (rt == OrganizationRepoService::Result::AccessDenied) {
+            return ListStatus::ACCESS_DENIED;
+        }
+        if (rt != OrganizationRepoService::Result::Ok) {
+            return ListStatus::DB_ERROR;
+        }
+        total = OrganizationRepoPrRepository::ListByOrgPages(out, org_id, state, offset, limit, db);
+        return ListStatus::OK;
+    }
+
+    total = OrganizationRepoPrRepository::ListByUserPages(out, viewer.user_id, state, offset, limit, db);
+    return ListStatus::OK;
+}
+
+OrganizationRepoPrService::DeleteStatus OrganizationRepoPrService::Remove(const Viewer& viewer, int64_t pr_id)
+{
+    if (!viewer.valid()) {
+        return DeleteStatus::ACCESS_DENIED;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return DeleteStatus::DB_ERROR;
+    }
+    auto pr = OrganizationRepoPrRepository::Get(pr_id, db);
+    if (!pr) {
+        return DeleteStatus::PR_NOT_FOUND;
+    }
+
+    DB::OrganizationReposInfo::ptr repo;
+    auto rt = OrganizationRepoService::CheckRepoAccess(viewer, pr->getRepoId(), true, repo);
+    if (rt == OrganizationRepoService::Result::NotFound) {
+        return DeleteStatus::REPO_NOT_FOUND;
+    }
+    if (rt == OrganizationRepoService::Result::NotMember) {
+        return DeleteStatus::NOT_MEMBER;
+    }
+    if (rt == OrganizationRepoService::Result::AccessDenied) {
+        return DeleteStatus::ACCESS_DENIED;
+    }
+    if (rt != OrganizationRepoService::Result::Ok) {
+        return DeleteStatus::DB_ERROR;
+    }
+
+    if (OrganizationRepoPrRepository::DeleteById(pr_id, db)) {
+        return DeleteStatus::DB_ERROR;
+    }
+    OrganizationRepoPrRepository::Evict(pr_id);
+    return DeleteStatus::OK;
 }
 
 /// 从 GitHub URL 提取 owner/repo

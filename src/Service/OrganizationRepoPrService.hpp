@@ -7,11 +7,14 @@
  */
 #pragma once
 
+#include "../Domain/AccessTypes.hpp"
+
 #include "DB/OrganizationRepoPrsInfo.hpp"
 #include "DB/OrganizationReposInfo.hpp"
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class OrganizationRepoPrService {
 public:
@@ -27,6 +30,37 @@ public:
         HTTP_ERROR,
         DB_ERROR,
     };
+
+    enum class ListStatus {
+        OK,
+        REPO_NOT_FOUND,
+        ORG_NOT_FOUND,
+        NOT_MEMBER,
+        ACCESS_DENIED,
+        DB_ERROR,
+    };
+
+    enum class DeleteStatus {
+        OK,
+        PR_NOT_FOUND,
+        REPO_NOT_FOUND,
+        NOT_MEMBER,
+        ACCESS_DENIED,
+        DB_ERROR,
+    };
+
+    static bool GetPR(int64_t pr_id, DB::OrganizationRepoPrsInfo::ptr& out);
+
+    static ListStatus List(const Viewer& viewer,
+        int64_t repo_id,
+        int64_t org_id,
+        const std::string& state,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<DB::OrganizationRepoPrsInfo::ptr>& out,
+        int64_t& total);
+
+    static DeleteStatus Remove(const Viewer& viewer, int64_t pr_id);
 
     /**
      * @brief 同步所有配置了 Token 的仓库（后台任务，每仓库限制条数）

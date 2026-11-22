@@ -263,6 +263,21 @@ OrganizationRepoService::Result OrganizationRepoService::List(const Viewer& view
     return Result::Ok;
 }
 
+OrganizationRepoService::Result OrganizationRepoService::CountByOrg(int64_t org_id, int64_t& total)
+{
+    total = 0;
+    auto db = GetDB();
+    if (!db) {
+        return Result::DbError;
+    }
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org) {
+        return Result::OrgNotFound;
+    }
+    total = OrganizationRepoRepository::CountByOrg(org_id, db);
+    return Result::Ok;
+}
+
 OrganizationRepoService::Result OrganizationRepoService::CheckOrgAccess(const Viewer& viewer,
     int64_t org_id,
     bool manage)

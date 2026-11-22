@@ -7,14 +7,9 @@
  */
 #include "OrganizationRepoPrsSyncServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Service/OrganizationRepoPrService.hpp"
 #include "../../Service/OrganizationRepoService.hpp"
-#include "../../Repository/OrganizationRepoPrRepository.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 /// 将单条同步状态映射为业务错误码（OK 不处理）
 static void MapSyncPrError(OrganizationRepoPrService::SyncStatus st, Result::ptr result)
@@ -77,8 +72,8 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
 
         // 传 id 时定位到其所属仓库
         if (id) {
-            auto pr = OrganizationRepoPrRepository::Get(id, GetDB());
-            if (!pr) {
+            DB::OrganizationRepoPrsInfo::ptr pr;
+            if (!OrganizationRepoPrService::GetPR(id, pr)) {
                 result->setErrno(ORG_PR_NOT_FOUND);
                 break;
             }

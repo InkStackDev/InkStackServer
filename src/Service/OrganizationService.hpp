@@ -103,6 +103,41 @@ public:
         int32_t member_role = 0;
     };
 
+    struct OrganizationListItem {
+        int64_t id = 0;
+        std::string name;
+        std::string type;
+        std::string description;
+        int32_t status = 0;
+        int64_t member_count = 0;
+    };
+
+    struct OrganizationStatsView {
+        int64_t total_members = 0;
+        int64_t active_members = 0;
+        int64_t org_admin_count = 0;
+        int64_t regular_count = 0;
+    };
+
+    struct UserBrief {
+        std::string name;
+        std::string avatar;
+        std::string email;
+    };
+
+    struct OrganizationApplyView {
+        int64_t id = 0;
+        int64_t user_id = 0;
+        std::string user_name;
+        std::string org_name;
+        std::string org_type;
+        std::string org_description;
+        int32_t status = 0;
+        std::string review_reason;
+        int64_t created_at = 0;
+        int64_t reviewed_at = 0;
+    };
+
     struct OrganizationAssignmentView {
         int64_t id = 0;
         int64_t assign_id = 0;
@@ -153,6 +188,33 @@ public:
         uint64_t offset,
         uint64_t limit,
         std::vector<OrganizationAssignmentView>& out,
+        int64_t& total);
+
+    static bool ListOrganizations(int32_t status,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<OrganizationListItem>& out,
+        int64_t& total);
+
+    static Result GetStats(int64_t org_id, OrganizationStatsView& out);
+
+    static std::string GetOrgName(int64_t org_id);
+
+    static std::string GetUserName(int64_t user_id);
+
+    static bool GetUserProfile(int64_t user_id, UserBrief& out);
+
+    static ListResult ListApplies(const Viewer& viewer,
+        int32_t status,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<OrganizationApplyView>& out,
+        int64_t& total);
+
+    static ListResult ListMyApplies(int64_t user_id,
+        uint64_t offset,
+        uint64_t limit,
+        std::vector<OrganizationApplyView>& out,
         int64_t& total);
 
     static Result CreateOrUpdate(const Viewer& viewer,

@@ -7,8 +7,7 @@
  */
 #include "OrganizationRepoPrsListServlet.hpp"
 
-#include "../../Service/OrganizationRepoService.hpp"
-#include "../../Repository/OrganizationRepoPrRepository.hpp"
+#include "../../Service/OrganizationRepoPrService.hpp"
 #include "../../Util/Util.hpp"
 
 OrganizationRepoPrsListServlet::OrganizationRepoPrsListServlet()
@@ -45,43 +44,23 @@ int32_t OrganizationRepoPrsListServlet::handle(
         uint64_t offset = (page - 1) * page_size;
         std::vector<DB::OrganizationRepoPrsInfo::ptr> prs;
         int64_t total = 0;
-
-        if (repo_id) {
-            DB::OrganizationReposInfo::ptr repo;
-            auto rt = OrganizationRepoService::CheckRepoAccess(viewer, repo_id, false, repo);
-            if (rt == OrganizationRepoService::Result::NotFound) {
-                result->setErrno(ORG_REPO_NOT_FOUND);
-                break;
-            }
-            if (rt == OrganizationRepoService::Result::NotMember
-                || rt == OrganizationRepoService::Result::AccessDenied) {
-                result->setErrno(ACCESS_DENIED, "无权访问该组织");
-                break;
-            }
-            if (rt != OrganizationRepoService::Result::Ok) {
-                result->setErrno(DB_OPERATION_FAILED);
-                break;
-            }
-            total = OrganizationRepoPrRepository::ListByRepoPages(prs, repo_id, state, offset, page_size, GetDB());
-        } else if (org_id) {
-            auto rt = OrganizationRepoService::CheckOrgAccess(viewer, org_id, false);
-            if (rt == OrganizationRepoService::Result::OrgNotFound) {
-                result->setErrno(ORG_NOT_FOUND);
-                break;
-            }
-            if (rt == OrganizationRepoService::Result::NotMember
-                || rt == OrganizationRepoService::Result::AccessDenied) {
-                result->setErrno(ACCESS_DENIED, "无权访问该组织");
-                break;
-            }
-            if (rt != OrganizationRepoService::Result::Ok) {
-                result->setErrno(DB_OPERATION_FAILED);
-                break;
-            }
-            total = OrganizationRepoPrRepository::ListByOrgPages(prs, org_id, state, offset, page_size, GetDB());
-        } else {
-            total =
-                OrganizationRepoPrRepository::ListByUserPages(prs, viewer.user_id, state, offset, page_size, GetDB());
+        auto rt = OrganizationRepoPrService::List(viewer, repo_id, org_id, state, offset, page_size, prs, total);
+        if (rt == OrganizationRepoPrService::ListStatus::REPO_NOT_FOUND) {
+            result->setErrno(ORG_REPO_NOT_FOUND);
+            break;
+        }
+        if (rt == OrganizationRepoPrService::ListStatus::ORG_NOT_FOUND) {
+            result->setErrno(ORG_NOT_FOUND);
+            break;
+        }
+        if (rt == OrganizationRepoPrService::ListStatus::NOT_MEMBER
+            || rt == OrganizationRepoPrService::ListStatus::ACCESS_DENIED) {
+            result->setErrno(ACCESS_DENIED, "无权访问该组织");
+            break;
+        }
+        if (rt != OrganizationRepoPrService::ListStatus::OK) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
         result->set("total", total);

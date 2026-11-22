@@ -6,8 +6,6 @@
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 OrganizationJoinCheckServlet::OrganizationJoinCheckServlet()
     : BlogLoginedServlet("OrganizationJoinCheckServlet")
@@ -33,13 +31,6 @@ int32_t OrganizationJoinCheckServlet::handle(
         Viewer viewer = getViewer(request);
         if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
-            break;
-        }
-
-        auto user = UserRepository::Get(user_id, GetDB());
-        auto org = OrganizationRepository::Get(org_id, GetDB());
-        if (!user || !org) {
-            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
 
@@ -71,7 +62,7 @@ int32_t OrganizationJoinCheckServlet::handle(
             EventOrgMemberData data = {};
             data.type = (state == OrgMemberStatus::APPROVED) ? "join_approved" : "join_rejected";
             data.org_id = org_id;
-            data.org_name = org->getName();
+            data.org_name = OrganizationService::GetOrgName(org_id);
             data.applicant_id = user_id;
             data.operator_id = viewer.user_id;
 

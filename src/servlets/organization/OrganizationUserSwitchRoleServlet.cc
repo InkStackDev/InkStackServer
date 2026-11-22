@@ -6,8 +6,6 @@
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 OrganizationUserSwitchRoleServlet::OrganizationUserSwitchRoleServlet()
     : BlogLoginedServlet("OrganizationUserSwitchRoleServlet")
@@ -59,8 +57,10 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
 
         // Notify user about role change
         {
-            auto org = OrganizationRepository::Get(org_id, GetDB());
-            std::string org_name = org ? org->getName() : std::to_string(org_id);
+            std::string org_name = OrganizationService::GetOrgName(org_id);
+            if (org_name.empty()) {
+                org_name = std::to_string(org_id);
+            }
             const char* role_name = "普通成员";
             if (role == OrgRole::REPORTER) {
                 role_name = "报告者";
@@ -83,12 +83,13 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_MEMBER, std::move(data));
         }
 
-        auto user = UserRepository::Get(rel->getUserId(), GetDB());
+        OrganizationService::UserBrief user;
+        OrganizationService::GetUserProfile(rel->getUserId(), user);
         result->set("id", rel->getId());
         result->set("user_id", rel->getUserId());
-        result->set("name", user ? user->getName() : "");
-        result->set("avatar", user ? user->getAvatar() : "");
-        result->set("email", user ? user->getEmail() : "");
+        result->set("name", user.name);
+        result->set("avatar", user.avatar);
+        result->set("email", user.email);
         result->set("role", rel->getRole());
         result->set("status", rel->getStatus());
         result->set("join_time", rel->getCreateTime());

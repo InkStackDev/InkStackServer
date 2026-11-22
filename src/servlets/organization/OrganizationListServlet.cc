@@ -1,13 +1,9 @@
 #include "OrganizationListServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include <climits>
 
 OrganizationListServlet::OrganizationListServlet()
     : BlogLoginedServlet("OrganizationListServlet")
@@ -23,25 +19,28 @@ int32_t OrganizationListServlet::handle(
     do {
         int32_t status = request->getParamAs<int32_t>("status", -1);
 
-        std::vector<DB::OrganizationInfo::ptr> orgs;
-        int64_t total = OrganizationQueryRepository::ListByPages(orgs, 0, INT32_MAX, status, true, GetDB());
+        std::vector<OrganizationService::OrganizationListItem> orgs;
+        int64_t total = 0;
+        if (!OrganizationService::ListOrganizations(status, 0, INT32_MAX, orgs, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         result->set("total", total);
         Json::Value list;
-        for (auto& i : orgs) {
+        for (const auto& org : orgs) {
             Json::Value item;
-            item["id"] = i->getId();
-            item["name"] = i->getName();
-            item["status"] = i->getStatus();
-            item["type"] = i->getType();
-            item["description"] = i->getDescription();
-            // 获取成员数量
-            int32_t status = OrgMemberStatus::APPROVED;
-            item["count"] = OrganizationUserRelRepository::CountByOrg(i->getId(), status, true, GetDB());
+            item["id"] = org.id;
+            item["name"] = org.name;
+            item["status"] = org.status;
+            item["type"] = org.type;
+            item["description"] = org.description;
+            item["count"] = org.member_count;
             list.append(item);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

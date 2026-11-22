@@ -1,12 +1,7 @@
 #include "OrganizationMyAppliesServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/OrganizationApplyRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationMyAppliesServlet::OrganizationMyAppliesServlet()
     : BlogLoginedServlet("OrganizationMyAppliesServlet")
@@ -23,37 +18,44 @@ int32_t OrganizationMyAppliesServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, uint64_t, page_size, "page_size");
         DEFINE_AND_CHECK_TYPE(result, uint64_t, page_num, "page_num");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
 
         uint64_t offset = (page_num - 1) * page_size;
-        std::vector<DB::OrganizationApplyInfo::ptr> applies;
-        int64_t total = OrganizationApplyRepository::ListByUser(applies, uid, offset, page_size, true, GetDB());
+        std::vector<OrganizationService::OrganizationApplyView> applies;
+        int64_t total = 0;
+        auto rt = OrganizationService::ListMyApplies(viewer.user_id, offset, page_size, applies, total);
+        if (rt == OrganizationService::ListResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (rt != OrganizationService::ListResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         result->set("total", total);
         Json::Value list;
-        for (auto& i : applies) {
+        for (const auto& apply : applies) {
             Json::Value item;
-            item["id"] = i->getId();
-            item["user_id"] = i->getUserId();
-
-            auto apply_user = UserRepository::Get(i->getUserId(), GetDB());
-            item["user_name"] = apply_user ? apply_user->getName() : "";
-
-            item["org_name"] = i->getOrgName();
-            item["org_type"] = i->getOrgType();
-            item["org_description"] = i->getOrgDescription();
-            item["status"] = i->getStatus();
-            item["review_reason"] = i->getReviewReason();
-            item["created_at"] = i->getCreatedAt();
-            item["reviewed_at"] = i->getReviewedAt();
+            item["id"] = apply.id;
+            item["user_id"] = apply.user_id;
+            item["user_name"] = apply.user_name;
+            item["org_name"] = apply.org_name;
+            item["org_type"] = apply.org_type;
+            item["org_description"] = apply.org_description;
+            item["status"] = apply.status;
+            item["review_reason"] = apply.review_reason;
+            item["created_at"] = apply.created_at;
+            item["reviewed_at"] = apply.reviewed_at;
             list.append(item);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

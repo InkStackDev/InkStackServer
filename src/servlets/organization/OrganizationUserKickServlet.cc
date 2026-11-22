@@ -5,8 +5,6 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 OrganizationUserKickServlet::OrganizationUserKickServlet()
     : BlogLoginedServlet("OrganizationUserKickServlet")
@@ -51,12 +49,15 @@ int32_t OrganizationUserKickServlet::handle(
 
         // Notify org admins and kicked user
         {
-            auto org = OrganizationRepository::Get(org_id, GetDB());
-            auto kicked_user = UserRepository::Get(user_id, GetDB());
-            auto oper_user = UserRepository::Get(viewer.user_id, GetDB());
-            std::string org_name = org ? org->getName() : std::to_string(org_id);
-            std::string kicked_name = kicked_user ? kicked_user->getName() : std::to_string(user_id);
-            std::string oper_name = oper_user ? oper_user->getName() : std::to_string(viewer.user_id);
+            std::string org_name = OrganizationService::GetOrgName(org_id);
+            if (org_name.empty()) {
+                org_name = std::to_string(org_id);
+            }
+            std::string kicked_name = OrganizationService::GetUserName(user_id);
+            if (kicked_name.empty()) {
+                kicked_name = std::to_string(user_id);
+            }
+            std::string oper_name = OrganizationService::GetUserName(viewer.user_id);
 
             EventOrgMemberData data = {};
             data.type = "kicked";

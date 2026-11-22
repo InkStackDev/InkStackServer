@@ -5,7 +5,6 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
 
 OrganizationJoinServlet::OrganizationJoinServlet()
     : BlogLoginedServlet("OrganizationJoinServlet")
@@ -21,14 +20,14 @@ int32_t OrganizationJoinServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
 
         DB::OrganizationUserRelInfo::ptr info;
-        auto rt = OrganizationService::Join(id, uid, info);
+        auto rt = OrganizationService::Join(id, viewer.user_id, info);
         if (rt == OrganizationService::JoinResult::OrgNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
@@ -50,9 +49,14 @@ int32_t OrganizationJoinServlet::handle(
             break;
         }
 
-        auto org = OrganizationRepository::Get(id, GetDB());
-        if (!org) {
+        OrganizationService::OrganizationDetailView detail;
+        auto detail_rt = OrganizationService::GetDetail(viewer, id, detail);
+        if (detail_rt == OrganizationService::Result::NotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
+            break;
+        }
+        if (detail_rt != OrganizationService::Result::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
@@ -61,19 +65,20 @@ int32_t OrganizationJoinServlet::handle(
             EventOrgMemberData data = {};
             data.type = "join_request";
             data.org_id = id;
-            data.org_name = org->getName();
-            data.applicant_id = uid;
+            data.org_name = detail.name;
+            data.applicant_id = viewer.user_id;
 
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_MEMBER, std::move(data));
         }
 
-        result->set("id", org->getId());
-        result->set("name", org->getName());
-        result->set("description", org->getDescription());
-        result->set("type", org->getType());
-        result->set("status", org->getStatus());
-        result->set("user_in_org", info->getStatus());
+        result->set("id", detail.id);
+        result->set("name", detail.name);
+        result->set("description", detail.description);
+        result->set("type", detail.type);
+        result->set("status", detail.status);
+        result->set("user_in_org", detail.member_status);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

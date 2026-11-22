@@ -54,6 +54,8 @@ public:
         std::vector<DB::OrganizationReposInfo::ptr>& out,
         int64_t& total);
 
+    static Result CountByOrg(int64_t org_id, int64_t& total);
+
     /**
      * @brief 校验组织访问权限
      * @param manage true 要求 DEV_LEAD 及以上，false 只要求成员

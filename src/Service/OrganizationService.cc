@@ -246,6 +246,173 @@ OrganizationService::ListResult OrganizationService::ListAssignments(const Viewe
     return ListResult::Ok;
 }
 
+bool OrganizationService::ListOrganizations(int32_t status,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<OrganizationListItem>& out,
+    int64_t& total)
+{
+    out.clear();
+    total = 0;
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+
+    std::vector<DB::OrganizationInfo::ptr> orgs;
+    total = OrganizationQueryRepository::ListByPages(orgs, offset, limit, status, true, db);
+    for (const auto& org : orgs) {
+        if (!org) {
+            continue;
+        }
+        OrganizationListItem item;
+        item.id = org->getId();
+        item.name = org->getName();
+        item.type = org->getType();
+        item.description = org->getDescription();
+        item.status = org->getStatus();
+        item.member_count =
+            OrganizationUserRelRepository::CountByOrg(org->getId(), OrgMemberStatus::APPROVED, true, db);
+        out.push_back(std::move(item));
+    }
+    return true;
+}
+
+OrganizationService::Result OrganizationService::GetStats(int64_t org_id, OrganizationStatsView& out)
+{
+    out = OrganizationStatsView{};
+    auto db = GetDB();
+    if (!db) {
+        return Result::DbError;
+    }
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org) {
+        return Result::NotFound;
+    }
+    auto stats = OrganizationUserRelRepository::GetStats(org_id, db);
+    out.total_members = stats.total_members;
+    out.active_members = stats.active_members;
+    out.org_admin_count = stats.org_admin_count;
+    out.regular_count = stats.regular_count;
+    return Result::Ok;
+}
+
+std::string OrganizationService::GetOrgName(int64_t org_id)
+{
+    auto db = GetDB();
+    if (!db) {
+        return "";
+    }
+    auto org = OrganizationRepository::Get(org_id, db);
+    return org ? org->getName() : "";
+}
+
+std::string OrganizationService::GetUserName(int64_t user_id)
+{
+    auto db = GetDB();
+    if (!db) {
+        return "";
+    }
+    auto user = UserRepository::Get(user_id, db);
+    return user ? user->getName() : "";
+}
+
+bool OrganizationService::GetUserProfile(int64_t user_id, UserBrief& out)
+{
+    out = UserBrief{};
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    auto user = UserRepository::Get(user_id, db);
+    if (!user) {
+        return false;
+    }
+    out.name = user->getName();
+    out.avatar = user->getAvatar();
+    out.email = user->getEmail();
+    return true;
+}
+
+OrganizationService::ListResult OrganizationService::ListApplies(const Viewer& viewer,
+    int32_t status,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<OrganizationApplyView>& out,
+    int64_t& total)
+{
+    out.clear();
+    total = 0;
+    if (!AccessPolicy::CanAdminOrganization(viewer)) {
+        return ListResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ListResult::DbError;
+    }
+
+    std::vector<DB::OrganizationApplyInfo::ptr> applies;
+    total = OrganizationApplyRepository::ListByPages(applies, offset, limit, status, true, db);
+    for (const auto& apply : applies) {
+        if (!apply) {
+            continue;
+        }
+        OrganizationApplyView item;
+        item.id = apply->getId();
+        item.user_id = apply->getUserId();
+        auto user = UserRepository::Get(item.user_id, db);
+        item.user_name = user ? user->getName() : "";
+        item.org_name = apply->getOrgName();
+        item.org_type = apply->getOrgType();
+        item.org_description = apply->getOrgDescription();
+        item.status = apply->getStatus();
+        item.review_reason = apply->getReviewReason();
+        item.created_at = apply->getCreatedAt();
+        item.reviewed_at = apply->getReviewedAt();
+        out.push_back(std::move(item));
+    }
+    return ListResult::Ok;
+}
+
+OrganizationService::ListResult OrganizationService::ListMyApplies(int64_t user_id,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<OrganizationApplyView>& out,
+    int64_t& total)
+{
+    out.clear();
+    total = 0;
+    if (user_id <= 0) {
+        return ListResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ListResult::DbError;
+    }
+
+    std::vector<DB::OrganizationApplyInfo::ptr> applies;
+    total = OrganizationApplyRepository::ListByUser(applies, user_id, offset, limit, true, db);
+    for (const auto& apply : applies) {
+        if (!apply) {
+            continue;
+        }
+        OrganizationApplyView item;
+        item.id = apply->getId();
+        item.user_id = apply->getUserId();
+        auto user = UserRepository::Get(item.user_id, db);
+        item.user_name = user ? user->getName() : "";
+        item.org_name = apply->getOrgName();
+        item.org_type = apply->getOrgType();
+        item.org_description = apply->getOrgDescription();
+        item.status = apply->getStatus();
+        item.review_reason = apply->getReviewReason();
+        item.created_at = apply->getCreatedAt();
+        item.reviewed_at = apply->getReviewedAt();
+        out.push_back(std::move(item));
+    }
+    return ListResult::Ok;
+}
+
 OrganizationService::Result OrganizationService::CreateOrUpdate(const Viewer& viewer,
     const OrganizationInput& input,
     DB::OrganizationInfo::ptr& out,

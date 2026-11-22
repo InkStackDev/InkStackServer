@@ -7,8 +7,7 @@
  */
 #include "OrganizationRepoPrsDeleteServlet.hpp"
 
-#include "../../Repository/OrganizationRepoPrRepository.hpp"
-#include "../../Service/OrganizationRepoService.hpp"
+#include "../../Service/OrganizationRepoPrService.hpp"
 #include "../../Util/Util.hpp"
 
 OrganizationRepoPrsDeleteServlet::OrganizationRepoPrsDeleteServlet()
@@ -31,43 +30,27 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
             break;
         }
 
-        auto pr = OrganizationRepoPrRepository::Get(id, GetDB());
-        if (!pr) {
+        auto rt = OrganizationRepoPrService::Remove(viewer, id);
+        if (rt == OrganizationRepoPrService::DeleteStatus::PR_NOT_FOUND) {
             result->setErrno(PARAM_INVALID, "PR 记录不存在");
             break;
         }
-
-        DB::OrganizationReposInfo::ptr repo;
-        auto rt = OrganizationRepoService::CheckRepoAccess(viewer, pr->getRepoId(), true, repo);
-        if (rt == OrganizationRepoService::Result::NotFound) {
+        if (rt == OrganizationRepoPrService::DeleteStatus::REPO_NOT_FOUND) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
-        if (rt == OrganizationRepoService::Result::NotMember) {
+        if (rt == OrganizationRepoPrService::DeleteStatus::NOT_MEMBER) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (rt == OrganizationRepoService::Result::AccessDenied) {
+        if (rt == OrganizationRepoPrService::DeleteStatus::ACCESS_DENIED) {
             result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
             break;
         }
-        if (rt != OrganizationRepoService::Result::Ok) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        if (OrganizationRepoPrRepository::DeleteById(id, db)) {
+        if (rt != OrganizationRepoPrService::DeleteStatus::OK) {
             result->setErrno(DB_OPERATION_FAILED, "删除审查记录失败");
             break;
         }
-
-        OrganizationRepoPrRepository::Evict(id);
     } while (0);
 
     response->setBody(result->toJsonString());
