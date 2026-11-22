@@ -297,6 +297,46 @@ OrganizationService::Result OrganizationService::GetStats(int64_t org_id, Organi
     return Result::Ok;
 }
 
+OrganizationService::AccessResult OrganizationService::CheckManageAccess(const Viewer& viewer, int64_t org_id)
+{
+    if (!viewer.valid()) {
+        return AccessResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return AccessResult::DbError;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return AccessResult::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(org_id, OrgRole::MEMBER)) {
+        return AccessResult::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgMembers(viewer, scope, org_id)) {
+        return AccessResult::AccessDenied;
+    }
+    return AccessResult::Ok;
+}
+
+bool OrganizationService::ListApprovedMemberIds(int64_t org_id, int64_t exclude_uid, std::vector<int64_t>& out)
+{
+    out.clear();
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    std::vector<DB::OrganizationUserRelInfo::ptr> members;
+    OrganizationUserRelRepository::ListByOrgPages(members, org_id, 0, INT32_MAX, OrgMemberStatus::APPROVED, true, db);
+    for (const auto& member : members) {
+        if (!member || member->getUserId() == exclude_uid) {
+            continue;
+        }
+        out.push_back(member->getUserId());
+    }
+    return true;
+}
+
 bool OrganizationService::GetGlobalStats(OrganizationGlobalStats& out)
 {
     out = OrganizationGlobalStats{};

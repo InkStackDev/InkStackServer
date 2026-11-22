@@ -1,8 +1,6 @@
 #include "UserInfoServlet.hpp"
 
-#include "../../Repository/UserFollowRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 UserInfoServlet::UserInfoServlet()
@@ -29,42 +27,32 @@ int32_t UserInfoServlet::handle(
             target_uid = id;
         }
 
-        DB::UserInfo::ptr info = UserRepository::Get(target_uid, GetDB());
-        if (!info) {
+        UserQueryService::Profile profile;
+        if (!UserQueryService::GetProfile(viewer_uid, target_uid, profile)) {
             result->setErrno(ACCOUNT_INVALID);
             break;
         }
 
         result->setErrno(SUCCESS);
-        result->set("id", info->getId());
-        result->set("name", info->getName());
-        result->set("account", info->getAccount());
-        result->set("avatar", info->getAvatar());
-
-        if (target_uid == viewer_uid) {
-            result->set("email", info->getEmail());
-        } else {
-            auto viewer = UserRepository::Get(viewer_uid, GetDB());
-            if (viewer && viewer->getRole() == UserRole::ADMIN) {
-                result->set("email", info->getEmail());
-            }
+        result->set("id", profile.id);
+        result->set("name", profile.name);
+        result->set("account", profile.account);
+        result->set("avatar", profile.avatar);
+        if (profile.include_email) {
+            result->set("email", profile.email);
         }
-
-        result->set("role", info->getRole());
-        result->set("bio", info->getBio());
-        result->set("website", info->getWebsite());
-        result->set("location", info->getLocation());
-        result->set("status", info->getIsDeleted());
-        result->set("github", info->getGithub());
-        result->set("login_time", info->getLoginTime());
-        result->set("create_time", info->getCreateTime());
-
-        int64_t following = UserFollowRelRepository::CountFollowing(target_uid, GetDB());
-        result->set("following_count", following);
-
-        int64_t follower = UserFollowRelRepository::CountFollowers(target_uid, GetDB());
-        result->set("follower_count", follower);
+        result->set("role", profile.role);
+        result->set("bio", profile.bio);
+        result->set("website", profile.website);
+        result->set("location", profile.location);
+        result->set("status", profile.status);
+        result->set("github", profile.github);
+        result->set("login_time", profile.login_time);
+        result->set("create_time", profile.create_time);
+        result->set("following_count", profile.following_count);
+        result->set("follower_count", profile.follower_count);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

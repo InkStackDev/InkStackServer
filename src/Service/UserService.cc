@@ -97,6 +97,36 @@ DB::UserInfo::ptr UserService::GetByEmail(const std::string& email)
     return UserRepository::GetByEmail(email, db);
 }
 
+DB::UserInfo::ptr UserService::GetByAccount(const std::string& account)
+{
+    auto db = GetDB();
+    if (!db) {
+        return nullptr;
+    }
+    return UserRepository::GetByAccount(account, db);
+}
+
+bool UserService::UpgradePasswordHash(int64_t uid, const std::string& old_hash, const std::string& new_hash)
+{
+    if (uid <= 0 || new_hash.empty()) {
+        return false;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    auto info = UserRepository::Get(uid, db);
+    if (!info || info->getPasswd() != old_hash) {
+        return false;
+    }
+    info->setPasswd(new_hash);
+    if (!UserRepository::Update(info, db)) {
+        return false;
+    }
+    UserRepository::Put(info);
+    return true;
+}
+
 UserService::UpdateProfileResult UserService::UpdateProfile(int64_t uid,
     const ProfileUpdate& input,
     bool& password_changed)

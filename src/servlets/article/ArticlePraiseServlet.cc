@@ -1,13 +1,11 @@
 #include "ArticlePraiseServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Util/Util.hpp"
-
-#include <json/json.h>
-#include "../../Repository/ArticleRepository.hpp"
 #include "../../Service/ArticleCounterService.hpp"
 #include "../../Service/ArticlePraiseRelService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/ArticleQueryService.hpp"
+#include "../../Service/UserQueryService.hpp"
+#include "../../Util/Util.hpp"
 
 ArticlePraiseServlet::ArticlePraiseServlet()
     : BlogLoginedServlet("ArticlePraiseServlet")
@@ -29,9 +27,8 @@ int32_t ArticlePraiseServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, article_id, "article_id");
 
-        // check article exists
-        auto article = ArticleRepository::Get(article_id, GetDB());
-        if (!article || article->getIsDeleted()) {
+        DB::ArticleInfo::ptr article;
+        if (!ArticleQueryService::GetArticle(article_id, article) || article->getIsDeleted()) {
             result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
@@ -39,7 +36,6 @@ int32_t ArticlePraiseServlet::handle(
         bool already_praising = ArticlePraiseRelService::IsPraising(uid, article_id);
 
         if (already_praising) {
-            // unlike
             if (!ArticlePraiseRelService::Unpraise(uid, article_id)) {
                 result->setErrno(ARTICLE_UNPRAISE_FAILED);
                 break;
@@ -47,7 +43,6 @@ int32_t ArticlePraiseServlet::handle(
             ArticleCounterService::DecPraiseCount(article_id);
             result->set("is_praising", false);
         } else {
-            // like
             auto info = ArticlePraiseRelService::Praise(uid, article_id);
             if (!info) {
                 result->setErrno(ARTICLE_PRAISE_FAILED);
@@ -56,20 +51,18 @@ int32_t ArticlePraiseServlet::handle(
             ArticleCounterService::IncPraiseCount(article_id);
             result->set("is_praising", true);
 
-            // Notify article author (not self-praise)
             if (article->getUserId() != uid) {
-                auto liker_info = UserRepository::Get(uid, GetDB());
-                // 文章点赞事件
-                {
-                    EventArticlePraiseData data = {};
-                    data.author_id = article->getUserId();
-                    data.liker_id = uid;
-                    data.liker_name = liker_info ? liker_info->getName() : "someone";
-                    data.article_id = article_id;
-                    data.article_title = article->getTitle();
+                UserQueryService::Brief liker;
+                UserQueryService::GetUserBrief(uid, liker);
 
-                    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_PRAISE, std::move(data));
-                }
+                EventArticlePraiseData data = {};
+                data.author_id = article->getUserId();
+                data.liker_id = uid;
+                data.liker_name = liker.name.empty() ? "someone" : liker.name;
+                data.article_id = article_id;
+                data.article_title = article->getTitle();
+
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ARTICLE_PRAISE, std::move(data));
             }
         }
 

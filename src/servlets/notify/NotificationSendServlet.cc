@@ -7,8 +7,7 @@
 #include <json/json.h>
 
 #include <vector>
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Service/NotificationService.hpp"
 #include "../../Message/MessageRouter.hpp"
 
@@ -27,12 +26,16 @@ int32_t NotificationSendServlet::handle(
 {
     do {
         // 权限检查: 仅管理员可发送通知
-        int64_t uid = getUserId(request);
-        DB::UserInfo::ptr uinfo = UserRepository::Get(uid, GetDB());
-        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
+        int64_t uid = viewer.user_id;
 
         DEFINE_AND_CHECK_STRING(result, title, "title");
         DEFINE_AND_CHECK_STRING(result, content, "content");
@@ -78,7 +81,7 @@ int32_t NotificationSendServlet::handle(
 
         if (target == "all") {
             std::vector<int64_t> user_ids;
-            UserRepository::GetAllIds(user_ids, true, GetDB());
+            UserQueryService::ListActiveIds(user_ids);
 
             NotificationData ntf{};
             ntf.title = title;

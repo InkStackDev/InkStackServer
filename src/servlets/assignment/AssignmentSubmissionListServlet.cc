@@ -1,14 +1,7 @@
 #include "AssignmentSubmissionListServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/AssignmentRelRepository.hpp"
-#include "../../Repository/ResourceRepository.hpp"
-#include "../../Repository/AssignmentRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 AssignmentSubmissionListServlet::AssignmentSubmissionListServlet()
     : BlogLoginedServlet("AssignmentSubmissionListServlet")
@@ -24,40 +17,44 @@ int32_t AssignmentSubmissionListServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, assign_id, "assign_id");
 
-        auto assign_info = AssignmentRepository::Get(assign_id, GetDB());
-        if (!assign_info) {
-            result->setErrno(ASSIGNMENT_NOT_FOUND);
+        int64_t uid = getUserId(request);
+        if (!uid) {
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        int64_t uid = getUserId(request);
-        auto rel_info = AssignmentUserRelRepository::GetByAssignAndUser(assign_id, uid, GetDB());
-        if (rel_info) {
-            auto uinfo = UserRepository::Get(uid, GetDB());
-            result->set("user_id", uid);
-            result->set("user_avatar", uinfo->getAvatar());
-            result->set("user_name", uinfo->getName());
-            result->set("submit_time", rel_info->getSubmitTime());
-            result->set("status", rel_info->getStatus());
+        AssignmentService::SubmissionView submission;
+        auto rt = AssignmentService::GetSubmission(assign_id, uid, submission);
+        if (rt == AssignmentService::ViewResult::NotFound) {
+            result->setErrno(ASSIGNMENT_NOT_FOUND);
+            break;
+        }
+        if (rt != AssignmentService::ViewResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
-            // 获取提交的资源信息
-            std::string biz_type = "assignment_submission";
-            std::vector<DB::ResourceInfo::ptr> resources;
-            ResourceRepository::ListByBizUid(resources, biz_type, assign_id, uid, GetDB());
+        if (submission.has_submission) {
+            result->set("user_id", submission.user_id);
+            result->set("user_avatar", submission.user_avatar);
+            result->set("user_name", submission.user_name);
+            result->set("submit_time", submission.submit_time);
+            result->set("status", submission.status);
 
             Json::Value list;
-            for (auto& res : resources) {
+            for (const auto& resource : submission.resources) {
                 Json::Value item;
-                item["id"] = res->getId();
-                item["file_name"] = res->getName();
-                item["file_path"] = res->getPath();
-                item["file_size"] = res->getSize();
+                item["id"] = resource.id;
+                item["file_name"] = resource.name;
+                item["file_path"] = resource.path;
+                item["file_size"] = resource.size;
                 list.append(item);
             }
             result->set("list", list);
-            result->set("total", resources.size());
+            result->set("total", (int64_t)submission.resources.size());
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

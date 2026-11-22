@@ -2,10 +2,8 @@
 
 #include "../../Search/SearchSync.hpp"
 #include "../../Service/ArticleCategoryService.hpp"
+#include "../../Service/ArticleQueryService.hpp"
 #include "../../Util/Util.hpp"
-
-#include <json/json.h>
-#include "../../Repository/ArticleRepository.hpp"
 
 ArticleUpdateCategoryServlet::ArticleUpdateCategoryServlet()
     : BlogLoginedServlet("ArticleUpdateCategoryServlet")
@@ -28,11 +26,12 @@ int32_t ArticleUpdateCategoryServlet::handle(
             break;
         }
 
-        auto ainfo = ArticleRepository::Get(id, GetDB());
-        if (!ainfo) {
+        DB::ArticleInfo::ptr ainfo;
+        if (!ArticleQueryService::GetArticle(id, ainfo)) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
+
         int64_t uid = getUserId(request);
         if (!uid) {
             result->setErrno(NOT_LOGIN);
@@ -67,7 +66,6 @@ int32_t ArticleUpdateCategoryServlet::handle(
             break;
         }
 
-        // 分类关联已变化，同步刷新搜索索引中的 CAT_ID，避免按分类筛选结果滞后
         SearchSyncMgr::GetInstance()->markDirty(ainfo->getId(), SearchSync::OP_UPSERT);
 
         if (!added.empty()) {
@@ -85,6 +83,7 @@ int32_t ArticleUpdateCategoryServlet::handle(
             result->set("del_category_ids", del_category_ids);
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

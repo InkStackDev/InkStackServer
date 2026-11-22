@@ -1,12 +1,10 @@
 #include "DashboardTrendServlet.hpp"
 
+#include "../../Service/DashboardService.hpp"
+#include "../../Util/Util.hpp"
 
 #include <ctime>
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/CommentQueryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-#include "../../Util/Util.hpp"
+#include <json/json.h>
 
 DashboardTrendServlet::DashboardTrendServlet()
     : BlogLoginedServlet("DashboardTrendServlet")
@@ -37,18 +35,12 @@ int32_t DashboardTrendServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t role = current_user->getRole();
-        if (role != UserRole::ADMIN) {
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -57,75 +49,20 @@ int32_t DashboardTrendServlet::handle(
         if (period != 7 && period != 30 && period != 90) {
             period = 7;
         }
+        DashboardService::Trend trend;
+        if (!DashboardService::GetTrend(period, trend)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         int64_t now = time(0);
-        int64_t today_start = now - (now % 86400);
-        int64_t period_start;
-        int32_t num_buckets;
-        int64_t bucket_sec;
-
-        if (period == 90) {
-            num_buckets = 13;
-            bucket_sec = 7 * 86400;
-            period_start = today_start - (num_buckets - 1) * bucket_sec;
-        } else {
-            num_buckets = period;
-            bucket_sec = 86400;
-            period_start = today_start - (period - 1) * 86400;
-        }
-
-        std::vector<int64_t> buckets(num_buckets, 0);
-
-        // aggregate users
-        std::vector<int64_t> ids;
-        UserRepository::GetAllIds(ids, true, GetDB());
-        for (auto id : ids) {
-            auto u = UserRepository::Get(id, GetDB());
-            if (!u) {
-                continue;
-            }
-            int64_t ts = u->getCreateTime();
-            if (ts >= period_start) {
-                int32_t idx = (ts - period_start) / bucket_sec;
-                if (idx < num_buckets) {
-                    buckets[idx]++;
-                }
-            }
-        }
-
-        // aggregate articles
-        std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleQueryRepository::ListByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true, GetDB());
-        for (auto& a : articles) {
-            int64_t ts = a->getCreateTime();
-            if (ts >= period_start) {
-                int32_t idx = (ts - period_start) / bucket_sec;
-                if (idx < num_buckets) {
-                    buckets[idx]++;
-                }
-            }
-        }
-
-        // aggregate comments
-        std::vector<DB::CommentInfo::ptr> comments;
-        CommentQueryRepository::ListByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1, GetDB());
-        for (auto& c : comments) {
-            int64_t ts = c->getCreateTime();
-            if (ts >= period_start) {
-                int32_t idx = (ts - period_start) / bucket_sec;
-                if (idx < num_buckets) {
-                    buckets[idx]++;
-                }
-            }
-        }
-
         int64_t total_visits = 0;
         int64_t max_visits = 0;
         Json::Value list(Json::arrayValue);
 
-        for (int32_t i = 0; i < num_buckets; i++) {
-            int64_t bucket_ts = period_start + i * bucket_sec;
-            int64_t visits = buckets[i];
+        for (int32_t i = 0; i < trend.num_buckets; i++) {
+            int64_t bucket_ts = trend.period_start + i * trend.bucket_sec;
+            int64_t visits = trend.buckets[i];
             total_visits += visits;
             if (visits > max_visits) {
                 max_visits = visits;
@@ -139,7 +76,7 @@ int32_t DashboardTrendServlet::handle(
                 item["label"] = FormatBucketDate(bucket_ts);
                 item["date"] = FormatBucketDate(bucket_ts);
             } else {
-                int64_t week_end = bucket_ts + bucket_sec - 1;
+                int64_t week_end = bucket_ts + trend.bucket_sec - 1;
                 if (week_end > now) {
                     week_end = now;
                 }
@@ -152,10 +89,11 @@ int32_t DashboardTrendServlet::handle(
 
         result->set("list", list);
         result->set("total_visits", total_visits);
-        result->set("avg_visits", num_buckets > 0 ? (double)total_visits / num_buckets : 0);
+        result->set("avg_visits", trend.num_buckets > 0 ? (double)total_visits / trend.num_buckets : 0);
         result->set("max_visits", max_visits);
         result->setErrno(SUCCESS);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

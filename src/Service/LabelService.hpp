@@ -31,4 +31,15 @@ public:
         DB::LabelInfo::ptr& out);
 
     static bool DeleteMany(int64_t uid, const std::set<int64_t>& ids, std::vector<DB::LabelInfo::ptr>& deleted);
+
+    struct LabelView {
+        int64_t id = 0;
+        std::string name;
+        std::string color;
+        std::string description;
+        int64_t create_time = 0;
+        int64_t article_count = 0;
+    };
+
+    static bool List(int64_t user_id, const std::vector<int64_t>& ids, std::vector<LabelView>& out);
 };

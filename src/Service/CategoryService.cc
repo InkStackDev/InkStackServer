@@ -53,15 +53,15 @@ CategoryService::Result CategoryService::CreateOrUpdate(const CategoryInput& inp
         }
     }
 
+    int64_t owner_id = info ? info->getUserId() : input.owner_id;
     if (input.parent_id != 0) {
         auto parent = CategoryRepository::Get(input.parent_id, db);
-        if (!parent || parent->getUserId() != input.owner_id || input.parent_id == input.id) {
+        if (!parent || parent->getUserId() != owner_id || input.parent_id == input.id) {
             return Result::InvalidParent;
         }
     }
 
     std::string old_name = info ? info->getName() : std::string();
-    int64_t owner_id = info ? info->getUserId() : input.owner_id;
 
     if (!info) {
         info = CategoryRepository::GetByUserIdName(owner_id, input.name, db);
@@ -163,4 +163,37 @@ bool CategoryService::DeleteMany(const std::vector<DB::CategoryInfo::ptr>& scope
         deleted.push_back(info);
     }
     return true;
+}
+
+CategoryService::DeleteScopeResult CategoryService::DeleteForUser(bool admin_route,
+    int64_t requester_uid,
+    int64_t owner_uid,
+    const std::set<int64_t>& root_ids,
+    std::vector<DB::CategoryInfo::ptr>& deleted)
+{
+    auto db = GetDB();
+    if (!db) {
+        return DeleteScopeResult::DbError;
+    }
+
+    std::vector<DB::CategoryInfo::ptr> scope;
+    if (admin_route) {
+        if (owner_uid) {
+            if (!CategoryRepository::ListByUserId(scope, owner_uid, false, db)) {
+                return DeleteScopeResult::DbError;
+            }
+        } else {
+            CategoryRepository::ListAll(scope, false, db);
+        }
+    } else if (!CategoryRepository::ListByUserId(scope, requester_uid, false, db)) {
+        return DeleteScopeResult::DbError;
+    }
+
+    if (scope.empty()) {
+        return DeleteScopeResult::NoCategories;
+    }
+    if (!DeleteMany(scope, root_ids, deleted)) {
+        return DeleteScopeResult::DbError;
+    }
+    return DeleteScopeResult::Ok;
 }

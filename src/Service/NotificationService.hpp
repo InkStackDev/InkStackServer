@@ -65,4 +65,16 @@ public:
      * @return 是否执行成功
      */
     static bool CleanupExpiredBroadcasts();
+
+    static bool ListByUser(std::vector<DB::NotificationInfo::ptr>& out,
+        int64_t uid,
+        int32_t offset,
+        int32_t size,
+        const std::string& type);
+
+    static int64_t CountByUser(int64_t uid, const std::string& type);
+
+    static int64_t UnreadCount(int64_t uid);
+
+    static bool ListBroadcasts(std::vector<DB::NotificationInfo::ptr>& out, int64_t offset, int64_t size);
 };

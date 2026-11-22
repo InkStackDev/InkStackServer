@@ -1,7 +1,6 @@
 #include "UserFollowingListServlet.hpp"
 
-#include "../../Repository/UserFollowRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 UserFollowingListServlet::UserFollowingListServlet()
@@ -26,29 +25,26 @@ int32_t UserFollowingListServlet::handle(
         int32_t offset = request->getParamAs<int32_t>("offset", 0);
         int32_t size = request->getParamAs<int32_t>("size", 20);
 
-        std::vector<DB::UserFollowRelInfo::ptr> rels;
-        UserFollowRelRepository::ListFollowing(rels, target_uid, offset, size, GetDB());
-
-        Json::Value arr(Json::arrayValue);
-        for (auto& rel : rels) {
-            auto user = UserRepository::Get(rel->getFollowingId(), GetDB());
-            if (!user || user->getIsDeleted()) {
-                continue;
-            }
-            int64_t following_id = user->getId();
-            Json::Value item;
-            item["id"] = following_id;
-            item["name"] = user->getName();
-            item["account"] = user->getAccount();
-            item["avatar"] = user->getAvatar();
-            item["bio"] = user->getBio();
-            item["following_count"] = UserFollowRelRepository::CountFollowing(following_id, GetDB());
-            item["follower_count"] = UserFollowRelRepository::CountFollowers(following_id, GetDB());
-            item["create_time"] = rel->getCreateTime();
-            arr.append(item);
+        std::vector<UserQueryService::FollowUser> users;
+        int64_t total = 0;
+        if (!UserQueryService::ListFollowing(target_uid, offset, size, users, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        int64_t total = UserFollowRelRepository::CountFollowing(target_uid, GetDB());
+        Json::Value arr(Json::arrayValue);
+        for (const auto& user : users) {
+            Json::Value item;
+            item["id"] = user.id;
+            item["name"] = user.name;
+            item["account"] = user.account;
+            item["avatar"] = user.avatar;
+            item["bio"] = user.bio;
+            item["following_count"] = user.following_count;
+            item["follower_count"] = user.follower_count;
+            item["create_time"] = user.create_time;
+            arr.append(item);
+        }
 
         result->setErrno(SUCCESS);
         result->set("list", arr);

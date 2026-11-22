@@ -85,3 +85,55 @@ bool ExportRecordService::Remove(int64_t id)
     info->setIsDeleted(1);
     return ExportRecordRepository::Update(info, db);
 }
+
+DB::BackupRecordInfo::ptr BackupRecordService::Get(int64_t id)
+{
+    auto db = GetDB();
+    if (!db) {
+        return nullptr;
+    }
+    return BackupRecordRepository::Get(id, db);
+}
+
+bool BackupRecordService::List(std::vector<DB::BackupRecordInfo::ptr>& out,
+    int64_t& total,
+    const std::string& search,
+    const std::string& type,
+    const std::string& status,
+    int32_t offset,
+    int32_t limit)
+{
+    out.clear();
+    total = 0;
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    return BackupRecordRepository::ListByPages(out, total, search, type, status, offset, limit, db);
+}
+
+DB::ExportRecordInfo::ptr ExportRecordService::Get(int64_t id)
+{
+    auto db = GetDB();
+    if (!db) {
+        return nullptr;
+    }
+    return ExportRecordRepository::Get(id, db);
+}
+
+bool ExportRecordService::List(std::vector<DB::ExportRecordInfo::ptr>& out,
+    int64_t& total,
+    const std::string& search,
+    const std::string& type,
+    const std::string& status,
+    int32_t offset,
+    int32_t limit)
+{
+    out.clear();
+    total = 0;
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    return ExportRecordRepository::ListByPages(out, total, search, type, status, offset, limit, db);
+}

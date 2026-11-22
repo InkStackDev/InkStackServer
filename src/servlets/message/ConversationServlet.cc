@@ -3,7 +3,7 @@
 #include <Chen/Http/Http.hpp>
 
 #include "MessageJson.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Service/ConversationService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -19,14 +19,15 @@ int32_t ConversationServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        if (CheckChatPermission(result, uid) != SUCCESS) {
+        if (CheckChatPermission(result, viewer) != SUCCESS) {
             break;
         }
+        int64_t uid = viewer.user_id;
 
         if (request->getMethod() == chen::http::HttpMethod::GET) {
             // 会话列表
@@ -62,8 +63,8 @@ int32_t ConversationServlet::handle(
                 break;
             }
 
-            auto peer = UserRepository::Get(peer_id, GetDB());
-            if (!peer) {
+            UserQueryService::Brief peer;
+            if (!UserQueryService::GetUserBrief(peer_id, peer)) {
                 result->setErrno(MESSAGE_PEER_NOT_FOUND);
                 break;
             }

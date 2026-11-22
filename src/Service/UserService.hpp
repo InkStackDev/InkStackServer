@@ -163,6 +163,10 @@ public:
 
     static DB::UserInfo::ptr GetByEmail(const std::string& email);
 
+    static DB::UserInfo::ptr GetByAccount(const std::string& account);
+
+    static bool UpgradePasswordHash(int64_t uid, const std::string& old_hash, const std::string& new_hash);
+
     /**
      * @brief 修改个人资料
      * @param[out] password_changed 本次是否修改了密码（调用方据此撤销会话）

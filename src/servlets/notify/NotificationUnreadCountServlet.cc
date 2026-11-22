@@ -1,6 +1,6 @@
 #include "NotificationUnreadCountServlet.hpp"
 
-#include "../../Repository/NotificationQueryRepository.hpp"
+#include "../../Service/NotificationService.hpp"
 #include "../../Util/Util.hpp"
 
 NotificationUnreadCountServlet::NotificationUnreadCountServlet()
@@ -21,10 +21,8 @@ int32_t NotificationUnreadCountServlet::handle(
             break;
         }
 
-        int64_t count = NotificationQueryRepository::UnreadCount(uid, GetDB());
-
         result->setErrno(SUCCESS);
-        result->set("count", count);
+        result->set("count", NotificationService::UnreadCount(uid));
     } while (0);
 
     response->setBody(result->toJsonString());

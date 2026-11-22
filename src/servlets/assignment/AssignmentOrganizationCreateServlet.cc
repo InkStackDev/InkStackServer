@@ -1,12 +1,9 @@
 #include "AssignmentOrganizationCreateServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/AssignmentService.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 AssignmentOrganizationCreateServlet::AssignmentOrganizationCreateServlet()
     : BlogLoginedServlet("AssignmentOrganizationCreateServlet")
@@ -31,30 +28,21 @@ int32_t AssignmentOrganizationCreateServlet::handle(
         DEFINE_AND_CHECK_STRING(result, description, "description");
         int64_t assign_id = request->getParamAs<int64_t>("assign_id", 0);
 
-        // check operator permission
-        auto uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        std::string oper_name = current_user->getName();
-        int32_t system_role = current_user->getRole();
-        auto org_rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!org_rel) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
-        int32_t org_role = org_rel->getRole();
 
-        if (!CanManageMembers(system_role, org_role)) {
+        auto access = OrganizationService::CheckManageAccess(viewer, org_id);
+        if (access != OrganizationService::AccessResult::Ok) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
+
+        OrganizationService::UserBrief operator_info;
+        OrganizationService::GetUserProfile(viewer.user_id, operator_info);
+        std::string oper_name = operator_info.name;
 
         if (max_size > 96) {
             result->setErrno(ASSIGNMENT_MAX_SIZE_EXCEED);
@@ -86,17 +74,9 @@ int32_t AssignmentOrganizationCreateServlet::handle(
 
         if (created) {
             result->set("assigned_by", oper_name);
-            // Notify org members about new assignment
+
             std::vector<int64_t> member_ids;
-            std::vector<DB::OrganizationUserRelInfo::ptr> org_members;
-            OrganizationUserRelRepository::ListByOrgPages(org_members, org_id, 0, 10000, -1, true, GetDB());
-            for (auto& m : org_members) {
-                if (m->getStatus() != OrgMemberStatus::APPROVED)
-                    continue;
-                if (m->getUserId() == uid)
-                    continue;
-                member_ids.push_back(m->getUserId());
-            }
+            OrganizationService::ListApprovedMemberIds(org_id, viewer.user_id, member_ids);
 
             EventAssignmentData data = {};
             data.type = "created";
@@ -118,6 +98,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
         result->set("file_type", assign_info->getFileType());
         result->set("description", assign_info->getDescription());
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

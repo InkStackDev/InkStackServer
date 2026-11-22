@@ -9,8 +9,12 @@
 
 #include "DB/UserAiConfigInfo.hpp"
 
+#include <cstdint>
+
 class UserAIConfigService {
 public:
+    static DB::UserAiConfigInfo::ptr Get(int64_t user_id);
+
     /**
      * @brief 保存配置并刷新缓存（按 user_id 回查 DB 生成的主键）
      */

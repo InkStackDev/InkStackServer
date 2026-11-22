@@ -1,12 +1,16 @@
 #include "LabelService.hpp"
 
+#include <map>
 #include <memory>
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
+#include "../Repository/ArticleRelRepository.hpp"
 #include "../Repository/LabelRepository.hpp"
 #include "../Util/Util.hpp"
+
+#include <utility>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -110,6 +114,56 @@ bool LabelService::DeleteMany(int64_t uid, const std::set<int64_t>& ids, std::ve
     }
     for (auto& info : deleted) {
         LabelRepository::Put(info);
+    }
+    return true;
+}
+
+bool LabelService::List(int64_t user_id, const std::vector<int64_t>& ids, std::vector<LabelView>& out)
+{
+    out.clear();
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+
+    std::vector<DB::LabelInfo::ptr> infos;
+    if (user_id) {
+        LabelRepository::ListByUserId(infos, user_id, true, db);
+    } else {
+        for (auto id : ids) {
+            if (!id) {
+                continue;
+            }
+            auto info = LabelRepository::Get(id, db);
+            if (info) {
+                infos.push_back(info);
+            }
+        }
+    }
+
+    std::map<int64_t, int64_t> article_counts;
+    if (!infos.empty()) {
+        std::vector<int64_t> label_ids;
+        label_ids.reserve(infos.size());
+        for (const auto& info : infos) {
+            label_ids.push_back(info->getId());
+        }
+        std::vector<std::pair<int64_t, int64_t>> rows;
+        ArticleLabelRelRepository::CountPublishedByLabels(label_ids, rows, db);
+        for (const auto& [label_id, count] : rows) {
+            article_counts[label_id] = count;
+        }
+    }
+
+    for (const auto& info : infos) {
+        LabelView view;
+        view.id = info->getId();
+        view.name = info->getName();
+        view.color = info->getColor();
+        view.description = info->getDescription();
+        view.create_time = info->getCreateTime();
+        view.article_count = article_counts[info->getId()];
+        out.push_back(std::move(view));
     }
     return true;
 }

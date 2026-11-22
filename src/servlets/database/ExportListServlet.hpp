@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-class ExportListServlet : public BlogLoginedServlet {
+class ExportListServlet : public BlogAdminServlet {
 public:
     ExportListServlet();
 

@@ -5,7 +5,7 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Service/UserService.hpp"
@@ -40,9 +40,9 @@ int32_t UserLoginServlet::handle(
 
         DB::UserInfo::ptr info;
         if (IsEmail(auth_id)) {
-            info = UserRepository::GetByEmail(auth_id, GetDB());
+            info = UserService::GetByEmail(auth_id);
         } else if (IsValidAccount(auth_id)) {
-            info = UserRepository::GetByAccount(auth_id, GetDB());
+            info = UserService::GetByAccount(auth_id);
         } else {
             result->setErrno(USER_INVALID_ACCOUNT);
             break;
@@ -65,14 +65,11 @@ int32_t UserLoginServlet::handle(
         // 历史 MD5 哈希在登录成功后透明升级为 bcrypt；失败不影响本次登录，下次登录重试
         if (IsLegacyPasswordHash(info->getPasswd())) {
             std::string passwd_hash = HashPassword(passwd);
-            auto upgrade_db = GetDB();
-            if (!passwd_hash.empty() && upgrade_db) {
+            if (!passwd_hash.empty()) {
                 std::string old_hash = info->getPasswd();
-                info->setPasswd(passwd_hash);
-                if (UserRepository::Update(info, upgrade_db)) {
-                    UserRepository::Put(info);
+                if (UserService::UpgradePasswordHash(info->getId(), old_hash, passwd_hash)) {
+                    info->setPasswd(passwd_hash);
                 } else {
-                    info->setPasswd(old_hash);
                     ERROR(logger) << "upgrade password hash failed user=" << info->getId();
                 }
             }

@@ -204,3 +204,47 @@ bool NotificationService::CleanupExpiredBroadcasts()
     }
     return true;
 }
+
+bool NotificationService::ListByUser(std::vector<DB::NotificationInfo::ptr>& out,
+    int64_t uid,
+    int32_t offset,
+    int32_t size,
+    const std::string& type)
+{
+    out.clear();
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    NotificationQueryRepository::ListByUser(out, uid, offset, size, type, db);
+    return true;
+}
+
+int64_t NotificationService::CountByUser(int64_t uid, const std::string& type)
+{
+    auto db = GetDB();
+    if (!db) {
+        return 0;
+    }
+    return NotificationQueryRepository::CountByUser(uid, type, db);
+}
+
+int64_t NotificationService::UnreadCount(int64_t uid)
+{
+    auto db = GetDB();
+    if (!db) {
+        return 0;
+    }
+    return NotificationQueryRepository::UnreadCount(uid, db);
+}
+
+bool NotificationService::ListBroadcasts(std::vector<DB::NotificationInfo::ptr>& out, int64_t offset, int64_t size)
+{
+    out.clear();
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    NotificationQueryRepository::ListBroadcasts(out, offset, size, db);
+    return true;
+}

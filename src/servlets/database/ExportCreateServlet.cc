@@ -6,7 +6,7 @@
 #include "../../Util/Util.hpp"
 
 ExportCreateServlet::ExportCreateServlet()
-    : BlogLoginedServlet("ExportCreateServlet")
+    : BlogAdminServlet("ExportCreateServlet")
 {
 }
 
@@ -18,19 +18,6 @@ int32_t ExportCreateServlet::handle(
 {
     do {
         int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         std::string type;
         if (!request->checkGetParamAs("type", type) || type.empty()) {

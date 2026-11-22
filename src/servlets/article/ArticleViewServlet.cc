@@ -1,8 +1,8 @@
 #include "ArticleViewServlet.hpp"
 
-#include "../../Util/Util.hpp"
-#include "../../Repository/ArticleRepository.hpp"
 #include "../../Service/ArticleCounterService.hpp"
+#include "../../Service/ArticleQueryService.hpp"
+#include "../../Util/Util.hpp"
 
 ArticleViewServlet::ArticleViewServlet()
     : BlogLoginedServlet("ArticleViewServlet")
@@ -24,15 +24,13 @@ int32_t ArticleViewServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, article_id, "article_id");
 
-        auto article = ArticleRepository::Get(article_id, GetDB());
-        if (!article || article->getIsDeleted()) {
+        DB::ArticleInfo::ptr article;
+        if (!ArticleQueryService::GetArticle(article_id, article) || article->getIsDeleted()) {
             result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
-        std::string cookie_id = std::to_string(uid);
-        ArticleCounterService::IncViews(article_id, cookie_id, uid);
-
+        ArticleCounterService::IncViews(article_id, std::to_string(uid), uid);
         result->set("views", article->getViews());
         result->setErrno(SUCCESS);
     } while (0);

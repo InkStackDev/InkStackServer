@@ -1,10 +1,8 @@
 #include "CategoryCreateServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Service/CategoryService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/CategoryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 CategoryCreateServlet::CategoryCreateServlet()
     : BlogLoginedServlet("CategoryCreateServlet")
@@ -23,14 +21,13 @@ bool CategoryCreateServlet::handlePre(
     if (!isAdminRoute()) {
         return true;
     }
-    int64_t uid = getUserId(request);
-    DB::UserInfo::ptr user;
-    if (uid) {
-        user = UserRepository::Get(uid, GetDB());
+    Viewer viewer = getViewer(request);
+    if (!viewer.valid()) {
+        result->setErrno(NOT_LOGIN);
+        return false;
     }
-    int32_t rt = CheckAdminRoute(uid, user);
-    if (rt) {
-        result->setErrno(rt);
+    if (!viewer.is_platform_admin) {
+        result->setErrno(ACCESS_DENIED);
         return false;
     }
     return true;
@@ -53,35 +50,25 @@ int32_t CategoryCreateServlet::handle(
         int64_t cid = request->getParamAs<int64_t>("id", 0);
         int64_t req_uid = request->getParamAs<int64_t>("user_id", 0);
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
         bool admin_route = isAdminRoute();
 
-        int64_t owner_id = uid;
-        if (cid) {
-            auto existing = CategoryRepository::Get(cid, GetDB());
-            if (!existing) {
-                result->setErrno(PARAM_INVALID, "invalid cid");
-                break;
-            }
-            if (!admin_route && existing->getUserId() != uid) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            owner_id = existing->getUserId();
-        } else if (req_uid && req_uid != uid) {
+        int64_t owner_id = viewer.user_id;
+        if (!cid && req_uid && req_uid != viewer.user_id) {
             if (!admin_route) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
-            owner_id = req_uid;
-            if (!UserRepository::Get(owner_id, GetDB())) {
+            UserQueryService::Brief owner;
+            if (!UserQueryService::GetUserBrief(req_uid, owner)) {
                 result->setErrno(USER_NOT_FOUND);
                 break;
             }
+            owner_id = req_uid;
         }
 
         CategoryInput input;
@@ -96,7 +83,7 @@ int32_t CategoryCreateServlet::handle(
         input.status = status;
 
         DB::CategoryInfo::ptr info;
-        auto rt = CategoryService::CreateOrUpdate(input, uid, admin_route, info);
+        auto rt = CategoryService::CreateOrUpdate(input, viewer.user_id, admin_route, info);
         if (rt == CategoryService::Result::NotFound) {
             result->setErrno(PARAM_INVALID, "invalid cid");
             break;
@@ -128,6 +115,7 @@ int32_t CategoryCreateServlet::handle(
         result->set("desc", info->getDescription());
         result->set("status", info->getStatus());
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

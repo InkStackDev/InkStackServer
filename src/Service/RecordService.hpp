@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class BackupRecordService {
 public:
@@ -21,6 +22,16 @@ public:
         const std::string& description);
 
     static bool Remove(int64_t id);
+
+    static DB::BackupRecordInfo::ptr Get(int64_t id);
+
+    static bool List(std::vector<DB::BackupRecordInfo::ptr>& out,
+        int64_t& total,
+        const std::string& search,
+        const std::string& type,
+        const std::string& status,
+        int32_t offset,
+        int32_t limit);
 };
 
 class ExportRecordService {
@@ -28,4 +39,14 @@ public:
     static DB::ExportRecordInfo::ptr Create(int64_t uid, const std::string& type, const std::string& name);
 
     static bool Remove(int64_t id);
+
+    static DB::ExportRecordInfo::ptr Get(int64_t id);
+
+    static bool List(std::vector<DB::ExportRecordInfo::ptr>& out,
+        int64_t& total,
+        const std::string& search,
+        const std::string& type,
+        const std::string& status,
+        int32_t offset,
+        int32_t limit);
 };

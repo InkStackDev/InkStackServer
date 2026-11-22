@@ -15,5 +15,4 @@ protected:
         chen::http::HttpResponse::ptr response,
         chen::http::HttpSession::ptr session,
         Result::ptr result) override;
-    bool checkPermession(int32_t system_role);
 };

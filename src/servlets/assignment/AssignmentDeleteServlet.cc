@@ -1,15 +1,12 @@
 #include "AssignmentDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Repository/AssignmentRelRepository.hpp"
 #include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 
 #include <set>
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 AssignmentDeleteServlet::AssignmentDeleteServlet()
     : BlogLoginedServlet("AssignmentDeleteServlet")
@@ -32,17 +29,12 @@ int32_t AssignmentDeleteServlet::handle(
         }
         std::vector<int64_t> assignment_ids(assignment_id_set.begin(), assignment_id_set.end());
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -57,25 +49,16 @@ int32_t AssignmentDeleteServlet::handle(
         }
 
         Json::Value json_ids;
-        for (auto& info : deleted) {
+        for (const auto& info : deleted) {
             json_ids.append(info->getId());
         }
         result->set("ids", json_ids);
 
-        // 通知已提交过作业的用户
-        auto db = GetDB();
-        if (!db) {
-            break;
-        }
-        for (auto& assign : deleted) {
+        for (const auto& assign : deleted) {
+            std::vector<int64_t> submitters;
+            AssignmentService::ListSubmitters(assign->getId(), submitters);
             std::set<int64_t> notified;
-            std::vector<DB::AssignmentUserRelInfo::ptr> submitters;
-            AssignmentUserRelRepository::ListByAssignment(submitters, assign->getId(), true, db);
-            for (auto& info : submitters) {
-                if (!info) {
-                    continue;
-                }
-                int64_t submitter_id = info->getUserId();
+            for (auto submitter_id : submitters) {
                 if (!notified.insert(submitter_id).second) {
                     continue;
                 }
@@ -90,6 +73,7 @@ int32_t AssignmentDeleteServlet::handle(
             }
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

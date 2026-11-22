@@ -5,9 +5,8 @@
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
-#include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
-#include "../../Repository/ConversationRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Service/ConversationService.hpp"
 #include "../../Message/MessageRouter.hpp"
 #include "../../Util/Util.hpp"
@@ -45,13 +44,17 @@ static bool CheckConversationAccess(chen::http::WSSession::ptr session,
     int64_t& peer_id,
     const std::string& client_id = "")
 {
-    conv = ConversationRepository::Get(conversation_id, GetDB());
-    if (!conv) {
+    auto get_rt = ConversationService::GetForUser(conversation_id, uid, conv);
+    if (get_rt == ConversationService::GetResult::NotFound) {
         SendChatError(session, MESSAGE_CONVERSATION_NOT_FOUND, "Conversation not found", client_id);
         return false;
     }
-    if (uid != conv->getUserAId() && uid != conv->getUserBId()) {
+    if (get_rt == ConversationService::GetResult::AccessDenied) {
         SendChatError(session, ACCESS_DENIED, "Access denied", client_id);
+        return false;
+    }
+    if (get_rt != ConversationService::GetResult::Ok) {
+        SendChatError(session, DB_OPERATION_FAILED, "Database error", client_id);
         return false;
     }
     peer_id = conv->getUserAId() == uid ? conv->getUserBId() : conv->getUserAId();
@@ -156,8 +159,9 @@ int32_t ChatHandler::Handle(int64_t uid, const Json::Value& root, chen::http::WS
     }
 
     // 兜底：连接鉴权之外的二次校验，防止角色变动后仍可用私信
-    auto user = UserRepository::Get(uid, GetDB());
-    if (!user || user->getRole() == UserRole::USER) {
+    int32_t role = 0;
+    bool deleted = false;
+    if (!UserQueryService::GetRole(uid, role, deleted) || deleted || role == UserRole::USER) {
         SendChatError(
             session, ACCESS_DENIED, "Chat not available for normal users", root.get("client_id", "").asString());
         return 0;

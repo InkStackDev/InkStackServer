@@ -78,6 +78,26 @@ DB::ConversationInfo::ptr ConversationService::GetOrCreate(int64_t uid_a, int64_
     return conv;
 }
 
+ConversationService::GetResult ConversationService::GetForUser(int64_t conversation_id,
+    int64_t uid,
+    DB::ConversationInfo::ptr& out)
+{
+    out.reset();
+    auto db = GetDB();
+    if (!db) {
+        return GetResult::DbError;
+    }
+    auto conv = ConversationRepository::Get(conversation_id, db);
+    if (!conv) {
+        return GetResult::NotFound;
+    }
+    if (uid != conv->getUserAId() && uid != conv->getUserBId()) {
+        return GetResult::AccessDenied;
+    }
+    out = conv;
+    return GetResult::Ok;
+}
+
 void ConversationService::ListConversations(std::vector<DB::ConversationInfo::ptr>& results, int64_t uid)
 {
     ConversationRepository::ListForUser(results, uid, GetDB());

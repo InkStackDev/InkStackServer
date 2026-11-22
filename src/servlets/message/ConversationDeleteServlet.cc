@@ -1,7 +1,6 @@
 #include "ConversationDeleteServlet.hpp"
 
 #include "MessageJson.hpp"
-#include "../../Repository/ConversationRepository.hpp"
 #include "../../Service/ConversationService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -17,14 +16,15 @@ int32_t ConversationDeleteServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        if (CheckChatPermission(result, uid) != SUCCESS) {
+        if (CheckChatPermission(result, viewer) != SUCCESS) {
             break;
         }
+        int64_t uid = viewer.user_id;
 
         std::string id_str = request->getParam("id");
         if (id_str.empty()) {
@@ -37,13 +37,18 @@ int32_t ConversationDeleteServlet::handle(
             break;
         }
 
-        auto conv = ConversationRepository::Get(conversation_id, GetDB());
-        if (!conv) {
+        DB::ConversationInfo::ptr conv;
+        auto get_rt = ConversationService::GetForUser(conversation_id, uid, conv);
+        if (get_rt == ConversationService::GetResult::NotFound) {
             result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
             break;
         }
-        if (uid != conv->getUserAId() && uid != conv->getUserBId()) {
+        if (get_rt == ConversationService::GetResult::AccessDenied) {
             result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (get_rt != ConversationService::GetResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 

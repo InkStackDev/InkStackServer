@@ -3,7 +3,7 @@
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
 #include "../../Util/UaParser.hpp"
 #include "../../Service/PasskeyService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 
 PasskeyRegisterBeginServlet::PasskeyRegisterBeginServlet()
@@ -24,7 +24,7 @@ int32_t PasskeyRegisterBeginServlet::handle(
             break;
         }
 
-        auto user = UserRepository::Get(uid, GetDB());
+        auto user = UserService::Get(uid);
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;

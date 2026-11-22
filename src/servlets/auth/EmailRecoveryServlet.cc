@@ -7,7 +7,7 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -39,7 +39,7 @@ int32_t EmailRecoveryServlet::handle(
             break;
         }
 
-        auto user = UserRepository::GetByEmail(email, GetDB());
+        auto user = UserService::GetByEmail(email);
         if (!user) {
             result->setErrno(USER_EMAIL_NOT_REGISTER);
             break;

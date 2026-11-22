@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../BlogLoginedServlet.hpp"
+#include "../BlogAdminServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-class CleanupServlet : public BlogLoginedServlet {
+class CleanupServlet : public BlogAdminServlet {
 public:
     CleanupServlet();
 

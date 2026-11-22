@@ -1,13 +1,7 @@
 #include "UserListServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include <algorithm>
-
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserListServlet::UserListServlet()
     : BlogAdminServlet("UserListServlet")
@@ -22,16 +16,15 @@ int32_t UserListServlet::handle(
 {
     do {
         std::vector<int64_t> ids;
-        UserRepository::GetAllIds(ids, false, GetDB());
-
-        std::sort(ids.begin(), ids.end(), std::less<>());
+        UserQueryService::ListAllIds(ids);
 
         Json::Value json_ids;
-        for (size_t i = 0; i < ids.size(); ++i) {
-            json_ids.append(ids[i]);
+        for (auto id : ids) {
+            json_ids.append(id);
         }
         result->set("ids", json_ids);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

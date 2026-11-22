@@ -1,11 +1,7 @@
 #include "AssignmentDetailServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/AssignmentRepository.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 AssignmentDetailServlet::AssignmentDetailServlet()
     : BlogLoginedServlet("AssignmentDetailServlet")
@@ -20,23 +16,29 @@ int32_t AssignmentDetailServlet::handle(
 {
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
-        auto assignment = AssignmentRepository::Get(id, GetDB());
 
-        if (!assignment || assignment->getIsDeleted()) {
+        AssignmentService::DetailView detail;
+        auto rt = AssignmentService::GetDetail(id, detail);
+        if (rt == AssignmentService::ViewResult::NotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
+        if (rt != AssignmentService::ViewResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
-        result->set("id", assignment->getId());
-        result->set("name", assignment->getName());
-        result->set("status", assignment->getStatus()); // 1 - 正常 2 - 关闭
-        result->set("priority", assignment->getPriority());
-        result->set("subject_name", assignment->getSubjectName());
-        result->set("description", assignment->getDescription());
-        result->set("end_time", assignment->getDeadline());
-        result->set("file_size", assignment->getMaxSize());
-        result->set("file_type", assignment->getFileType());
+        result->set("id", detail.id);
+        result->set("name", detail.name);
+        result->set("status", detail.status);
+        result->set("priority", detail.priority);
+        result->set("subject_name", detail.subject_name);
+        result->set("description", detail.description);
+        result->set("end_time", detail.deadline);
+        result->set("file_size", detail.max_size);
+        result->set("file_type", detail.file_type);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

@@ -1,12 +1,11 @@
 #include "ExportListServlet.hpp"
 
-#include "../../Repository/RecordRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/RecordService.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Util/Util.hpp"
 
 ExportListServlet::ExportListServlet()
-    : BlogLoginedServlet("ExportListServlet")
+    : BlogAdminServlet("ExportListServlet")
 {
 }
 
@@ -17,20 +16,6 @@ int32_t ExportListServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         std::string search = request->getParam("search");
         std::string type = request->getParam("type");
@@ -49,7 +34,7 @@ int32_t ExportListServlet::handle(
 
         std::vector<DB::ExportRecordInfo::ptr> list;
         int64_t total = 0;
-        if (!ExportRecordRepository::ListByPages(list, total, search, type, status, offset, pageSize, GetDB())) {
+        if (!ExportRecordService::List(list, total, search, type, status, offset, pageSize)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

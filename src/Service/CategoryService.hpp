@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../Domain/AccessTypes.hpp"
+
 #include "DB/CategoryInfo.hpp"
 
 #include <cstdint>
@@ -47,6 +49,18 @@ public:
      * @param scope 调用方可见的分类集合
      */
     static bool DeleteMany(const std::vector<DB::CategoryInfo::ptr>& scope,
+        const std::set<int64_t>& root_ids,
+        std::vector<DB::CategoryInfo::ptr>& deleted);
+
+    enum class DeleteScopeResult {
+        Ok,
+        NoCategories,
+        DbError
+    };
+
+    static DeleteScopeResult DeleteForUser(bool admin_route,
+        int64_t requester_uid,
+        int64_t owner_uid,
         const std::set<int64_t>& root_ids,
         std::vector<DB::CategoryInfo::ptr>& deleted);
 };

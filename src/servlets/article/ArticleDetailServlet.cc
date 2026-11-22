@@ -1,19 +1,7 @@
 #include "ArticleDetailServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/ArticleQueryService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/ArticleRepository.hpp"
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/CategoryRepository.hpp"
-#include "../../Repository/LabelRepository.hpp"
-#include "../../Repository/ArticleRelRepository.hpp"
-#include "../../Domain/ArticleTypes.hpp"
-#include "../../Repository/UserFollowRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleDetailServlet::ArticleDetailServlet()
     : BlogServlet("ArticleDetailServlet")
@@ -30,96 +18,61 @@ int32_t ArticleDetailServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
         auto type = request->getParamAs<uint32_t>("type");
 
-        int64_t cur_uid = getUserId(request);
-        if (!cur_uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        DB::ArticleInfo::ptr info = ArticleRepository::Get(id, GetDB());
-        if (!info) {
+
+        ArticleQueryService::Detail detail;
+        auto rt = ArticleQueryService::GetDetail(viewer, id, type, detail);
+        if (rt == ArticleQueryService::DetailResult::NotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
-        int32_t state = info->getState();
-        bool is_deleted = info->getIsDeleted();
-        auto current_user = UserRepository::Get(cur_uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t role = current_user->getRole();
-        bool is_author = (cur_uid == info->getUserId());
-        if (is_deleted) {
+        if (rt == ArticleQueryService::DetailResult::AccessDenied) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (state != ArticleStatus::PUBLISHED && role != UserRole::ADMIN && !is_author) {
-            result->setErrno(ACCESS_DENIED);
+        if (rt != ArticleQueryService::DetailResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        int64_t uid = info->getUserId();
-        if (type == 1 && cur_uid != uid) {
-            result->setErrno(ACCESS_DENIED);
-            break;
+
+        result->set("id", detail.id);
+        result->set("author", detail.author);
+        result->set("author_avatar", detail.author_avatar);
+        result->set("author_article_count", detail.author_article_count);
+        result->set("author_praise_count", detail.author_praise_count);
+        result->set("author_follower_count", detail.author_follower_count);
+        result->set("title", detail.title);
+        result->set("content", detail.content);
+        result->set("user_id", detail.user_id);
+        result->set("type", detail.type);
+        result->set("publish_time", detail.publish_time);
+        result->set("update_time", detail.update_time);
+        result->set("state", detail.state);
+        result->set("is_deleted", detail.is_deleted);
+        result->set("views", detail.views);
+        result->set("praise", detail.praise);
+        result->set("favorites", detail.favorites);
+
+        for (const auto& category : detail.categories) {
+            Json::Value item;
+            item["id"] = category.id;
+            item["name"] = category.name;
+            item["color"] = category.color;
+            result->append("categorys", item);
         }
-        auto author_info = UserRepository::Get(uid, GetDB());
-        result->set("id", info->getId());
-        result->set("author", author_info->getName());
-        result->set("author_avatar", author_info->getAvatar());
-
-        // author stats
-        std::vector<DB::ArticleInfo::ptr> authorArticles;
-        ArticleQueryRepository::ListByUserId(authorArticles, uid, true, GetDB());
-        int64_t author_praise_total = 0;
-        int64_t author_article_count = 0;
-        for (auto& a : authorArticles) {
-            if (a->getState() == ArticleStatus::PUBLISHED) {
-                author_article_count++;
-                author_praise_total += a->getPraise();
-            }
-        }
-        result->set("author_article_count", author_article_count);
-        result->set("author_praise_count", author_praise_total);
-        result->set("author_follower_count", UserFollowRelRepository::CountFollowers(uid, GetDB()));
-        result->set("title", info->getTitle());
-        result->set("content", info->getContent());
-        result->set("user_id", uid);
-        result->set("type", info->getType());
-        result->set("publish_time", info->getPublishTime());
-        result->set("update_time", info->getUpdateTime());
-        result->set("state", info->getState());
-        result->set("is_deleted", info->getIsDeleted());
-        result->set("views", info->getViews());
-        result->set("praise", info->getPraise());
-        result->set("favorites", info->getFavorites());
-
-        std::vector<DB::ArticleCategoryRelInfo::ptr> cinfos;
-        ArticleCategoryRelRepository::ListByArticle(cinfos, id, true, GetDB());
-
-        for (auto& i : cinfos) {
-            auto c = CategoryRepository::Get(i->getCategoryId(), GetDB());
-            if (c && c->getIsDeleted() == 0) {
-                Json::Value item;
-                item["id"] = c->getId();
-                item["name"] = c->getName();
-                item["color"] = c->getColor();
-                result->append("categorys", item);
-            }
-        }
-
-        std::vector<DB::ArticleLabelRelInfo::ptr> linfos;
-        ArticleLabelRelRepository::ListByArticle(linfos, id, true, GetDB());
-        for (auto& i : linfos) {
-            auto l = LabelRepository::Get(i->getLabelId(), GetDB());
-            if (l && l->getIsDeleted() == 0) {
-                Json::Value item;
-                item["id"] = l->getId();
-                item["name"] = l->getName();
-                item["color"] = l->getColor();
-                result->append("labels", item);
-            }
+        for (const auto& label : detail.labels) {
+            Json::Value item;
+            item["id"] = label.id;
+            item["name"] = label.name;
+            item["color"] = label.color;
+            result->append("labels", item);
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

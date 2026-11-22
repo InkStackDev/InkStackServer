@@ -4,8 +4,6 @@
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -21,9 +19,12 @@ int32_t BroadcastCloseServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        auto uinfo = UserRepository::Get(uid, GetDB());
-        if (!uinfo || uinfo->getRole() != UserRole::ADMIN) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

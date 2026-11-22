@@ -8,7 +8,7 @@
 #include "../../Manager/SystemSettingsManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -39,12 +39,12 @@ int32_t UserSendCodeServlet::handle(
             break;
         }
 
-        if (type == "1" && UserRepository::GetByEmail(email, GetDB())) {
+        if (type == "1" && UserService::GetByEmail(email)) {
             result->setErrno(USER_EMAIL_EXISTS);
             break;
         }
         if (type == "5") {
-            auto recovery_user = UserRepository::GetByEmail(email, GetDB());
+            auto recovery_user = UserService::GetByEmail(email);
             if (!recovery_user) {
                 result->setErrno(USER_EMAIL_NOT_REGISTER);
                 break;

@@ -212,6 +212,17 @@ public:
 
     static bool GetUserProfile(int64_t user_id, UserBrief& out);
 
+    enum class AccessResult {
+        Ok,
+        NotMember,
+        AccessDenied,
+        DbError
+    };
+
+    static AccessResult CheckManageAccess(const Viewer& viewer, int64_t org_id);
+
+    static bool ListApprovedMemberIds(int64_t org_id, int64_t exclude_uid, std::vector<int64_t>& out);
+
     static ListResult ListApplies(const Viewer& viewer,
         int32_t status,
         uint64_t offset,

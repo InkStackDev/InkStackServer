@@ -10,13 +10,13 @@
 
 #include "../../Config/AppConfig.hpp"
 #include "../../Service/RecordService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
 BackupCreateServlet::BackupCreateServlet()
-    : BlogLoginedServlet("BackupCreateServlet")
+    : BlogAdminServlet("BackupCreateServlet")
 {
 }
 
@@ -28,19 +28,6 @@ int32_t BackupCreateServlet::handle(
 {
     do {
         int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         std::string type;
         if (!request->checkGetParamAs("type", type) || type.empty()) {
@@ -90,9 +77,9 @@ int32_t BackupCreateServlet::handle(
         item["file_count"] = info->getFileCount();
         item["status"] = info->getStatus();
         item["created_at"] = info->getCreateTime();
-        auto created_by_user = UserRepository::Get(info->getCreatedBy(), GetDB());
-        if (created_by_user) {
-            item["created_by"] = created_by_user->getName();
+        UserQueryService::Brief creator;
+        if (UserQueryService::GetUserBrief(info->getCreatedBy(), creator)) {
+            item["created_by"] = creator.name;
         }
         item["description"] = info->getDescription();
 

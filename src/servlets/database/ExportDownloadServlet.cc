@@ -1,3 +1,4 @@
+#include "../../Service/RecordService.hpp"
 #include "ExportDownloadServlet.hpp"
 
 #include <Chen/Config/Config.hpp>
@@ -8,15 +9,13 @@
 #include <fstream>
 
 #include "../../Config/AppConfig.hpp"
-#include "../../Repository/RecordRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
 ExportDownloadServlet::ExportDownloadServlet()
-    : BlogLoginedServlet("ExportDownloadServlet")
+    : BlogAdminServlet("ExportDownloadServlet")
 {
 }
 
@@ -28,20 +27,6 @@ int32_t ExportDownloadServlet::handle(
 {
     bool success = false;
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         std::string id_str = request->getParam("id");
         if (id_str.empty()) {
@@ -54,7 +39,7 @@ int32_t ExportDownloadServlet::handle(
             break;
         }
 
-        auto info = ExportRecordRepository::Get(id, GetDB());
+        auto info = ExportRecordService::Get(id);
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "export record not found");
             break;

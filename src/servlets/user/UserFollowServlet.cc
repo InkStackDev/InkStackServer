@@ -1,11 +1,9 @@
 #include "UserFollowServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Util/Util.hpp"
-
-#include <json/json.h>
 #include "../../Service/UserFollowRelService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
+#include "../../Util/Util.hpp"
 
 UserFollowServlet::UserFollowServlet()
     : BlogLoginedServlet("UserFollowServlet")
@@ -32,9 +30,8 @@ int32_t UserFollowServlet::handle(
             break;
         }
 
-        // check the target user exists
-        auto targetUser = UserRepository::Get(following_id, GetDB());
-        if (!targetUser || targetUser->getIsDeleted()) {
+        UserQueryService::Brief target;
+        if (!UserQueryService::GetUserBrief(following_id, target)) {
             result->setErrno(USER_NOT_FOUND);
             break;
         }
@@ -47,12 +44,13 @@ int32_t UserFollowServlet::handle(
             break;
         }
 
-        // Notify the followed user (only for new follows)
         if (!already_following) {
-            auto follower_info = UserRepository::Get(uid, GetDB());
+            UserQueryService::Brief follower;
+            UserQueryService::GetUserBrief(uid, follower);
+
             EventUserFollowData data = {};
             data.follower_id = uid;
-            data.follower_name = follower_info ? follower_info->getName() : "someone";
+            data.follower_name = follower.name.empty() ? "someone" : follower.name;
             data.following_id = following_id;
 
             chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_USER_FOLLOW, std::move(data));

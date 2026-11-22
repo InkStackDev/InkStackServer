@@ -1,12 +1,7 @@
 #include "ArticleListByCategoryServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
+#include "../../Service/ArticleQueryService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleListByCategoryServlet::ArticleListByCategoryServlet()
     : BlogServlet("ArticleListByCategoryServlet")
@@ -24,28 +19,33 @@ int32_t ArticleListByCategoryServlet::handle(
         int64_t page_from = request->getParamAs<int64_t>("page_from");
         int64_t page_size = request->getParamAs<int64_t>("page_size", 6);
 
-        int offset = (page_from - 1) * page_size;
-        std::vector<DB::ArticleInfo::ptr> infos;
-        auto total = ArticleQueryRepository::ListByCategoryPages(infos, category_id, offset, page_size, true, GetDB());
+        int64_t offset = (page_from - 1) * page_size;
+        std::vector<ArticleQueryService::ListItem> articles;
+        int64_t total = 0;
+        if (!ArticleQueryService::ListByCategory(category_id, offset, page_size, articles, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+
         result->set("total", total);
         Json::Value list;
-        for (auto& i : infos) {
+        for (const auto& article : articles) {
             Json::Value item;
-            auto uinfo = UserRepository::Get(i->getUserId(), GetDB());
-            item["id"] = i->getId();
-            item["author"] = uinfo ? uinfo->getName() : "";
-            item["title"] = i->getTitle();
-            item["summary"] = i->getContent().substr(0, 100);
-            item["type"] = i->getType();
-            item["state"] = i->getState();
-            item["views"] = i->getViews();
-            item["praise"] = i->getPraise();
-            item["favorites"] = i->getFavorites();
-            item["publish_time"] = i->getPublishTime();
+            item["id"] = article.id;
+            item["author"] = article.author;
+            item["title"] = article.title;
+            item["summary"] = article.summary;
+            item["type"] = article.type;
+            item["state"] = article.state;
+            item["views"] = article.views;
+            item["praise"] = article.praise;
+            item["favorites"] = article.favorites;
+            item["publish_time"] = article.publish_time;
             list.append(item);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

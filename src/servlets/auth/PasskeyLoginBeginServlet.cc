@@ -6,7 +6,7 @@
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Service/PasskeyService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Domain/UserTypes.hpp"
 
 PasskeyLoginBeginServlet::PasskeyLoginBeginServlet()
@@ -33,9 +33,9 @@ int32_t PasskeyLoginBeginServlet::handle(
         if (!auth_id.empty()) {
             DB::UserInfo::ptr user;
             if (IsEmail(auth_id)) {
-                user = UserRepository::GetByEmail(auth_id, GetDB());
+                user = UserService::GetByEmail(auth_id);
             } else if (IsValidAccount(auth_id)) {
-                user = UserRepository::GetByAccount(auth_id, GetDB());
+                user = UserService::GetByAccount(auth_id);
             } else {
                 result->setErrno(USER_INVALID_ACCOUNT);
                 break;

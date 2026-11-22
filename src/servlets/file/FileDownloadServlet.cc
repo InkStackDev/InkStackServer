@@ -8,9 +8,7 @@
 #include <fstream>
 
 #include "../../Config/AppConfig.hpp"
-#include "../../Repository/ResourceRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Service/ResourceService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 static const int64_t MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB文件大小限制
@@ -72,7 +70,11 @@ int32_t FileDownloadServlet::handle(
             break;
         }
 
-        auto res_info = ResourceRepository::GetByPath(url, GetDB());
+        DB::ResourceInfo::ptr res_info;
+        if (!ResourceService::GetByPath(url, res_info)) {
+            result->setErrno(FILE_NOT_FOUND);
+            break;
+        }
         if (!res_info) {
             result->setErrno(FILE_NOT_FOUND);
             break;
@@ -90,18 +92,12 @@ int32_t FileDownloadServlet::handle(
             break;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t system_role = current_user->getRole();
-        if (!checkPermission(system_role) || res_info->getOwnerId() != uid) {
+        if (!viewer.is_platform_admin || res_info->getOwnerId() != viewer.user_id) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -184,13 +180,4 @@ int32_t FileDownloadServlet::handle(
     INFO(logger) << "File downloaded: " << request->getParam("fileName") << " (Size: " << content.size() << " bytes -- "
                  << (1.0 * content.size() / 1024) << " kb -- " << (1.0 * content.size() / (1024 * 1024)) << " mb)";
     return 0;
-}
-
-bool FileDownloadServlet::checkPermission(int32_t system_role)
-{
-    // 所有登录用户均可下载文件
-    if (system_role == UserRole::ADMIN) {
-        return true;
-    }
-    return false;
 }

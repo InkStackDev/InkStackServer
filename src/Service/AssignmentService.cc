@@ -1,12 +1,15 @@
 #include "AssignmentService.hpp"
 
 #include <memory>
+#include <utility>
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
 #include "../Repository/AssignmentRelRepository.hpp"
 #include "../Repository/AssignmentRepository.hpp"
+#include "../Repository/ResourceRepository.hpp"
+#include "../Repository/UserRepository.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -184,4 +187,85 @@ bool AssignmentService::DeleteMany(const std::vector<int64_t>& ids, std::vector<
         AssignmentRepository::Put(info);
     }
     return true;
+}
+
+AssignmentService::ViewResult AssignmentService::GetDetail(int64_t id, DetailView& out)
+{
+    out = DetailView{};
+    auto db = GetDB();
+    if (!db) {
+        return ViewResult::DbError;
+    }
+    auto info = AssignmentRepository::Get(id, db);
+    if (!info || info->getIsDeleted()) {
+        return ViewResult::NotFound;
+    }
+    out.id = info->getId();
+    out.name = info->getName();
+    out.subject_name = info->getSubjectName();
+    out.description = info->getDescription();
+    out.file_type = info->getFileType();
+    out.priority = info->getPriority();
+    out.status = info->getStatus();
+    out.max_size = info->getMaxSize();
+    out.deadline = info->getDeadline();
+    out.create_time = info->getCreateTime();
+    out.update_time = info->getUpdateTime();
+    return ViewResult::Ok;
+}
+
+AssignmentService::ViewResult AssignmentService::GetSubmission(int64_t assignment_id, int64_t uid, SubmissionView& out)
+{
+    out = SubmissionView{};
+    auto db = GetDB();
+    if (!db) {
+        return ViewResult::DbError;
+    }
+    auto assignment = AssignmentRepository::Get(assignment_id, db);
+    if (!assignment || assignment->getIsDeleted()) {
+        return ViewResult::NotFound;
+    }
+
+    auto rel = AssignmentUserRelRepository::GetByAssignAndUser(assignment_id, uid, db);
+    if (!rel) {
+        return ViewResult::Ok;
+    }
+    out.has_submission = true;
+    out.user_id = uid;
+    out.submit_time = rel->getSubmitTime();
+    out.status = rel->getStatus();
+
+    auto user = UserRepository::Get(uid, db);
+    if (user) {
+        out.user_name = user->getName();
+        out.user_avatar = user->getAvatar();
+    }
+
+    std::vector<DB::ResourceInfo::ptr> resources;
+    ResourceRepository::ListByBizUid(resources, "assignment_submission", assignment_id, uid, db);
+    for (const auto& resource : resources) {
+        ResourceView item;
+        item.id = resource->getId();
+        item.name = resource->getName();
+        item.path = resource->getPath();
+        item.size = resource->getSize();
+        out.resources.push_back(std::move(item));
+    }
+    return ViewResult::Ok;
+}
+
+void AssignmentService::ListSubmitters(int64_t assignment_id, std::vector<int64_t>& out)
+{
+    out.clear();
+    auto db = GetDB();
+    if (!db) {
+        return;
+    }
+    std::vector<DB::AssignmentUserRelInfo::ptr> submitters;
+    AssignmentUserRelRepository::ListByAssignment(submitters, assignment_id, true, db);
+    for (const auto& info : submitters) {
+        if (info) {
+            out.push_back(info->getUserId());
+        }
+    }
 }

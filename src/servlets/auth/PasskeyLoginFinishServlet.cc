@@ -6,7 +6,7 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
 #include "../../Service/PasskeyService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Util/Util.hpp"
 
@@ -46,7 +46,7 @@ int32_t PasskeyLoginFinishServlet::handle(
             break;
         }
 
-        auto user = UserRepository::Get(passkey->getUserId(), GetDB());
+        auto user = UserService::Get(passkey->getUserId());
         if (!user) {
             result->setErrno(USER_NOT_FOUND);
             break;

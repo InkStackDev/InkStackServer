@@ -1,14 +1,14 @@
 #include "CommentCreateServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
+#include "../../Service/ArticleQueryService.hpp"
+#include "../../Service/CommentQueryService.hpp"
 #include "../../Service/CommentService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Util/Util.hpp>
 #include <json/json.h>
-#include "../../Repository/ArticleRepository.hpp"
-#include "../../Repository/CommentRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 CommentCreateServlet::CommentCreateServlet()
     : BlogLoginedServlet("CommentCreateServlet")
@@ -34,16 +34,13 @@ int32_t CommentCreateServlet::handle(
         int64_t parent_id = 0;
         request->checkGetParamAs("parent_id", parent_id);
 
-        std::string ip = session->getRemoteAddressString();
-        std::string user_agent = request->getHeader("User-Agent");
-
         CommentService::CreateCommentInput input;
         input.article_id = article_id;
         input.user_id = uid;
         input.parent_id = parent_id;
         input.content = content;
-        input.ip = ip;
-        input.user_agent = user_agent;
+        input.ip = session->getRemoteAddressString();
+        input.user_agent = request->getHeader("User-Agent");
 
         DB::CommentInfo::ptr info;
         auto rt = CommentService::CreateComment(input, info);
@@ -60,17 +57,16 @@ int32_t CommentCreateServlet::handle(
             break;
         }
 
-        // build response
         Json::Value item;
         item["id"] = info->getId();
         item["content"] = info->getContent();
         item["user_id"] = info->getUserId();
         item["time"] = chen::TimeUtil::Time2StrSec(info->getCreateTime());
 
-        auto user = UserRepository::Get(uid, GetDB());
-        if (user) {
-            item["user"] = user->getName();
-            item["avatar"] = user->getAvatar();
+        UserQueryService::Brief user;
+        if (UserQueryService::GetUserBrief(uid, user)) {
+            item["user"] = user.name;
+            item["avatar"] = user.avatar;
         } else {
             item["user"] = "";
             item["avatar"] = "";
@@ -84,21 +80,22 @@ int32_t CommentCreateServlet::handle(
         result->setData(item);
         result->setErrno(SUCCESS);
 
-        // Notify article author and parent comment author asynchronously
         {
-            auto article = ArticleRepository::Get(article_id, GetDB());
-            auto commenter_info = UserRepository::Get(uid, GetDB());
+            DB::ArticleInfo::ptr article;
+            ArticleQueryService::GetArticle(article_id, article);
+            UserQueryService::Brief commenter;
+            UserQueryService::GetUserBrief(uid, commenter);
 
             EventCommentCreatedData data = {};
             data.commenter_id = uid;
-            data.commenter_name = commenter_info ? commenter_info->getName() : "someone";
+            data.commenter_name = commenter.name.empty() ? "someone" : commenter.name;
             data.article_id = article_id;
             data.article_title = article ? article->getTitle() : "";
             data.author_id = article ? article->getUserId() : 0;
             data.parent_comment_id = parent_id;
             if (parent_id > 0) {
-                auto parent = CommentRepository::Get(parent_id, GetDB());
-                if (parent) {
+                DB::CommentInfo::ptr parent;
+                if (CommentQueryService::GetParent(parent_id, parent)) {
                     data.parent_comment_author_id = parent->getUserId();
                 }
             }

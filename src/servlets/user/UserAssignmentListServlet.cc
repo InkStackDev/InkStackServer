@@ -1,14 +1,7 @@
 #include "UserAssignmentListServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/AssignmentRepository.hpp"
-#include "../../Repository/AssignmentRelRepository.hpp"
-#include "../../Domain/RdTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserAssignmentListServlet::UserAssignmentListServlet()
     : BlogLoginedServlet("UserAssignmentListServlet")
@@ -22,52 +15,37 @@ int32_t UserAssignmentListServlet::handle(
     Result::ptr result)
 {
     do {
-        // 获取当前用户
-        auto uid = getUserId(request);
-
-        // 当前用户的所有组织关系
-        std::vector<DB::OrganizationUserRelInfo::ptr> user_org_rels;
-        OrganizationUserRelRepository::ListByUser(user_org_rels, uid, -1, true, GetDB());
-
-        if (user_org_rels.empty()) {
-            result->set("total", 0);
-            result->set("list", Json::Value(Json::arrayValue));
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        // 获取所有作业-组织关系
+        std::vector<UserQueryService::AssignmentItem> assignments;
+        if (!UserQueryService::ListAssignments(viewer.user_id, assignments)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+
         Json::Value list;
-        for (auto& org_rel : user_org_rels) {
-            // 该组织下的所有作业关系
-            std::vector<DB::AssignmentOrganizationRelInfo::ptr> assignment_org_rels;
-            AssignmentOrganizationRelRepository::ListByOrgPages(
-                assignment_org_rels, org_rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
-            for (auto& assign_org_rel : assignment_org_rels) {
-                // 把作业信息加入结果集中
-                int64_t assign_id = assign_org_rel->getAssignmentId();
-                auto assign_info = AssignmentRepository::Get(assign_id, GetDB());
-                // 只返回激活状态的作业
-                if (!assign_info || assign_info->getStatus() == AssignmentStatus::DRAFT
-                    || assign_info->getIsDeleted()) {
-                    continue;
-                }
-                Json::Value item;
-                item["id"] = assign_info->getId();
-                item["name"] = assign_info->getName();
-                item["subject_name"] = assign_info->getSubjectName();
-                item["end_time"] = assign_info->getDeadline();
-                item["status"] = assign_info->getStatus(); // 1 - 正常 2 - 关闭
-                item["priority"] = assign_info->getPriority();
-                item["create_time"] = assign_info->getCreateTime();
-                item["description"] = assign_info->getDescription();
-                item["file_type"] = assign_info->getFileType();
-                item["file_size"] = assign_info->getMaxSize();
-                list.append(item);
-            }
+        for (const auto& assign : assignments) {
+            Json::Value item;
+            item["id"] = assign.id;
+            item["name"] = assign.name;
+            item["subject_name"] = assign.subject_name;
+            item["end_time"] = assign.end_time;
+            item["status"] = assign.status;
+            item["priority"] = assign.priority;
+            item["create_time"] = assign.create_time;
+            item["description"] = assign.description;
+            item["file_type"] = assign.file_type;
+            item["file_size"] = assign.file_size;
+            list.append(item);
         }
         result->set("list", list);
-        result->set("total", list.size());
+        result->set("total", (int64_t)list.size());
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

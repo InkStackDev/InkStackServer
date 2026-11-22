@@ -1,13 +1,7 @@
 #include "LabelQueryServlet.hpp"
 
-#include "../../Include/Managers.hpp"
-#include "../../Repository/ArticleRelRepository.hpp"
+#include "../../Service/LabelService.hpp"
 #include "../../Util/Util.hpp"
-
-#include <json/json.h>
-
-#include <map>
-#include "../../Repository/LabelRepository.hpp"
 
 LabelQueryServlet::LabelQueryServlet()
     : BlogLoginedServlet("LabelQueryServlet")
@@ -22,55 +16,39 @@ int32_t LabelQueryServlet::handle(
 {
     do {
         int64_t user_id = request->getParamAs<int64_t>("user_id");
-        std::string ids = request->getParam("ids");
-        if (user_id == 0 && ids.empty()) {
+        std::string ids_str = request->getParam("ids");
+        if (user_id == 0 && ids_str.empty()) {
             result->setErrno(PARAM_MISSING);
             break;
         }
 
-        std::vector<DB::LabelInfo::ptr> infos;
-        if (user_id) {
-            LabelRepository::ListByUserId(infos, user_id, true, GetDB());
-        } else {
-            for (auto& i : chen::StringUtil::Split(ids, ",")) {
-                auto id = chen::TypeUtil::Atoi(i);
-                if (id) {
-                    auto info = LabelRepository::Get(id, GetDB());
-                    if (info) {
-                        infos.push_back(info);
-                    }
-                }
+        std::vector<int64_t> ids;
+        for (auto& id : chen::StringUtil::Split(ids_str, ',')) {
+            if (!id.empty()) {
+                ids.push_back(chen::TypeUtil::Atoi(id));
             }
         }
 
-        std::map<int64_t, int64_t> article_counts;
-        if (!infos.empty()) {
-            std::vector<int64_t> label_ids;
-            label_ids.reserve(infos.size());
-            for (auto& i : infos) {
-                label_ids.push_back(i->getId());
-            }
-
-            std::vector<std::pair<int64_t, int64_t>> rows;
-            ArticleLabelRelRepository::CountPublishedByLabels(label_ids, rows, GetDB());
-            for (auto& [label_id, count] : rows) {
-                article_counts[label_id] = count;
-            }
+        std::vector<LabelService::LabelView> labels;
+        if (!LabelService::List(user_id, ids, labels)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
         Json::Value data(Json::arrayValue);
-        for (auto& i : infos) {
+        for (const auto& label : labels) {
             Json::Value v;
-            v["id"] = i->getId();
-            v["name"] = i->getName();
-            v["color"] = i->getColor();
-            v["desc"] = i->getDescription();
-            v["create_time"] = i->getCreateTime();
-            v["article_count"] = article_counts[i->getId()];
+            v["id"] = label.id;
+            v["name"] = label.name;
+            v["color"] = label.color;
+            v["desc"] = label.description;
+            v["create_time"] = label.create_time;
+            v["article_count"] = label.article_count;
             data.append(v);
         }
         result->setData(data);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

@@ -1,17 +1,11 @@
 #include "UserAchievementsServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/TimeUtil.hpp>
-
-#include <map>
-
-#include "../../Include/Managers.hpp"
-#include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Service/UserStatsService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/BadgeRepository.hpp"
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Domain/ArticleTypes.hpp"
-#include "../../Repository/UserFollowRelRepository.hpp"
+
+#include <Chen/Log/Log.hpp>
+
+#include <json/json.h>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -19,28 +13,6 @@ UserAchievementsServlet::UserAchievementsServlet()
     : BlogLoginedServlet("UserAchievementsServlet")
 {
 }
-
-namespace {
-
-// 日期计数映射为热力等级 0-4
-int32_t CountToLevel(int32_t count)
-{
-    if (count <= 0) {
-        return 0;
-    }
-    if (count == 1) {
-        return 1;
-    }
-    if (count <= 3) {
-        return 2;
-    }
-    if (count <= 6) {
-        return 3;
-    }
-    return 4;
-}
-
-} // anonymous namespace
 
 int32_t UserAchievementsServlet::handle(
     chen::http::HttpRequest::ptr request,
@@ -55,133 +27,45 @@ int32_t UserAchievementsServlet::handle(
             break;
         }
 
-        // ========== 1. 获取用户所有文章 ==========
-        std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleQueryRepository::ListByUserId(articles, uid, true, GetDB());
-
-        int64_t published_articles = 0;
-        int64_t total_likes = 0;
-        std::map<std::string, int32_t> dateContributions; // date -> contribution count
-
-        for (auto& a : articles) {
-            if (!a) {
-                continue;
-            }
-            if (a->getIsDeleted()) {
-                continue;
-            }
-            if (a->getState() == ArticleStatus::PUBLISHED) {
-                published_articles++;
-                total_likes += a->getPraise();
-
-                // 使用 publish_time 计算贡献日期
-                time_t pt = a->getCreateTime();
-                std::string dateKey = chen::TimeUtil::Time2StrSec(pt, "%Y-%m-%d");
-                dateContributions[dateKey]++;
-            }
+        UserStatsService::Achievements data;
+        if (!UserStatsService::GetAchievements(uid, data)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        // ========== 2. 查询评论贡献 ==========
-        {
-            auto db = GetDB();
-            if (db) {
-                time_t now = time(0);
-                time_t cutoff = now - 371 * 86400;
-
-                std::vector<int64_t> timestamps;
-                CommentQueryRepository::ListCreateTimesByUser(uid, cutoff, timestamps, db);
-                for (auto ts : timestamps) {
-                    std::string dateKey = chen::TimeUtil::Time2StrSec(ts, "%Y-%m-%d");
-                    dateContributions[dateKey]++;
-                }
-            }
-        }
-
-        // ========== 3. 计算热度图 (53 周 × 7 天) ==========
-        time_t now = time(0);
-        time_t today = chen::TimeUtil::GetDayStart(now);
-
-        // 起始日期：53 周前的周日
-        int32_t todayDow = chen::TimeUtil::GetDayOfWeek(today);
-        time_t startDate = today - (371 + todayDow) * 86400;
-
-        int64_t total_contributions = 0;
         Json::Value heatmap(Json::arrayValue);
-
-        for (int32_t w = 0; w < 53; w++) {
-            Json::Value week(Json::arrayValue);
-            for (int32_t d = 0; d < 7; d++) {
-                int32_t offset = w * 7 + d;
-                time_t day = startDate + offset * 86400;
-                std::string key = chen::TimeUtil::Time2StrSec(day, "%Y-%m-%d");
-                int32_t count = dateContributions[key];
-                int32_t level = CountToLevel(count);
-                total_contributions += level;
-                week.append(level);
+        for (const auto& week : data.heatmap) {
+            Json::Value week_json(Json::arrayValue);
+            for (auto level : week) {
+                week_json.append(level);
             }
-            heatmap.append(week);
+            heatmap.append(week_json);
         }
 
-        // ========== 4. 计算关注者数 ==========
-        int64_t total_followers = UserFollowRelRepository::CountFollowers(uid, GetDB());
-
-        // ========== 5. 徽章解锁判断 ==========
-        std::vector<DB::BadgeInfo::ptr> badges;
-        BadgeRepository::ListValid(badges, GetDB());
-
-        int64_t unlocked_count = 0;
-        Json::Value badgesJson(Json::arrayValue);
-
-        for (auto& b : badges) {
-            if (!b) {
-                continue;
-            }
-
+        Json::Value badges_json(Json::arrayValue);
+        for (const auto& badge : data.badges) {
             Json::Value item;
-            item["id"] = std::to_string(b->getId());
-            item["name"] = b->getName();
-            item["desc"] = b->getDescription();
-            item["icon"] = b->getIcon();
-            item["color"] = b->getColor();
-
-            std::string ck = b->getConditionKey();
-            int64_t cv = b->getConditionValue();
-            int64_t current = 0;
-
-            if (ck == "published_articles") {
-                current = published_articles;
-            } else if (ck == "total_likes") {
-                current = total_likes;
-            } else if (ck == "total_followers") {
-                current = total_followers;
+            item["id"] = std::to_string(badge.id);
+            item["name"] = badge.name;
+            item["desc"] = badge.description;
+            item["icon"] = badge.icon;
+            item["color"] = badge.color;
+            item["unlocked"] = badge.unlocked;
+            if (!badge.unlocked) {
+                item["progress"] = std::to_string(badge.current) + " / " + std::to_string(badge.target);
             }
-
-            bool unlocked = (current >= cv);
-            item["unlocked"] = unlocked;
-
-            if (!unlocked) {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "%ld / %ld", current, cv);
-                item["progress"] = std::string(buf);
-            }
-
-            if (unlocked) {
-                unlocked_count++;
-            }
-
-            badgesJson.append(item);
+            badges_json.append(item);
         }
 
-        // ========== 6. 组装响应 ==========
         Json::Value stats;
-        stats["total_contributions"] = total_contributions;
-        stats["published_articles"] = published_articles;
-        stats["total_likes"] = total_likes;
-        stats["unlocked_badges"] = unlocked_count;
-        stats["total_badges"] = static_cast<int64_t>(badges.size());
+        stats["total_contributions"] = data.total_contributions;
+        stats["published_articles"] = data.published_articles;
+        stats["total_likes"] = data.total_likes;
+        stats["unlocked_badges"] = data.unlocked_badges;
+        stats["total_badges"] = data.total_badges;
 
         result->set("stats", stats);
-        result->set("badges", badgesJson);
+        result->set("badges", badges_json);
         result->set("heatmap", heatmap);
         result->setErrno(SUCCESS);
     } while (0);

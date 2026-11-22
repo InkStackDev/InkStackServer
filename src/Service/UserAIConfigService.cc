@@ -8,6 +8,15 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+DB::UserAiConfigInfo::ptr UserAIConfigService::Get(int64_t user_id)
+{
+    auto db = GetDB();
+    if (!db) {
+        return nullptr;
+    }
+    return UserAIConfigRepository::GetByUserId(user_id, db);
+}
+
 bool UserAIConfigService::Save(DB::UserAiConfigInfo::ptr info)
 {
     if (!info) {

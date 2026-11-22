@@ -1,6 +1,6 @@
 #include "BroadcastListServlet.hpp"
 
-#include "../../Repository/NotificationQueryRepository.hpp"
+#include "../../Service/NotificationService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -24,10 +24,13 @@ int32_t BroadcastListServlet::handle(
         }
 
         std::vector<DB::NotificationInfo::ptr> notifs;
-        NotificationQueryRepository::ListBroadcasts(notifs, offset, size, GetDB());
+        if (!NotificationService::ListBroadcasts(notifs, offset, size)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         Json::Value list(Json::arrayValue);
-        for (auto& info : notifs) {
+        for (const auto& info : notifs) {
             if (!info) {
                 continue;
             }
@@ -45,6 +48,7 @@ int32_t BroadcastListServlet::handle(
         result->set("list", list);
         result->setErrno(SUCCESS);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

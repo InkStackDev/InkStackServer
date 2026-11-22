@@ -1,12 +1,9 @@
 #include "UserMutualFollowingListServlet.hpp"
 
-#include <Chen/Util/StringUtil.hpp>
-
-#include <algorithm>
-
-#include "../../Repository/UserFollowRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
+
+#include <Chen/Util/StringUtil.hpp>
 
 UserMutualFollowingListServlet::UserMutualFollowingListServlet()
     : BlogLoginedServlet("UserMutualFollowingListServlet")
@@ -29,50 +26,21 @@ int32_t UserMutualFollowingListServlet::handle(
         std::string keyword = chen::StringUtil::Trim(request->getParam("keyword"));
         int32_t offset = request->getParamAs<int32_t>("offset", 0);
         int32_t size = request->getParamAs<int32_t>("size", 20);
-        std::string kw_lower = chen::StringUtil::ToLower(keyword);
 
-        std::vector<int64_t> mutual_ids;
-        UserFollowRelRepository::ListMutualFollowing(mutual_ids, uid, GetDB());
-
-        std::vector<int64_t> filtered_ids;
-        filtered_ids.reserve(mutual_ids.size());
-        for (auto user_id : mutual_ids) {
-            auto user = UserRepository::Get(user_id, GetDB());
-            if (!user || user->getIsDeleted()) {
-                continue;
-            }
-            if (!kw_lower.empty()) {
-                std::string name_lower = chen::StringUtil::ToLower(user->getName());
-                std::string account_lower = chen::StringUtil::ToLower(user->getAccount());
-                if (name_lower.find(kw_lower) == std::string::npos && account_lower.find(kw_lower) == std::string::npos) {
-                    continue;
-                }
-            }
-            filtered_ids.push_back(user_id);
-        }
-
-        int64_t total = (int64_t)filtered_ids.size();
-        int32_t start = offset;
-        int32_t end = std::min(start + size, (int32_t)filtered_ids.size());
-        if (start < 0) {
-            start = 0;
-        }
-        if (start >= (int32_t)filtered_ids.size()) {
-            start = (int32_t)filtered_ids.size();
-            end = start;
+        std::vector<UserQueryService::Brief> users;
+        int64_t total = 0;
+        if (!UserQueryService::ListMutual(uid, keyword, offset, size, users, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
         Json::Value arr(Json::arrayValue);
-        for (int32_t i = start; i < end; ++i) {
-            auto user = UserRepository::Get(filtered_ids[i], GetDB());
-            if (!user) {
-                continue;
-            }
+        for (const auto& user : users) {
             Json::Value item;
-            item["id"] = user->getId();
-            item["name"] = user->getName();
-            item["account"] = user->getAccount();
-            item["avatar"] = user->getAvatar();
+            item["id"] = user.id;
+            item["name"] = user.name;
+            item["account"] = user.account;
+            item["avatar"] = user.avatar;
             arr.append(item);
         }
 

@@ -1,8 +1,10 @@
 #include "DashboardRecentUsersServlet.hpp"
 
-#include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Service/DashboardService.hpp"
 #include "../../Util/Util.hpp"
+
+#include <json/json.h>
 
 DashboardRecentUsersServlet::DashboardRecentUsersServlet()
     : BlogLoginedServlet("DashboardRecentUsersServlet")
@@ -46,59 +48,37 @@ int32_t DashboardRecentUsersServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t role = current_user->getRole();
-        if (role != UserRole::ADMIN) {
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
 
         int32_t limit = request->getParamAs<int32_t>("limit", 5);
-        if (limit <= 0) {
-            limit = 5;
-        }
-
-        std::vector<int64_t> ids;
-        UserRepository::GetAllIds(ids, true, GetDB());
-
-        std::vector<DB::UserInfo::ptr> users;
-        for (auto id : ids) {
-            auto u = UserRepository::Get(id, GetDB());
-            if (u) {
-                users.push_back(u);
-            }
-        }
-
-        std::sort(users.begin(), users.end(), [](auto& a, auto& b) {
-            return a->getCreateTime() > b->getCreateTime();
-        });
-
-        if ((int32_t)users.size() > limit) {
-            users.resize(limit);
+        std::vector<DashboardService::RecentUser> users;
+        if (!DashboardService::GetRecentUsers(limit, users)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
         Json::Value list(Json::arrayValue);
-        for (auto& u : users) {
+        for (const auto& user : users) {
             Json::Value item;
-            item["name"] = u->getName();
-            item["role"] = RoleToString(u->getRole());
-            item["avatar"] = u->getAvatar();
-            item["status"] = StatusToString(u->getState());
+            item["name"] = user.name;
+            item["role"] = RoleToString(user.role);
+            item["avatar"] = user.avatar;
+            item["status"] = StatusToString(user.state);
             list.append(item);
         }
 
         result->set("list", list);
         result->setErrno(SUCCESS);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

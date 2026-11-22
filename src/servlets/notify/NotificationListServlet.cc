@@ -1,7 +1,9 @@
 #include "NotificationListServlet.hpp"
 
-#include "../../Repository/NotificationQueryRepository.hpp"
+#include "../../Service/NotificationService.hpp"
 #include "../../Util/Util.hpp"
+
+#include <json/json.h>
 
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")
@@ -26,29 +28,32 @@ int32_t NotificationListServlet::handle(
         std::string type = request->getParam("type");
 
         std::vector<DB::NotificationInfo::ptr> notifications;
-        NotificationQueryRepository::ListByUser(notifications, uid, offset, size, type, GetDB());
+        if (!NotificationService::ListByUser(notifications, uid, offset, size, type)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         Json::Value arr(Json::arrayValue);
-        for (auto& n : notifications) {
+        for (const auto& n : notifications) {
             Json::Value item;
             item["id"] = n->getId();
             item["title"] = n->getTitle();
             item["content"] = n->getContent();
             item["type"] = n->getType();
 
-            const std::string& type = n->getType();
+            const std::string& item_type = n->getType();
             int64_t target_id = n->getArticleId();
-            if (type == "bug_assigned") {
+            if (item_type == "bug_assigned") {
                 item["bug_id"] = target_id;
-            } else if (type == "task_assigned") {
+            } else if (item_type == "task_assigned") {
                 item["task_id"] = target_id;
-            } else if (type == "requirement_assigned") {
+            } else if (item_type == "requirement_assigned") {
                 item["requirement_id"] = target_id;
-            } else if (type == "assignment_submitted" || type == "assignment_created") {
+            } else if (item_type == "assignment_submitted" || item_type == "assignment_created") {
                 item["assignment_id"] = target_id;
-            } else if (type == "org_apply_approved") {
+            } else if (item_type == "org_apply_approved") {
                 item["org_id"] = target_id;
-            } else if (type == "org_apply_request") {
+            } else if (item_type == "org_apply_request") {
                 item["apply_id"] = target_id;
             } else {
                 item["article_id"] = target_id;
@@ -60,11 +65,9 @@ int32_t NotificationListServlet::handle(
             arr.append(item);
         }
 
-        int64_t total = NotificationQueryRepository::CountByUser(uid, type, GetDB());
-
         result->setErrno(SUCCESS);
         result->set("list", arr);
-        result->set("total", total);
+        result->set("total", NotificationService::CountByUser(uid, type));
         result->set("offset", offset);
         result->set("size", (int32_t)notifications.size());
     } while (0);

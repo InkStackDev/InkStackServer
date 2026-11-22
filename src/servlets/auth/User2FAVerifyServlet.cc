@@ -8,7 +8,7 @@
 #include "../../Util/TotpUtil.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -48,7 +48,7 @@ int32_t User2FAVerifyServlet::handle(chen::http::HttpRequest::ptr request,
         // 删除临时凭证（一次性）
         chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", key.c_str());
 
-        auto info = UserRepository::Get(uid, GetDB());
+        auto info = UserService::Get(uid);
         if (!info) {
             result->setErrno(USER_NOT_FOUND);
             break;

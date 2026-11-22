@@ -2,8 +2,6 @@
 
 #include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 AssignmentCreateServlet::AssignmentCreateServlet()
     : BlogLoginedServlet("AssignmentCreateServlet")
@@ -27,17 +25,12 @@ int32_t AssignmentCreateServlet::handle(
         DEFINE_AND_CHECK_STRING(result, file_type, "file_type");
         int64_t aid = request->getParamAs<int64_t>("id", 0);
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }

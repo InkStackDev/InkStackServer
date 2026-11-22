@@ -1,17 +1,7 @@
 #include "UserStatsServlet.hpp"
 
-#include "../../Include/Managers.hpp"
-#include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Service/UserStatsService.hpp"
 #include "../../Util/Util.hpp"
-
-#include <Chen/DB/QueryBuilder.hpp>
-
-#include <set>
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/ArticleRelRepository.hpp"
-#include "../../Domain/ArticleTypes.hpp"
 
 UserStatsServlet::UserStatsServlet()
     : BlogLoginedServlet("UserStatsServlet")
@@ -34,56 +24,21 @@ int32_t UserStatsServlet::handle(
             break;
         }
 
-        std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleQueryRepository::ListByUserId(articles, uid, true, GetDB());
-
-        int64_t total_articles = 0;
-        int64_t published_articles = 0;
-        int64_t private_articles = 0;
-        int64_t total_views = 0;
-        int64_t total_likes = 0;
-        std::set<int64_t> unique_labels;
-        std::vector<int64_t> published_ids;
-
-        for (auto& a : articles) {
-            if (a->getIsDeleted())
-                continue;
-            total_articles++;
-
-            int32_t state = a->getState();
-            if (state == ArticleStatus::PUBLISHED) {
-                published_articles++;
-                published_ids.push_back(a->getId());
-            } else if (state == ArticleStatus::PRIVATE) {
-                private_articles++;
-            }
-
-            total_views += a->getViews();
-            total_likes += a->getPraise();
-
-            std::vector<DB::ArticleLabelRelInfo::ptr> labels;
-            ArticleLabelRelRepository::ListByArticle(labels, a->getId(), true, GetDB());
-            for (auto& l : labels) {
-                unique_labels.insert(l->getLabelId());
-            }
+        UserStatsService::Stats stats;
+        if (!UserStatsService::GetStats(uid, stats)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
 
-        // total_organizations
-        std::vector<DB::OrganizationUserRelInfo::ptr> orgs;
-        OrganizationUserRelRepository::ListByUser(orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
-        int64_t total_organizations = orgs.size();
-
         result->setErrno(SUCCESS);
-        result->set("total_articles", total_articles);
-        result->set("published_articles", published_articles);
-        result->set("private_articles", private_articles);
-        result->set("total_views", total_views);
-        result->set("total_likes", total_likes);
-        // total_comments
-        int64_t total_comments = CommentQueryRepository::CountByArticles(published_ids, GetDB());
-        result->set("total_comments", total_comments);
-        result->set("total_tags", (int64_t)unique_labels.size());
-        result->set("total_organizations", total_organizations);
+        result->set("total_articles", stats.total_articles);
+        result->set("published_articles", stats.published_articles);
+        result->set("private_articles", stats.private_articles);
+        result->set("total_views", stats.total_views);
+        result->set("total_likes", stats.total_likes);
+        result->set("total_comments", stats.total_comments);
+        result->set("total_tags", stats.total_tags);
+        result->set("total_organizations", stats.total_organizations);
     } while (0);
 
     response->setBody(result->toJsonString());

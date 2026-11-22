@@ -3,8 +3,6 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Util/Util.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -23,18 +21,12 @@ int32_t ResourceListServlet::handle(
         DEFINE_AND_CHECK_STRING(result, type, "type");
         DEFINE_AND_CHECK_STRING(result, folder, "folder");
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        int32_t system_role = current_user->getRole();
-        if (!checkPermession(system_role)) {
+        if (!viewer.is_platform_admin) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -43,12 +35,4 @@ int32_t ResourceListServlet::handle(
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
-}
-
-bool ResourceListServlet::checkPermession(int32_t system_role)
-{
-    if (system_role != UserRole::ADMIN) {
-        return false;
-    }
-    return true;
 }

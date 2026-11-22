@@ -1,15 +1,7 @@
 #include "ArticleQueryServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Repository/ArticleQueryRepository.hpp"
-#include "../../Repository/CategoryRepository.hpp"
-#include "../../Repository/ArticleRelRepository.hpp"
-#include "../../Repository/CommentQueryRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/ArticleQueryService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleQueryServlet::ArticleQueryServlet()
     : BlogServlet("ArticleQueryServlet")
@@ -28,45 +20,42 @@ int32_t ArticleQueryServlet::handle(
         int64_t page_size = request->getParamAs<int64_t>("page_size", 6);
         int64_t state = request->getParamAs<int64_t>("state", 0);
 
-        int offset = (page_from - 1) * page_size;
-        std::vector<DB::ArticleInfo::ptr> infos;
-        auto total = ArticleQueryRepository::ListByUserIdPages(infos, user_id, offset, page_size, true, state, GetDB());
+        int64_t offset = (page_from - 1) * page_size;
+        std::vector<ArticleQueryService::ListItem> articles;
+        int64_t total = 0;
+        if (!ArticleQueryService::ListByUser(user_id, offset, page_size, (int32_t)state, articles, total)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+
         result->set("total", total);
         Json::Value list;
-        for (auto& i : infos) {
+        for (const auto& article : articles) {
             Json::Value item;
-            auto uinfo = UserRepository::Get(i->getUserId(), GetDB());
-            item["id"] = i->getId();
-            item["author"] = uinfo->getName();
-            item["title"] = i->getTitle();
-            item["summary"] = i->getContent().substr(0, 100);
-            item["type"] = i->getType();
-            item["state"] = i->getState();
-            item["views"] = i->getViews();
-            item["praise"] = i->getPraise();
-            item["favorites"] = i->getFavorites();
-            item["publish_time"] = i->getPublishTime();
-            item["comment_count"] = CommentQueryRepository::CountByArticle(i->getId(), GetDB());
-            // 查询文章分类
-            {
-                std::vector<DB::ArticleCategoryRelInfo::ptr> rels;
-                ArticleCategoryRelRepository::ListByArticle(rels, i->getId(), true, GetDB());
-                Json::Value categories(Json::arrayValue);
-                for (auto& rel : rels) {
-                    auto cat = CategoryRepository::Get(rel->getCategoryId(), GetDB());
-                    if (cat && !cat->getIsDeleted()) {
-                        Json::Value c;
-                        c["id"] = cat->getId();
-                        c["name"] = cat->getName();
-                        categories.append(c);
-                    }
-                }
-                item["categories"] = categories;
+            item["id"] = article.id;
+            item["author"] = article.author;
+            item["title"] = article.title;
+            item["summary"] = article.summary;
+            item["type"] = article.type;
+            item["state"] = article.state;
+            item["views"] = article.views;
+            item["praise"] = article.praise;
+            item["favorites"] = article.favorites;
+            item["publish_time"] = article.publish_time;
+            item["comment_count"] = article.comment_count;
+            Json::Value categories(Json::arrayValue);
+            for (const auto& category : article.categories) {
+                Json::Value c;
+                c["id"] = category.id;
+                c["name"] = category.name;
+                categories.append(c);
             }
+            item["categories"] = categories;
             list.append(item);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

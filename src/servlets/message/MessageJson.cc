@@ -1,8 +1,8 @@
 #include "MessageJson.hpp"
 
-#include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Message/MessageRouter.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 void BuildMessageJson(Json::Value& json, DB::ConversationMessageInfo::ptr msg, int64_t uid)
@@ -22,8 +22,9 @@ void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, in
     json["peer_id"] = peer_id;
     json["online"] = MessageRouter::Get()->IsUserOnline(peer_id);
 
-    auto user = UserRepository::Get(peer_id, GetDB());
-    json["name"] = user ? user->getName() : "";
+    UserQueryService::Brief peer;
+    UserQueryService::GetUserBrief(peer_id, peer);
+    json["name"] = peer.name;
 
     json["last_time"] = conv->getLastMessageTime();
     json["unread"] = unread;
@@ -40,14 +41,13 @@ void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, in
     json["messages"] = arr;
 }
 
-int32_t CheckChatPermission(Result::ptr result, int64_t uid)
+int32_t CheckChatPermission(Result::ptr result, const Viewer& viewer)
 {
-    auto user = UserRepository::Get(uid, GetDB());
-    if (!user) {
+    if (!viewer.valid()) {
         result->setErrno(USER_NOT_FOUND);
         return USER_NOT_FOUND;
     }
-    if (user->getRole() == UserRole::USER) {
+    if (viewer.system_role == UserRole::USER) {
         result->setErrno(ACCESS_DENIED, "私信仅对内部成员开放");
         return ACCESS_DENIED;
     }

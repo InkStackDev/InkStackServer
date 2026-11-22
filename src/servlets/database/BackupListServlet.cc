@@ -1,12 +1,12 @@
 #include "BackupListServlet.hpp"
 
-#include "../../Repository/RecordRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/RecordService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Util/Util.hpp"
 
 BackupListServlet::BackupListServlet()
-    : BlogLoginedServlet("BackupListServlet")
+    : BlogAdminServlet("BackupListServlet")
 {
 }
 
@@ -17,20 +17,6 @@ int32_t BackupListServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
-        if (!uid) {
-            result->setErrno(NOT_LOGIN);
-            break;
-        }
-        auto current_user = UserRepository::Get(uid, GetDB());
-        if (!current_user) {
-            result->setErrno(USER_NOT_FOUND);
-            break;
-        }
-        if (current_user->getRole() != UserRole::ADMIN) {
-            result->setErrno(ACCESS_DENIED);
-            break;
-        }
 
         std::string search = request->getParam("search");
         std::string type = request->getParam("type");
@@ -49,7 +35,7 @@ int32_t BackupListServlet::handle(
 
         std::vector<DB::BackupRecordInfo::ptr> list;
         int64_t total = 0;
-        if (!BackupRecordRepository::ListByPages(list, total, search, type, status, offset, pageSize, GetDB())) {
+        if (!BackupRecordService::List(list, total, search, type, status, offset, pageSize)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
@@ -65,9 +51,9 @@ int32_t BackupListServlet::handle(
             item["status"] = info->getStatus();
             item["created_at"] = info->getCreateTime();
             item["completed_at"] = info->getCompletedAt();
-            auto created_by_user = UserRepository::Get(info->getCreatedBy(), GetDB());
-            if (created_by_user) {
-                item["created_by"] = created_by_user->getName();
+            UserQueryService::Brief creator;
+            if (UserQueryService::GetUserBrief(info->getCreatedBy(), creator)) {
+                item["created_by"] = creator.name;
             }
             item["description"] = info->getDescription();
             if (!info->getFilePath().empty()) {

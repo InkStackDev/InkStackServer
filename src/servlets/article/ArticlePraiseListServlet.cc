@@ -1,10 +1,6 @@
 #include "ArticlePraiseListServlet.hpp"
 
-
-#include <json/json.h>
-#include "../../Repository/ArticleRepository.hpp"
-#include "../../Repository/ArticlePraiseRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/ArticleQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 ArticlePraiseListServlet::ArticlePraiseListServlet()
@@ -27,56 +23,57 @@ int32_t ArticlePraiseListServlet::handle(
 
         int64_t article_id = 0;
         request->checkGetParamAs("article_id", article_id);
-
         int64_t user_id = 0;
         request->checkGetParamAs("user_id", user_id);
-
         uint64_t offset = 0;
         request->checkGetParamAs("offset", offset);
-
         uint64_t size = 20;
         request->checkGetParamAs("size", size);
 
-        std::vector<DB::ArticlePraiseRelInfo::ptr> results;
-
         if (article_id > 0) {
-            // list users who praised this article
-            ArticlePraiseRelRepository::ListByArticle(results, article_id, offset, size, GetDB());
+            std::vector<ArticleQueryService::PraiseUser> users;
+            int64_t total = 0;
+            if (!ArticleQueryService::ListPraiseUsers(article_id, offset, size, users, total)) {
+                result->setErrno(DB_OPERATION_FAILED);
+                break;
+            }
             Json::Value arr(Json::arrayValue);
-            for (auto& rel : results) {
+            for (const auto& user : users) {
                 Json::Value item;
-                item["id"] = rel->getId();
-                item["user_id"] = rel->getUserId();
-                item["article_id"] = rel->getArticleId();
-                item["create_time"] = rel->getCreateTime();
-                auto user = UserRepository::Get(rel->getUserId(), GetDB());
-                if (user && !user->getIsDeleted()) {
-                    item["user_name"] = user->getName();
-                    item["user_avatar"] = user->getAvatar();
+                item["id"] = user.id;
+                item["user_id"] = user.user_id;
+                item["article_id"] = user.article_id;
+                item["create_time"] = user.create_time;
+                if (!user.user_name.empty()) {
+                    item["user_name"] = user.user_name;
+                    item["user_avatar"] = user.user_avatar;
                 }
                 arr.append(item);
             }
             result->set("list", arr);
-            result->set("total", ArticlePraiseRelRepository::CountByArticle(article_id, GetDB()));
+            result->set("total", total);
         } else {
-            // list articles praised by this user
             int64_t query_user_id = user_id > 0 ? user_id : uid;
-            ArticlePraiseRelRepository::ListByUser(results, query_user_id, offset, size, GetDB());
+            std::vector<ArticleQueryService::PraiseArticle> articles;
+            int64_t total = 0;
+            if (!ArticleQueryService::ListPraisedArticles(query_user_id, offset, size, articles, total)) {
+                result->setErrno(DB_OPERATION_FAILED);
+                break;
+            }
             Json::Value arr(Json::arrayValue);
-            for (auto& rel : results) {
+            for (const auto& article : articles) {
                 Json::Value item;
-                item["id"] = rel->getId();
-                item["user_id"] = rel->getUserId();
-                item["article_id"] = rel->getArticleId();
-                item["create_time"] = rel->getCreateTime();
-                auto article = ArticleRepository::Get(rel->getArticleId(), GetDB());
-                if (article && !article->getIsDeleted()) {
-                    item["title"] = article->getTitle();
+                item["id"] = article.id;
+                item["user_id"] = article.user_id;
+                item["article_id"] = article.article_id;
+                item["create_time"] = article.create_time;
+                if (!article.title.empty()) {
+                    item["title"] = article.title;
                 }
                 arr.append(item);
             }
             result->set("list", arr);
-            result->set("total", ArticlePraiseRelRepository::CountByUser(query_user_id, GetDB()));
+            result->set("total", total);
         }
 
         result->setErrno(SUCCESS);
