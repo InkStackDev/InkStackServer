@@ -1,205 +1,28 @@
 #include "MessageManager.hpp"
 
 #include "../Message/MessageRouter.hpp"
+#include "../Repository/ConversationRepository.hpp"
 #include "../Util/Util.hpp"
-#include "CacheUtil.hpp"
 #include "WSConnectionManager.hpp"
-
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
-
-#include <algorithm>
-
-static chen::Logger::ptr logger = LOG_ROOT();
-
-static const int kCacheTTL = 300;
-static const char* kCachePrefix = "cache:obj:conv:";
-
-static std::string ConversationCacheKey(int64_t id)
-{
-    return std::string(kCachePrefix) + std::to_string(id);
-}
-
-static DB::ConversationInfo::ptr ParseConversationCache(const Json::Value& v)
-{
-    auto info = std::make_shared<DB::ConversationInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setUserAId(CacheJsonInt64(v, "user_a_id"));
-    info->setUserBId(CacheJsonInt64(v, "user_b_id"));
-    info->setLastMessageId(CacheJsonInt64(v, "last_message_id"));
-    info->setLastSenderId(CacheJsonInt64(v, "last_sender_id"));
-    info->setLastMessage(CacheJsonString(v, "last_message"));
-    info->setLastMessageTime(CacheJsonInt64(v, "last_message_time"));
-    info->setUnreadA(CacheJsonInt32(v, "unread_a"));
-    info->setUnreadB(CacheJsonInt32(v, "unread_b"));
-    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->setUserADeleted(CacheJsonInt32(v, "user_a_deleted"));
-    info->setUserBDeleted(CacheJsonInt32(v, "user_b_deleted"));
-    info->markClean();
-    return info;
-}
-
-static DB::ConversationInfo::ptr GetConversationCache(int64_t id)
-{
-    std::string key = ConversationCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseConversationCache(v);
-}
-
-static void SetConversationCache(const DB::ConversationInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(ConversationCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
 
 DB::ConversationInfo::ptr MessageManager::get(int64_t id)
 {
-    auto v = GetConversationCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = DB::ConversationInfoDao::Query(id, db);
-    if (v) {
-        SetConversationCache(v);
-    }
-    return v;
+    return ConversationRepository::Get(id, GetDB());
 }
 
 DB::ConversationInfo::ptr MessageManager::getByUsers(int64_t uid_a, int64_t uid_b)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    auto qb = DB::ConversationInfoDao::newQuery();
-    qb->where("user_a_id", "=", NormalizeUserA(uid_a, uid_b));
-    qb->where("user_b_id", "=", NormalizeUserB(uid_a, uid_b));
-    qb->where("is_deleted", "=", (int64_t)0);
-    std::vector<DB::ConversationInfo::ptr> results;
-    if (DB::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-        return nullptr;
-    }
-    if (results.empty()) {
-        return nullptr;
-    }
-    SetConversationCache(results[0]);
-    return results[0];
+    return ConversationRepository::GetByUsers(uid_a, uid_b, GetDB());
 }
 
 DB::ConversationInfo::ptr MessageManager::getOrCreate(int64_t uid_a, int64_t uid_b)
 {
-    std::lock_guard<std::mutex> lock(conv_mutex_);
-    auto conv = getByUsers(uid_a, uid_b);
-    if (conv) {
-        // 本端曾隐藏过该会话，重新发起时复活
-        auto db = GetDB();
-        if (!db) {
-            ERROR(logger) << "Get DB connection fail";
-            return nullptr;
-        }
-        bool need_update = false;
-        if (conv->getUserAId() == uid_a && conv->getUserADeleted()) {
-            conv->setUserADeleted(0);
-            need_update = true;
-        } else if (conv->getUserBId() == uid_a && conv->getUserBDeleted()) {
-            conv->setUserBDeleted(0);
-            need_update = true;
-        }
-        if (need_update) {
-            conv->setUpdateTime(time(0));
-            if (DB::ConversationInfoDao::Update(conv, db) == 0) {
-                SetConversationCache(conv);
-            }
-        }
-        return conv;
-    }
-
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-
-    auto info = std::make_shared<DB::ConversationInfo>();
-    info->setUserAId(NormalizeUserA(uid_a, uid_b));
-    info->setUserBId(NormalizeUserB(uid_a, uid_b));
-    info->setLastMessageId(0);
-    info->setLastSenderId(0);
-    info->setLastMessage("");
-    info->setLastMessageTime(0);
-    info->setUnreadA(0);
-    info->setUnreadB(0);
-    info->setUserADeleted(0);
-    info->setUserBDeleted(0);
-    info->setIsDeleted(0);
-    info->setCreateTime(time(0));
-    info->setUpdateTime(time(0));
-
-    if (DB::ConversationInfoDao::Insert(info, db)) {
-        // 并发下唯一索引冲突时回查
-        conv = getByUsers(uid_a, uid_b);
-        if (conv) {
-            return conv;
-        }
-        ERROR(logger) << "MessageManager getOrCreate Insert fail";
-        return nullptr;
-    }
-
-    SetConversationCache(info);
-    return info;
+    return ConversationService::GetOrCreate(uid_a, uid_b);
 }
 
 void MessageManager::listConversations(std::vector<DB::ConversationInfo::ptr>& results, int64_t uid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return;
-    }
-
-    // 分两次查询（user_a_id / user_b_id），避免 OR 优先级问题；并按本端隐藏标志过滤
-    auto qb = DB::ConversationInfoDao::newQuery();
-    qb->where("user_a_id", "=", uid);
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->where("user_a_deleted", "=", (int64_t)0);
-    if (DB::ConversationInfoDao::QueryByBuilder(results, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-        return;
-    }
-
-    auto qb2 = DB::ConversationInfoDao::newQuery();
-    qb2->where("user_b_id", "=", uid);
-    qb2->where("is_deleted", "=", (int64_t)0);
-    qb2->where("user_b_deleted", "=", (int64_t)0);
-    std::vector<DB::ConversationInfo::ptr> part;
-    if (DB::ConversationInfoDao::QueryByBuilder(part, qb2, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-        return;
-    }
-    results.insert(results.end(), part.begin(), part.end());
-
-    std::sort(results.begin(), results.end(), [](const auto& a, const auto& b) {
-        return a->getLastMessageTime() > b->getLastMessageTime();
-    });
+    ConversationService::ListConversations(results, uid);
 }
 
 void MessageManager::listMessages(std::vector<DB::ConversationMessageInfo::ptr>& results,
@@ -207,162 +30,24 @@ void MessageManager::listMessages(std::vector<DB::ConversationMessageInfo::ptr>&
     int32_t offset,
     int32_t limit)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return;
-    }
-
-    auto qb = DB::ConversationMessageInfoDao::newQuery();
-    qb->where("conversation_id", "=", conversation_id);
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->orderBy("id", "DESC");
-    qb->limit(limit);
-    qb->offset(offset);
-
-    std::vector<DB::ConversationMessageInfo::ptr> tmp;
-    if (DB::ConversationMessageInfoDao::QueryByBuilder(tmp, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-        return;
-    }
-    std::reverse(tmp.begin(), tmp.end());
-    results.swap(tmp);
+    ConversationService::ListMessages(results, conversation_id, offset, limit);
 }
 
 DB::ConversationMessageInfo::ptr MessageManager::sendMessage(int64_t conversation_id,
     int64_t sender_id,
     const std::string& text)
 {
-    std::lock_guard<std::mutex> lock(conv_mutex_);
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-
-    auto msg = std::make_shared<DB::ConversationMessageInfo>();
-    msg->setConversationId(conversation_id);
-    msg->setSenderId(sender_id);
-    msg->setContent(text);
-    msg->setIsRead(0);
-    msg->setReadTime(0);
-    msg->setIsDeleted(0);
-    msg->setCreateTime(time(0));
-    msg->setUpdateTime(time(0));
-
-    if (DB::ConversationMessageInfoDao::Insert(msg, db)) {
-        ERROR(logger) << "MessageManager sendMessage Insert fail";
-        return nullptr;
-    }
-
-    // 更新会话冗余信息与接收方未读数
-    auto conv = get(conversation_id);
-    if (conv) {
-        conv->setLastMessageId(msg->getId());
-        conv->setLastSenderId(sender_id);
-        conv->setLastMessage(text);
-        conv->setLastMessageTime(msg->getCreateTime());
-        conv->setUpdateTime(msg->getCreateTime());
-        if (sender_id == conv->getUserAId()) {
-            conv->setUnreadB(conv->getUnreadB() + 1);
-            // 对端曾隐藏过该会话，收到新消息时复活
-            if (conv->getUserBDeleted()) {
-                conv->setUserBDeleted(0);
-            }
-        } else {
-            conv->setUnreadA(conv->getUnreadA() + 1);
-            if (conv->getUserADeleted()) {
-                conv->setUserADeleted(0);
-            }
-        }
-        if (DB::ConversationInfoDao::Update(conv, db) == 0) {
-            SetConversationCache(conv);
-        }
-    }
-
-    return msg;
+    return ConversationService::SendMessage(conversation_id, sender_id, text);
 }
 
 bool MessageManager::markRead(int64_t conversation_id, int64_t uid)
 {
-    std::lock_guard<std::mutex> lock(conv_mutex_);
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return false;
-    }
-
-    auto conv = get(conversation_id);
-    if (!conv) {
-        return false;
-    }
-    if (uid == conv->getUserAId()) {
-        if (conv->getUnreadA() != 0) {
-            conv->setUnreadA(0);
-        }
-    } else if (uid == conv->getUserBId()) {
-        if (conv->getUnreadB() != 0) {
-            conv->setUnreadB(0);
-        }
-    } else {
-        return false;
-    }
-    conv->setUpdateTime(time(0));
-    if (DB::ConversationInfoDao::Update(conv, db)) {
-        return false;
-    }
-    SetConversationCache(conv);
-
-    // 将该会话内对方发来的未读消息置为已读
-    auto qb = DB::ConversationMessageInfoDao::newQuery();
-    qb->set("is_read", (int64_t)1);
-    qb->set("read_time", (int64_t)time(0));
-    qb->set("update_time", (int64_t)time(0));
-    qb->where("conversation_id", "=", conversation_id);
-    qb->where("sender_id", "!=", uid);
-    qb->where("is_read", "=", (int64_t)0);
-    qb->where("is_deleted", "=", (int64_t)0);
-    auto stmt = db->prepare(qb->buildUpdateSQL());
-    if (!stmt) {
-        return true;
-    }
-    qb->bindUpdateParams(stmt);
-    stmt->execute();
-    return true;
+    return ConversationService::MarkRead(conversation_id, uid);
 }
 
 bool MessageManager::deleteForUser(int64_t conversation_id, int64_t uid)
 {
-    std::lock_guard<std::mutex> lock(conv_mutex_);
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return false;
-    }
-
-    auto conv = get(conversation_id);
-    if (!conv) {
-        return false;
-    }
-    if (uid == conv->getUserAId()) {
-        if (conv->getUserADeleted()) {
-            return true;
-        }
-        conv->setUserADeleted(1);
-    } else if (uid == conv->getUserBId()) {
-        if (conv->getUserBDeleted()) {
-            return true;
-        }
-        conv->setUserBDeleted(1);
-    } else {
-        return false;
-    }
-    conv->setUpdateTime(time(0));
-    if (DB::ConversationInfoDao::Update(conv, db)) {
-        return false;
-    }
-    SetConversationCache(conv);
-    return true;
+    return ConversationService::DeleteForUser(conversation_id, uid);
 }
 
 bool MessageManager::isChatConnected(int64_t user_id)

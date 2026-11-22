@@ -1,12 +1,9 @@
 #include "BroadcastListServlet.hpp"
 
+#include "../../Repository/NotificationQueryRepository.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/NotificationInfo.hpp"
 
-#include <Chen/DB/QueryBuilder.hpp>
-#include <Chen/Log/Log.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
+#include <json/json.h>
 
 BroadcastListServlet::BroadcastListServlet()
     : BlogServlet("BroadcastListServlet")
@@ -26,26 +23,8 @@ int32_t BroadcastListServlet::handle(
             size = 100;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
-        }
-
-        // 查 is_broadcast=1 且未删除的，按创建时间倒序
-        auto qb = DB::NotificationInfoDao::newQuery();
-        qb->where("is_broadcast", "=", (int64_t)1);
-        qb->where("is_deleted", "=", (int64_t)0);
-        qb->orderBy("id", "DESC");
-        qb->limit((int32_t)size);
-        qb->offset((int32_t)offset);
-
         std::vector<DB::NotificationInfo::ptr> notifs;
-        if (DB::NotificationInfoDao::QueryByBuilder(notifs, qb, db)) {
-            ERROR(logger) << "QueryByBuilder failed";
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
+        NotificationQueryRepository::ListBroadcasts(notifs, offset, size, GetDB());
 
         Json::Value list(Json::arrayValue);
         for (auto& info : notifs) {

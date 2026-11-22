@@ -2,6 +2,7 @@
 
 #include "../../Manager/NotificationManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/NotificationService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
@@ -29,25 +30,10 @@ int32_t BroadcastCloseServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
-        auto info = NotificationMgr::GetInstance()->get(id);
-        if (!info) {
+        if (!NotificationService::CloseBroadcast(id)) {
             result->setErrno(NOTIFICATION_SEND_FAILED);
             break;
         }
-
-        info->setIsBroadcast(0);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_CONNECTION_FAILED);
-            break;
-        }
-        if (DB::NotificationInfoDao::Update(info, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-        NotificationMgr::GetInstance()->update(info);
 
         result->setErrno(SUCCESS);
         result->set("msg", "已关闭");

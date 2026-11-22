@@ -12,8 +12,9 @@
 #include "DB/ConversationInfo.hpp"
 #include "DB/ConversationMessageInfo.hpp"
 
+#include "../Service/ConversationService.hpp"
+
 #include <cstdint>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -53,10 +54,6 @@ public:
     static int64_t NormalizeUserA(int64_t uid_a, int64_t uid_b) { return uid_a < uid_b ? uid_a : uid_b; }
 
     static int64_t NormalizeUserB(int64_t uid_a, int64_t uid_b) { return uid_a < uid_b ? uid_b : uid_a; }
-
-private:
-    /// 会话状态读改写锁（未读数、隐藏标志），避免 Redis 反序列化后并发丢更新
-    std::mutex conv_mutex_;
 };
 
 typedef chen::Singleton<MessageManager> MessageMgr;

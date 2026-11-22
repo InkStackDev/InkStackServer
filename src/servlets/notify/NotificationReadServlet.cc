@@ -43,7 +43,7 @@ int32_t NotificationReadServlet::handle(
             ids.push_back(single_id);
         }
 
-        NotificationMgr::GetInstance()->markRead(ids);
+        NotificationMgr::GetInstance()->markRead(uid, ids);
 
         result->setErrno(SUCCESS);
     } while (0);

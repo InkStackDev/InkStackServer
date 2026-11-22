@@ -9,19 +9,7 @@
 
 #include "DB/NotificationInfo.hpp"
 
-struct NotificationData {
-    int64_t user_id = 0;
-    std::string title;
-    std::string content;
-    std::string type;
-    int64_t sender_id = 0;
-    int64_t article_id = 0;
-    int64_t comment_id = 0;
-    int32_t is_broadcast = 0;
-    std::string level = "";
-    int64_t start_time = 0;
-    int64_t end_time = 0;
-};
+#include "../Service/NotificationService.hpp"
 
 class NotificationManager {
 public:
@@ -49,18 +37,15 @@ public:
 
     int64_t unreadCount(int64_t user_id);
 
-    bool markRead(int64_t notification_id);
+    bool markRead(int64_t uid, int64_t notification_id);
 
-    bool markRead(const std::vector<int64_t>& ids);
+    int64_t markRead(int64_t uid, const std::vector<int64_t>& ids);
 
-    int64_t markAllRead(int64_t user_id);
+    int64_t markAllRead(int64_t uid);
 
-    int64_t markReadByType(int64_t user_id, const std::string& type);
+    int64_t markReadByType(int64_t uid, const std::string& type);
 
-    void cleanupExpiredBroadcasts();
-
-private:
-    static DB::NotificationInfo::ptr ParseRow(chen::ISQLData::ptr rt);
+    bool cleanupExpiredBroadcasts();
 };
 
 typedef chen::Singleton<NotificationManager> NotificationMgr;
