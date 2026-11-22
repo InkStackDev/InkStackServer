@@ -23,6 +23,11 @@ All notable changes to this project will be documented in this file.
 - 新增 `CommentQueryRepository` / `CommentPraiseRepository`：评论列表、回复、计数、后台分页与统计查询，以及评论点赞关联读写从
   `CommentManager` / `CommentPraiseRelManager` 拆出；评论修改、批量审核/删除、点赞切换迁移到 `CommentService`，写操作后失效
   对应的文章列表/计数与全局统计缓存。
+- 新增 `NotificationRepository` / `NotificationQueryRepository` / `NotificationService`：通知读写、列表/计数/未读数查询、已读标记、
+  广播关闭与过期清理从 `NotificationManager` 拆出；用户级缓存改为版本号失效，批量已读补上归属校验。
+- 新增 `ConversationRepository` / `ConversationMessageRepository` / `ConversationService`：私信会话与消息读写从
+  `MessageManager`
+  拆出，发消息改为单事务更新消息与会话未读数，会话创建依赖唯一索引 + 回查避免跨 worker 重复插入。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。

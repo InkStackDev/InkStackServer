@@ -2,6 +2,7 @@
 
 #include "DB/SystemSettingsInfo.hpp"
 
+#include <cstdint>
 #include <mutex>
 
 #include <Chen/Util/Singleton.hpp>
@@ -26,8 +27,18 @@ public:
     bool update(DB::SystemSettingsInfo::ptr info);
 
 private:
+    /// 读取跨 worker 版本号（Redis），用于判断本地快照是否过期
+    static int64_t ReadRemoteVersion();
+
+    /// 设置更新后递增跨 worker 版本号
+    static int64_t BumpRemoteVersion();
+
     std::mutex mutex_;
     DB::SystemSettingsInfo::ptr data_;
+    /// 本地快照对应的远端版本号
+    int64_t version_ = -1;
+    /// 上次校验远端版本的时间（毫秒），用于限流
+    uint64_t last_check_ms_ = 0;
 };
 
 typedef chen::Singleton<SystemSettingsManager> SystemSettingsMgr;

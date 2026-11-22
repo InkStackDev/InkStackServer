@@ -2,11 +2,37 @@
 
 #include <memory>
 
+#include <Chen/DB/Redis.hpp>
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+#include <Chen/Util/TypeUtil.hpp>
 
+#include "../Config/AppConfig.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
+
+static const char* kSettingsVersionKey = "settings:version";
+/// 校验远端版本的最小间隔（毫秒）
+static const uint64_t kVersionCheckIntervalMs = 1000;
+
+int64_t SystemSettingsManager::ReadRemoteVersion()
+{
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", kSettingsVersionKey);
+    if (!rpy || !rpy->str) {
+        return 0;
+    }
+    return chen::TypeUtil::Atoi(rpy->str);
+}
+
+int64_t SystemSettingsManager::BumpRemoteVersion()
+{
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "incr %s", kSettingsVersionKey);
+    if (!rpy || rpy->type != REDIS_REPLY_INTEGER) {
+        return 0;
+    }
+    return rpy->integer;
+}
 
 void SystemSettingsManager::add(DB::SystemSettingsInfo::ptr info)
 {
@@ -16,12 +42,23 @@ void SystemSettingsManager::add(DB::SystemSettingsInfo::ptr info)
 
 DB::SystemSettingsInfo::ptr SystemSettingsManager::get()
 {
+    uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (data_) {
+        if (data_ && now_ms - last_check_ms_ < kVersionCheckIntervalMs) {
             return data_;
         }
     }
+
+    int64_t remote_version = ReadRemoteVersion();
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (data_ && remote_version == version_) {
+            last_check_ms_ = now_ms;
+            return data_;
+        }
+    }
+
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
@@ -39,6 +76,8 @@ DB::SystemSettingsInfo::ptr SystemSettingsManager::get()
     }
     std::unique_lock<std::mutex> lock(mutex_);
     data_ = info;
+    version_ = remote_version;
+    last_check_ms_ = now_ms;
     return info;
 }
 
@@ -63,7 +102,12 @@ bool SystemSettingsManager::update(DB::SystemSettingsInfo::ptr info)
         ERROR(logger) << "SystemSettingsManager update fail";
         return false;
     }
+    int64_t new_version = BumpRemoteVersion();
     std::unique_lock<std::mutex> lock(mutex_);
     data_ = info;
+    if (new_version > 0) {
+        version_ = new_version;
+    }
+    last_check_ms_ = chen::TimeUtil::GetCurrentMs();
     return true;
 }

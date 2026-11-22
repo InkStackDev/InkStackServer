@@ -5,6 +5,7 @@
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
 #include "./Manager/ArticleManager.hpp"
+#include "./Manager/NotificationManager.hpp"
 #include "./Manager/OrganizationRepoManager.hpp"
 #include "./Manager/OrganizationRepoPrManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
@@ -167,6 +168,18 @@ bool BlogModule::onServerUp()
         .run =
             []() {
                 OrganizationRepoPrMgr::GetInstance()->onTick();
+            },
+    });
+
+    // 过期广播清理
+    JobRunner::Register(JobRunner::Job{
+        .name = "notify:broadcast_cleanup",
+        .interval_ms = 5 * 60 * 1000,
+        .lease_ttl_sec = 4 * 60,
+        .run_immediately = false,
+        .run =
+            []() {
+                NotificationMgr::GetInstance()->cleanupExpiredBroadcasts();
             },
     });
 
