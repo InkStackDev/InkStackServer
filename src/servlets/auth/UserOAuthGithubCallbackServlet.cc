@@ -10,11 +10,11 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/StringUtil.hpp>
-#include <Chen/Util/TimeUtil.hpp>
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Manager/UserOAuthManager.hpp"
+#include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Config/AuthConfig.hpp"
@@ -217,54 +217,6 @@ static std::string FetchPrimaryEmail(const std::string& access_token)
     return fallback;
 }
 
-/// 生成唯一且符合站点规则的账号名
-static std::string BuildAccount(const std::string& open_id, const std::string& login)
-{
-    if (IsValidAccount(login) && !UserMgr::GetInstance()->getByAccount(login)) {
-        return login;
-    }
-    std::string base = "gh_" + open_id;
-    if (!IsValidAccount(base)) {
-        base = "gh" + open_id;
-    }
-    if (base.size() > 16) {
-        base = base.substr(0, 16);
-    }
-    if (!IsValidAccount(base)) {
-        base = "ghuser";
-    }
-    std::string candidate = base;
-    int suffix = 1;
-    while (UserMgr::GetInstance()->getByAccount(candidate)) {
-        std::string s = std::to_string(suffix++);
-        std::string prefix = base;
-        if (prefix.size() + s.size() > 16) {
-            prefix = prefix.substr(0, 16 - s.size());
-        }
-        candidate = prefix + s;
-    }
-    return candidate;
-}
-
-/// 生成唯一用户名
-static std::string BuildName(const std::string& open_id, const std::string& uname, const std::string& login)
-{
-    std::string base = !uname.empty() ? uname : login;
-    base = chen::StringUtil::Trim(base);
-    if (base.empty()) {
-        base = "github_" + open_id;
-    }
-    if (!UserMgr::GetInstance()->getByName(base)) {
-        return base;
-    }
-    std::string candidate = base + "_" + open_id;
-    int suffix = 1;
-    while (UserMgr::GetInstance()->getByName(candidate)) {
-        candidate = base + "_" + open_id + "_" + std::to_string(suffix++);
-    }
-    return candidate;
-}
-
 /// 重定向到前端登录页并携带错误码
 static void RedirectError(chen::http::HttpResponse::ptr response, const std::string& frontend_base, int32_t code)
 {
@@ -335,53 +287,26 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         DB::UserInfo::ptr user;
         auto binding = UserOAuthMgr::GetInstance()->getByOpenId(kProviderGithub, profile.open_id);
         if (binding) {
-            user = UserMgr::GetInstance()->get(binding->getUserId());
+            user = UserService::Get(binding->getUserId());
             if (!user) {
                 error = USER_NOT_FOUND;
                 break;
             }
         }
 
-        if (!user && !profile.email.empty()) {
-            user = UserMgr::GetInstance()->getByEmail(profile.email);
-            if (user) {
-                UserOAuthMgr::GetInstance()->bind(user->getId(), kProviderGithub, profile.open_id, profile.login);
-            }
-        }
-
         if (!user) {
-            auto db = GetDB();
-            if (!db) {
-                error = DB_OPERATION_FAILED;
+            UserService::OAuthUserInput input;
+            input.open_id = profile.open_id;
+            input.login = profile.login;
+            input.name = profile.name;
+            input.email = profile.email;
+            input.avatar = profile.avatar;
+
+            auto rt = UserService::FindOrCreateOAuthUser(input, user);
+            if (rt != UserService::FindOrCreateOAuthResult::Ok) {
+                error =
+                    (rt == UserService::FindOrCreateOAuthResult::InternalError) ? INTERNAL_ERROR : DB_OPERATION_FAILED;
                 break;
-            }
-            std::string email = profile.email;
-            if (email.empty()) {
-                email = profile.open_id + "+" + profile.login + "@users.noreply.github.com";
-            }
-            user = UserMgr::GetInstance()->getByEmail(email);
-            if (!user) {
-                user = std::make_shared<DB::UserInfo>();
-                user->setAccount(BuildAccount(profile.open_id, profile.login));
-                user->setName(BuildName(profile.open_id, profile.name, profile.login));
-                user->setEmail(email);
-                user->setAvatar(profile.avatar);
-                if (!profile.login.empty()) {
-                    user->setGithub("https://github.com/" + profile.login);
-                }
-                // GitHub 用户无本地密码，写入不可用的随机值
-                user->setPasswd(HashPassword(UserManager::GenerateToken()));
-                user->setRole(UserManager::Role::USER);
-                user->setState(UserManager::Status::ACTIVE);
-                user->setCreateTime(chen::TimeUtil::GetCurrentSec());
-                user->setUpdateTime(chen::TimeUtil::GetCurrentSec());
-                if (DB::UserInfoDao::Insert(user, db)) {
-                    ERROR(logger) << "callback: insert user failed"
-                                  << ", errstr=" << db->getErrStr() << ", errno=" << db->getErrno();
-                    error = DB_OPERATION_FAILED;
-                    break;
-                }
-                UserMgr::GetInstance()->add(user);
             }
             UserOAuthMgr::GetInstance()->bind(user->getId(), kProviderGithub, profile.open_id, profile.login);
         }

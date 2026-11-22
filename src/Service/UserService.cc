@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/StringUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
 #include "DB/UserRecoveryCodeInfo.hpp"
@@ -34,6 +35,57 @@ DB::UserRecoveryCodeInfo::ptr FindUnusedRecoveryCode(chen::IDB::ptr db, int64_t 
     return codes.empty() ? nullptr : codes[0];
 }
 
+std::string BuildOAuthAccount(chen::IDB::ptr db, const std::string& open_id, const std::string& login)
+{
+    if (IsValidAccount(login) && !UserRepository::GetByAccount(login, db)) {
+        return login;
+    }
+    std::string base = "gh_" + open_id;
+    if (!IsValidAccount(base)) {
+        base = "gh" + open_id;
+    }
+    if (base.size() > 16) {
+        base = base.substr(0, 16);
+    }
+    if (!IsValidAccount(base)) {
+        base = "ghuser";
+    }
+
+    std::string candidate = base;
+    int suffix = 1;
+    while (UserRepository::GetByAccount(candidate, db)) {
+        std::string s = std::to_string(suffix++);
+        std::string prefix = base;
+        if (prefix.size() + s.size() > 16) {
+            prefix = prefix.substr(0, 16 - s.size());
+        }
+        candidate = prefix + s;
+    }
+    return candidate;
+}
+
+std::string BuildOAuthName(chen::IDB::ptr db,
+    const std::string& open_id,
+    const std::string& uname,
+    const std::string& login)
+{
+    std::string base = !uname.empty() ? uname : login;
+    base = chen::StringUtil::Trim(base);
+    if (base.empty()) {
+        base = "github_" + open_id;
+    }
+    if (!UserRepository::GetByName(base, db)) {
+        return base;
+    }
+
+    std::string candidate = base + "_" + open_id;
+    int suffix = 1;
+    while (UserRepository::GetByName(candidate, db)) {
+        candidate = base + "_" + open_id + "_" + std::to_string(suffix++);
+    }
+    return candidate;
+}
+
 } // namespace
 
 DB::UserInfo::ptr UserService::Get(int64_t uid)
@@ -43,6 +95,15 @@ DB::UserInfo::ptr UserService::Get(int64_t uid)
         return nullptr;
     }
     return UserRepository::Get(uid, db);
+}
+
+DB::UserInfo::ptr UserService::GetByEmail(const std::string& email)
+{
+    auto db = GetDB();
+    if (!db) {
+        return nullptr;
+    }
+    return UserRepository::GetByEmail(email, db);
 }
 
 UserService::UpdateProfileResult UserService::UpdateProfile(int64_t uid,
@@ -606,4 +667,53 @@ UserService::ConsumeRecoveryResult UserService::ConsumeRecoveryCode(int64_t uid,
         return ConsumeRecoveryResult::DbError;
     }
     return ConsumeRecoveryResult::Ok;
+}
+
+UserService::FindOrCreateOAuthResult UserService::FindOrCreateOAuthUser(const OAuthUserInput& input,
+    DB::UserInfo::ptr& out)
+{
+    out.reset();
+    auto db = GetDB();
+    if (!db) {
+        return FindOrCreateOAuthResult::DbError;
+    }
+
+    std::string email = input.email;
+    if (email.empty()) {
+        email = input.open_id + "+" + input.login + "@users.noreply.github.com";
+    }
+    auto existing = UserRepository::GetByEmail(email, db);
+    if (existing) {
+        out = existing;
+        return FindOrCreateOAuthResult::Ok;
+    }
+
+    std::string passwd_hash = HashPassword(UserManager::GenerateToken());
+    if (passwd_hash.empty()) {
+        return FindOrCreateOAuthResult::InternalError;
+    }
+
+    auto user = std::make_shared<DB::UserInfo>();
+    user->setAccount(BuildOAuthAccount(db, input.open_id, input.login));
+    user->setName(BuildOAuthName(db, input.open_id, input.name, input.login));
+    user->setEmail(email);
+    user->setAvatar(input.avatar);
+    if (!input.login.empty()) {
+        user->setGithub("https://github.com/" + input.login);
+    }
+    user->setPasswd(passwd_hash);
+    user->setRole(UserManager::Role::USER);
+    user->setState(UserManager::Status::ACTIVE);
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    user->setCreateTime(now);
+    user->setUpdateTime(now);
+
+    if (!UserRepository::Insert(user, db)) {
+        ERROR(logger) << "FindOrCreateOAuthUser insert failed, open_id=" << input.open_id << " errno=" << db->getErrno()
+                      << " errstr=" << db->getErrStr();
+        return FindOrCreateOAuthResult::DbError;
+    }
+    UserRepository::Put(user);
+    out = user;
+    return FindOrCreateOAuthResult::Ok;
 }

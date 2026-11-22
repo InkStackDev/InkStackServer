@@ -141,7 +141,23 @@ public:
         DbError
     };
 
+    struct OAuthUserInput {
+        std::string open_id;
+        std::string login;
+        std::string name;
+        std::string email;
+        std::string avatar;
+    };
+
+    enum class FindOrCreateOAuthResult {
+        Ok,
+        InternalError,
+        DbError
+    };
+
     static DB::UserInfo::ptr Get(int64_t uid);
+
+    static DB::UserInfo::ptr GetByEmail(const std::string& email);
 
     /**
      * @brief 修改个人资料
@@ -212,4 +228,10 @@ public:
      * @brief 使用恢复码完成 2FA 登录（只消费恢复码）
      */
     static ConsumeRecoveryResult ConsumeRecoveryCode(int64_t uid, const std::string& recovery_code);
+
+    /**
+     * @brief 查找或创建 GitHub OAuth 用户
+     * @details 邮箱已存在时直接返回已有用户；否则生成唯一账号/用户名并创建。
+     */
+    static FindOrCreateOAuthResult FindOrCreateOAuthUser(const OAuthUserInput& input, DB::UserInfo::ptr& out);
 };
