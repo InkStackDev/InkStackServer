@@ -5,6 +5,8 @@
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
+#include "../Repository/OrganizationUserRelRepository.hpp"
+
 class OrganizationUserRelManager {
 public:
     enum Status {
@@ -34,17 +36,9 @@ public:
 
     int64_t getMemberCount(int64_t o_id, int32_t status, bool is_valid);
 
-    struct Stats {
-        int64_t total_members = 0;
-        int64_t active_members = 0;
-        int64_t org_admin_count = 0;
-        int64_t regular_count = 0;
-    };
+    using Stats = OrganizationUserRelRepository::Stats;
 
     Stats getStats(int64_t org_id);
-
-private:
-    static DB::OrganizationUserRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationUserRelManager> OrganizationUserRelMgr;

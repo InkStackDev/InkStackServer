@@ -16,9 +16,6 @@ public:
     DB::AssignmentUserRelInfo::ptr get(int64_t id);
 
     DB::AssignmentUserRelInfo::ptr getByAssignAndUser(int64_t assign_id, int64_t user_id);
-
-private:
-    static DB::AssignmentUserRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<AssignmentUserRelManager> AssignmentUserRelMgr;

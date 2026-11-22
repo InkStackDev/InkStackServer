@@ -1,13 +1,8 @@
 #include "OrganizationCreateServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationCreateServlet::OrganizationCreateServlet()
     : BlogLoginedServlet("OrganizationCreateServlet")
@@ -44,64 +39,24 @@ int32_t OrganizationCreateServlet::handle(
             break;
         }
 
-        bool new_org = false;
+        OrganizationInput input;
+        input.id = oid;
+        input.name = name;
+        input.type = type;
+        input.description = desc;
+        input.status = status;
+        input.owner_id = user_id;
+
         DB::OrganizationInfo::ptr info;
-        if (oid) {
-            info = OrganizationMgr::GetInstance()->get(oid);
-            if (!info) {
-                result->setErrno(ORG_NOT_FOUND);
-                break;
-            }
-
-            info->setName(name);
-        } else {
-            info = OrganizationMgr::GetInstance()->getByName(name);
-            if (!info) {
-                info = std::make_shared<DB::OrganizationInfo>();
-                info->setName(name);
-                info->setCreateTime(time(0));
-                new_org = true;
-            } else if (info->getIsDeleted()) {
-                info->setCreateTime(time(0));
-            }
-        }
-        info->setType(type);
-        info->setStatus(status);
-        info->setOwnerId(user_id);
-        info->setDescription(desc);
-        info->setIsDeleted(0);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        bool created = false;
+        auto rt = OrganizationService::CreateOrUpdate(input, info, created);
+        if (rt == OrganizationService::Result::NotFound) {
+            result->setErrno(ORG_NOT_FOUND);
             break;
         }
-
-        if (DB::OrganizationInfoDao::InsertOrUpdate(info, db)) {
+        if (rt != OrganizationService::Result::Ok) {
             result->setErrno(ORG_UPDATE_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
-        }
-
-        OrganizationMgr::GetInstance()->add(info);
-
-        if (new_org) {
-            auto rel = std::make_shared<DB::OrganizationUserRelInfo>();
-            rel->setOrgId(info->getId());
-            rel->setUserId(user_id);
-            rel->setRole(OrganizationManager::Role::ORG_ADMIN);
-            rel->setStatus(OrganizationUserRelManager::Status::APPROVED);
-            rel->setCreateTime(time(0));
-            rel->setUpdateTime(time(0));
-
-            if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
-                result->setErrno(ORG_USER_REL_FAILED);
-                ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                break;
-            }
-
-            OrganizationUserRelMgr::GetInstance()->add(rel);
         }
 
         result->set("id", info->getId());

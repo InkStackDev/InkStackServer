@@ -5,6 +5,8 @@
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
+#include "../Repository/OrganizationRepository.hpp"
+
 class OrganizationManager {
 public:
     enum Role {
@@ -31,16 +33,9 @@ public:
         int32_t status,
         bool is_valid);
 
-    struct OrganizationStats {
-        int64_t total = 0;
-        int64_t active = 0;
-        int64_t inactive = 0;
-    };
+    using OrganizationStats = OrganizationQueryRepository::Stats;
 
     OrganizationStats getStats();
-
-private:
-    static DB::OrganizationInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationManager> OrganizationMgr;

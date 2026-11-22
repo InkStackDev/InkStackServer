@@ -1,13 +1,9 @@
 #include "OrganizationApplyCreateServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationApplyManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationApplyCreateServlet::OrganizationApplyCreateServlet()
     : BlogLoginedServlet("OrganizationApplyCreateServlet")
@@ -37,24 +33,10 @@ int32_t OrganizationApplyCreateServlet::handle(
             break;
         }
 
-        auto info = std::make_shared<DB::OrganizationApplyInfo>();
-        info->setUserId(user_id);
-        info->setOrgName(name);
-        info->setOrgType(type);
-        info->setOrgDescription(desc);
-        info->setStatus(OrganizationApplyManager::Status::PENDING);
-        info->setCreatedAt(time(0));
-        info->setIsDeleted(0);
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        if (DB::OrganizationApplyInfoDao::Insert(info, db)) {
+        DB::OrganizationApplyInfo::ptr info;
+        auto rt = OrganizationService::SubmitApply(user_id, name, type, desc, info);
+        if (rt != OrganizationService::Result::Ok) {
             result->setErrno(ORG_APPLY_INSERT_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
 
@@ -62,11 +44,10 @@ int32_t OrganizationApplyCreateServlet::handle(
 
         // Notify all ADMIN users about new org application
         {
-            auto applicant = UserMgr::GetInstance()->get(user_id);
             EventOrgApplyData data = {};
             data.type = "created";
             data.applicant_id = user_id;
-            data.applicant_name = applicant ? applicant->getName() : std::to_string(user_id);
+            data.applicant_name = uinfo->getName();
             data.org_name = name;
             data.apply_id = info->getId();
 

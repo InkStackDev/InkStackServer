@@ -7,6 +7,8 @@
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
 
+#include "../Repository/AssignmentQueryRepository.hpp"
+
 class AssignmentManager {
 public:
     typedef std::shared_ptr<AssignmentManager> ptr;
@@ -29,17 +31,9 @@ public:
 
     DB::AssignmentInfo::ptr getByName(const std::string& subject_name, const std::string& name);
 
-    struct AssignmentStats {
-        int64_t total = 0;
-        int64_t active = 0;
-        int64_t closed = 0;
-        int64_t draft = 0;
-    };
+    using AssignmentStats = AssignmentQueryRepository::Stats;
 
     AssignmentStats getStats();
-
-private:
-    static DB::AssignmentInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<AssignmentManager> AssignmentMgr;

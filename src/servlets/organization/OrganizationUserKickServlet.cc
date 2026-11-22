@@ -1,6 +1,5 @@
 #include "OrganizationUserKickServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
 #include <json/json.h>
 
 #include "../../Permission.hpp"
@@ -8,9 +7,8 @@
 #include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationUserKickServlet::OrganizationUserKickServlet()
     : BlogLoginedServlet("OrganizationUserKickServlet")
@@ -41,41 +39,28 @@ int32_t OrganizationUserKickServlet::handle(
         }
         int32_t system_role = user->getRole();
 
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-        if (!rel) {
+        auto operator_rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        if (!operator_rel) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
         }
-        int32_t org_role = rel->getRole();
+        int32_t org_role = operator_rel->getRole();
 
         if (!CanManageMembers(system_role, org_role)) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
 
-        // 踢出用户
-        rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, user_id);
-        if (!rel) {
+        DB::OrganizationUserRelInfo::ptr rel;
+        auto rt = OrganizationService::Kick(org_id, user_id, rel);
+        if (rt == OrganizationService::MemberResult::RelNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
-
-        rel->setStatus(OrganizationUserRelManager::Status::EXITED);
-        rel->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
+        if (rt != OrganizationService::MemberResult::Ok) {
             result->setErrno(ORG_USER_REL_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
             break;
         }
-
-        OrganizationUserRelMgr::GetInstance()->add(rel);
 
         // Notify org admins and kicked user
         {

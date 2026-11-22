@@ -1,15 +1,11 @@
 #include "OrganizationJoinServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
 #include <json/json.h>
 
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
-#include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationJoinServlet::OrganizationJoinServlet()
     : BlogLoginedServlet("OrganizationJoinServlet")
@@ -26,48 +22,39 @@ int32_t OrganizationJoinServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
         int64_t uid = getUserId(request);
+        if (!uid) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
 
-        auto org = OrganizationMgr::GetInstance()->get(id);
-        if (!org || org->getIsDeleted()) {
+        DB::OrganizationUserRelInfo::ptr info;
+        auto rt = OrganizationService::Join(id, uid, info);
+        if (rt == OrganizationService::JoinResult::OrgNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
-
-        if (org->getStatus() == OrganizationManager::Status::INACTIVE) {
+        if (rt == OrganizationService::JoinResult::OrgDisabled) {
             result->setErrno(ORG_DISABLED);
             break;
         }
-
-        auto info = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
-        if (!info) {
-            info = std::make_shared<DB::OrganizationUserRelInfo>();
-            info->setOrgId(id);
-            info->setUserId(uid);
-            info->setCreateTime(time(0));
-        } else if (info->getStatus() == OrganizationUserRelManager::Status::APPROVED) {
+        if (rt == OrganizationService::JoinResult::AlreadyJoined) {
             result->setErrno(ORG_ALREADY_JOINED);
             break;
-        } else if (info->getStatus() == OrganizationUserRelManager::Status::PENDING) {
+        }
+        if (rt == OrganizationService::JoinResult::AlreadyApplied) {
             result->setErrno(ORG_ALREADY_APPLIED);
             break;
         }
-        info->setRole(OrganizationManager::Role::MEMBER);             // 普通成员
-        info->setStatus(OrganizationUserRelManager::Status::PENDING); // 申请中
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(info, db)) {
+        if (rt != OrganizationService::JoinResult::Ok) {
             result->setErrno(ORG_UPDATE_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
 
-        OrganizationUserRelMgr::GetInstance()->add(info);
+        auto org = OrganizationMgr::GetInstance()->get(id);
+        if (!org) {
+            result->setErrno(ARTICLE_INVALID_ID);
+            break;
+        }
 
         // Notify org admins about join request
         {

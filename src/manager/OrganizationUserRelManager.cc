@@ -1,105 +1,21 @@
 #include "OrganizationUserRelManager.hpp"
 
+#include "../Repository/OrganizationUserRelRepository.hpp"
 #include "../Util/Util.hpp"
-#include "CacheUtil.hpp"
-#include "OrganizationManager.hpp"
-
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
-
-static const int kCacheTTL = 120;
-static const char* kCachePrefix = "cache:obj:org_usr:";
-
-static std::string OrgUserRelCacheKey(int64_t id)
-{
-    return std::string(kCachePrefix) + std::to_string(id);
-}
-
-static DB::OrganizationUserRelInfo::ptr ParseOrgUserRelCache(const Json::Value& v)
-{
-    auto info = std::make_shared<DB::OrganizationUserRelInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setOrgId(CacheJsonInt64(v, "org_id"));
-    info->setUserId(CacheJsonInt64(v, "user_id"));
-    info->setRole(CacheJsonInt32(v, "role"));
-    info->setStatus(CacheJsonInt32(v, "status"));
-    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->markClean();
-    return info;
-}
-
-static DB::OrganizationUserRelInfo::ptr GetOrgUserRelCache(int64_t id)
-{
-    std::string key = OrgUserRelCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseOrgUserRelCache(v);
-}
-
-static void SetOrgUserRelCache(const DB::OrganizationUserRelInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(OrgUserRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
-
-DB::OrganizationUserRelInfo::ptr OrganizationUserRelManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return DB::OrganizationUserRelInfoDao::ParseRow(rt);
-}
 
 void OrganizationUserRelManager::add(DB::OrganizationUserRelInfo::ptr info)
 {
-    SetOrgUserRelCache(info);
+    OrganizationUserRelRepository::Put(info);
 }
 
 DB::OrganizationUserRelInfo::ptr OrganizationUserRelManager::get(int64_t id)
 {
-    auto v = GetOrgUserRelCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = DB::OrganizationUserRelInfoDao::Query(id, db);
-    if (v) {
-        SetOrgUserRelCache(v);
-    }
-    return v;
+    return OrganizationUserRelRepository::Get(id, GetDB());
 }
 
 DB::OrganizationUserRelInfo::ptr OrganizationUserRelManager::getByOrgAndUser(int64_t o_id, int64_t u_id)
 {
-    int64_t cachedId = GetCachedIdMapping("org_usr:" + std::to_string(o_id) + ":" + std::to_string(u_id));
-    if (cachedId > 0) {
-        return get(cachedId);
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    auto info = DB::OrganizationUserRelInfoDao::QueryByOrgIdUserId(o_id, u_id, db);
-    if (info) {
-        SetOrgUserRelCache(info);
-        CacheIdMapping("org_usr:" + std::to_string(o_id) + ":" + std::to_string(u_id), info->getId());
-    }
-    return info;
+    return OrganizationUserRelRepository::GetByOrgAndUser(o_id, u_id, GetDB());
 }
 
 int64_t OrganizationUserRelManager::getByPages(std::vector<DB::OrganizationUserRelInfo::ptr>& results,
@@ -109,22 +25,7 @@ int64_t OrganizationUserRelManager::getByPages(std::vector<DB::OrganizationUserR
     int32_t status,
     bool is_valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::OrganizationUserRelInfoDao::newQuery();
-    qb->where("org_id", "=", o_id);
-    qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
-    qb->orderBy("id", "DESC");
-
-    int64_t total = 0;
-    if (DB::OrganizationUserRelInfoDao::QueryByBuilderPages(results, total, qb, (int32_t)offset, (int32_t)size, db)) {
-        return 0;
-    }
-    return total;
+    return OrganizationUserRelRepository::ListByOrgPages(results, o_id, offset, size, status, is_valid, GetDB());
 }
 
 int64_t OrganizationUserRelManager::getOrgByUserId(std::vector<DB::OrganizationUserRelInfo::ptr>& results,
@@ -132,87 +33,15 @@ int64_t OrganizationUserRelManager::getOrgByUserId(std::vector<DB::OrganizationU
     int32_t status,
     bool is_valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::OrganizationUserRelInfoDao::newQuery();
-    qb->where("user_id", "=", u_id);
-    qb->where("status", "!=", (int64_t)Status::PENDING);
-    qb->where("status", "!=", (int64_t)Status::EXITED);
-    qb->where("status", "!=", (int64_t)Status::REJECTED);
-    qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
-    qb->orderBy("id", "DESC");
-    if (DB::OrganizationUserRelInfoDao::QueryByBuilder(results, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-        return 0;
-    }
-    return results.size();
+    return OrganizationUserRelRepository::ListByUser(results, u_id, status, is_valid, GetDB());
 }
 
 int64_t OrganizationUserRelManager::getMemberCount(int64_t o_id, int32_t status, bool is_valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::OrganizationUserRelInfoDao::newQuery();
-    qb->where("org_id", "=", o_id);
-    qb->whereIf(status != -1, "status", "=", (int64_t)status);
-    qb->whereIf(is_valid, "is_deleted", "=", (int64_t)0);
-    int64_t total = 0;
-    if (qb->executeCount(total, db)) {
-        ERROR(logger) << "executeCount fail errno=" << db->getErrno();
-        return 0;
-    }
-    return total;
+    return OrganizationUserRelRepository::CountByOrg(o_id, status, is_valid, GetDB());
 }
 
 OrganizationUserRelManager::Stats OrganizationUserRelManager::getStats(int64_t org_id)
 {
-    Stats stats;
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return stats;
-    }
-
-    // total_members: 所有已批准且未删除的成员
-    stats.total_members = getMemberCount(org_id, Status::APPROVED, true);
-
-    // 按角色 GROUP BY 拿到 org_admin_count 和 regular_count
-    {
-        auto qb = DB::OrganizationUserRelInfoDao::newQuery();
-        qb->select("role, COUNT(*) as cnt");
-        qb->where("org_id", "=", org_id);
-        qb->where("status", "=", (int64_t)Status::APPROVED);
-        qb->where("is_deleted", "=", (int64_t)0);
-        qb->groupBy("role");
-        std::vector<std::pair<int32_t, int64_t>> rows;
-        if (qb->queryPairs<int32_t, int64_t>(rows, db) == 0) {
-            for (auto& [role, cnt] : rows) {
-                if (role == OrganizationManager::Role::ORG_ADMIN) {
-                    stats.org_admin_count = cnt;
-                } else if (role == OrganizationManager::Role::MEMBER) {
-                    stats.regular_count = cnt;
-                }
-            }
-        }
-    }
-
-    // active_members: 已批准成员中，其用户账号状态为正常的数量
-    {
-        auto qb = DB::OrganizationUserRelInfoDao::newQuery("r");
-        qb->join("INNER", "user u", "r.user_id = u.id");
-        qb->where("r.org_id", "=", org_id);
-        qb->where("r.status", "=", (int64_t)Status::APPROVED);
-        qb->where("r.is_deleted", "=", (int64_t)0);
-        qb->where("u.state", "=", (int64_t)1);
-        qb->executeCount(stats.active_members, db);
-    }
-
-    return stats;
+    return OrganizationUserRelRepository::GetStats(org_id, GetDB());
 }

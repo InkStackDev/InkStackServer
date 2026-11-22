@@ -1,16 +1,11 @@
 #include "AssignmentOrganizationCreateServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/AssignmentManager.hpp"
-#include "../../Manager/AssignmentOrganizationRelManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 AssignmentOrganizationCreateServlet::AssignmentOrganizationCreateServlet()
     : BlogLoginedServlet("AssignmentOrganizationCreateServlet")
@@ -65,97 +60,53 @@ int32_t AssignmentOrganizationCreateServlet::handle(
             break;
         }
 
-        // create or update assignment
-        bool new_assignment = false;
+        AssignmentInput input;
+        input.id = assign_id;
+        input.name = name;
+        input.subject_name = subject_name;
+        input.description = description;
+        input.file_type = file_type;
+        input.deadline = (int64_t)end_time;
+        input.max_size = max_size;
+        input.status = status;
+        input.priority = priority;
+
+        bool created = false;
         DB::AssignmentInfo::ptr assign_info;
-        if (assign_id) {
-            assign_info = AssignmentMgr::GetInstance()->get(assign_id);
-            if (!assign_info) {
-                result->setErrno(ASSIGNMENT_NOT_FOUND);
-                break;
-            }
-            assign_info->setName(name);
-            assign_info->setSubjectName(subject_name);
-        } else {
-            assign_info = AssignmentMgr::GetInstance()->getByName(subject_name, name);
-            if (!assign_info) {
-                assign_info.reset(new DB::AssignmentInfo);
-                assign_info->setName(name);
-                assign_info->setSubjectName(subject_name);
-                assign_info->setCreateTime(time(0));
-                new_assignment = true;
-            } else if (assign_info->getIsDeleted()) {
-                assign_info->setCreateTime(time(0));
-            }
-        }
-        assign_info->setDeadline(end_time);
-        assign_info->setMaxSize(max_size);
-        assign_info->setStatus(status);
-        assign_info->setPriority(priority);
-        assign_info->setFileType(file_type);
-        assign_info->setDescription(description);
-        assign_info->setIsDeleted(0);
-        assign_info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        auto rt = AssignmentService::CreateForOrganization(org_id, oper_name, input, assign_info, created);
+        if (rt == AssignmentService::OrgCreateResult::NotFound) {
+            result->setErrno(ASSIGNMENT_NOT_FOUND);
             break;
         }
-
-        if (DB::AssignmentInfoDao::InsertOrUpdate(assign_info, db)) {
+        if (rt != AssignmentService::OrgCreateResult::Ok) {
             result->setErrno(ASSIGNMENT_UPDATE_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
 
-        AssignmentMgr::GetInstance()->add(assign_info);
-
-        if (new_assignment) {
-            // create organization assignment relation
-            auto org_assign_rel = AssignmentOrganizationRelMgr::GetInstance()->getByOrgAndAssign(org_id, assign_info->getId());
-            if (!org_assign_rel) {
-                org_assign_rel.reset(new DB::AssignmentOrganizationRelInfo);
-                org_assign_rel->setOrganizationId(org_id);
-                org_assign_rel->setAssignmentId(assign_info->getId());
-                org_assign_rel->setCreateTime(time(0));
-            }
-            org_assign_rel->setAssignedBy(oper_name);
-            org_assign_rel->setIsDeleted(0);
-            org_assign_rel->setUpdateTime(time(0));
-
-            if (DB::AssignmentOrganizationRelInfoDao::InsertOrUpdate(org_assign_rel, db)) {
-                result->setErrno(ASSIGNMENT_UPDATE_FAILED);
-                ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                break;
-            }
-
-            result->set("assign_id", assign_info->getId());
-            result->set("assigned_by", org_assign_rel->getAssignedBy());
-
+        if (created) {
+            result->set("assigned_by", oper_name);
             // Notify org members about new assignment
-            {
-                std::vector<int64_t> member_ids;
-                std::vector<DB::OrganizationUserRelInfo::ptr> org_members;
-                OrganizationUserRelMgr::GetInstance()->getByPages(org_members, org_id, 0, 10000, -1, true);
-                for (auto& m : org_members) {
-                    if (m->getStatus() != OrganizationUserRelManager::Status::APPROVED)
-                        continue;
-                    if (m->getUserId() == uid)
-                        continue;
-                    member_ids.push_back(m->getUserId());
-                }
-
-                EventAssignmentData data = {};
-                data.type = "created";
-                data.assignment_id = assign_info->getId();
-                data.assignment_name = name;
-                data.subject_name = subject_name;
-                data.member_user_ids = member_ids;
-
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ASSIGNMENT, std::move(data));
+            std::vector<int64_t> member_ids;
+            std::vector<DB::OrganizationUserRelInfo::ptr> org_members;
+            OrganizationUserRelMgr::GetInstance()->getByPages(org_members, org_id, 0, 10000, -1, true);
+            for (auto& m : org_members) {
+                if (m->getStatus() != OrganizationUserRelManager::Status::APPROVED)
+                    continue;
+                if (m->getUserId() == uid)
+                    continue;
+                member_ids.push_back(m->getUserId());
             }
+
+            EventAssignmentData data = {};
+            data.type = "created";
+            data.assignment_id = assign_info->getId();
+            data.assignment_name = name;
+            data.subject_name = subject_name;
+            data.member_user_ids = member_ids;
+
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ASSIGNMENT, std::move(data));
         }
+
         result->set("id", assign_info->getId());
         result->set("name", assign_info->getName());
         result->set("subject_name", assign_info->getSubjectName());

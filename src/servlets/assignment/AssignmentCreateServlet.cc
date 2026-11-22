@@ -1,12 +1,8 @@
 #include "AssignmentCreateServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 AssignmentCreateServlet::AssignmentCreateServlet()
     : BlogLoginedServlet("AssignmentCreateServlet")
@@ -50,48 +46,27 @@ int32_t AssignmentCreateServlet::handle(
             break;
         }
 
+        AssignmentInput input;
+        input.id = aid;
+        input.name = name;
+        input.subject_name = subject_name;
+        input.description = description;
+        input.file_type = file_type;
+        input.deadline = (int64_t)end_time;
+        input.max_size = file_size;
+        input.status = status;
+        input.priority = priority;
+
         DB::AssignmentInfo::ptr info;
-        if (aid) {
-            info = AssignmentMgr::GetInstance()->get(aid);
-            if (!info) {
-                result->setErrno(ASSIGNMENT_NOT_FOUND);
-                break;
-            }
-            info->setName(name);
-            info->setSubjectName(subject_name);
-        } else {
-            info = AssignmentMgr::GetInstance()->getByName(subject_name, name);
-            if (!info) {
-                info.reset(new DB::AssignmentInfo);
-                info->setName(name);
-                info->setSubjectName(subject_name);
-                info->setCreateTime(time(0));
-            } else if (info->getIsDeleted()) {
-                info->setCreateTime(time(0));
-            }
-        }
-        info->setDescription(description);
-        info->setFileType(file_type);
-        info->setDeadline(end_time);
-        info->setMaxSize(file_size);
-        info->setStatus(status);
-        info->setPriority(priority);
-        info->setIsDeleted(0);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        auto rt = AssignmentService::CreateOrUpdate(input, info);
+        if (rt == AssignmentService::CreateResult::NotFound) {
+            result->setErrno(ASSIGNMENT_NOT_FOUND);
             break;
         }
-
-        if (DB::AssignmentInfoDao::InsertOrUpdate(info, db)) {
+        if (rt != AssignmentService::CreateResult::Ok) {
             result->setErrno(ASSIGNMENT_UPDATE_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
-
-        AssignmentMgr::GetInstance()->add(info);
 
         result->set("id", info->getId());
         result->set("name", info->getName());

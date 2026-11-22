@@ -1,15 +1,9 @@
 #include "OrganizationApplyReviewServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationApplyManager.hpp"
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationApplyReviewServlet::OrganizationApplyReviewServlet()
     : BlogLoginedServlet("OrganizationApplyReviewServlet")
@@ -52,105 +46,41 @@ int32_t OrganizationApplyReviewServlet::handle(
             break;
         }
 
-        auto apply = OrganizationApplyMgr::GetInstance()->get(apply_id);
-        if (!apply) {
+        bool approve = action == "approve";
+        DB::OrganizationInfo::ptr org;
+        DB::OrganizationApplyInfo::ptr apply;
+        auto rt = OrganizationService::ReviewApply(apply_id, approve, reason, org, apply);
+        if (rt == OrganizationService::Result::NotFound) {
             result->setErrno(ORG_APPLY_NOT_FOUND);
             break;
         }
-
-        if (apply->getStatus() != OrganizationApplyManager::Status::PENDING) {
+        if (rt == OrganizationService::Result::Conflict) {
             result->setErrno(ORG_APPLY_ALREADY_REVIEWED);
             break;
         }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        if (rt != OrganizationService::Result::Ok) {
+            result->setErrno(approve ? ORG_INSERT_FAILED : ORG_APPLY_UPDATE_FAILED);
             break;
         }
 
-        if (action == "approve") {
-            // Create the organization
-            auto org = std::make_shared<DB::OrganizationInfo>();
-            org->setName(apply->getOrgName());
-            org->setType(apply->getOrgType());
-            org->setDescription(apply->getOrgDescription());
-            org->setOwnerId(apply->getUserId());
-            org->setStatus(OrganizationManager::Status::ACTIVE);
-            org->setIsDeleted(0);
-            org->setCreateTime(time(0));
-            org->setUpdateTime(time(0));
-
-            if (DB::OrganizationInfoDao::Insert(org, db)) {
-                result->setErrno(ORG_INSERT_FAILED);
-                ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                break;
-            }
-
-            OrganizationMgr::GetInstance()->add(org);
-
-            // Add applicant as org admin (role=5)
-            auto rel = std::make_shared<DB::OrganizationUserRelInfo>();
-            rel->setOrgId(org->getId());
-            rel->setUserId(apply->getUserId());
-            rel->setRole(OrganizationManager::Role::ORG_ADMIN);
-            rel->setStatus(OrganizationUserRelManager::Status::APPROVED);
-            rel->setCreateTime(time(0));
-            rel->setUpdateTime(time(0));
-
-            if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
-                result->setErrno(ORG_USER_REL_FAILED);
-                ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                break;
-            }
-
-            OrganizationUserRelMgr::GetInstance()->add(rel);
-
-            // Update apply record
-            apply->setStatus(OrganizationApplyManager::Status::APPROVED);
-            apply->setReviewReason(reason);
-            apply->setReviewedAt(time(0));
-
-            if (DB::OrganizationApplyInfoDao::Update(apply, db)) {
-                result->setErrno(ORG_APPLY_UPDATE_FAILED);
-                ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                break;
-            }
-
+        if (approve && org) {
             result->set("org_id", org->getId());
 
-            // Notify applicant
-            {
-                EventOrgApplyData data = {};
-                data.type = "approved";
-                data.applicant_id = apply->getUserId();
-                data.org_name = apply->getOrgName();
-                data.org_id = org->getId();
+            EventOrgApplyData data = {};
+            data.type = "approved";
+            data.applicant_id = apply->getUserId();
+            data.org_name = apply->getOrgName();
+            data.org_id = org->getId();
 
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
-            }
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
         } else {
-            // Reject
-            apply->setStatus(OrganizationApplyManager::Status::REJECTED);
-            apply->setReviewReason(reason);
-            apply->setReviewedAt(time(0));
+            EventOrgApplyData data = {};
+            data.type = "rejected";
+            data.applicant_id = apply->getUserId();
+            data.org_name = apply->getOrgName();
+            data.reason = reason;
 
-            if (DB::OrganizationApplyInfoDao::Update(apply, db)) {
-                result->setErrno(ORG_APPLY_UPDATE_FAILED);
-                ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-                break;
-            }
-
-            // Notify applicant
-            {
-                EventOrgApplyData data = {};
-                data.type = "rejected";
-                data.applicant_id = apply->getUserId();
-                data.org_name = apply->getOrgName();
-                data.reason = reason;
-
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
-            }
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_APPLY, std::move(data));
         }
     } while (0);
     response->setBody(result->toJsonString());

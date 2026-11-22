@@ -1,18 +1,14 @@
 #include "AssignmentDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/AssignmentRelRepository.hpp"
+#include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/AssignmentInfo.hpp"
-#include "DB/AssignmentUserRelInfo.hpp"
 
-#include <Chen/DB/QueryBuilder.hpp>
-#include <Chen/Log/Log.hpp>
+#include <json/json.h>
 
 #include <set>
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 AssignmentDeleteServlet::AssignmentDeleteServlet()
     : BlogLoginedServlet("AssignmentDeleteServlet")
@@ -27,11 +23,13 @@ int32_t AssignmentDeleteServlet::handle(
 {
     do {
         DEFINE_AND_CHECK_STRING(result, ids, "ids");
-        std::set<int64_t> assignment_ids;
-        auto tmp = chen::StringUtil::Split(ids, ",");
-        for (auto& i : tmp) {
-            assignment_ids.insert(chen::TypeUtil::Atoi(i));
+        std::set<int64_t> assignment_id_set;
+        for (auto& i : chen::StringUtil::Split(ids, ",")) {
+            if (!i.empty()) {
+                assignment_id_set.insert(chen::TypeUtil::Atoi(i));
+            }
         }
+        std::vector<int64_t> assignment_ids(assignment_id_set.begin(), assignment_id_set.end());
 
         int64_t uid = getUserId(request);
         if (!uid) {
@@ -47,85 +45,47 @@ int32_t AssignmentDeleteServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        std::vector<DB::AssignmentInfo::ptr> infos;
-        if (!AssignmentMgr::GetInstance()->listByPages(infos, 0, INT32_MAX, -1, true)) {
-            break;
-        }
 
-        std::vector<DB::AssignmentInfo::ptr> del_assignments;
-        for (auto& i : infos) {
-            if (assignment_ids.count(i->getId())) {
-                del_assignments.push_back(i);
-            }
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        std::vector<DB::AssignmentInfo::ptr> deleted;
+        if (!AssignmentService::DeleteMany(assignment_ids, deleted)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
+        if (deleted.empty()) {
             break;
         }
-        time_t now = time(0);
-        for (auto& i : del_assignments) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::AssignmentInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            result->setErrno(DB_COMMIT_FAILED);
 
-            for (auto& i : del_assignments) {
-                i->setIsDeleted(0);
-            }
+        Json::Value json_ids;
+        for (auto& info : deleted) {
+            json_ids.append(info->getId());
+        }
+        result->set("ids", json_ids);
+
+        // 通知已提交过作业的用户
+        auto db = GetDB();
+        if (!db) {
             break;
         }
-        for (auto& i : del_assignments) {
-            AssignmentMgr::GetInstance()->add(i);
-        }
-        if (!del_assignments.empty()) {
-            Json::Value json_ids;
-            for (auto& i : del_assignments) {
-                json_ids.append(i->getId());
-            }
-            result->set("ids", json_ids);
-
-            // Notify submitters
-            for (auto& assign : del_assignments) {
-                std::string assign_name = assign->getName();
-                std::set<int64_t> notified;
-                auto db2 = GetDB();
-                if (db2) {
-                    auto qb = DB::AssignmentUserRelInfoDao::newQuery();
-                    qb->where("assignment_id", "=", assign->getId());
-                    qb->where("is_deleted", "=", (int64_t)0);
-                    std::vector<DB::AssignmentUserRelInfo::ptr> submitters;
-                    if (DB::AssignmentUserRelInfoDao::QueryByBuilder(submitters, qb, db2) == 0) {
-                        for (auto& info : submitters) {
-                            if (!info) {
-                                continue;
-                            }
-                            int64_t submitter_id = info->getUserId();
-                            if (notified.count(submitter_id)) {
-                                continue;
-                            }
-                            notified.insert(submitter_id);
-
-                            EventAssignmentData data = {};
-                            data.type = "deleted";
-                            data.assignment_id = assign->getId();
-                            data.assignment_name = assign_name;
-                            data.submitter_id = submitter_id;
-
-                            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ASSIGNMENT, std::move(data));
-                        }
-                    }
+        for (auto& assign : deleted) {
+            std::set<int64_t> notified;
+            std::vector<DB::AssignmentUserRelInfo::ptr> submitters;
+            AssignmentUserRelRepository::ListByAssignment(submitters, assign->getId(), true, db);
+            for (auto& info : submitters) {
+                if (!info) {
+                    continue;
                 }
+                int64_t submitter_id = info->getUserId();
+                if (!notified.insert(submitter_id).second) {
+                    continue;
+                }
+
+                EventAssignmentData data = {};
+                data.type = "deleted";
+                data.assignment_id = assign->getId();
+                data.assignment_name = assign->getName();
+                data.submitter_id = submitter_id;
+
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ASSIGNMENT, std::move(data));
             }
         }
     } while (0);

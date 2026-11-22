@@ -1,14 +1,13 @@
 #include "OrganizationDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 
-#include <Chen/Log/Log.hpp>
+#include <json/json.h>
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include <set>
 
 OrganizationDeleteServlet::OrganizationDeleteServlet()
     : BlogLoginedServlet("OrganizationDeleteServlet")
@@ -23,11 +22,13 @@ int32_t OrganizationDeleteServlet::handle(
 {
     do {
         DEFINE_AND_CHECK_STRING(result, ids, "ids");
-        std::set<int64_t> assignment_ids;
-        auto tmp = chen::StringUtil::Split(ids, ",");
-        for (auto& i : tmp) {
-            assignment_ids.insert(chen::TypeUtil::Atoi(i));
+        std::set<int64_t> id_set;
+        for (auto& i : chen::StringUtil::Split(ids, ",")) {
+            if (!i.empty()) {
+                id_set.insert(chen::TypeUtil::Atoi(i));
+            }
         }
+        std::vector<int64_t> org_ids(id_set.begin(), id_set.end());
 
         int64_t uid = getUserId(request);
         if (!uid) {
@@ -39,97 +40,42 @@ int32_t OrganizationDeleteServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        std::vector<DB::OrganizationInfo::ptr> infos;
-        if (!OrganizationMgr::GetInstance()->listByPages(infos, 0, INT32_MAX, -1, true)) {
+
+        std::vector<DB::OrganizationInfo::ptr> orgs;
+        std::vector<DB::OrganizationUserRelInfo::ptr> rels;
+        if (!OrganizationService::DeleteMany(org_ids, orgs, rels)) {
+            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
-
-        std::vector<DB::OrganizationInfo::ptr> del_organizations;
-        for (auto& i : infos) {
-            if (assignment_ids.count(i->getId())) {
-                del_organizations.push_back(i);
-            }
-        }
-        if (del_organizations.empty()) {
+        if (orgs.empty()) {
             result->setErrno(ORG_NO_VALID_ORGS);
             break;
         }
 
-        // 收集所有待删除组织关联的用户关系记录
-        std::vector<DB::OrganizationUserRelInfo::ptr> all_rels;
-        for (auto& org : del_organizations) {
-            std::vector<DB::OrganizationUserRelInfo::ptr> rels;
-            OrganizationUserRelMgr::GetInstance()->getByPages(rels, org->getId(), 0, INT32_MAX, -1, true);
+        Json::Value json_ids;
+        for (auto& org : orgs) {
+            json_ids.append(org->getId());
+        }
+        result->set("ids", json_ids);
+
+        // 通知所有被删除组织的成员
+        for (auto& org : orgs) {
+            std::set<int64_t> notified_users;
             for (auto& rel : rels) {
-                all_rels.push_back(rel);
-            }
-        }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = time(0);
-        for (auto& i : del_organizations) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::OrganizationInfoDao::Update(i, db);
-        }
-        for (auto& rel : all_rels) {
-            rel->setIsDeleted(1);
-            rel->setUpdateTime(now);
-            DB::OrganizationUserRelInfoDao::Update(rel, db);
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            result->setErrno(DB_COMMIT_FAILED);
-
-            for (auto& i : del_organizations) {
-                i->setIsDeleted(0);
-            }
-            for (auto& rel : all_rels) {
-                rel->setIsDeleted(0);
-            }
-            break;
-        }
-        for (auto& i : del_organizations) {
-            OrganizationMgr::GetInstance()->add(i);
-        }
-        for (auto& rel : all_rels) {
-            OrganizationUserRelMgr::GetInstance()->add(rel);
-        }
-        if (!del_organizations.empty()) {
-            Json::Value json_ids;
-            for (auto& i : del_organizations) {
-                json_ids.append(i->getId());
-            }
-            result->set("ids", json_ids);
-
-            // Notify all org members
-            for (auto& org : del_organizations) {
-                std::set<int64_t> notified_users;
-                for (auto& rel : all_rels) {
-                    if (rel->getOrgId() != org->getId() || rel->getIsDeleted())
-                        continue;
-                    int64_t member_id = rel->getUserId();
-                    if (notified_users.count(member_id))
-                        continue;
-                    notified_users.insert(member_id);
-
-                    EventOrgDeletedData data = {};
-                    data.member_id = member_id;
-                    data.org_id = org->getId();
-                    data.org_name = org->getName();
-
-                    chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_DELETED, std::move(data));
+                if (rel->getOrgId() != org->getId()) {
+                    continue;
                 }
+                int64_t member_id = rel->getUserId();
+                if (!notified_users.insert(member_id).second) {
+                    continue;
+                }
+
+                EventOrgDeletedData data = {};
+                data.member_id = member_id;
+                data.org_id = org->getId();
+                data.org_name = org->getName();
+
+                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_ORG_DELETED, std::move(data));
             }
         }
     } while (0);

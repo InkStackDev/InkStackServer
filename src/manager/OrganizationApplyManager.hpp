@@ -26,9 +26,6 @@ public:
         uint64_t offset,
         uint64_t limit,
         bool is_valid);
-
-private:
-    static DB::OrganizationApplyInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationApplyManager> OrganizationApplyMgr;

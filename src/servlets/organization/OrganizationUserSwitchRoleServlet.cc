@@ -1,6 +1,5 @@
 #include "OrganizationUserSwitchRoleServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
 #include <json/json.h>
 
 #include "../../Permission.hpp"
@@ -8,9 +7,8 @@
 #include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 OrganizationUserSwitchRoleServlet::OrganizationUserSwitchRoleServlet()
     : BlogLoginedServlet("OrganizationUserSwitchRoleServlet")
@@ -42,48 +40,35 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         }
         int32_t system_role = current_user->getRole();
 
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-        if (!rel) {
+        auto operator_rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        if (!operator_rel) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
         }
-        int32_t org_role = rel->getRole();
+        int32_t org_role = operator_rel->getRole();
 
         if (!CanSwitchRole(system_role, org_role, role)) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
 
-        // 更新用户角色
-        rel = OrganizationUserRelMgr::GetInstance()->get(id);
-        if (!rel || rel->getOrgId() != org_id || rel->getUserId() != user_id) {
-            result->setErrno(ARTICLE_INVALID_ID);
-            ;
-            break;
-        }
-
-        if (role != OrganizationManager::Role::MEMBER && role != OrganizationManager::Role::REPORTER && role != OrganizationManager::Role::DEVELOPER
-            && role != OrganizationManager::Role::DEV_LEAD && role != OrganizationManager::Role::ORG_ADMIN) {
+        if (role != OrganizationManager::Role::MEMBER && role != OrganizationManager::Role::REPORTER
+            && role != OrganizationManager::Role::DEVELOPER && role != OrganizationManager::Role::DEV_LEAD
+            && role != OrganizationManager::Role::ORG_ADMIN) {
             result->setErrno(PARAM_INVALID, "invalid role");
             break;
         }
 
-        rel->setRole(role);
-        rel->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        DB::OrganizationUserRelInfo::ptr rel;
+        auto rt = OrganizationService::SwitchRole(id, org_id, user_id, role, rel);
+        if (rt == OrganizationService::MemberResult::RelNotFound) {
+            result->setErrno(ARTICLE_INVALID_ID);
             break;
         }
-
-        if (DB::OrganizationUserRelInfoDao::InsertOrUpdate(rel, db)) {
+        if (rt != OrganizationService::MemberResult::Ok) {
             result->setErrno(ORG_USER_REL_FAILED);
-            ERROR(logger) << "db error, errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
             break;
         }
-
-        OrganizationUserRelMgr::GetInstance()->add(rel);
 
         // Notify user about role change
         {
