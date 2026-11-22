@@ -9,6 +9,7 @@
 
 #include <Chen/Config/Config.hpp>
 #include <Chen/Util/StringUtil.hpp>
+#include <Chen/Util/Macro.hpp>
 
 #include <sstream>
 #include <stdexcept>
@@ -65,6 +66,23 @@ struct RpcConf {
     uint64_t reconnect_interval_ms = 5000;
     /// 心跳间隔（毫秒）
     uint64_t heartbeat_interval_ms = 30000;
+
+    std::string getHubIP() const
+    {
+        std::vector parts = chen::StringUtil::Split(hub_address, ':', true);
+        ASSERT_RET(parts.size() == 2, "");
+
+        return parts.front();
+    }
+
+    uint16_t getHubPort() const
+    {
+        std::vector parts = chen::StringUtil::Split(hub_address, ':', true);
+        ASSERT_RET(parts.size() == 2, 0);
+
+        return atoi(parts.back().c_str());
+        ∑ =
+    }
 
     bool operator==(const RpcConf& other) const
     {

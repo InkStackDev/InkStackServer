@@ -8,6 +8,7 @@
 #pragma once
 
 #include <Chen/Module/Module.hpp>
+#include <Chen/Rpc/RpcClient.hpp>
 
 class BlogModule : public chen::Module {
 public:
@@ -61,4 +62,7 @@ public:
      * @return bool
      */
     bool onDeactivate() override;
+
+private:
+    chen::rpc::RpcClient::ptr client_;
 };

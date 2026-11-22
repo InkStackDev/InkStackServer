@@ -3,6 +3,7 @@
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
+#include "Config/RpcConfig.hpp"
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -29,12 +30,24 @@ bool BlogModule::onDeactivate()
 
 void BlogModule::onTick()
 {
+    if (client_->isConnected()) {
+        return;
+    }
+
+    std::string hub_ip = GetRpcConf().getHubIP();
+    uint16_t hub_port = GetRpcConf().getHubPort();
+    chen::Address::ptr address = chen::IPv4Address::Create(hub_ip.c_str(), hub_port);
+    ASSERT_RET(address);
+
+    uint64_t conn_timeout = GetRpcConf().connect_timeout_ms;
+    if (!client_->connect(address, conn_timeout)) {
+        ERROR(LOG_ROOT()) << "Failed to connect to hub server";
+    }
 }
 
 uint64_t BlogModule::getTickIntervalMs()
 {
-    // 设置定时器间隔为1分钟
-    return 60 * 1000;
+    return 100;
 }
 
 bool BlogModule::onServerReady()
@@ -75,12 +88,27 @@ bool BlogModule::onServerReady()
         }
     }
 
-    chen::rpc::RpcClient::ptr client = std::make_shared<chen::rpc::RpcClient>();
-    ASSERT_RET(client, false);
+    client_ = std::make_shared<chen::rpc::RpcClient>();
+    ASSERT_RET(client_, false);
 
-    chen::Address::ptr address = std::make_shared<chen::IPv4Address>();
+    uint64_t hb_interval_ms = GetRpcConf().heartbeat_interval_ms;
+    client_->setHeartbeatInterval(hb_interval_ms);
 
-    // client->connect()
+    std::string hub_ip = GetRpcConf().getHubIP();
+    uint16_t hub_port = GetRpcConf().getHubPort();
+    chen::Address::ptr address = chen::IPv4Address::Create(hub_ip.c_str(), hub_port);
+    ASSERT_RET(address, false);
+
+    uint64_t conn_timeout = GetRpcConf().connect_timeout_ms;
+    if (!client_->connect(address, conn_timeout)) {
+        ERROR(LOG_ROOT()) << "Failed to connect to hub server";
+        return false;
+    }
+
+    if (!BlogMsgFromBotInit(client_)) {
+        ERROR(LOG_ROOT()) << "BlogMsgFromBotInit failed";
+        return false;
+    }
 
     return true;
 }
