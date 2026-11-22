@@ -21,6 +21,7 @@
 
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
+#include <Chen/Log/Log.hpp>
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -88,6 +89,10 @@ void BlogModule::onTick()
     // 5s 采样一次路由 QPS
     if (tick % 50 == 0) {
         SampleRates();
+    }
+    // 5s 刷一次日志缓冲，保证 access/root 日志能及时落盘
+    if (tick % 50 == 0) {
+        chen::LoggerMgr::GetInstance()->flushAll();
     }
     // 60s 清理一次进程内会话缓存，避免长跑内存只增不减
     if (tick % 600 == 0) {

@@ -162,6 +162,8 @@ All notable changes to this project will be documented in this file.
 - 修复模块重写后丢失的启动初始化：`onLoad` 恢复 `FoxThreadMgr::init/start` + `RedisMgr::init`、`I18n::Init`、
   `ErrorCodeMgr::load`，`onServerReady` 恢复 `Init(...)` 服务指标注册，`onTick` 恢复 `SampleRates()` 与
   `SessionDataMgr::check()`，`onUnload` 补 `RedisMgr::freeAll()`。
+- 访问日志改用独立的 `access` logger（之前写到 root.log），并在 `onTick` 每 5s `flushAll()`，
+  避免 FileLogAppender 缓冲导致日志延迟可见。
 - 修复 `BlogLoginedServlet::handlePre` 会话判断写反导致**带 session cookie 的请求全部返回
   `1101 NOT_LOGIN`**（前端表现为“登录后立刻过期/请求被取消”）的问题。
 - 打包脚本（`collect.sh` / `package-cluster.sh`）在 `locale/*.mo` 缺失时自动尝试 `ninja i18n` /

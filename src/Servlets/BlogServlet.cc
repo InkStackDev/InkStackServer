@@ -10,6 +10,8 @@
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
+/// 访问日志单独走 access logger（config 里 access 的 FileLogAppender）
+static chen::Logger::ptr access_logger = LOG_NAME("access");
 
 BlogServlet::BlogServlet(const std::string& name)
     : Servlet(name)
@@ -96,7 +98,7 @@ bool BlogServlet::handlePost(
     if (!response->checkGetHeaderAs<std::string>("Content-Type", val, "application/json")) {
         response->setHeader("Content-Type", val);
     }
-    INFO(logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::kSessionKey, "-") << "\t"
+    INFO(access_logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::kSessionKey, "-") << "\t"
                  << getUserId(request) << "\t" << result->getErrno() << "\t" << request->getPath() << "\t" << (!request->getQuery().empty() ? request->getQuery() : "-");
     return true;
 }
