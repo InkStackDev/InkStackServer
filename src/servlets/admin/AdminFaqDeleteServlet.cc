@@ -11,6 +11,7 @@
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Service/FaqService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -54,7 +55,7 @@ int32_t AdminFaqDeleteServlet::handle(
             break;
         }
 
-        if (!FaqMgr::GetInstance()->remove(id)) {
+        if (!FaqService::Remove(id)) {
             result->setErrno(FAQ_NOT_FOUND);
             break;
         }

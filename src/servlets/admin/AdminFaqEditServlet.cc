@@ -11,6 +11,7 @@
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Service/FaqService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -58,7 +59,7 @@ int32_t AdminFaqEditServlet::handle(
         std::string a = request->getParam("a");
         std::string cat = request->getParam("cat");
 
-        if (!FaqMgr::GetInstance()->update(id, q, a, cat)) {
+        if (!FaqService::Update(id, q, a, cat)) {
             result->setErrno(FAQ_NOT_FOUND);
             break;
         }

@@ -3,13 +3,13 @@
 #include <Chen/Config/Config.hpp>
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/ResourceManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <fstream>
 
 #include "../../Config/AppConfig.hpp"
+#include "../../Repository/ResourceRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 static const int64_t MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB文件大小限制
@@ -71,7 +71,7 @@ int32_t FileDownloadServlet::handle(
             break;
         }
 
-        auto res_info = ResourceMgr::GetInstance()->getByPath(url);
+        auto res_info = ResourceRepository::GetByPath(url, GetDB());
         if (!res_info) {
             result->setErrno(FILE_NOT_FOUND);
             break;

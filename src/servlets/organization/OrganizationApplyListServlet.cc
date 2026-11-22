@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationApplyManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/OrganizationApplyRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -38,7 +38,7 @@ int32_t OrganizationApplyListServlet::handle(
 
         uint64_t offset = (page_num - 1) * page_size;
         std::vector<DB::OrganizationApplyInfo::ptr> applies;
-        int64_t total = OrganizationApplyMgr::GetInstance()->listByPages(applies, offset, page_size, status, true);
+        int64_t total = OrganizationApplyRepository::ListByPages(applies, offset, page_size, status, true, GetDB());
 
         result->set("total", total);
         Json::Value list;

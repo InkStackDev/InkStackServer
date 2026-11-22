@@ -3,10 +3,10 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Manager/AssignmentManager.hpp"
-#include "../../Manager/AssignmentUserRelManager.hpp"
-#include "../../Manager/ResourceManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/AssignmentRelRepository.hpp"
+#include "../../Repository/ResourceRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -31,7 +31,7 @@ int32_t AssignmentSubmissionListServlet::handle(
         }
 
         int64_t uid = getUserId(request);
-        auto rel_info = AssignmentUserRelMgr::GetInstance()->getByAssignAndUser(assign_id, uid);
+        auto rel_info = AssignmentUserRelRepository::GetByAssignAndUser(assign_id, uid, GetDB());
         if (rel_info) {
             auto uinfo = UserMgr::GetInstance()->get(uid);
             result->set("user_id", uid);
@@ -43,7 +43,7 @@ int32_t AssignmentSubmissionListServlet::handle(
             // 获取提交的资源信息
             std::string biz_type = "assignment_submission";
             std::vector<DB::ResourceInfo::ptr> resources;
-            ResourceMgr::GetInstance()->getByBizUid(resources, biz_type, assign_id, uid);
+            ResourceRepository::ListByBizUid(resources, biz_type, assign_id, uid, GetDB());
 
             Json::Value list;
             for (auto& res : resources) {

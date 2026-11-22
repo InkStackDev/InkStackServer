@@ -2,8 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserAIConfigManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/UserAIConfigRepository.hpp"
+#include "../../Service/UserAIConfigService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -29,7 +30,7 @@ int32_t UserAIConfigServlet::handle(
 
         if (method == chen::http::HttpMethod::GET) {
             // 获取AI配置
-            auto info = UserAIConfigMgr::GetInstance()->getByUserId(uid);
+            auto info = UserAIConfigRepository::GetByUserId(uid, GetDB());
             if (!info) {
                 result->setErrno(SUCCESS);
                 result->set("data", Json::Value::null);
@@ -68,7 +69,7 @@ int32_t UserAIConfigServlet::handle(
             std::string model = request->getParam("model");
 
             // 查询已有配置
-            auto info = UserAIConfigMgr::GetInstance()->getByUserId(uid);
+            auto info = UserAIConfigRepository::GetByUserId(uid, GetDB());
             if (!info) {
                 info.reset(new DB::UserAiConfigInfo);
                 info->setUserId(uid);
@@ -84,7 +85,7 @@ int32_t UserAIConfigServlet::handle(
                 info->setMaxTokens(max_tokens);
             }
 
-            if (!UserAIConfigMgr::GetInstance()->save(info)) {
+            if (!UserAIConfigService::Save(info)) {
                 result->setErrno(AI_CONFIG_SAVE_FAILED);
                 break;
             }

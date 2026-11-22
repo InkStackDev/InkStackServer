@@ -10,6 +10,30 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+bool FaqService::ListAll(std::vector<DB::HelpFaqsInfo::ptr>& infos)
+{
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+    FaqRepository::ListValid(infos, db);
+    return true;
+}
+
+bool FaqService::Search(const std::string& keyword, std::vector<DB::HelpFaqsInfo::ptr>& infos)
+{
+    std::vector<DB::HelpFaqsInfo::ptr> all;
+    if (!ListAll(all)) {
+        return false;
+    }
+    for (auto& info : all) {
+        if (info->getQ().find(keyword) != std::string::npos || info->getA().find(keyword) != std::string::npos) {
+            infos.push_back(info);
+        }
+    }
+    return true;
+}
+
 bool FaqService::Create(const std::string& cat,
     const std::string& question,
     const std::string& answer,

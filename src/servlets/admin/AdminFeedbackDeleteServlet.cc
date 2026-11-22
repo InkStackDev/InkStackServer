@@ -4,6 +4,7 @@
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Service/FeedbackService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -47,7 +48,7 @@ int32_t AdminFeedbackDeleteServlet::handle(
             break;
         }
 
-        if (!FeedbackMgr::GetInstance()->remove(id)) {
+        if (!FeedbackService::Remove(id)) {
             result->setErrno(FEEDBACK_NOT_FOUND);
             break;
         }

@@ -10,6 +10,20 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+bool FeedbackService::List(std::vector<DB::UserFeedbackInfo::ptr>& infos,
+    const std::string& type,
+    int32_t page,
+    int32_t page_size,
+    int64_t& total)
+{
+    return FeedbackRepository::ListByPages(infos, type, page, page_size, total, GetDB());
+}
+
+DB::UserFeedbackInfo::ptr FeedbackService::Get(int64_t id)
+{
+    return FeedbackRepository::Get(id, GetDB());
+}
+
 bool FeedbackService::Submit(int64_t uid,
     const std::string& type,
     const std::string& content,

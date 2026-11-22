@@ -11,9 +11,18 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class FeedbackService {
 public:
+    static bool List(std::vector<DB::UserFeedbackInfo::ptr>& infos,
+        const std::string& type,
+        int32_t page,
+        int32_t page_size,
+        int64_t& total);
+
+    static DB::UserFeedbackInfo::ptr Get(int64_t id);
+
     static bool Submit(int64_t uid,
         const std::string& type,
         const std::string& content,

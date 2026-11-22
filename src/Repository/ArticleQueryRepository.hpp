@@ -82,4 +82,26 @@ public:
     static void CountByUsers(const std::vector<int64_t>& user_ids,
         std::vector<std::pair<int64_t, int64_t>>& rows,
         chen::IDB::ptr conn);
+
+    /**
+     * @brief 已发布且未删除文章的浏览总数
+     */
+    static int64_t SumPublishedViews(chen::IDB::ptr conn);
+
+    /**
+     * @brief 某用户在某时间段内已发布文章的日期（不重复）
+     */
+    static void ListPublishedDays(int64_t user_id,
+        const std::string& start_time,
+        const std::string& end_time,
+        std::vector<int32_t>& days,
+        chen::IDB::ptr conn);
+
+    /**
+     * @brief 搜索快照分批读取（id > last_id，按 id 升序）
+     */
+    static bool ListSnapshotAfter(int64_t last_id,
+        int32_t limit,
+        std::vector<DB::ArticleInfo::ptr>& infos,
+        chen::IDB::ptr conn);
 };

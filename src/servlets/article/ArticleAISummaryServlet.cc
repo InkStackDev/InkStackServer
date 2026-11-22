@@ -4,7 +4,6 @@
 #include "../../AI/SSEStreamParser.hpp"
 #include "../../Auth/AuthService.hpp"
 #include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/UserAIConfigManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Config/Config.hpp>
@@ -12,6 +11,7 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Config/AIConfig.hpp"
+#include "../../Repository/UserAIConfigRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -67,7 +67,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
     std::string ai_model;
     int32_t ai_max_tokens = 4096;
     {
-        auto config = UserAIConfigMgr::GetInstance()->getByUserId(uid);
+        auto config = UserAIConfigRepository::GetByUserId(uid, GetDB());
         if (config) {
             // 用户配置：API key 是加密存储的，需要解密
             std::string encrypted_key = config->getApiKey();

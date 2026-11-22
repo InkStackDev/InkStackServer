@@ -3,6 +3,7 @@
 #include "../../Include/Managers.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Service/FaqService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -22,9 +23,9 @@ int32_t FaqsServlet::handle(
 
         std::vector<DB::HelpFaqsInfo::ptr> infos;
         if (keyword.empty()) {
-            FaqMgr::GetInstance()->listAll(infos);
+            FaqService::ListAll(infos);
         } else {
-            FaqMgr::GetInstance()->searchByKeyword(keyword, infos);
+            FaqService::Search(keyword, infos);
         }
 
         Json::Value data;

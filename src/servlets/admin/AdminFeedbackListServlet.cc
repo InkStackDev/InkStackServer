@@ -3,6 +3,7 @@
 #include "../../Include/Managers.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Service/FeedbackService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -43,7 +44,7 @@ int32_t AdminFeedbackListServlet::handle(
         std::vector<DB::UserFeedbackInfo::ptr> infos;
         int64_t total = 0;
 
-        if (!FeedbackMgr::GetInstance()->list(infos, type, page, page_size, &total)) {
+        if (!FeedbackService::List(infos, type, page, page_size, total)) {
             result->setErrno(DB_OPERATION_FAILED, "query feedbacks failed");
             break;
         }

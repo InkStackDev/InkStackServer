@@ -13,11 +13,11 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Manager/UserManager.hpp"
-#include "../../Manager/UserOAuthManager.hpp"
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Config/AuthConfig.hpp"
+#include "../../Service/UserOAuthService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -285,7 +285,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
 
         // 查询或创建本地用户
         DB::UserInfo::ptr user;
-        auto binding = UserOAuthMgr::GetInstance()->getByOpenId(kProviderGithub, profile.open_id);
+        auto binding = UserOAuthService::GetByOpenId(kProviderGithub, profile.open_id);
         if (binding) {
             user = UserService::Get(binding->getUserId());
             if (!user) {
@@ -308,7 +308,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
                     (rt == UserService::FindOrCreateOAuthResult::InternalError) ? INTERNAL_ERROR : DB_OPERATION_FAILED;
                 break;
             }
-            UserOAuthMgr::GetInstance()->bind(user->getId(), kProviderGithub, profile.open_id, profile.login);
+            UserOAuthService::Bind(user->getId(), kProviderGithub, profile.open_id, profile.login);
         }
 
         if (!user) {

@@ -65,13 +65,19 @@ Service 不应依赖 Manager。
 
 ## 4. Manager 约定
 
-- 新代码不要往 Manager 加业务逻辑。
-- 现有 Manager 保留为兼容入口，方法只做转发；新代码优先直接调用 Service / Repository。
-- Manager 中不得再出现：
-    - `static ... ParseRow(...)`
-    - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec
-    - 分页/统计 SQL
-- Manager 仍可承担非数据库能力：WS 连接管理、消息路由、错误码内存表、系统设置内存快照等。
+- **纯数据库 facade 一律删除**，不再新增 Manager。新代码直接调用 Service / Repository。
+- 仍然保留的 Manager 只允许是非数据库能力：
+  - `WSConnectionManager`：进程内 WS 连接状态
+  - `SystemSettingsManager`：进程内设置快照 + 版本校验
+  - `ErrorCodeManager`：`errors.json` 内存表与 i18n
+  - `SessionManager`：session TTL 计算
+  - `NotificationManager` / `MessageManager`：目前仅剩 WS 推送入口，后续迁入 `MessageRouter` 后删除
+- 已删除的纯 facade（示例）：`BadgeManager`、`FaqManager`、`FeedbackManager`、`ResourceManager`、
+  `UserOAuthManager`、`OrganizationApplyManager`、`UserAIConfigManager`、`AssignmentUserRelManager`。
+- 现有 Manager 中不得再出现：
+  - `static ... ParseRow(...)`
+  - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec
+  - 分页/统计 SQL
 
 ## 5. 缓存与多 worker
 

@@ -3,6 +3,7 @@
 #include "../../Include/Managers.hpp"
 #include "../../Service/BugService.hpp"
 #include "../../Service/FaqService.hpp"
+#include "../../Service/FeedbackService.hpp"
 #include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -59,7 +60,7 @@ int32_t AdminFeedbackConvertServlet::handle(
         }
 
         // 获取反馈
-        auto feedback = FeedbackMgr::GetInstance()->get(id);
+        auto feedback = FeedbackService::Get(id);
         if (!feedback) {
             result->setErrno(FEEDBACK_NOT_FOUND);
             break;
@@ -146,7 +147,7 @@ int32_t AdminFeedbackConvertServlet::handle(
 
         // 转换成功后删除原反馈
         if (converted_id > 0) {
-            if (!FeedbackMgr::GetInstance()->remove(id)) {
+            if (!FeedbackService::Remove(id)) {
                 WARN(logger) << "failed to delete feedback after convert, id=" << id;
             }
         }

@@ -11,9 +11,14 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class FaqService {
 public:
+    static bool ListAll(std::vector<DB::HelpFaqsInfo::ptr>& infos);
+
+    static bool Search(const std::string& keyword, std::vector<DB::HelpFaqsInfo::ptr>& infos);
+
     static bool Create(const std::string& cat,
         const std::string& question,
         const std::string& answer,

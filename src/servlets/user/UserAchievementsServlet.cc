@@ -8,6 +8,7 @@
 #include "../../Include/Managers.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/BadgeRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -123,7 +124,7 @@ int32_t UserAchievementsServlet::handle(
 
         // ========== 5. 徽章解锁判断 ==========
         std::vector<DB::BadgeInfo::ptr> badges;
-        BadgeMgr::GetInstance()->listAll(badges);
+        BadgeRepository::ListValid(badges, GetDB());
 
         int64_t unlocked_count = 0;
         Json::Value badgesJson(Json::arrayValue);
