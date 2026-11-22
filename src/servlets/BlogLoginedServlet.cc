@@ -11,14 +11,10 @@ bool BlogLoginedServlet::handlePre(
     chen::http::HttpSession::ptr session,
     Result::ptr result)
 {
-    if (!request->getCookie(CookieKey::kSessionKey).empty()) {
-        result->setErrno(NOT_LOGIN);
-        return false;
-    }
-
     if (!initLogin(request, response)) {
         result->setErrno(NOT_LOGIN);
         return false;
     }
+
     return true;
 }

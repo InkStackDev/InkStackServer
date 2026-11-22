@@ -1,19 +1,25 @@
 #include "BlogModule.hpp"
 
+#include "./Config/AppConfig.hpp"
+#include "./Config/RpcConfig.hpp"
+#include "./I18n/I18n.hpp"
 #include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
+#include "./Manager/ErrorCodeManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
+#include "./Metrics/MetricsService.hpp"
 #include "./Search/SearchSync.hpp"
-#include "Config/RpcConfig.hpp"
-#include "Service/OrganizationRepoService.hpp"
-#include "Service/OrganizationRepoPrService.hpp"
-#include "Service/ArticleCounterService.hpp"
-#include "Service/ArticleScheduleService.hpp"
-#include "Message/MessageRouter.hpp"
-#include "Service/NotificationService.hpp"
+#include "./Service/ArticleCounterService.hpp"
+#include "./Service/ArticleScheduleService.hpp"
+#include "./Service/NotificationService.hpp"
+#include "./Service/OrganizationRepoPrService.hpp"
+#include "./Service/OrganizationRepoService.hpp"
+
+#include <Chen/DB/Redis.hpp>
+#include <Chen/Http/SessionData.hpp>
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -22,7 +28,28 @@ BlogModule::BlogModule()
 
 bool BlogModule::onLoad()
 {
+    const std::string work_path = GetServerWorkPath();
 
+    if (!I18n::Init(work_path + "/locale")) {
+        WARN(LOG_ROOT()) << "i18n unavailable, messages fall back to errors.json";
+    }
+
+    const std::string errors_path = work_path + "/errors.json";
+    if (!ErrorCodeMgr::GetInstance()->load(errors_path)) {
+        ERROR(LOG_ROOT()) << "failed to load error codes: " << errors_path;
+        return false;
+    }
+
+    chen::FoxThreadMgr::GetInstance()->init();
+    chen::FoxThreadMgr::GetInstance()->start();
+    chen::RedisMgr::GetInstance()->init();
+
+    auto rds = chen::RedisMgr::GetInstance()->get(GetRedisPoolName());
+    if (!rds) {
+        ERROR(LOG_ROOT()) << "redis pool unavailable: " << GetRedisPoolName();
+    } else {
+        INFO(LOG_ROOT()) << "redis pool ready: " << GetRedisPoolName();
+    }
     return true;
 }
 
@@ -32,6 +59,9 @@ bool BlogModule::onUnload()
     ArticleCounterService::FlushDirty();
     SearchSyncMgr::GetInstance()->stop();
     MessageRouter::Shutdown();
+
+    chen::RedisMgr::GetInstance()->freeAll();
+    chen::FoxThreadMgr::GetInstance()->stop();
     return true;
 }
 
@@ -46,6 +76,18 @@ bool BlogModule::onDeactivate()
 
 void BlogModule::onTick()
 {
+    static uint32_t tick = 0;
+    ++tick;
+
+    // 10s 采样一次路由 QPS
+    if (tick % 50 == 0) {
+        SampleRates();
+    }
+    // 60s 清理一次进程内会话缓存，避免长跑内存只增不减
+    if (tick % 600 == 0) {
+        chen::http::SessionDataMgr::GetInstance()->check(3600);
+    }
+
     if (client_->isConnected()) {
         return;
     }
@@ -125,6 +167,8 @@ bool BlogModule::onServerReady()
         ERROR(LOG_ROOT()) << "BlogMsgFromBotInit failed";
         return false;
     }
+
+    Init(getName(), getVersion(), http_servers, ws_servers);
 
     return true;
 }

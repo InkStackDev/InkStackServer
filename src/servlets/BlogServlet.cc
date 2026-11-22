@@ -97,8 +97,7 @@ bool BlogServlet::handlePost(
         response->setHeader("Content-Type", val);
     }
     INFO(logger) << GetRemoteIP(request, session) << "\t" << request->getCookie(CookieKey::kSessionKey, "-") << "\t"
-                 << getUserId(request) << "\t" << result->getErrno() << "\t" << result->getMessage() << "\t"
-                 << request->getPath() << "\t" << (!request->getQuery().empty() ? request->getQuery() : "-");
+                 << getUserId(request) << "\t" << result->getErrno() << "\t" << request->getPath() << "\t" << (!request->getQuery().empty() ? request->getQuery() : "-");
     return true;
 }
 
