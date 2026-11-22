@@ -41,6 +41,9 @@ All notable changes to this project will be documented in this file.
 ### 移除
 
 - 移除旧 WebSocket 端点、旧通知/在线状态/私信连接表及相关管理方法。
+- 移除服务端文件上传接口：`/api/v1/file/upload`、`/api/v1/upload/*`、`/api/v1/admin/settings/upload`，
+  以及 `FileUploadServlet`、`ChunkUploadServlet`、`SystemSettingsUploadServlet`；后续文件存储统一走对象存储，
+  站点图标/Logo/Favicon 先通过 `/api/v1/admin/settings` 填写 URL。`chunk_upload` 表不再创建，历史资源元数据保留在 `resource` 表。
 
 ### 升级注意
 

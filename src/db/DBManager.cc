@@ -16,7 +16,6 @@
 #include "db/badge_info.h"
 #include "db/bug_info.h"
 #include "db/category_info.h"
-#include "db/chunk_upload_info.h"
 #include "db/comment_info.h"
 #include "db/comment_praise_rel_info.h"
 #include "db/conversation_info.h"
@@ -78,7 +77,6 @@ bool DBManager::CreateAllTables()
         XX(AssignmentOrganizationRelInfoDao, "assignment_organization_rel")
         XX(AssignmentUserRelInfoDao, "assignment_user_rel")
         XX(ResourceInfoDao, "resource")
-        XX(ChunkUploadInfoDao, "chunk_upload")
         XX(NotificationInfoDao, "notification")
         XX(UserFollowRelInfoDao, "user_follow_rel")
         XX(ArticlePraiseRelInfoDao, "article_praise_rel")
@@ -138,7 +136,6 @@ bool DBManager::MigrateAllTables()
         XX(AssignmentOrganizationRelInfoDao)
         XX(AssignmentUserRelInfoDao)
         XX(ResourceInfoDao)
-        XX(ChunkUploadInfoDao)
         XX(NotificationInfoDao)
         XX(UserFollowRelInfoDao)
         XX(ArticlePraiseRelInfoDao)

@@ -1,4 +1,4 @@
-<table name="bug" namespace="db" desc="缺陷表">
+<table name="bug" namespace="DB" desc="缺陷表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="缺陷ID"/>
         <column name="org_id" type="int64" desc="组织ID"/>

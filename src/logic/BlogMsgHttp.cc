@@ -125,7 +125,6 @@ bool BlogMsgHttpInit(chen::http::HttpServer::ptr server)
     dp->addServlet("/api/v1/site/settings", std::make_shared<SiteSettingsServlet>());
     dp->addServlet("/api/v1/site/status", std::make_shared<SiteStatusServlet>());
     dp->addServlet("/api/v1/admin/settings", std::make_shared<SystemSettingsServlet>());
-    dp->addServlet("/api/v1/admin/settings/upload", std::make_shared<SystemSettingsUploadServlet>());
     dp->addServlet("/api/v1/help/faqs", std::make_shared<FaqsServlet>());
     dp->addServlet("/api/v1/help/feedback", std::make_shared<FeedbackServlet>());
     dp->addServlet("/api/v1/admin/faq/delete", std::make_shared<AdminFaqDeleteServlet>());
@@ -138,13 +137,7 @@ bool BlogMsgHttpInit(chen::http::HttpServer::ptr server)
     dp->addServlet("/api/v1/label/create", std::make_shared<LabelCreateServlet>());
     dp->addServlet("/api/v1/label/delete", std::make_shared<LabelDeleteServlet>());
     dp->addServlet("/api/v1/label/query", std::make_shared<LabelQueryServlet>());
-    dp->addServlet("/api/v1/file/upload", std::make_shared<FileUploadServlet>());
     dp->addServlet("/api/v1/file/download", std::make_shared<FileDownloadServlet>());
-    dp->addServlet("/api/v1/upload/init", std::make_shared<ChunkUploadServlet>());
-    dp->addServlet("/api/v1/upload/chunk", std::make_shared<ChunkUploadServlet>());
-    dp->addServlet("/api/v1/upload/complete", std::make_shared<ChunkUploadServlet>());
-    dp->addServlet("/api/v1/upload/cancel", std::make_shared<ChunkUploadServlet>());
-    dp->addServlet("/api/v1/upload/status", std::make_shared<ChunkUploadServlet>());
     dp->addServlet("/api/v1/assignment/admin/lists", std::make_shared<AssignmentAdminListsServlet>());
     dp->addServlet("/api/v1/assignment/admin/stats", std::make_shared<AssignmentAdminStatsServlet>());
     dp->addServlet("/api/v1/assignment/create", std::make_shared<AssignmentCreateServlet>());

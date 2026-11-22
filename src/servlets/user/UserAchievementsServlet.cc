@@ -1,20 +1,9 @@
-/**
- * @file UserAchievementsServlet.cc
- * @brief 用户成就数据接口实现
- * @author Christins
- * @date 2026-07-16
- * @copyright Apache 2.0
- */
 #include "UserAchievementsServlet.hpp"
-
-#include "../../Include/Managers.hpp"
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
 #include <map>
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 UserAchievementsServlet::UserAchievementsServlet()
     : BlogLoginedServlet("UserAchievementsServlet")
@@ -52,7 +41,7 @@ int32_t UserAchievementsServlet::handle(
     do {
         int64_t uid = getUserId(request);
         if (!uid) {
-            result->setErrno(errcode::NOT_LOGIN);
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
@@ -191,7 +180,7 @@ int32_t UserAchievementsServlet::handle(
         result->set("stats", stats);
         result->set("badges", badgesJson);
         result->set("heatmap", heatmap);
-        result->setErrno(errcode::SUCCESS);
+        result->setErrno(SUCCESS);
     } while (0);
 
     DEBUG(logger) << "UserAchievementsServlet handle result: " << result->toJsonString();

@@ -1,4 +1,4 @@
-<table name="notification" namespace="db" desc="用户通知">
+<table name="notification" namespace="DB" desc="用户通知">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键id"/>
         <column name="user_id" type="int64" desc="接收用户id"/>

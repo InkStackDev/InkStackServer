@@ -1,4 +1,4 @@
-<table name="user_passkey" namespace="db" desc="用户 Passkey 凭据表">
+<table name="user_passkey" namespace="DB" desc="用户 Passkey 凭据表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键"/>
         <column name="user_id" type="int64" desc="用户ID"/>

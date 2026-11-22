@@ -1,4 +1,4 @@
-<table name="comment" namespace="db" desc="文章评论">
+<table name="comment" namespace="DB" desc="文章评论">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="评论ID"/>
         <column name="article_id" type="int64" desc="文章ID"/>

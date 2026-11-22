@@ -7,8 +7,8 @@
  */
 #pragma once
 
-#include "db/organization_repo_prs_info.h"
-#include "db/organization_repos_info.h"
+#include "db/OrganizationRepoPrsInfo.hpp"
+#include "db/OrganizationReposInfo.hpp"
 
 #include <Chen/Util/Singleton.hpp>
 

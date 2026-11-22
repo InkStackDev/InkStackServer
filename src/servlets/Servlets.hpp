@@ -107,9 +107,7 @@
 #include "Database/ExportListServlet.hpp"
 
 // 文件处理部分
-#include "File/ChunkUploadServlet.hpp"
 #include "File/FileDownloadServlet.hpp"
-#include "File/FileUploadServlet.hpp"
 
 // 帮助中心部分
 #include "Help/FaqsServlet.hpp"
@@ -190,7 +188,6 @@
 #include "Settings/SiteSettingsServlet.hpp"
 #include "Settings/SiteStatusServlet.hpp"
 #include "Settings/SystemSettingsServlet.hpp"
-#include "Settings/SystemSettingsUploadServlet.hpp"
 
 // 统计信息部分
 #include "Stats/MetricsServlet.hpp"

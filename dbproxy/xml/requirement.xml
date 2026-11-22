@@ -1,4 +1,4 @@
-<table name="requirement" namespace="db" desc="需求表">
+<table name="requirement" namespace="DB" desc="需求表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="需求ID"/>
         <column name="org_id" type="int64" desc="组织ID"/>
