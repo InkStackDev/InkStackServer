@@ -8,8 +8,10 @@
 
 #include "../Cache/EntityCache.hpp"
 #include "../Config/AppConfig.hpp"
+#include "../Domain/OrganizationTypes.hpp"
 #include "../Manager/CacheUtil.hpp"
 #include "../Util/Util.hpp"
+#include "DB/OrganizationUserRelInfo.hpp"
 
 namespace {
 
@@ -138,6 +140,28 @@ int64_t OrganizationQueryRepository::ListByPages(std::vector<DB::OrganizationInf
         return 0;
     }
     return total;
+}
+
+bool OrganizationQueryRepository::ListUserOrgGrants(std::vector<std::pair<int64_t, int32_t>>& grants,
+    int64_t user_id,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_id <= 0) {
+        return false;
+    }
+
+    auto qb = DB::OrganizationUserRelInfoDao::newQuery("rel");
+    if (!qb) {
+        return false;
+    }
+    qb->select("rel.org_id, rel.role");
+    qb->join("INNER", "organization org", "rel.org_id = org.id");
+    qb->where("rel.user_id", "=", user_id);
+    qb->where("rel.status", "=", (int64_t)OrgMemberStatus::APPROVED);
+    qb->where("rel.is_deleted", "=", (int64_t)0);
+    qb->where("org.is_deleted", "=", (int64_t)0);
+    qb->where("org.status", "=", (int64_t)OrgStatus::ACTIVE);
+    return qb->queryPairs<int64_t, int32_t>(grants, conn) == 0;
 }
 
 OrganizationQueryRepository::Stats OrganizationQueryRepository::GetStats(chen::IDB::ptr conn)

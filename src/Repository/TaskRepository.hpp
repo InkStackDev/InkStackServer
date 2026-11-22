@@ -36,9 +36,4 @@ public:
         int32_t status,
         bool is_valid,
         chen::IDB::ptr conn);
-
-    /**
-     * @brief 统计指定组织集合在 before 之前创建的任务数（趋势图用）
-     */
-    static int64_t CountCreatedBefore(const std::vector<int64_t>& org_ids, int64_t before, chen::IDB::ptr conn);
 };

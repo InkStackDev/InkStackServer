@@ -4,6 +4,7 @@
 
 #include "../Auth/AuthService.hpp"
 #include "../Auth/SessionStore.hpp"
+#include "../Domain/UserTypes.hpp"
 #include "../I18n/I18n.hpp"
 #include "../Metrics/MetricsService.hpp"
 #include "../Util/Util.hpp"
@@ -105,6 +106,19 @@ int64_t BlogServlet::getUserId(chen::http::HttpRequest::ptr request)
 {
     AuthContext ctx = AuthService::Resolve(request, nullptr, false);
     return ctx.valid() ? ctx.uid : 0;
+}
+
+Viewer BlogServlet::getViewer(chen::http::HttpRequest::ptr request)
+{
+    Viewer viewer;
+    AuthContext ctx = AuthService::Resolve(request, nullptr, false);
+    if (!ctx.valid() || !ctx.user) {
+        return viewer;
+    }
+    viewer.user_id = ctx.uid;
+    viewer.system_role = ctx.user->getRole();
+    viewer.is_platform_admin = (viewer.system_role == UserRole::ADMIN);
+    return viewer;
 }
 
 chen::http::SessionData::ptr BlogServlet::getSessionData(

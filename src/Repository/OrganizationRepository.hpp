@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 class OrganizationRepository {
@@ -47,6 +48,14 @@ public:
         uint64_t limit,
         int32_t status,
         bool is_valid,
+        chen::IDB::ptr conn);
+
+    /**
+     * @brief 查询用户已批准的组织授权（排除已删除/停用组织）
+     * @param[out] grants (org_id, role) 列表
+     */
+    static bool ListUserOrgGrants(std::vector<std::pair<int64_t, int32_t>>& grants,
+        int64_t user_id,
         chen::IDB::ptr conn);
 
     static Stats GetStats(chen::IDB::ptr conn);

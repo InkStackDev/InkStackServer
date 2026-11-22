@@ -52,6 +52,14 @@ void Result::setData(Json::Value& json_data)
     jsondata_ = json_data;
 }
 
+void Result::setDataJson(const std::string& json_data)
+{
+    Json::Value v;
+    if (chen::JsonUtil::FromString(v, json_data)) {
+        jsondata_ = v;
+    }
+}
+
 void Result::setLanguage(const std::string& lang)
 {
     this->lang_ = lang;

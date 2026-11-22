@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../Domain/AccessTypes.hpp"
+
 #include <Chen/DB/DB.hpp>
 
 #include <cstdint>
@@ -23,7 +25,8 @@ public:
      * @param merged_only 只统计已合入的 PR
      */
     static bool CountByDay(std::vector<std::pair<std::string, int64_t>>& rows,
-        const std::vector<int64_t>& org_ids,
+        const OrgScope& scope,
+        int64_t org_id,
         time_t start,
         time_t end,
         bool merged_only,
@@ -32,15 +35,30 @@ public:
     /**
      * @brief 统计已有人工评审结论的 PR 数（review_status 非空且非 pending）
      */
-    static int64_t CountReviewed(const std::vector<int64_t>& org_ids, time_t start, time_t end, chen::IDB::ptr conn);
+    static bool CountReviewed(const OrgScope& scope,
+        int64_t org_id,
+        time_t start,
+        time_t end,
+        int64_t& out,
+        chen::IDB::ptr conn);
 
     /**
      * @brief 统计评审通过的 PR 数
      */
-    static int64_t CountApproved(const std::vector<int64_t>& org_ids, time_t start, time_t end, chen::IDB::ptr conn);
+    static bool CountApproved(const OrgScope& scope,
+        int64_t org_id,
+        time_t start,
+        time_t end,
+        int64_t& out,
+        chen::IDB::ptr conn);
 
     /**
      * @brief 统计时间范围内创建的 PR 数
      */
-    static int64_t CountCreated(const std::vector<int64_t>& org_ids, time_t start, time_t end, chen::IDB::ptr conn);
+    static bool CountCreated(const OrgScope& scope,
+        int64_t org_id,
+        time_t start,
+        time_t end,
+        int64_t& out,
+        chen::IDB::ptr conn);
 };

@@ -40,17 +40,7 @@ struct Result {
 
     void setData(Json::Value& json_data);
 
-    /**
-     * @brief 直接设置 JSON 字符串作为 data
-     * @details 解析失败时忽略，保持 data 为空
-     */
-    void setDataJson(const std::string& json_data)
-    {
-        Json::Value v;
-        if (chen::JsonUtil::FromString(v, json_data)) {
-            jsondata_ = v;
-        }
-    }
+    void setDataJson(const std::string& json_data);
 
     void setLanguage(const std::string& lang);
 

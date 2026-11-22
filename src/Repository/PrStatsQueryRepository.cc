@@ -1,55 +1,64 @@
 #include "PrStatsQueryRepository.hpp"
 
-#include <functional>
+#include "OrgScopeSql.hpp"
+
+#include "../Domain/OrganizationTypes.hpp"
+#include "DB/OrganizationRepoPrsInfo.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
 
-#include "DB/OrganizationRepoPrsInfo.hpp"
+#include <functional>
+#include <string>
+
 namespace {
 
-void AddBaseConds(chen::QueryBuilder::ptr qb, const std::vector<int64_t>& org_ids, time_t start, time_t end)
+void AddBaseConds(const chen::QueryBuilder::ptr& qb, const OrgScope& scope, int64_t org_id, time_t start, time_t end)
 {
     qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
-    if (!org_ids.empty()) {
-        qb->whereIn("repos.org_id", org_ids);
+    ApplyOrgScope(qb, "repos.org_id", scope, OrgRole::REPORTER);
+    qb->whereIf(org_id > 0, "repos.org_id", "=", org_id);
+    if (start > 0) {
+        qb->whereSQL("prs.create_time >= FROM_UNIXTIME(?)", (int64_t)start);
     }
-    qb->whereSQL("prs.create_time >= FROM_UNIXTIME(?)", (int64_t)start);
-    qb->whereSQL("prs.create_time < FROM_UNIXTIME(?)", (int64_t)end);
+    if (end > 0) {
+        qb->whereSQL("prs.create_time < FROM_UNIXTIME(?)", (int64_t)end);
+    }
 }
 
-int64_t CountWithBase(const std::vector<int64_t>& org_ids,
+bool CountWithBase(const OrgScope& scope,
+    int64_t org_id,
     time_t start,
     time_t end,
     chen::IDB::ptr conn,
+    int64_t& out,
     const std::function<void(chen::QueryBuilder::ptr)>& extra)
 {
+    out = 0;
     if (!conn) {
-        return 0;
+        return false;
     }
     auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
     if (!qb) {
-        return 0;
+        return false;
     }
-    AddBaseConds(qb, org_ids, start, end);
+    AddBaseConds(qb, scope, org_id, start, end);
     if (extra) {
         extra(qb);
     }
-    int64_t total = 0;
-    if (qb->executeCount(total, conn)) {
-        return 0;
-    }
-    return total;
+    return qb->executeCount(out, conn) == 0;
 }
 
 } // namespace
 
 bool PrStatsQueryRepository::CountByDay(std::vector<std::pair<std::string, int64_t>>& rows,
-    const std::vector<int64_t>& org_ids,
+    const OrgScope& scope,
+    int64_t org_id,
     time_t start,
     time_t end,
     bool merged_only,
     chen::IDB::ptr conn)
 {
+    rows.clear();
     if (!conn) {
         return false;
     }
@@ -58,7 +67,7 @@ bool PrStatsQueryRepository::CountByDay(std::vector<std::pair<std::string, int64
         return false;
     }
     qb->select("DATE_FORMAT(prs.create_time, '%Y-%m-%d') as d, COUNT(*) as cnt");
-    AddBaseConds(qb, org_ids, start, end);
+    AddBaseConds(qb, scope, org_id, start, end);
     if (merged_only) {
         // 未合入时 merged_at 可能被写成 0（1970-01-01），这里排除零值
         qb->whereSQL("(prs.state = 'merged' OR prs.merged_at > ?)", std::string("1970-01-02 00:00:00"));
@@ -68,33 +77,37 @@ bool PrStatsQueryRepository::CountByDay(std::vector<std::pair<std::string, int64
     return qb->queryPairs<std::string, int64_t>(rows, conn) == 0;
 }
 
-int64_t PrStatsQueryRepository::CountReviewed(const std::vector<int64_t>& org_ids,
+bool PrStatsQueryRepository::CountReviewed(const OrgScope& scope,
+    int64_t org_id,
     time_t start,
     time_t end,
+    int64_t& out,
     chen::IDB::ptr conn)
 {
-    return CountWithBase(org_ids, start, end, conn, [](chen::QueryBuilder::ptr qb) {
+    return CountWithBase(scope, org_id, start, end, conn, out, [](chen::QueryBuilder::ptr qb) {
         qb->where("prs.review_status", "!=", std::string(""));
         qb->where("prs.review_status", "!=", std::string("pending"));
     });
 }
 
-int64_t PrStatsQueryRepository::CountApproved(const std::vector<int64_t>& org_ids,
+bool PrStatsQueryRepository::CountApproved(const OrgScope& scope,
+    int64_t org_id,
     time_t start,
     time_t end,
+    int64_t& out,
     chen::IDB::ptr conn)
 {
-    return CountWithBase(org_ids, start, end, conn, [](chen::QueryBuilder::ptr qb) {
-        qb->where("prs.review_status", "!=", std::string(""));
-        qb->where("prs.review_status", "!=", std::string("pending"));
+    return CountWithBase(scope, org_id, start, end, conn, out, [](chen::QueryBuilder::ptr qb) {
         qb->where("prs.review_status", "=", std::string("approved"));
     });
 }
 
-int64_t PrStatsQueryRepository::CountCreated(const std::vector<int64_t>& org_ids,
+bool PrStatsQueryRepository::CountCreated(const OrgScope& scope,
+    int64_t org_id,
     time_t start,
     time_t end,
+    int64_t& out,
     chen::IDB::ptr conn)
 {
-    return CountWithBase(org_ids, start, end, conn, nullptr);
+    return CountWithBase(scope, org_id, start, end, conn, out, nullptr);
 }

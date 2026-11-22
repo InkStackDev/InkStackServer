@@ -1,58 +1,7 @@
 #include "RdPrDistributionServlet.hpp"
 
-#include <Chen/DB/QueryBuilder.hpp>
-#include <Chen/Log/Log.hpp>
-#include <Chen/Util/TimeUtil.hpp>
-
-#include <cmath>
-#include <ctime>
-#include <map>
-#include <string>
-#include <vector>
-
-#include "../../Repository/PrStatsQueryRepository.hpp"
+#include "../../Service/RdAnalyticsService.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/OrganizationRepoPrsInfo.hpp"
-#include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
-
-/// 按天聚合 PR 创建数，写入指定字段：total=桶内创建数，merged=其中已合入数
-static bool AddPrSeries(
-    chen::IDB::ptr db,
-    const std::vector<int64_t>& orgs,
-    time_t start,
-    time_t end,
-    const std::string& granularity,
-    bool merged_only,
-    const std::string& field,
-    std::map<std::string, Json::Value>& series)
-{
-    std::vector<std::pair<std::string, int64_t>> rows;
-    if (!PrStatsQueryRepository::CountByDay(rows, orgs, start, end, merged_only, db)) {
-        ERROR(logger) << "pr-distribution query failed field=" << field;
-        return false;
-    }
-
-    for (auto& [d, cnt] : rows) {
-        std::string key = d;
-        if (granularity == "week") {
-            key = FormatGroupKey(ParseDate(d), "week");
-        } else if (granularity == "month") {
-            key = d.substr(0, 7);
-        }
-        auto it = series.find(key);
-        if (it != series.end()) {
-            it->second[field] = it->second[field].asInt64() + cnt;
-        }
-    }
-    return true;
-}
 
 RdPrDistributionServlet::RdPrDistributionServlet()
     : BlogLoginedServlet("RdPrDistributionServlet")
@@ -93,130 +42,54 @@ int32_t RdPrDistributionServlet::handle(
             break;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
 
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+        RdAnalyticsService::PrDistributionQuery query;
+        query.org_id = org_id;
+        query.range = range;
+        query.granularity = granularity;
+
+        RdAnalyticsService::PrDistribution data;
+        RdAnalyticsService::Result stats_result = RdAnalyticsService::GetPrDistribution(viewer, query, data);
+        if (stats_result == RdAnalyticsService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        bool is_admin = (user->getRole() == UserRole::ADMIN);
-
-        std::vector<int64_t> target_orgs;
-        if (org_id > 0) {
-            auto org = OrganizationRepository::Get(org_id, GetDB());
-            if (!org || org->getIsDeleted()) {
-                result->setErrno(ORG_NOT_FOUND);
-                break;
-            }
-            if (!is_admin) {
-                auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-                if (!rel || rel->getIsDeleted() || rel->getStatus() != OrgMemberStatus::APPROVED
-                    || rel->getRole() < OrgRole::REPORTER) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
-            }
-            target_orgs.push_back(org_id);
-        } else if (!is_admin) {
-            std::vector<DB::OrganizationUserRelInfo::ptr> rels;
-            OrganizationUserRelRepository::ListByUser(rels, uid, OrgMemberStatus::APPROVED, true, GetDB());
-            for (auto& rel : rels) {
-                if (rel && !rel->getIsDeleted() && rel->getRole() >= OrgRole::REPORTER) {
-                    target_orgs.push_back(rel->getOrgId());
-                }
-            }
-            if (target_orgs.empty()) {
-                result->setErrno(ACCESS_DENIED, "no accessible organization");
-                break;
-            }
+        if (stats_result == RdAnalyticsService::Result::NoAccessibleOrg) {
+            result->setErrno(ACCESS_DENIED, "no accessible organization");
+            break;
         }
-        // 管理员不传 org_id 时 target_orgs 为空，表示统计全部组织
-
-        auto db = GetDB();
-        if (!db) {
+        if (stats_result == RdAnalyticsService::Result::InvalidParam) {
+            result->setErrno(PARAM_INVALID);
+            break;
+        }
+        if (stats_result != RdAnalyticsService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-
-        time_t now = time(0);
-        time_t today_start = chen::TimeUtil::GetDayStart(now);
-        time_t start = 0;
-        time_t end = chen::TimeUtil::GetDayStart(today_start + 86400);
-
-        if (is_15d) {
-            start = chen::TimeUtil::GetDayStart(today_start - 14 * 86400);
-        } else {
-            time_t current_monday = chen::TimeUtil::GetWeekStart(today_start);
-            start = chen::TimeUtil::GetWeekStart(current_monday - 12 * 7 * 86400);
-        }
-
-        std::vector<time_t> date_points;
-        time_t cursor = start;
-        while (cursor < end) {
-            date_points.push_back(cursor);
-            if (is_15d) {
-                cursor = chen::TimeUtil::GetDayStart(cursor + 86400);
-            } else {
-                cursor = chen::TimeUtil::GetWeekStart(cursor + 7 * 86400);
-            }
-        }
-
-        std::map<std::string, Json::Value> series;
-        for (auto t : date_points) {
-            std::string key = FormatGroupKey(t, granularity);
-            Json::Value point;
-            point["date"] = key;
-            if (is_15d) {
-                point["end_date"] = key;
-            } else {
-                time_t week_end = chen::TimeUtil::GetWeekEnd(t);
-                if (week_end > today_start) {
-                    week_end = today_start;
-                }
-                point["end_date"] = FormatDate(week_end);
-            }
-            point["total"] = 0;
-            point["merged"] = 0;
-            series[key] = point;
-        }
-
-        if (!AddPrSeries(db, target_orgs, start, end, granularity, false, "total", series)
-            || !AddPrSeries(db, target_orgs, start, end, granularity, true, "merged", series)) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        Json::Value points(Json::arrayValue);
-        int64_t total_sum = 0;
-        int64_t merged_sum = 0;
-        for (auto t : date_points) {
-            std::string key = FormatGroupKey(t, granularity);
-            auto it = series.find(key);
-            if (it == series.end()) {
-                continue;
-            }
-            total_sum += it->second["total"].asInt64();
-            merged_sum += it->second["merged"].asInt64();
-            points.append(it->second);
-        }
-
-        double merge_rate = total_sum > 0 ? (double)merged_sum * 100.0 / (double)total_sum : 0.0;
-        merge_rate = std::round(merge_rate * 10.0) / 10.0;
 
         result->set("range", range);
         result->set("granularity", granularity);
 
         Json::Value summary;
-        summary["total"] = total_sum;
-        summary["merged"] = merged_sum;
-        summary["merge_rate"] = merge_rate;
+        summary["total"] = data.total;
+        summary["merged"] = data.merged;
+        summary["merge_rate"] = data.merge_rate;
         result->set("summary", summary);
 
+        Json::Value points(Json::arrayValue);
+        for (const auto& point : data.points) {
+            Json::Value item;
+            item["date"] = point.date;
+            item["end_date"] = point.end_date;
+            item["total"] = point.total;
+            item["merged"] = point.merged;
+            points.append(item);
+        }
         result->set("points", points);
     } while (0);
 

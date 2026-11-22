@@ -4,6 +4,7 @@
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Metrics/Metrics.hpp>
 
+#include "../Domain/AccessTypes.hpp"
 #include "../SessionData.hpp"
 
 class BlogServlet : public chen::http::Servlet {
@@ -39,6 +40,8 @@ protected:
     bool initLogin(chen::http::HttpRequest::ptr request, chen::http::HttpResponse::ptr response);
 
     int64_t getUserId(chen::http::HttpRequest::ptr request);
+
+    Viewer getViewer(chen::http::HttpRequest::ptr request);
 
 protected:
     chen::http::SessionData::ptr getSessionData(

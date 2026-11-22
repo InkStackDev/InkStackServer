@@ -1,13 +1,10 @@
 #include "RdTaskDetailServlet.hpp"
 
-#include "../../Permission.hpp"
-#include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Util/Util.hpp"
+#include "../../Access/AccessPolicy.hpp"
+#include "../../Access/AccessScopeResolver.hpp"
 #include "../../Repository/TaskRepository.hpp"
-#include "../../Repository/UserRepository.hpp"
-#include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
+#include "RdHelper.hpp"
 
 RdTaskDetailServlet::RdTaskDetailServlet()
     : BlogLoginedServlet("RdTaskDetailServlet")
@@ -27,43 +24,39 @@ int32_t RdTaskDetailServlet::handle(
             break;
         }
 
-        int64_t uid = getUserId(request);
-        if (!uid) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(NOT_LOGIN);
             break;
         }
-        auto user = UserRepository::Get(uid, GetDB());
-        if (!user) {
-            result->setErrno(USER_NOT_FOUND);
+
+        auto db = GetDB();
+        if (!db) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        int32_t system_role = user->getRole();
-        bool is_platform_admin = (system_role == UserRole::ADMIN);
 
-        auto info = TaskRepository::Get(id, GetDB());
+        auto info = TaskRepository::Get(id, db);
         if (!info || info->getIsDeleted()) {
             result->setErrno(TASK_NOT_FOUND);
             break;
         }
 
-        int64_t info_org_id = info->getOrgId();
-        if (!is_platform_admin) {
-            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(info_org_id, uid, GetDB());
-            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            bool is_related = (uid == info->getCreatorId() || uid == info->getAssigneeId());
-            if (!CanViewTask(rel->getRole(), is_related)) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+        if (!AccessPolicy::CanViewTask(viewer, scope, info->getOrgId(), info->getCreatorId(), info->getAssigneeId())) {
+            result->setErrno(ACCESS_DENIED);
+            break;
         }
 
         Json::Value data;
         BuildTaskJson(data, info);
         result->set("data", data);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

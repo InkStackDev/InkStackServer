@@ -3,31 +3,45 @@
 本文档约定 InkStackServer 业务代码的分层方式。目标只有一个：**每一层只做一件事，依赖方向始终向下**。
 
 ```
-Servlet / Event / Logic
-        │  参数校验、权限判断、拼响应、发事件
+Servlet / Event / Logic / RPC
+        │  认证、粗粒度路由鉴权、参数校验、拼响应、发事件
         ▼
 Service
-        │  业务用例、跨表编排、事务、commit 后缓存刷新
-        ▼
-Repository / QueryRepository
-        │  单聚合读写、分页/统计查询、EntityCache
-        ▼
-DB / Redis / 外部 API
+        │  业务用例、命令级鉴权、跨表编排、事务、commit 后缓存刷新
+        ├──────────────────────────────┐
+        ▼                              ▼
+Repository / QueryRepository        Client（出站适配器）
+        │  数据范围、分页/统计、缓存        │  超时/重试/限流/分页/DTO
+        ▼                              ▼
+    DB / Redis                  GitHub / LLM / Search / SMTP
 ```
+
+入口层只回答“是谁、能不能进这个路由”；“能看哪些行”由 QueryRepository 的数据范围参数决定；“能不能执行这个命令”由
+Service 的策略决定。外部网络调用统一走 Client，Repository 不直接访问外部 API。
 
 ## 1. 目录与职责
 
-| 目录                       | 职责                                                       | 禁止                                                |
-|----------------------------|------------------------------------------------------------|-----------------------------------------------------|
-| `src/Servlets/`            | HTTP 参数解析、登录态/权限校验、组装响应、发 EventBus 事件 | 直接调用 `DB::*Dao`、开启事务、写缓存               |
-| `src/Event/`、`src/Logic/` | 事件处理、RPC 入口、Bot/Webhook 适配                       | 直接调用 `DB::*Dao`、复制业务规则                   |
-| `src/Service/`             | 用例编排、跨表事务、业务校验、GitHub/外部 API 调用         | 直接使用 `DB::*Dao`、拼 SQL、操作 Servlet/HTTP 对象 |
-| `src/Repository/`          | 单表/单聚合 CRUD、分页、计数、`EntityCache` 读写           | 开启事务、跨聚合业务规则、发通知/事件               |
-| `src/Manager/`             | 兼容 facade、进程内只读状态、WS/路由等非 DB 能力           | 新增业务逻辑、手写 Redis 对象缓存、`ParseRow`       |
-| `src/Cache/`               | 缓存模板与缓存工具                                         | 业务规则                                            |
+| 目录                       | 职责                                                               | 禁止                                                     |
+|----------------------------|--------------------------------------------------------------------|----------------------------------------------------------|
+| `src/Servlets/`            | HTTP 参数解析、登录态/粗粒度路由鉴权、组装响应、发 EventBus 事件   | 直接调用 `DB::*Dao`、开启事务、写缓存、成员/角色数据过滤 |
+| `src/Event/`、`src/Logic/` | 事件处理、RPC 入口、Bot/Webhook 适配                               | 直接调用 `DB::*Dao`、复制业务规则                        |
+| `src/Service/`             | 用例编排、命令级鉴权、跨表事务、业务校验、调用 Repository / Client | 直接使用 `DB::*Dao`、拼 SQL、操作 Servlet/HTTP 对象      |
+| `src/Access/`              | 访问者身份到数据范围/策略的解析                                    | 拼 SQL、返回 errcode、依赖 Servlet                       |
+| `src/Repository/`          | 本地存储取数、数据范围、分页、计数、`EntityCache` 读写             | 调用外部 API、开启事务、跨聚合业务规则、发通知/事件      |
+| `src/Client/`              | 外部系统适配、网络治理、DTO 映射、错误分类                         | 访问 DB、开启事务、业务规则、返回 `Result`/errcode       |
+| `src/Manager/`             | 兼容 facade、进程内只读状态、WS/路由等非 DB 能力                   | 新增业务逻辑、手写 Redis 对象缓存、`ParseRow`            |
+| `src/Cache/`               | 缓存模板与缓存工具                                                 | 业务规则                                                 |
 
-**依赖方向**：Servlet/Event → Service → Repository。Repository 不得反向 include Service；Manager 可以调用 Repository，但
-Service 不应依赖 Manager。
+**依赖方向**：Servlet/Event → Service → Repository / Client。Repository 不得反向 include Service 或 Client；Client 不得
+include Repository；Manager 可以调用 Repository，但 Service 不应依赖 Manager。
+
+**数据权限分层**：
+
+- `src/Domain/AccessTypes.hpp`：`Viewer` / `OrgScope` 纯数据类型，不依赖 HTTP、`Result`、`ErrorCodes`。
+- `src/Access/AccessScopeResolver`：一次查询把用户解析成 `OrgScope`；管理员得到 `All()`，普通用户得到授权组织集合。
+- `src/Repository/*QueryRepository`：消费 `OrgScope` 并在 SQL WHERE 中应用；空 scope 必须查不到数据，不能退化成全量。
+- `src/Access/AccessPolicy`：单实体查看/命令策略，供 Service 使用。
+- 入口层不直接查成员关系，也不把 `target_orgs` / `is_admin` 传给 Repository。
 
 ## 2. Repository 约定
 
@@ -37,6 +51,10 @@ Service 不应依赖 Manager。
 - 单个实体的缓存统一用 `EntityCache`（`src/Cache/EntityCache.hpp`），key 为 `cache:obj:{area}:{id}`。
 - 主键之外的映射缓存（如 `name → id`、`user_id → id`）用 `CacheIdMapping` / `GetCachedIdMapping`。
 - 缓存写入只允许 `Put` / `Evict`，**不要在 DB 事务提交前刷新缓存**。
+- 面向用户的列表/统计查询必须接收 `OrgScope`（或领域专用 scope），由 Repository 应用数据范围；不再接收调用方算好的
+  `org_ids` / `is_admin`。
+- 空 scope 视为无权限，必须追加恒假条件；禁止 `if (!org_ids.empty())` 这种“空 = 全量”的 fail-open 写法。
+- Repository 只访问本地存储（MySQL / Redis），不得调用外部 HTTP / RPC / SMTP。
 
 ### 查询型 Repository
 
@@ -47,6 +65,7 @@ Service 不应依赖 Manager。
 - `NotificationQueryRepository`：通知列表、未读数
 - `AssignmentQueryRepository`、`OrganizationRepository` 内的 Query 部分
 - `PrStatsQueryRepository`：PR 报表聚合
+- `RdStatsQueryRepository`：需求/缺陷/任务趋势与概览统计
 
 报表 SQL 不允许出现在 Servlet 中。
 
@@ -60,10 +79,24 @@ Service 不应依赖 Manager。
 - 事务失败要 `rollback()`，并且不要把未提交的对象写进缓存。
 - commit 成功后再 `Repository::Put` / `Evict` / 失效计数或列表版本号。
 - 业务错误用 `enum class XxxResult` 表达，由 Servlet 映射成 `errcode`，不要把 HTTP/`Result` 传进 Service。
-- 需要权限策略时（如 `CanDeleteTask`），由 Service 接收 `uid` / `org_role` / `is_platform_admin` 等上下文参数，Servlet
-  负责取出这些值。
+- 需要权限策略时，Service 接收 `Viewer`，并通过 `AccessScopeResolver` 解析 `OrgScope`；不要让 Servlet 传
+  `org_role` / `is_platform_admin` / `target_orgs`。
+- 单实体读取用 `AccessPolicy` 判断可见性；列表/统计把 `OrgScope` 传给 QueryRepository，由 SQL 应用数据范围。
 
-## 4. Manager 约定
+## 4. Client（外部系统适配）约定
+
+- 所有外部 HTTP / RPC / SMTP 调用放在 `src/Client/`，Service 只调用 Client，不直接使用 `HttpConnection` / `RpcClient` /
+  `SmtpClient`。
+- Client 负责：base URL、认证头、超时、重试、退避、限流、分页、JSON → DTO、错误分类、耗时指标、日志脱敏。
+- Client 不负责：访问 DB、开事务、业务规则、权限判断、返回 `Result` / errcode。
+- Client 返回 `ClientResult<T>`（或 `bool + 出参`），Service 负责把 `ClientError` 映射成领域结果，入口再映射成 errcode。
+- 只在幂等请求上重试；流式 AI 只在收到第一个 token 前重试。
+- **Client 调用期间不得持有 DB 连接或事务**。Service 的顺序固定为：读本地上下文 → 释放连接 → 调 Client →
+  重新拿连接/开事务 →
+  写本地 → commit 后刷缓存。
+- 外部 API 的 JSON 不越过 Client 边界，Service 不直接读厂商字段。
+
+## 5. Manager 约定
 
 - **纯数据库 facade 一律删除**，不再新增 Manager。新代码直接调用 Service / Repository。
 - 仍然保留的组件只允许是非数据库能力（后续可逐步改名为 Registry / Cache / Util）：
@@ -89,7 +122,7 @@ Service 不应依赖 Manager。
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec
   - 分页/统计 SQL
 
-## 5. 缓存与多 worker
+## 6. 缓存与多 worker
 
 - 对象缓存：`EntityCache`，提交后 `Put`，删除/软删除后 `Put`（软删除对象仍需可读）或 `Evict`。
 - 列表/计数缓存：使用版本号而不是直接删 key：
@@ -101,18 +134,19 @@ Service 不应依赖 Manager。
     - 后台任务用 `JobRunner` + `RedisLease`，保证多 worker 只跑一份。
 - 长连接只留在接入 worker，跨 worker 投递走 `MessageRouter`，不要把 WS 连接代理成 RPC。
 
-## 6. 新增功能检查清单
+## 7. 新增功能检查清单
 
 1. `dbproxy/xml/` 定义表结构，执行 `make orm`
 2. `src/Repository/` 新增 `XxxRepository`（单表 + `conn` + `EntityCache`）
-3. 列表/统计放 `XxxQueryRepository`
-4. `src/Service/` 新增 `XxxService`，处理事务、业务校验、缓存刷新
-5. `src/Servlets/` 只做参数/权限/响应/事件
-6. 更新 `src/Include/Managers.hpp`（如需兼容旧入口）
-7. 新错误码同时更新 `src/ErrorCodes.hpp` 与 `errors.json`
-8. 涉及跨 worker 状态时，确认已使用 Redis/JobRunner/MessageRouter
+3. 列表/统计放 `XxxQueryRepository`，签名接收 `OrgScope` 并在 SQL 中应用数据范围
+4. `src/Service/` 新增 `XxxService`，处理事务、命令级鉴权、缓存刷新
+5. 外部调用放 `src/Client/`，Service 只调用 Client
+6. `src/Servlets/` 只做参数/粗粒度路由鉴权/响应/事件
+7. 更新 `src/Include/Managers.hpp`（如需兼容旧入口）
+8. 新错误码同时更新 `src/ErrorCodes.hpp` 与 `errors.json`
+9. 涉及跨 worker 状态时，确认已使用 Redis/JobRunner/MessageRouter
 
-## 7. 静态检查清单
+## 8. 静态检查清单
 
 提交前建议执行：
 
@@ -122,6 +156,13 @@ rg 'DB::[A-Za-z]+InfoDao::' src --glob '!src/Repository/**' --glob '!src/DB/DBMa
 
 # Manager 不应再有手写缓存/ParseRow
 rg 'ParseRow|RedisCacheGet|RedisCacheSetex' src/Manager
+
+# 入口层不应直接查成员关系/拼报表 SQL
+rg 'GetByOrgAndUser|OrganizationUserRelRepository::ListByUser' src/Servlets
+rg 'QueryBuilder|executeCount|queryPairs' src/Servlets
+
+# 外部调用应集中在 Client
+rg 'HttpConnection|HttpClient|SmtpClient|RpcClient' src/Servlets src/Service src/Repository --glob '!src/Client/**'
 
 # 格式
 git diff --check

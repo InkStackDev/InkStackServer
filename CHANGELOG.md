@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### 新增
 
+- 新增 `Viewer` / `OrgScope` / `AccessScopeResolver` / `AccessPolicy`：入口只解析身份与粗粒度路由权限，组织数据范围统一由
+  Service 解析、QueryRepository 在 SQL 中应用；空范围按无权限处理，不再退化成全量。
+- 新增 `RdStatsQueryRepository` / `RdAnalyticsService`：研发趋势、概览与 PR 分布统计从 Servlet 迁移到 Service +
+  QueryRepository，移除入口层报表 SQL、成员关系查询与内存分页；`PrStatsQueryRepository` 改为显式接收 `OrgScope`。
 - 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
   worker 直接投递作为快路径，长连接本身不经过 RPC。
 - 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多

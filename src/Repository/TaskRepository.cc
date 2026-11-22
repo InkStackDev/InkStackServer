@@ -75,24 +75,3 @@ uint64_t TaskRepository::ListByOrg(std::vector<DB::TaskInfo::ptr>& infos,
     }
     return (uint64_t)total;
 }
-
-int64_t TaskRepository::CountCreatedBefore(const std::vector<int64_t>& org_ids, int64_t before, chen::IDB::ptr conn)
-{
-    if (!conn) {
-        return 0;
-    }
-    auto qb = DB::TaskInfoDao::newQuery();
-    if (!qb) {
-        return 0;
-    }
-    qb->where("is_deleted", "=", (int64_t)0);
-    if (!org_ids.empty()) {
-        qb->whereIn("org_id", org_ids);
-    }
-    qb->whereSQL("create_time < FROM_UNIXTIME(?)", before);
-    int64_t total = 0;
-    if (qb->executeCount(total, conn)) {
-        return 0;
-    }
-    return total;
-}
