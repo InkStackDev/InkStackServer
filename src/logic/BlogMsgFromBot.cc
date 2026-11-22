@@ -1,6 +1,7 @@
 #include "BlogMsgFromBot.hpp"
 
 #include "../Manager/OrganizationRepoPrManager.hpp"
+#include "../Repository/OrganizationRepoPrRepository.hpp"
 #include "../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
@@ -79,7 +80,7 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
     pr->setUpdateTime(time(0));
 
     // 6. 写入 DB
-    if (DB::OrganizationRepoPrsInfoDao::InsertOrUpdate(pr, db)) {
+    if (OrganizationRepoPrRepository::InsertOrUpdate(pr, db)) {
         ERROR(logger) << "HandlePRWebhook: Update failed for repo " << repo_id << " PR #" << info.Number << ", errstr=" << db->getErrStr()
                       << ", errno=" << db->getErrno();
         return GITHUB_DB_OPERATION_FAILED;
@@ -174,7 +175,7 @@ static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
     pr->setUpdateTime(time(0));
 
     // 6. 写入 DB
-    if (DB::OrganizationRepoPrsInfoDao::InsertOrUpdate(pr, db)) {
+    if (OrganizationRepoPrRepository::InsertOrUpdate(pr, db)) {
         ERROR(logger) << "HandlePRReviewWebhook: Update failed for repo " << repo_id << " PR #" << info.PRNumber << ", errstr=" << db->getErrStr()
                       << ", errno=" << db->getErrno();
         return GITHUB_DB_OPERATION_FAILED;

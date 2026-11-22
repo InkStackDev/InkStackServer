@@ -38,9 +38,6 @@ public:
         const std::string& filename);
 
     DB::ResourceInfo::ptr getByPath(const std::string& path);
-
-private:
-    static DB::ResourceInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<ResourceManager> ResourceMgr;

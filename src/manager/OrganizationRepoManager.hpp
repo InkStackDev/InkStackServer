@@ -29,13 +29,6 @@ public:
 
     /// 从 GitHub API 异步同步仓库数据（stars_count、language、description）
     static void SyncFromGitHub(int64_t repo_id, const std::string& url, const std::string& token);
-
-private:
-    static DB::OrganizationReposInfo::ptr ParseRow(chen::ISQLData::ptr rt);
-
-    void invalidateCountCache(int64_t org_id);
-
-private:
 };
 
 typedef chen::Singleton<OrganizationRepoManager> OrganizationRepoMgr;

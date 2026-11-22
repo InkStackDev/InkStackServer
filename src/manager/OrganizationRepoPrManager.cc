@@ -2,9 +2,9 @@
 
 #include "../Job/RedisLease.hpp"
 #include "../Util/Util.hpp"
-#include "CacheUtil.hpp"
 #include "OrganizationRepoManager.hpp"
-#include "OrganizationUserRelManager.hpp"
+#include "../Repository/OrganizationRepoRepository.hpp"
+#include "../Repository/OrganizationRepoPrRepository.hpp"
 #include "protocol_ss_github.h"
 
 #include <Chen/Http/HttpConnection.hpp>
@@ -19,84 +19,14 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static const int kCacheTTL = 300;
-static const char* kCachePrefix = "cache:obj:org_pr:";
-
-static std::string OrgRepoPrCacheKey(int64_t id)
-{
-    return std::string(kCachePrefix) + std::to_string(id);
-}
-
-static DB::OrganizationRepoPrsInfo::ptr ParseOrgRepoPrCache(const Json::Value& v)
-{
-    auto info = std::make_shared<DB::OrganizationRepoPrsInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setRepoId(CacheJsonInt64(v, "repo_id"));
-    info->setGithubPrId(CacheJsonInt32(v, "github_pr_id"));
-    info->setTitle(CacheJsonString(v, "title"));
-    info->setDescription(CacheJsonString(v, "description"));
-    info->setState(CacheJsonString(v, "state"));
-    info->setPriority(CacheJsonString(v, "priority"));
-    info->setAuthor(CacheJsonString(v, "author"));
-    info->setHeadBranch(CacheJsonString(v, "head_branch"));
-    info->setBaseBranch(CacheJsonString(v, "base_branch"));
-    info->setCommitSha(CacheJsonString(v, "commit_sha"));
-    info->setChangedFiles(CacheJsonInt32(v, "changed_files"));
-    info->setAdditions(CacheJsonInt32(v, "additions"));
-    info->setDeletions(CacheJsonInt32(v, "deletions"));
-    info->setReviewers(CacheJsonString(v, "reviewers"));
-    info->setReviewStatus(CacheJsonString(v, "review_status"));
-    info->setClosedAt(CacheJsonTime(v, "closed_at"));
-    info->setMergedAt(CacheJsonTime(v, "merged_at"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->markClean();
-    return info;
-}
-
-static DB::OrganizationRepoPrsInfo::ptr GetOrgRepoPrCache(int64_t id)
-{
-    std::string key = OrgRepoPrCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseOrgRepoPrCache(v);
-}
-
-static void SetOrgRepoPrCache(const DB::OrganizationRepoPrsInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(OrgRepoPrCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
-
-static void DelOrgRepoPrCache(int64_t id)
-{
-    RedisCacheDel(OrgRepoPrCacheKey(id));
-}
-
-/// 单条 PR 同步使用 Redis 租约，避免多 worker / 多实例并发重复请求 GitHub
-
-DB::OrganizationRepoPrsInfo::ptr OrganizationRepoPrManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return DB::OrganizationRepoPrsInfoDao::ParseRow(rt);
-}
-
 void OrganizationRepoPrManager::add(DB::OrganizationRepoPrsInfo::ptr info)
 {
-    SetOrgRepoPrCache(info);
+    OrganizationRepoPrRepository::Put(info);
 }
 
 void OrganizationRepoPrManager::del(int64_t id)
 {
-    DelOrgRepoPrCache(id);
+    OrganizationRepoPrRepository::Evict(id);
 }
 
 void OrganizationRepoPrManager::onTick()
@@ -119,30 +49,12 @@ void OrganizationRepoPrManager::onTick()
 
 DB::OrganizationRepoPrsInfo::ptr OrganizationRepoPrManager::get(int64_t id)
 {
-    auto v = GetOrgRepoPrCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = DB::OrganizationRepoPrsInfoDao::Query(id, db);
-    if (v) {
-        SetOrgRepoPrCache(v);
-    }
-    return v;
+    return OrganizationRepoPrRepository::Get(id, GetDB());
 }
 
 DB::OrganizationRepoPrsInfo::ptr OrganizationRepoPrManager::getByRepoAndPrId(int64_t repo_id, int32_t github_pr_id)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    return DB::OrganizationRepoPrsInfoDao::QueryByRepoIdGithubPrId(repo_id, github_pr_id, db);
+    return OrganizationRepoPrRepository::GetByRepoAndPrId(repo_id, github_pr_id, GetDB());
 }
 
 int64_t OrganizationRepoPrManager::listByRepoPages(std::vector<DB::OrganizationRepoPrsInfo::ptr>& prs,
@@ -151,39 +63,12 @@ int64_t OrganizationRepoPrManager::listByRepoPages(std::vector<DB::OrganizationR
     uint64_t offset,
     uint64_t limit)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-
-    auto qb = DB::OrganizationRepoPrsInfoDao::newQuery();
-    qb->where("repo_id", "=", repo_id);
-    qb->whereIf(!state.empty(), "state", "=", state);
-    qb->orderBy("create_time", "DESC");
-
-    int64_t total = 0;
-    if (DB::OrganizationRepoPrsInfoDao::QueryByBuilderPages(prs, total, qb, (int32_t)offset, (int32_t)limit, db)) {
-        ERROR(logger) << "listByRepoPages QueryByBuilderPages failed";
-        return 0;
-    }
-    return total;
+    return OrganizationRepoPrRepository::ListByRepoPages(prs, repo_id, state, offset, limit, GetDB());
 }
 
 int64_t OrganizationRepoPrManager::getCountByRepo(int64_t repo_id)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::OrganizationRepoPrsInfoDao::newQuery();
-    qb->where("repo_id", "=", repo_id);
-    int64_t total = 0;
-    if (qb->executeCount(total, db)) {
-        return 0;
-    }
-    return total;
+    return OrganizationRepoPrRepository::CountByRepo(repo_id, GetDB());
 }
 
 int64_t OrganizationRepoPrManager::listByOrgPages(std::vector<DB::OrganizationRepoPrsInfo::ptr>& prs,
@@ -192,25 +77,7 @@ int64_t OrganizationRepoPrManager::listByOrgPages(std::vector<DB::OrganizationRe
     uint64_t offset,
     uint64_t limit)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-
-    auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
-    qb->select("prs.*");
-    qb->join("organization_repos repos", "prs.repo_id = repos.id");
-    qb->where("repos.org_id", "=", org_id);
-    qb->whereIf(!state.empty(), "prs.state", "=", state);
-    qb->orderBy("prs.create_time", "DESC");
-
-    int64_t total = 0;
-    if (DB::OrganizationRepoPrsInfoDao::QueryByBuilderPages(prs, total, qb, (int32_t)offset, (int32_t)limit, db)) {
-        ERROR(logger) << "listByOrgPages QueryByBuilderPages failed";
-        return 0;
-    }
-    return total;
+    return OrganizationRepoPrRepository::ListByOrgPages(prs, org_id, state, offset, limit, GetDB());
 }
 
 int64_t OrganizationRepoPrManager::listByUserPages(std::vector<DB::OrganizationRepoPrsInfo::ptr>& prs,
@@ -219,28 +86,7 @@ int64_t OrganizationRepoPrManager::listByUserPages(std::vector<DB::OrganizationR
     uint64_t offset,
     uint64_t limit)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-
-    auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
-    qb->select("prs.*");
-    qb->join("organization_repos repos", "prs.repo_id = repos.id");
-    qb->join("INNER", "organization_user_rel rel", "repos.org_id = rel.org_id");
-    qb->where("rel.user_id", "=", uid);
-    qb->where("rel.status", "=", (int64_t)OrganizationUserRelManager::Status::APPROVED);
-    qb->where("rel.is_deleted", "=", (int64_t)0);
-    qb->whereIf(!state.empty(), "prs.state", "=", state);
-    qb->orderBy("prs.create_time", "DESC");
-
-    int64_t total = 0;
-    if (DB::OrganizationRepoPrsInfoDao::QueryByBuilderPages(prs, total, qb, (int32_t)offset, (int32_t)limit, db)) {
-        ERROR(logger) << "listByUserPages QueryByBuilderPages failed";
-        return 0;
-    }
-    return total;
+    return OrganizationRepoPrRepository::ListByUserPages(prs, uid, state, offset, limit, GetDB());
 }
 
 /// 从 GitHub URL 提取 owner/repo
@@ -475,7 +321,7 @@ static int SyncPage(const Json::Value& arr,
     // 写入 DB
     int synced = 0;
     for (auto& si : items) {
-        auto existing = OrganizationRepoPrMgr::GetInstance()->getByRepoAndPrId(repo_id, si.number);
+        auto existing = OrganizationRepoPrRepository::GetByRepoAndPrId(repo_id, si.number, db);
         DB::OrganizationRepoPrsInfo::ptr info;
         if (existing) {
             info = existing;
@@ -526,18 +372,19 @@ static int SyncPage(const Json::Value& arr,
         info->setUpdateTime(time(0));
 
         if (existing) {
-            if (DB::OrganizationRepoPrsInfoDao::Update(info, db)) {
+            if (!OrganizationRepoPrRepository::Update(info, db)) {
                 ERROR(logger) << "SyncPrFromGitHub: Update failed for PR #" << info->getGithubPrId() << ", errstr=" << db->getErrStr()
                               << ", errno=" << db->getErrno();
                 continue;
             }
+            OrganizationRepoPrRepository::Put(info);
         } else {
-            if (DB::OrganizationRepoPrsInfoDao::Insert(info, db)) {
+            if (!OrganizationRepoPrRepository::Insert(info, db)) {
                 ERROR(logger) << "SyncPrFromGitHub: Insert failed for PR #" << info->getGithubPrId() << ", errstr=" << db->getErrStr()
                               << ", errno=" << db->getErrno();
                 continue;
             }
-            OrganizationRepoPrMgr::GetInstance()->add(info);
+            OrganizationRepoPrRepository::Put(info);
         }
         ++synced;
     }
@@ -567,7 +414,9 @@ void OrganizationRepoPrManager::SyncFromGitHub(int64_t repo_id, const std::strin
             if (db2) {
                 repo->setPrSyncStatus("syncing");
                 repo->setGithubFullName(repo_path);
-                DB::OrganizationReposInfoDao::Update(repo, db2);
+                if (OrganizationRepoRepository::Update(repo, db2)) {
+                    OrganizationRepoRepository::Put(repo);
+                }
             }
         }
     }
@@ -637,7 +486,9 @@ void OrganizationRepoPrManager::SyncFromGitHub(int64_t repo_id, const std::strin
             if (repoDb) {
                 repo->setPrSyncStatus(total_synced >= 0 ? "success" : "failed");
                 repo->setPrSyncedAt(time(0));
-                DB::OrganizationReposInfoDao::Update(repo, repoDb);
+                if (OrganizationRepoRepository::Update(repo, repoDb)) {
+                    OrganizationRepoRepository::Put(repo);
+                }
             }
         }
     }
@@ -777,12 +628,12 @@ OrganizationRepoPrManager::SyncPrStatus OrganizationRepoPrManager::SyncPrFromGit
         ERROR(logger) << "SyncPrFromGitHub: GetDB failed pr_id=" << pr_id;
         return SyncPrStatus::DB_ERROR;
     }
-    if (DB::OrganizationRepoPrsInfoDao::Update(pr, db)) {
+    if (!OrganizationRepoPrRepository::Update(pr, db)) {
         ERROR(logger) << "SyncPrFromGitHub: Update failed for PR #" << pr->getGithubPrId() << ", errstr=" << db->getErrStr()
                       << ", errno=" << db->getErrno();
         return SyncPrStatus::DB_ERROR;
     }
-    OrganizationRepoPrMgr::GetInstance()->add(pr);
+    OrganizationRepoPrRepository::Put(pr);
     out = pr;
 
     INFO(logger) << "SyncPrFromGitHub: synced pr_id=" << pr_id << " PR #" << pr->getGithubPrId() << " state=" << pr->getState();
@@ -803,13 +654,8 @@ DB::OrganizationReposInfo::ptr OrganizationRepoPrManager::FindRepoByOwnerAndName
         return nullptr;
     }
 
-    // 用 github_full_name 字段精确匹配
-    auto qb = DB::OrganizationReposInfoDao::newQuery();
-    qb->select("id");
-    qb->where("github_full_name", "=", full_name);
-    qb->limit(1);
-    int64_t repoId = 0;
-    if (qb->queryScalarInt64(repoId, db)) {
+    int64_t repoId = OrganizationRepoRepository::FindIdByGithubFullName(full_name, db);
+    if (!repoId) {
         DEBUG(logger) << "findRepoByOwnerAndName: no repo found for " << full_name;
         return nullptr;
     }

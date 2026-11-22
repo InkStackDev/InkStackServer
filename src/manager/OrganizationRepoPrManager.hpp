@@ -83,9 +83,6 @@ public:
     static SyncPrStatus SyncPrFromGitHub(int64_t pr_id, DB::OrganizationRepoPrsInfo::ptr& out);
 
     static DB::OrganizationReposInfo::ptr FindRepoByOwnerAndName(const std::string& owner, const std::string& name);
-
-private:
-    static DB::OrganizationRepoPrsInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<OrganizationRepoPrManager> OrganizationRepoPrMgr;

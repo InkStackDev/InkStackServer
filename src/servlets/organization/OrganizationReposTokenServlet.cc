@@ -6,6 +6,7 @@
 #include "../../Manager/OrganizationRepoManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -59,20 +60,10 @@ int32_t OrganizationReposTokenServlet::handle(
             }
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        repo->setToken(token);
-        repo->setUpdateTime(time(0));
-        if (DB::OrganizationReposInfoDao::Update(repo, db)) {
+        if (OrganizationRepoService::UpdateToken(repo_id, token, repo) != OrganizationRepoService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED, "保存 Token 失败");
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
-        OrganizationRepoMgr::GetInstance()->add(repo);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

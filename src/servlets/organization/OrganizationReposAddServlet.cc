@@ -6,6 +6,7 @@
 #include "../../Manager/OrganizationRepoManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -92,57 +93,24 @@ int32_t OrganizationReposAddServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        OrganizationRepoInput input;
+        input.org_id = org_id;
+        input.name = name;
+        input.url = url;
+        input.language = language;
+        input.description = description;
+        input.token = token;
+
+        DB::OrganizationReposInfo::ptr info;
+        auto rt = OrganizationRepoService::Add(input, info);
+        if (rt == OrganizationRepoService::Result::NameExists) {
+            result->setErrno(ORG_REPO_NAME_EXISTS, "该组织下已存在同名仓库");
             break;
         }
-
-        DB::OrganizationReposInfo::ptr info(new DB::OrganizationReposInfo);
-        info->setOrgId(org_id);
-        info->setName(name);
-        info->setUrl(url);
-        info->setLanguage(language);
-        info->setDescription(description);
-        info->setToken(token);
-        info->setStarsCount(0);
-        info->setSortOrder(0);
-        info->setSyncStatus("idle");
-        info->setPrSyncStatus("idle");
-        info->setPrSyncedAt(0);
-        info->setCreateTime(time(0));
-        info->setUpdateTime(time(0));
-
-        // 自动从 URL 提取 github_full_name（owner/repo）
-        {
-            std::string full_name;
-            std::string marker = "github.com/";
-            auto pos = url.find(marker);
-            if (pos != std::string::npos) {
-                full_name = url.substr(pos + marker.size());
-            } else {
-                marker = "github.com:";
-                pos = url.find(marker);
-                if (pos != std::string::npos) {
-                    full_name = url.substr(pos + marker.size());
-                }
-            }
-            if (!full_name.empty()) {
-                // 去掉尾部 .git
-                if (full_name.size() > 4 && full_name.substr(full_name.size() - 4) == ".git") {
-                    full_name = full_name.substr(0, full_name.size() - 4);
-                }
-                info->setGithubFullName(full_name);
-            }
-        }
-
-        if (DB::OrganizationReposInfoDao::Insert(info, db)) {
+        if (rt != OrganizationRepoService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED, "添加仓库失败");
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
-
-        OrganizationRepoMgr::GetInstance()->add(info);
 
         result->set("id", info->getId());
     } while (0);

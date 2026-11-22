@@ -14,6 +14,7 @@
 #include "../../Manager/OrganizationRepoPrManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/OrganizationRepoPrRepository.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -77,7 +78,7 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
             break;
         }
 
-        if (DB::OrganizationRepoPrsInfoDao::DeleteById(id, db)) {
+        if (OrganizationRepoPrRepository::DeleteById(id, db)) {
             result->setErrno(DB_OPERATION_FAILED, "删除审查记录失败");
             ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;

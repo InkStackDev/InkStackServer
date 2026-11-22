@@ -6,6 +6,7 @@
 #include "../../Manager/OrganizationRepoManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -60,19 +61,10 @@ int32_t OrganizationReposDeleteServlet::handle(
             }
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        if (DB::OrganizationReposInfoDao::DeleteById(id, db)) {
+        if (!OrganizationRepoService::Remove(id)) {
             result->setErrno(DB_OPERATION_FAILED, "删除仓库失败");
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
-
-        OrganizationRepoMgr::GetInstance()->del(id);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;
