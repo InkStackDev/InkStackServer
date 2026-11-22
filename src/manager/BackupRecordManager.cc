@@ -1,24 +1,13 @@
 #include "BackupRecordManager.hpp"
 
+#include "../Repository/RecordRepository.hpp"
 #include "../Util/Util.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
-
-DB::BackupRecordInfo::ptr BackupRecordManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return DB::BackupRecordInfoDao::ParseRow(rt);
-}
+#include <Chen/Util/TimeUtil.hpp>
 
 DB::BackupRecordInfo::ptr BackupRecordManager::get(int64_t id)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    return DB::BackupRecordInfoDao::Query(id, db);
+    return BackupRecordRepository::Get(id, GetDB());
 }
 
 bool BackupRecordManager::list(std::vector<DB::BackupRecordInfo::ptr>& results,
@@ -29,28 +18,7 @@ bool BackupRecordManager::list(std::vector<DB::BackupRecordInfo::ptr>& results,
     int32_t offset,
     int32_t limit)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return false;
-    }
-    auto qb = DB::BackupRecordInfoDao::newQuery();
-    qb->where("is_deleted", "=", (int64_t)0);
-    if (!search.empty()) {
-        qb->where("name", "LIKE", "%" + search + "%");
-    }
-    if (!type.empty()) {
-        qb->where("type", "=", type);
-    }
-    if (!status.empty()) {
-        qb->where("status", "=", status);
-    }
-    qb->orderBy("id", "DESC");
-    if (DB::BackupRecordInfoDao::QueryByBuilderPages(results, total, qb, offset, limit, db)) {
-        ERROR(logger) << "backup_record QueryByBuilderPages failed";
-        return false;
-    }
-    return true;
+    return BackupRecordRepository::ListByPages(results, total, search, type, status, offset, limit, GetDB());
 }
 
 DB::BackupRecordInfo::ptr BackupRecordManager::create(int64_t uid,
@@ -60,7 +28,6 @@ DB::BackupRecordInfo::ptr BackupRecordManager::create(int64_t uid,
 {
     auto db = GetDB();
     if (!db) {
-        ERROR(logger) << "Get DB connection fail";
         return nullptr;
     }
     auto info = std::make_shared<DB::BackupRecordInfo>();
@@ -72,9 +39,8 @@ DB::BackupRecordInfo::ptr BackupRecordManager::create(int64_t uid,
     info->setIsDeleted(0);
     info->setSize(0);
     info->setFileCount(0);
-    info->setCreateTime(time(0));
-    if (DB::BackupRecordInfoDao::Insert(info, db)) {
-        ERROR(logger) << "Insert backup_record failed";
+    info->setCreateTime(chen::TimeUtil::GetCurrentSec());
+    if (!BackupRecordRepository::Insert(info, db)) {
         return nullptr;
     }
     return info;
@@ -84,17 +50,12 @@ bool BackupRecordManager::remove(int64_t id)
 {
     auto db = GetDB();
     if (!db) {
-        ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto info = get(id);
+    auto info = BackupRecordRepository::Get(id, db);
     if (!info) {
         return false;
     }
     info->setIsDeleted(1);
-    if (DB::BackupRecordInfoDao::Update(info, db)) {
-        ERROR(logger) << "Delete backup_record failed";
-        return false;
-    }
-    return true;
+    return BackupRecordRepository::Update(info, db);
 }

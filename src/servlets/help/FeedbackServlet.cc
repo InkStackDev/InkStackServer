@@ -1,11 +1,8 @@
 #include "FeedbackServlet.hpp"
 
 #include "../../Include/Managers.hpp"
+#include "../../Service/FeedbackService.hpp"
 #include "../../Util/Util.hpp"
-
-#include <Chen/Log/Log.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 FeedbackServlet::FeedbackServlet()
     : BlogServlet("FeedbackServlet")
@@ -25,23 +22,9 @@ int32_t FeedbackServlet::handle(
 
         int64_t uid = getUserId(request);
 
-        DB::UserFeedbackInfo::ptr info(new DB::UserFeedbackInfo);
-        info->setType(type);
-        info->setContent(content);
-        info->setContact(contact);
-        info->setUserId(uid);
-        info->setCreateTime(time(0));
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        if (DB::UserFeedbackInfoDao::Insert(info, db)) {
+        DB::UserFeedbackInfo::ptr info;
+        if (!FeedbackService::Submit(uid, type, content, contact, info)) {
             result->setErrno(DB_OPERATION_FAILED, "feedback insert failed");
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
 

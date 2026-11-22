@@ -1,14 +1,11 @@
 #include "LabelDeleteServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/LabelManager.hpp"
-#include "../../Util/Util.hpp"
-#include "DB/LabelInfo.hpp"
+#include <json/json.h>
 
 #include <set>
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include "../../Service/LabelService.hpp"
+#include "../../Util/Util.hpp"
 
 LabelDeleteServlet::LabelDeleteServlet()
     : BlogLoginedServlet("LabelDeleteServlet")
@@ -24,9 +21,10 @@ int32_t LabelDeleteServlet::handle(
     do {
         DEFINE_AND_CHECK_STRING(result, ids, "ids");
         std::set<int64_t> label_ids;
-        auto tmp = chen::StringUtil::Split(ids, ",");
-        for (auto& i : tmp) {
-            label_ids.insert(chen::TypeUtil::Atoi(i));
+        for (auto& i : chen::StringUtil::Split(ids, ",")) {
+            if (!i.empty()) {
+                label_ids.insert(chen::TypeUtil::Atoi(i));
+            }
         }
 
         int64_t uid = getUserId(request);
@@ -34,51 +32,16 @@ int32_t LabelDeleteServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        std::vector<DB::LabelInfo::ptr> infos;
-        if (!LabelMgr::GetInstance()->listByUserId(infos, uid, true)) {
-            break;
-        }
 
-        std::vector<DB::LabelInfo::ptr> del_labels;
-        for (auto& i : infos) {
-            if (label_ids.count(i->getId())) {
-                del_labels.push_back(i);
-            }
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        std::vector<DB::LabelInfo::ptr> deleted;
+        if (!LabelService::DeleteMany(uid, label_ids, deleted)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = time(0);
-        for (auto& i : del_labels) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::LabelInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            result->setErrno(DB_COMMIT_FAILED);
-
-            for (auto& i : del_labels) {
-                i->setIsDeleted(0);
-            }
-            break;
-        }
-        for (auto& i : del_labels) {
-            LabelMgr::GetInstance()->add(i);
-        }
-        if (!del_labels.empty()) {
+        if (!deleted.empty()) {
             Json::Value json_ids;
-            for (auto& i : del_labels) {
-                json_ids.append(i->getId());
+            for (auto& info : deleted) {
+                json_ids.append(info->getId());
             }
             result->set("ids", json_ids);
         }

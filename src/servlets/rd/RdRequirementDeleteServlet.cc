@@ -1,30 +1,26 @@
 #include "RdRequirementDeleteServlet.hpp"
-#include "../../Permission.hpp"
+
 #include "../../Manager/OrganizationUserRelManager.hpp"
-#include "../../Manager/RequirementManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 
-#include <Chen/Log/Log.hpp>
+#include <json/json.h>
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include <set>
 
 RdRequirementDeleteServlet::RdRequirementDeleteServlet()
-    : BlogLoginedServlet("RdRequirementDeleteServlet") {
+    : BlogLoginedServlet("RdRequirementDeleteServlet")
+{
 }
 
-int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request, chen::http::HttpResponse::ptr response
-        , chen::http::HttpSession::ptr session, Result::ptr result) {
+int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
+    chen::http::HttpResponse::ptr response,
+    chen::http::HttpSession::ptr session,
+    Result::ptr result)
+{
     do {
-        INFO(logger) << "req->body: " << request->getBody();
-
-        std::string reqBody = request->getBody();
-        Json::Value body;
-        if (!reqBody.empty()) {
-            Json::Reader reader;
-            reader.parse(reqBody, body);
-        }
-
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
         std::string idsStr = request->getParam("ids");
@@ -62,46 +58,11 @@ int32_t RdRequirementDeleteServlet::handle(chen::http::HttpRequest::ptr request,
             org_role = rel->getRole();
         }
 
-        std::vector<DB::RequirementInfo::ptr> all;
-        RequirementMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
-
         std::vector<DB::RequirementInfo::ptr> delItems;
-        for (auto& i : all) {
-            if (!delIds.count(i->getId())) {
-                continue;
-            }
-            if (!is_platform_admin && uid != i->getCreatorId() && !CanDeleteRequirement(org_role)) {
-                continue;
-            }
-            delItems.push_back(i);
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        if (!RequirementService::DeleteMany(org_id, delIds, uid, org_role, is_platform_admin, delItems)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-
-        time_t now = time(0);
-        for (auto& i : delItems) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::RequirementInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            for (auto& i : delItems) {
-                i->setIsDeleted(0);
-            }
-            result->setErrno(DB_COMMIT_FAILED);
-            break;
-        }
-
         if (!delItems.empty()) {
             Json::Value json_ids;
             for (auto& i : delItems) {

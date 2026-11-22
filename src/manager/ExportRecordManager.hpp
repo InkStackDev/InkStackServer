@@ -20,9 +20,6 @@ public:
     DB::ExportRecordInfo::ptr create(int64_t uid, const std::string& type, const std::string& name);
 
     bool remove(int64_t id);
-
-private:
-    static DB::ExportRecordInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<ExportRecordManager> ExportRecordMgr;

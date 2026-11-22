@@ -8,6 +8,7 @@
 #include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/TaskRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/OrganizationRepoPrsInfo.hpp"
 #include "DB/TaskInfo.hpp"
@@ -231,17 +232,8 @@ int32_t RdTrendServlet::handle(
 
         // task_delta
         {
-            auto qbEnd = DB::TaskInfoDao::newQuery();
-            AddBaseConds(qbEnd, ctx);
-            qbEnd->whereSQL("create_time < FROM_UNIXTIME(?)", (int64_t)ctx.end_date);
-            int64_t tasks_at_end = 0;
-            qbEnd->executeCount(tasks_at_end, ctx.db);
-
-            auto qbStart = DB::TaskInfoDao::newQuery();
-            AddBaseConds(qbStart, ctx);
-            qbStart->whereSQL("create_time < FROM_UNIXTIME(?)", (int64_t)ctx.start_date);
-            int64_t tasks_at_start = 0;
-            qbStart->executeCount(tasks_at_start, ctx.db);
+            int64_t tasks_at_end = TaskRepository::CountCreatedBefore(ctx.target_orgs, ctx.end_date, ctx.db);
+            int64_t tasks_at_start = TaskRepository::CountCreatedBefore(ctx.target_orgs, ctx.start_date, ctx.db);
 
             ctx.task_delta = tasks_at_end - tasks_at_start;
         }

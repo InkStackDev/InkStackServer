@@ -1,14 +1,11 @@
 #include "ArticleUpdateCategoryServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Manager/ArticleCategoryRelManager.hpp"
 #include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CategoryManager.hpp"
 #include "../../Search/SearchSync.hpp"
+#include "../../Service/ArticleCategoryService.hpp"
 #include "../../Util/Util.hpp"
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include <json/json.h>
 
 ArticleUpdateCategoryServlet::ArticleUpdateCategoryServlet()
     : BlogLoginedServlet("ArticleUpdateCategoryServlet")
@@ -46,113 +43,44 @@ int32_t ArticleUpdateCategoryServlet::handle(
             break;
         }
 
-        std::vector<std::string> tmps;
+        std::vector<int64_t> add_ids;
         if (!adds.empty()) {
-            tmps = chen::StringUtil::Split(adds, ',');
-        }
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-
-        time_t now = time(0);
-        std::vector<DB::ArticleCategoryRelInfo::ptr> new_infos;
-        std::vector<DB::ArticleCategoryRelInfo::ptr> update_add_infos;
-        std::vector<DB::ArticleCategoryRelInfo::ptr> update_del_infos;
-
-        for (auto& i : tmps) {
-            int64_t cid = chen::TypeUtil::Atoi(i);
-            auto cinfo = CategoryMgr::GetInstance()->get(cid);
-            if (!cinfo || cinfo->getUserId() != uid) {
-                WARN(logger) << "skip category not owned by user, user_id=" << uid << " category_id=" << cid;
-                continue;
-            }
-            auto acinfo = ArticleCategoryRelMgr::GetInstance()->getByArticleIdCategoryId(id, cid);
-            if (acinfo) {
-                if (acinfo->getIsDeleted()) {
-                    acinfo->setIsDeleted(0);
-                    acinfo->setUpdateTime(now);
-                    update_add_infos.push_back(acinfo);
-                    if (DB::ArticleCategoryRelInfoDao::Update(acinfo, db)) {
-                        ERROR(logger) << "db error errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
-                    }
-                }
-            } else {
-                acinfo.reset(new DB::ArticleCategoryRelInfo);
-                acinfo->setArticleId(id);
-                acinfo->setCategoryId(cid);
-                acinfo->setUpdateTime(now);
-                new_infos.push_back(acinfo);
-                if (DB::ArticleCategoryRelInfoDao::Insert(acinfo, db)) {
-                    ERROR(logger) << "db error errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
+            for (auto& i : chen::StringUtil::Split(adds, ',')) {
+                if (!i.empty()) {
+                    add_ids.push_back(chen::TypeUtil::Atoi(i));
                 }
             }
         }
-        tmps.clear();
+        std::vector<int64_t> del_ids;
         if (!dels.empty()) {
-            tmps = chen::StringUtil::Split(dels, ',');
-        }
-        for (auto& i : tmps) {
-            int64_t cid = chen::TypeUtil::Atoi(i);
-            auto cinfo = CategoryMgr::GetInstance()->get(cid);
-            if (!cinfo || cinfo->getUserId() != uid) {
-                WARN(logger) << "skip category not owned by user, user_id=" << uid << " category_id=" << cid;
-                continue;
-            }
-            auto acinfo = ArticleCategoryRelMgr::GetInstance()->getByArticleIdCategoryId(id, cid);
-            if (acinfo) {
-                if (acinfo->getIsDeleted() == 0) {
-                    acinfo->setIsDeleted(1);
-                    acinfo->setUpdateTime(now);
-                    new_infos.push_back(acinfo);
-                    update_del_infos.push_back(acinfo);
-                    if (DB::ArticleCategoryRelInfoDao::Update(acinfo, db)) {
-                        ERROR(logger) << "db error errno=" << db->getErrno() << ", errstr=" << db->getErrStr();
-                    }
+            for (auto& i : chen::StringUtil::Split(dels, ',')) {
+                if (!i.empty()) {
+                    del_ids.push_back(chen::TypeUtil::Atoi(i));
                 }
             }
         }
 
-        if (!trans->commit()) {
-            for (auto& i : update_add_infos) {
-                i->setIsDeleted(1);
-            }
-            for (auto& i : update_del_infos) {
-                i->setIsDeleted(0);
-            }
-            result->setErrno(DB_COMMIT_FAILED);
+        std::vector<int64_t> added;
+        std::vector<int64_t> removed;
+        if (!ArticleCategoryService::UpdateForArticle(id, uid, add_ids, del_ids, added, removed)) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
         // 分类关联已变化，同步刷新搜索索引中的 CAT_ID，避免按分类筛选结果滞后
         SearchSyncMgr::GetInstance()->markDirty(ainfo->getId(), SearchSync::OP_UPSERT);
 
-        if (!update_add_infos.empty()) {
-            Json::Value add_category_ids;
-            for (auto& i : update_add_infos) {
-                add_category_ids.append(i->getId());
+        if (!added.empty()) {
+            Json::Value add_category_ids(Json::arrayValue);
+            for (auto cid : added) {
+                add_category_ids.append(cid);
             }
             result->set("add_category_ids", add_category_ids);
         }
-        if (!new_infos.empty()) {
-            Json::Value add_category_ids;
-            for (auto& i : new_infos) {
-                add_category_ids.append(i->getId());
-            }
-            result->set("add_category_ids", add_category_ids);
-        }
-        if (!update_del_infos.empty()) {
-            Json::Value del_category_ids;
-            for (auto& i : update_del_infos) {
-                del_category_ids.append(i->getId());
+        if (!removed.empty()) {
+            Json::Value del_category_ids(Json::arrayValue);
+            for (auto cid : removed) {
+                del_category_ids.append(cid);
             }
             result->set("del_category_ids", del_category_ids);
         }

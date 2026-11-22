@@ -41,9 +41,6 @@ public:
         uint64_t size,
         int32_t status,
         bool is_valid);
-
-private:
-    static DB::BugInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<BugManager> BugMgr;

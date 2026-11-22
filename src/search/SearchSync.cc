@@ -19,8 +19,9 @@
 #include "DB/ArticleInfo.hpp"
 #include "DB/ArticleLabelRelInfo.hpp"
 
-#include "../Manager/ArticleCategoryRelManager.hpp"
+#include "../Repository/ArticleRelRepository.hpp"
 #include "../Manager/ArticleLabelRelManager.hpp"
+#include "../Manager/ArticleCategoryRelManager.hpp"
 #include "../Manager/ArticleManager.hpp"
 #include "../Job/RedisLease.hpp"
 #include "../Config/AppConfig.hpp"
@@ -611,10 +612,8 @@ bool SearchSync::runSnapshot()
             }
 
             std::map<int64_t, std::vector<uint64_t>> category_map;
-            auto category_qb = DB::ArticleCategoryRelInfoDao::newQuery();
-            category_qb->whereIn("article_id", ids)->where("is_deleted", "=", (int64_t)0);
             std::vector<DB::ArticleCategoryRelInfo::ptr> categories;
-            if (DB::ArticleCategoryRelInfoDao::QueryByBuilder(categories, category_qb, db) != 0) {
+            if (!ArticleCategoryRelRepository::ListByArticles(categories, ids, db)) {
                 ERROR(logger) << "search snapshot query category rel failed";
                 return false;
             }
@@ -623,10 +622,8 @@ bool SearchSync::runSnapshot()
             }
 
             std::map<int64_t, std::vector<uint64_t>> label_map;
-            auto label_qb = DB::ArticleLabelRelInfoDao::newQuery();
-            label_qb->whereIn("article_id", ids)->where("is_deleted", "=", (int64_t)0);
             std::vector<DB::ArticleLabelRelInfo::ptr> labels;
-            if (DB::ArticleLabelRelInfoDao::QueryByBuilder(labels, label_qb, db) != 0) {
+            if (!ArticleLabelRelRepository::ListByArticles(labels, ids, db)) {
                 ERROR(logger) << "search snapshot query label rel failed";
                 return false;
             }

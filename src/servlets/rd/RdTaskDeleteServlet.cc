@@ -1,10 +1,14 @@
 #include "RdTaskDeleteServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/TaskService.hpp"
 #include "../../Util/Util.hpp"
+
+#include <json/json.h>
+
+#include <set>
 
 RdTaskDeleteServlet::RdTaskDeleteServlet()
     : BlogLoginedServlet("RdTaskDeleteServlet")
@@ -55,40 +59,9 @@ int32_t RdTaskDeleteServlet::handle(
             org_role = rel->getRole();
         }
 
-        std::vector<DB::TaskInfo::ptr> all;
-        TaskMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
         std::vector<DB::TaskInfo::ptr> delItems;
-        for (auto& i : all) {
-            if (!delIds.count(i->getId())) {
-                continue;
-            }
-            if (!is_platform_admin && uid != i->getCreatorId() && !CanDeleteTask(org_role)) {
-                continue;
-            }
-            delItems.push_back(i);
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        if (!TaskService::DeleteMany(org_id, delIds, uid, org_role, is_platform_admin, delItems)) {
             result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = time(0);
-        for (auto& i : delItems) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::TaskInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            for (auto& i : delItems) {
-                i->setIsDeleted(0);
-            }
-            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
         if (!delItems.empty()) {

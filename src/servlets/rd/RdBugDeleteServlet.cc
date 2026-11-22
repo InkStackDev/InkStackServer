@@ -1,10 +1,14 @@
 #include "RdBugDeleteServlet.hpp"
 
-#include "../../Permission.hpp"
-#include "../../Manager/BugManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
+
+#include <json/json.h>
+
+#include <set>
 
 RdBugDeleteServlet::RdBugDeleteServlet()
     : BlogLoginedServlet("RdBugDeleteServlet")
@@ -55,40 +59,9 @@ int32_t RdBugDeleteServlet::handle(
             org_role = rel->getRole();
         }
 
-        std::vector<DB::BugInfo::ptr> all;
-        BugMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
         std::vector<DB::BugInfo::ptr> delItems;
-        for (auto& i : all) {
-            if (!delIds.count(i->getId())) {
-                continue;
-            }
-            if (!is_platform_admin && uid != i->getCreatorId() && !CanDeleteBug(org_role)) {
-                continue;
-            }
-            delItems.push_back(i);
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        if (!BugService::DeleteMany(org_id, delIds, uid, org_role, is_platform_admin, delItems)) {
             result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = time(0);
-        for (auto& i : delItems) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::BugInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            for (auto& i : delItems) {
-                i->setIsDeleted(0);
-            }
-            result->setErrno(DB_COMMIT_FAILED);
             break;
         }
         if (!delItems.empty()) {

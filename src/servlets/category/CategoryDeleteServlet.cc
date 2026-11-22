@@ -1,16 +1,14 @@
 #include "CategoryDeleteServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Permission.hpp"
-#include "../../Manager/CategoryManager.hpp"
-#include "../../Manager/UserManager.hpp"
-#include "../../Util/Util.hpp"
-#include "DB/CategoryInfo.hpp"
+#include <json/json.h>
 
 #include <set>
 
-static chen::Logger::ptr logger = LOG_ROOT();
+#include "../../Manager/CategoryManager.hpp"
+#include "../../Manager/UserManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/CategoryService.hpp"
+#include "../../Util/Util.hpp"
 
 CategoryDeleteServlet::CategoryDeleteServlet()
     : BlogLoginedServlet("CategoryDeleteServlet")
@@ -42,26 +40,6 @@ bool CategoryDeleteServlet::handlePre(
     return true;
 }
 
-void GetDeleteValues(const std::map<int64_t, std::map<int64_t, DB::CategoryInfo::ptr>>& parent_map,
-    int64_t id,
-    std::set<DB::CategoryInfo::ptr>& infos)
-{
-    auto it = parent_map.at(0).find(id);
-    if (it == parent_map.at(0).end()) {
-        return;
-    }
-    if (!infos.insert(it->second).second) {
-        return;
-    }
-    auto iit = parent_map.find(id);
-    if (iit == parent_map.end()) {
-        return;
-    }
-    for (auto& i : iit->second) {
-        GetDeleteValues(parent_map, i.first, infos);
-    }
-}
-
 int32_t CategoryDeleteServlet::handle(
     chen::http::HttpRequest::ptr request,
     chen::http::HttpResponse::ptr response,
@@ -71,9 +49,10 @@ int32_t CategoryDeleteServlet::handle(
     do {
         DEFINE_AND_CHECK_STRING(result, ids, "ids");
         std::set<int64_t> cat_ids;
-        auto tmp = chen::StringUtil::Split(ids, ",");
-        for (auto& i : tmp) {
-            cat_ids.insert(chen::TypeUtil::Atoi(i));
+        for (auto& i : chen::StringUtil::Split(ids, ",")) {
+            if (!i.empty()) {
+                cat_ids.insert(chen::TypeUtil::Atoi(i));
+            }
         }
         int64_t req_uid = request->getParamAs<int64_t>("user_id", 0);
 
@@ -94,75 +73,40 @@ int32_t CategoryDeleteServlet::handle(
             } else {
                 CategoryMgr::GetInstance()->listAll(infos);
             }
-        } else {
-            if (!CategoryMgr::GetInstance()->listByUserId(infos, uid)) {
-                result->setErrno(DB_OPERATION_FAILED);
-                break;
-            }
+        } else if (!CategoryMgr::GetInstance()->listByUserId(infos, uid)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
         }
         if (infos.empty()) {
             result->setErrno(PARAM_MISSING, "no categories");
             break;
         }
-        std::map<int64_t, std::map<int64_t, DB::CategoryInfo::ptr>> parent_map;
-        for (auto& i : infos) {
-            if (i->getParentId()) {
-                parent_map[i->getParentId()][i->getId()] = i;
-            }
-            parent_map[0][i->getId()] = i;
-        }
 
-        std::set<DB::CategoryInfo::ptr> del_cats;
-        for (auto& i : cat_ids) {
-            GetDeleteValues(parent_map, i, del_cats);
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        std::vector<DB::CategoryInfo::ptr> deleted;
+        if (!CategoryService::DeleteMany(infos, cat_ids, deleted)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
+        if (deleted.empty()) {
             break;
         }
-        time_t now = time(0);
-        for (auto& i : del_cats) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::CategoryInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            result->setErrno(DB_COMMIT_FAILED);
 
-            for (auto& i : del_cats) {
-                i->setIsDeleted(0);
-            }
-            break;
+        result->set("total", (int64_t)deleted.size());
+        Json::Value list(Json::arrayValue);
+        for (auto& info : deleted) {
+            Json::Value item;
+            item["id"] = info->getId();
+            item["user_id"] = info->getUserId();
+            item["name"] = info->getName();
+            item["color"] = info->getColor();
+            item["parent_id"] = info->getParentId();
+            item["url"] = info->getUrl();
+            item["icon"] = info->getIcon();
+            item["desc"] = info->getDescription();
+            item["status"] = info->getStatus();
+            list.append(item);
         }
-        for (auto& i : del_cats) {
-            CategoryMgr::GetInstance()->add(i);
-        }
-        if (!del_cats.empty()) {
-            result->set("total", del_cats.size());
-            Json::Value list;
-            for (auto& i : del_cats) {
-                Json::Value item;
-                item["id"] = i->getId();
-                item["user_id"] = i->getUserId();
-                item["name"] = i->getName();
-                item["color"] = i->getColor();
-                item["parent_id"] = i->getParentId();
-                item["url"] = i->getUrl();
-                item["icon"] = i->getIcon();
-                item["desc"] = i->getDescription();
-                item["status"] = i->getStatus();
-                list.append(item);
-            }
-            result->set("list", list);
-        }
+        result->set("list", list);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

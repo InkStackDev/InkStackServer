@@ -16,9 +16,6 @@ public:
     DB::CategoryInfo::ptr get(int64_t id);
 
     DB::CategoryInfo::ptr getByUserIdName(int64_t user_id, const std::string& name);
-
-private:
-    static DB::CategoryInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<CategoryManager> CategoryMgr;

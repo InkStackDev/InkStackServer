@@ -1,8 +1,10 @@
 #include "BadgeManager.hpp"
 
+#include "../Repository/BadgeRepository.hpp"
 #include "../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -18,10 +20,7 @@ void BadgeManager::ensureDefaults()
         return;
     }
 
-    // 检查是否已有徽章数据
-    std::vector<DB::BadgeInfo::ptr> existing;
-    DB::BadgeInfoDao::QueryAll(existing, db);
-    if (!existing.empty()) {
+    if (BadgeRepository::CountAll(db) > 0) {
         return;
     }
 
@@ -58,28 +57,16 @@ void BadgeManager::insertDefault(
     badge->setConditionValue(condition_value);
     badge->setSortOrder(sort_order);
     badge->setIsDeleted(0);
-    badge->setCreateTime(time(0));
-    badge->setUpdateTime(time(0));
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    badge->setCreateTime(now);
+    badge->setUpdateTime(now);
 
-    if (DB::BadgeInfoDao::Insert(badge, db)) {
+    if (!BadgeRepository::Insert(badge, db)) {
         ERROR(logger) << "insert badge failed: " << name << " errno=" << db->getErrno() << " errstr=" << db->getErrStr();
     }
 }
 
 void BadgeManager::listAll(std::vector<DB::BadgeInfo::ptr>& badges)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return;
-    }
-
-    auto qb = DB::BadgeInfoDao::newQuery();
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->orderBy("sort_order", "ASC");
-    qb->orderBy("id", "ASC");
-
-    if (DB::BadgeInfoDao::QueryByBuilder(badges, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-    }
+    BadgeRepository::ListValid(badges, GetDB());
 }

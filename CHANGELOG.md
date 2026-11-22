@@ -34,6 +34,16 @@ All notable changes to this project will be documented in this file.
   `OrganizationService`：
   组织创建/更新、批量删除、加入/审核/踢人/角色调整、组织申请与审核从 Servlet 与 `Organization*Manager` 拆出；组织创建与
   申请人成员关系、申请通过后的组织 + 关系 + 申请状态更新改为单事务提交。
+- 新增 `TaskRepository` / `BugRepository` / `RequirementRepository` 与对应 Service：任务/缺陷/需求的保存与批量删除从
+  `Rd*Servlet` 拆出，删除改为按 ID 过滤 + 事务软删除，权限判断保留在 Service 入参中。
+- 新增 `CategoryRepository` / `LabelRepository` / `ArticleRelRepository` 与 `CategoryService` / `LabelService` /
+  `ArticleCategoryService`：分类/标签的创建、级联删除、文章分类关联更新从 Servlet 与 Manager 拆出；分类删除改为在 Service
+  内递归子分类并事务提交，文章分类更新修复了响应里误返回关联记录 ID 的问题。`ArticleService` 与搜索快照的分类/标签关联查询
+  也改为走 `ArticleRelRepository`。
+- 新增 `BadgeRepository` / `FaqRepository` / `FeedbackRepository` / `BackupRecordRepository` / `ExportRecordRepository`
+  与
+  `FaqService` / `FeedbackService`：徽章、常见问题、反馈、备份/导出记录读写从 Manager 与 Servlet 拆出；FAQ 转换、反馈提交、
+  过期记录物理清理改为走 Repository / Service。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。

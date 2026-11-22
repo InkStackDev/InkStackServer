@@ -1,9 +1,10 @@
 #include "RdRequirementEditServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/RequirementManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -35,11 +36,9 @@ int32_t RdRequirementEditServlet::handle(
         }
         int32_t org_role = rel->getRole();
 
-        DB::RequirementInfo::ptr info;
-
         if (id) {
-            info = RequirementMgr::GetInstance()->get(id);
-            if (!info || info->getOrgId() != org_id) {
+            auto existing = RequirementMgr::GetInstance()->get(id);
+            if (!existing || existing->getOrgId() != org_id) {
                 result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;
             }
@@ -47,32 +46,25 @@ int32_t RdRequirementEditServlet::handle(
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
-        } else {
-            if (!CanCreateRequirement(org_role)) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            info.reset(new DB::RequirementInfo);
-            info->setOrgId(org_id);
-            info->setCreatorId(uid);
-            info->setCreateTime(time(0));
+        } else if (!CanCreateRequirement(org_role)) {
+            result->setErrno(ACCESS_DENIED);
+            break;
         }
 
         DEFINE_AND_CHECK_STRING(result, title, "title");
-        if (!title.empty()) {
-            info->setTitle(title);
-        }
 
-        std::string desc = request->getParam("description");
-        if (!desc.empty()) {
-            info->setDescription(desc);
-        }
+        RequirementInput input;
+        input.id = id;
+        input.org_id = org_id;
+        input.creator_id = uid;
+        input.title = title;
+        input.description = request->getParam("description");
 
         std::string priority_str = request->getParam("priority");
         if (!priority_str.empty()) {
             int32_t p = StringToPriority(priority_str);
             if (p >= 0) {
-                info->setPriority(p);
+                input.priority = p;
             }
         }
 
@@ -80,45 +72,23 @@ int32_t RdRequirementEditServlet::handle(
         if (!status_str.empty()) {
             int32_t s = StringToRequirementStatus(status_str);
             if (s >= 0) {
-                info->setStatus(s);
+                input.status = s;
             }
         }
 
-        int64_t assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
-        if (assignee_id) {
-            info->setAssigneeId(assignee_id);
-        }
+        input.assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
+        input.deadline = request->getParamAs<int64_t>("deadline", 0);
+        input.iteration = request->getParam("iteration");
+        input.category = request->getParam("category");
+        input.source = request->getParam("source");
 
-        int64_t deadline = request->getParamAs<int64_t>("deadline", 0);
-        if (deadline) {
-            info->setDeadline(deadline);
-        }
-
-        std::string iteration = request->getParam("iteration");
-        if (!iteration.empty()) {
-            info->setIteration(iteration);
-        }
-
-        std::string category = request->getParam("category");
-        if (!category.empty()) {
-            info->setCategory(category);
-        }
-
-        std::string source = request->getParam("source");
-        if (!source.empty()) {
-            info->setSource(source);
-        }
-
-        info->setIsDeleted(0);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        DB::RequirementInfo::ptr info;
+        auto rt = RequirementService::Save(input, info);
+        if (rt == RequirementService::SaveResult::NotFound) {
+            result->setErrno(REQUIREMENT_NOT_FOUND);
             break;
         }
-
-        if (DB::RequirementInfoDao::InsertOrUpdate(info, db)) {
+        if (rt != RequirementService::SaveResult::Ok) {
             result->setErrno(RD_UPDATE_FAILED);
             break;
         }
@@ -127,8 +97,9 @@ int32_t RdRequirementEditServlet::handle(
         BuildRequirementJson(data, info);
         result->setData(data);
 
-        notifyAssignee(assignee_id, info);
+        notifyAssignee(input.assignee_id, info);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

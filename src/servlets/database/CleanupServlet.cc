@@ -5,6 +5,7 @@
 #include <Chen/Util/Util.hpp>
 
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/RecordRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/BackupRecordInfo.hpp"
 #include "DB/ExportRecordInfo.hpp"
@@ -50,12 +51,8 @@ int32_t CleanupServlet::handle(
             break;
         }
 
-        auto qb_old = DB::BackupRecordInfoDao::newQuery();
-        qb_old->where("is_deleted", "=", (int64_t)1);
-        qb_old->where("create_time", "<", deadline);
-
         std::vector<DB::BackupRecordInfo::ptr> old_backups;
-        DB::BackupRecordInfoDao::QueryByBuilder(old_backups, qb_old, db);
+        BackupRecordRepository::ListDeletedBefore(old_backups, deadline, db);
         for (auto& b : old_backups) {
             if (!b->getFilePath().empty()) {
                 std::string fp = b->getFilePath();
@@ -67,16 +64,12 @@ int32_t CleanupServlet::handle(
                     freed += sz;
                 }
             }
-            DB::BackupRecordInfoDao::DeleteById(b->getId(), db);
+            BackupRecordRepository::DeleteById(b->getId(), db);
             cleaned++;
         }
 
-        auto qb_old_exp = DB::ExportRecordInfoDao::newQuery();
-        qb_old_exp->where("is_deleted", "=", (int64_t)1);
-        qb_old_exp->where("create_time", "<", deadline);
-
         std::vector<DB::ExportRecordInfo::ptr> old_exports;
-        DB::ExportRecordInfoDao::QueryByBuilder(old_exports, qb_old_exp, db);
+        ExportRecordRepository::ListDeletedBefore(old_exports, deadline, db);
         for (auto& e : old_exports) {
             if (!e->getFilePath().empty()) {
                 std::string fp = e->getFilePath();
@@ -88,7 +81,7 @@ int32_t CleanupServlet::handle(
                     freed += sz;
                 }
             }
-            DB::ExportRecordInfoDao::DeleteById(e->getId(), db);
+            ExportRecordRepository::DeleteById(e->getId(), db);
             cleaned++;
         }
 

@@ -1,47 +1,23 @@
 #include "FaqManager.hpp"
 
+#include "../Repository/FaqRepository.hpp"
+#include "../Service/FaqService.hpp"
 #include "../Util/Util.hpp"
-
-#include <Chen/Log/Log.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
-
-FaqManager::FaqManager()
-{
-}
 
 bool FaqManager::listAll(std::vector<DB::HelpFaqsInfo::ptr>& infos)
 {
     auto db = GetDB();
     if (!db) {
-        ERROR(logger) << "Get DB connection fail";
         return false;
     }
-    auto qb = DB::HelpFaqsInfoDao::newQuery();
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->orderBy("sort_order", "ASC");
-    qb->orderBy("id", "ASC");
-    if (DB::HelpFaqsInfoDao::QueryByBuilder(infos, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
-        return false;
-    }
+    FaqRepository::ListValid(infos, db);
     return true;
 }
 
 bool FaqManager::searchByKeyword(const std::string& keyword, std::vector<DB::HelpFaqsInfo::ptr>& infos)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return false;
-    }
-    auto qb = DB::HelpFaqsInfoDao::newQuery();
-    qb->where("is_deleted", "=", (int64_t)0);
-    qb->orderBy("sort_order", "ASC");
-    qb->orderBy("id", "ASC");
     std::vector<DB::HelpFaqsInfo::ptr> all;
-    if (DB::HelpFaqsInfoDao::QueryByBuilder(all, qb, db)) {
-        ERROR(logger) << "QueryByBuilder failed";
+    if (!listAll(all)) {
         return false;
     }
     for (auto& info : all) {
@@ -54,58 +30,10 @@ bool FaqManager::searchByKeyword(const std::string& keyword, std::vector<DB::Hel
 
 bool FaqManager::remove(int64_t id)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return false;
-    }
-
-    auto info = DB::HelpFaqsInfoDao::Query(id, db);
-    if (!info) {
-        ERROR(logger) << "faq not found: " << id;
-        return false;
-    }
-
-    info->setIsDeleted(1);
-    info->setUpdateTime(time(0));
-
-    if (DB::HelpFaqsInfoDao::Update(info, db)) {
-        ERROR(logger) << "soft delete faq failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-        return false;
-    }
-
-    return true;
+    return FaqService::Remove(id);
 }
 
 bool FaqManager::update(int64_t id, const std::string& q, const std::string& a, const std::string& cat)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return false;
-    }
-
-    auto info = DB::HelpFaqsInfoDao::Query(id, db);
-    if (!info) {
-        ERROR(logger) << "faq not found: " << id;
-        return false;
-    }
-
-    if (!q.empty()) {
-        info->setQ(q);
-    }
-    if (!a.empty()) {
-        info->setA(a);
-    }
-    if (!cat.empty()) {
-        info->setCat(cat);
-    }
-    info->setUpdateTime(time(0));
-
-    if (DB::HelpFaqsInfoDao::Update(info, db)) {
-        ERROR(logger) << "update faq failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
-        return false;
-    }
-
-    return true;
+    return FaqService::Update(id, q, a, cat);
 }

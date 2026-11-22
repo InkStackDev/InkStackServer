@@ -1,9 +1,10 @@
 #include "RdTaskEditServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/TaskManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/TaskService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -35,43 +36,35 @@ int32_t RdTaskEditServlet::handle(
         }
         int32_t org_role = rel->getRole();
 
-        DB::TaskInfo::ptr info;
         if (id) {
-            info = TaskMgr::GetInstance()->get(id);
-            if (!info || info->getOrgId() != org_id) {
+            auto existing = TaskMgr::GetInstance()->get(id);
+            if (!existing || existing->getOrgId() != org_id) {
                 result->setErrno(TASK_NOT_FOUND);
                 break;
             }
-            if (!CanEditTask(org_role, uid, info->getAssigneeId())) {
+            if (!CanEditTask(org_role, uid, existing->getAssigneeId())) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
-        } else {
-            if (!CanCreateTask(org_role)) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            info.reset(new DB::TaskInfo);
-            info->setOrgId(org_id);
-            info->setCreatorId(uid);
-            info->setCreateTime(time(0));
+        } else if (!CanCreateTask(org_role)) {
+            result->setErrno(ACCESS_DENIED);
+            break;
         }
 
         DEFINE_AND_CHECK_STRING(result, title, "title");
-        if (!title.empty()) {
-            info->setTitle(title);
-        }
 
-        std::string desc = request->getParam("description");
-        if (!desc.empty()) {
-            info->setDescription(desc);
-        }
+        TaskInput input;
+        input.id = id;
+        input.org_id = org_id;
+        input.creator_id = uid;
+        input.title = title;
+        input.description = request->getParam("description");
 
         std::string priority_str = request->getParam("priority");
         if (!priority_str.empty()) {
             int32_t p = StringToPriority(priority_str);
             if (p >= 0) {
-                info->setPriority(p);
+                input.priority = p;
             }
         }
 
@@ -79,52 +72,32 @@ int32_t RdTaskEditServlet::handle(
         if (!status_str.empty()) {
             int32_t s = StringToTaskStatus(status_str);
             if (s >= 0) {
-                info->setStatus(s);
+                input.status = s;
             }
         }
 
-        int64_t assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
-        if (assignee_id) {
-            info->setAssigneeId(assignee_id);
-        }
+        input.assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
+        input.requirement_id = request->getParamAs<int64_t>("requirement_id", 0);
+        input.bug_id = request->getParamAs<int64_t>("bug_id", 0);
+        input.deadline = request->getParamAs<int64_t>("deadline", 0);
+        input.estimated_hours = request->getParamAs<int64_t>("estimated_hours", 0);
 
-        int64_t requirement_id = request->getParamAs<int64_t>("requirement_id", 0);
-        if (requirement_id) {
-            info->setRequirementId(requirement_id);
-        }
-
-        int64_t bug_id = request->getParamAs<int64_t>("bug_id", 0);
-        if (bug_id) {
-            info->setBugId(bug_id);
-        }
-
-        int64_t deadline = request->getParamAs<int64_t>("deadline", 0);
-        if (deadline) {
-            info->setDeadline(deadline);
-        }
-
-        int64_t estimated_hours = request->getParamAs<int64_t>("estimated_hours", 0);
-        if (estimated_hours) {
-            info->setEstimatedHours(estimated_hours);
-        }
-
-        info->setIsDeleted(0);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        DB::TaskInfo::ptr info;
+        auto rt = TaskService::Save(input, info);
+        if (rt == TaskService::SaveResult::NotFound) {
+            result->setErrno(TASK_NOT_FOUND);
             break;
         }
-        if (DB::TaskInfoDao::InsertOrUpdate(info, db)) {
+        if (rt != TaskService::SaveResult::Ok) {
             result->setErrno(RD_UPDATE_FAILED);
             break;
         }
+
         Json::Value data;
         BuildTaskJson(data, info);
         result->setData(data);
 
-        notifyAssignee(assignee_id, info);
+        notifyAssignee(input.assignee_id, info);
     } while (0);
 
     response->setBody(result->toJsonString());

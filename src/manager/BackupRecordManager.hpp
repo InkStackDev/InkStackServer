@@ -23,9 +23,6 @@ public:
         const std::string& description);
 
     bool remove(int64_t id);
-
-private:
-    static DB::BackupRecordInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<BackupRecordManager> BackupRecordMgr;

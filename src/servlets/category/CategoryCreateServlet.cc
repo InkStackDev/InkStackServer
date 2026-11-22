@@ -1,13 +1,10 @@
 #include "CategoryCreateServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Manager/CategoryManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/CategoryService.hpp"
 #include "../../Util/Util.hpp"
-
-#include <Chen/Log/Log.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 CategoryCreateServlet::CategoryCreateServlet()
     : BlogLoginedServlet("CategoryCreateServlet")
@@ -63,87 +60,63 @@ int32_t CategoryCreateServlet::handle(
         }
         bool admin_route = isAdminRoute();
 
-        DB::CategoryInfo::ptr info;
         int64_t owner_id = uid;
         if (cid) {
-            info = CategoryMgr::GetInstance()->get(cid);
-            if (!info) {
+            auto existing = CategoryMgr::GetInstance()->get(cid);
+            if (!existing) {
                 result->setErrno(PARAM_INVALID, "invalid cid");
                 break;
             }
-            if (!admin_route && info->getUserId() != uid) {
+            if (!admin_route && existing->getUserId() != uid) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
-            owner_id = info->getUserId();
-        } else {
-            if (req_uid && req_uid != uid) {
-                if (!admin_route) {
-                    result->setErrno(ACCESS_DENIED);
-                    break;
-                }
-                owner_id = req_uid;
+            owner_id = existing->getUserId();
+        } else if (req_uid && req_uid != uid) {
+            if (!admin_route) {
+                result->setErrno(ACCESS_DENIED);
+                break;
             }
-            auto owner = UserMgr::GetInstance()->get(owner_id);
-            if (!owner) {
+            owner_id = req_uid;
+            if (!UserMgr::GetInstance()->get(owner_id)) {
                 result->setErrno(USER_NOT_FOUND);
                 break;
             }
         }
 
-        if (parent_id) {
-            auto parent_info = CategoryMgr::GetInstance()->get(parent_id);
-            if (!parent_info || parent_info->getUserId() != owner_id) {
-                result->setErrno(PARAM_INVALID, "invalid parent_id");
-                break;
-            }
-            if (parent_id == cid) {
-                result->setErrno(PARAM_INVALID, "invalid parent_id");
-                break;
-            }
-        }
+        CategoryInput input;
+        input.id = cid;
+        input.owner_id = owner_id;
+        input.name = name;
+        input.color = color;
+        input.description = desc;
+        input.url = url;
+        input.icon = icon;
+        input.parent_id = parent_id;
+        input.status = status;
 
-        if (!info) {
-            info = CategoryMgr::GetInstance()->getByUserIdName(owner_id, name);
-            if (!info) {
-                info.reset(new DB::CategoryInfo);
-                info->setUserId(owner_id);
-                info->setName(name);
-                info->setCreateTime(time(0));
-            } else if (info->getIsDeleted()) {
-                info->setIsDeleted(0);
-            }
-        } else if (info->getName() != name) {
-            auto same = CategoryMgr::GetInstance()->getByUserIdName(owner_id, name);
-            if (same && same->getId() != info->getId()) {
-                result->setErrno(PARAM_INVALID, "category name exists");
-                break;
-            }
-            info->setName(name);
-        }
-
-        info->setColor(color);
-        info->setParentId(parent_id);
-        info->setIsDeleted(0);
-        info->setStatus(status);
-        info->setUrl(url);
-        info->setIcon(icon);
-        info->setDescription(desc);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        DB::CategoryInfo::ptr info;
+        auto rt = CategoryService::CreateOrUpdate(input, uid, admin_route, info);
+        if (rt == CategoryService::Result::NotFound) {
+            result->setErrno(PARAM_INVALID, "invalid cid");
             break;
         }
-
-        if (DB::CategoryInfoDao::InsertOrUpdate(info, db)) {
+        if (rt == CategoryService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (rt == CategoryService::Result::InvalidParent) {
+            result->setErrno(PARAM_INVALID, "invalid parent_id");
+            break;
+        }
+        if (rt == CategoryService::Result::NameExists) {
+            result->setErrno(PARAM_INVALID, "category name exists");
+            break;
+        }
+        if (rt != CategoryService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED, "category operation failed");
-            ERROR(logger) << "db error, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
             break;
         }
-
-        CategoryMgr::GetInstance()->add(info);
 
         result->set("id", info->getId());
         result->set("user_id", info->getUserId());

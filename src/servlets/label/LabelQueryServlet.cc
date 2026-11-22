@@ -1,14 +1,12 @@
 #include "LabelQueryServlet.hpp"
 
 #include "../../Include/Managers.hpp"
+#include "../../Repository/ArticleRelRepository.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/ArticleLabelRelInfo.hpp"
 
-#include <Chen/Log/Log.hpp>
+#include <json/json.h>
 
 #include <map>
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 LabelQueryServlet::LabelQueryServlet()
     : BlogLoginedServlet("LabelQueryServlet")
@@ -33,8 +31,7 @@ int32_t LabelQueryServlet::handle(
         if (user_id) {
             LabelMgr::GetInstance()->listByUserId(infos, user_id, true);
         } else {
-            auto tmp = chen::StringUtil::Split(ids, ",");
-            for (auto& i : tmp) {
+            for (auto& i : chen::StringUtil::Split(ids, ",")) {
                 auto id = chen::TypeUtil::Atoi(i);
                 if (id) {
                     auto info = LabelMgr::GetInstance()->get(id);
@@ -44,33 +41,23 @@ int32_t LabelQueryServlet::handle(
                 }
             }
         }
+
         std::map<int64_t, int64_t> article_counts;
         if (!infos.empty()) {
-            auto db = GetDB();
-            if (db) {
-                std::vector<int64_t> label_ids;
-                label_ids.reserve(infos.size());
-                for (auto& i : infos) {
-                    label_ids.push_back(i->getId());
-                }
-                auto qb = DB::ArticleLabelRelInfoDao::newQuery("r");
-                qb->select("r.label_id, COUNT(*) cnt");
-                qb->join("article a", "r.article_id = a.id");
-                qb->whereIn("r.label_id", label_ids);
-                qb->where("r.is_deleted", "=", (int64_t)0);
-                qb->where("a.state", "=", (int64_t)ArticleManager::PUBLISHED);
-                qb->where("a.is_deleted", "=", (int64_t)0);
-                qb->groupBy("r.label_id");
-                std::vector<std::pair<int64_t, int64_t>> rows;
-                if (qb->queryPairs<int64_t, int64_t>(rows, db) == 0) {
-                    for (auto& [label_id, cnt] : rows) {
-                        article_counts[label_id] = cnt;
-                    }
-                }
+            std::vector<int64_t> label_ids;
+            label_ids.reserve(infos.size());
+            for (auto& i : infos) {
+                label_ids.push_back(i->getId());
+            }
+
+            std::vector<std::pair<int64_t, int64_t>> rows;
+            ArticleLabelRelRepository::CountPublishedByLabels(label_ids, rows, GetDB());
+            for (auto& [label_id, count] : rows) {
+                article_counts[label_id] = count;
             }
         }
 
-        Json::Value data;
+        Json::Value data(Json::arrayValue);
         for (auto& i : infos) {
             Json::Value v;
             v["id"] = i->getId();

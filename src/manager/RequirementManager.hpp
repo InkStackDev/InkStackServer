@@ -35,9 +35,6 @@ public:
         uint64_t size,
         int32_t status,
         bool is_valid);
-
-private:
-    static DB::RequirementInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<RequirementManager> RequirementMgr;

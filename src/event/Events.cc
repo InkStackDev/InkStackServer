@@ -10,6 +10,7 @@
 
 #include "../Manager/ArticleManager.hpp"
 #include "../Manager/BackupRecordManager.hpp"
+#include "../Repository/RecordRepository.hpp"
 #include "../Manager/CommentManager.hpp"
 #include "../Manager/NotificationManager.hpp"
 #include "../Manager/OrganizationManager.hpp"
@@ -776,7 +777,7 @@ static void EventDatabaseBackup(const std::any& d)
             info->setDescription("mysql config not found");
             auto db = GetDB();
             if (db) {
-                DB::BackupRecordInfoDao::Update(info, db);
+                BackupRecordRepository::Update(info, db);
             }
         }
         return;
@@ -791,7 +792,7 @@ static void EventDatabaseBackup(const std::any& d)
                 info->setDescription(std::string("mysql config missing: ") + key);
                 auto db = GetDB();
                 if (db) {
-                    DB::BackupRecordInfoDao::Update(info, db);
+                    BackupRecordRepository::Update(info, db);
                 }
             }
             return;
@@ -831,7 +832,7 @@ static void EventDatabaseBackup(const std::any& d)
         ERROR(logger) << "Backup " << data.backup_id << " failed, rc=" << rc;
         info->setStatus("failed");
         info->setDescription("mysqldump failed with exit code " + std::to_string(rc));
-        DB::BackupRecordInfoDao::Update(info, db);
+        BackupRecordRepository::Update(info, db);
         return;
     }
 
@@ -844,7 +845,7 @@ static void EventDatabaseBackup(const std::any& d)
     info->setFilePath("backups/" + filename);
     info->setCompletedAt(time(0));
     info->setDescription("completed in " + std::to_string(elapsed) + "s, size " + std::to_string(fileSize) + " bytes");
-    DB::BackupRecordInfoDao::Update(info, db);
+    BackupRecordRepository::Update(info, db);
 
     INFO(logger) << "Backup " << data.backup_id << " completed: " << filepath << " (" << fileSize << " bytes, " << elapsed << "s)";
 }

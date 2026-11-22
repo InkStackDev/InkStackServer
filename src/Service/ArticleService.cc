@@ -15,7 +15,10 @@
 #include "../Manager/ArticleManager.hpp"
 #include "../Manager/UserManager.hpp"
 #include "../Permission.hpp"
+#include "../Repository/ArticleRelRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
+#include "../Repository/CategoryRepository.hpp"
+#include "../Repository/LabelRepository.hpp"
 #include "../Repository/UserRepository.hpp"
 #include "../Search/SearchSync.hpp"
 #include "../Util/Util.hpp"
@@ -33,7 +36,7 @@ bool SyncCategoryRels(int64_t article_id,
 {
     std::set<int64_t> new_ids(category_ids.begin(), category_ids.end());
     for (auto it = new_ids.begin(); it != new_ids.end();) {
-        auto category = DB::CategoryInfoDao::Query(*it, db);
+        auto category = CategoryRepository::Get(*it, db);
         if (!category || category->getUserId() != uid || category->getIsDeleted()) {
             it = new_ids.erase(it);
         } else {
@@ -43,14 +46,8 @@ bool SyncCategoryRels(int64_t article_id,
 
     std::set<int64_t> old_ids;
     {
-        auto qb = DB::ArticleCategoryRelInfoDao::newQuery();
-        if (!qb) {
-            return false;
-        }
-        qb->where("article_id", "=", article_id);
-        qb->where("is_deleted", "=", (int64_t)0);
         std::vector<DB::ArticleCategoryRelInfo::ptr> old_rels;
-        if (DB::ArticleCategoryRelInfoDao::QueryByBuilder(old_rels, qb, db)) {
+        if (!ArticleCategoryRelRepository::ListByArticle(old_rels, article_id, true, db)) {
             return false;
         }
         for (const auto& rel : old_rels) {
@@ -62,11 +59,11 @@ bool SyncCategoryRels(int64_t article_id,
         if (old_ids.count(cid)) {
             continue;
         }
-        auto existing = DB::ArticleCategoryRelInfoDao::QueryByArticleIdCategoryId(article_id, cid, db);
+        auto existing = ArticleCategoryRelRepository::GetByArticleAndCategory(article_id, cid, db);
         if (existing && existing->getIsDeleted()) {
             existing->setIsDeleted(0);
             existing->setUpdateTime(now);
-            if (DB::ArticleCategoryRelInfoDao::Update(existing, db)) {
+            if (ArticleCategoryRelRepository::Update(existing, db)) {
                 return false;
             }
         } else if (!existing) {
@@ -74,7 +71,7 @@ bool SyncCategoryRels(int64_t article_id,
             rel->setArticleId(article_id);
             rel->setCategoryId(cid);
             rel->setUpdateTime(now);
-            if (DB::ArticleCategoryRelInfoDao::Insert(rel, db)) {
+            if (ArticleCategoryRelRepository::Insert(rel, db)) {
                 return false;
             }
         }
@@ -84,11 +81,11 @@ bool SyncCategoryRels(int64_t article_id,
         if (new_ids.count(cid)) {
             continue;
         }
-        auto existing = DB::ArticleCategoryRelInfoDao::QueryByArticleIdCategoryId(article_id, cid, db);
+        auto existing = ArticleCategoryRelRepository::GetByArticleAndCategory(article_id, cid, db);
         if (existing && !existing->getIsDeleted()) {
             existing->setIsDeleted(1);
             existing->setUpdateTime(now);
-            if (DB::ArticleCategoryRelInfoDao::Update(existing, db)) {
+            if (ArticleCategoryRelRepository::Update(existing, db)) {
                 return false;
             }
         }
@@ -100,7 +97,7 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
 {
     std::set<int64_t> new_ids(label_ids.begin(), label_ids.end());
     for (auto it = new_ids.begin(); it != new_ids.end();) {
-        auto label = DB::LabelInfoDao::Query(*it, db);
+        auto label = LabelRepository::Get(*it, db);
         if (!label || label->getIsDeleted()) {
             it = new_ids.erase(it);
         } else {
@@ -110,14 +107,8 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
 
     std::set<int64_t> old_ids;
     {
-        auto qb = DB::ArticleLabelRelInfoDao::newQuery();
-        if (!qb) {
-            return false;
-        }
-        qb->where("article_id", "=", article_id);
-        qb->where("is_deleted", "=", (int64_t)0);
         std::vector<DB::ArticleLabelRelInfo::ptr> old_rels;
-        if (DB::ArticleLabelRelInfoDao::QueryByBuilder(old_rels, qb, db)) {
+        if (!ArticleLabelRelRepository::ListByArticle(old_rels, article_id, true, db)) {
             return false;
         }
         for (const auto& rel : old_rels) {
@@ -129,11 +120,11 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
         if (old_ids.count(lid)) {
             continue;
         }
-        auto existing = DB::ArticleLabelRelInfoDao::QueryByArticleIdLabelId(article_id, lid, db);
+        auto existing = ArticleLabelRelRepository::GetByArticleAndLabel(article_id, lid, db);
         if (existing && existing->getIsDeleted()) {
             existing->setIsDeleted(0);
             existing->setUpdateTime(now);
-            if (DB::ArticleLabelRelInfoDao::Update(existing, db)) {
+            if (ArticleLabelRelRepository::Update(existing, db)) {
                 return false;
             }
         } else if (!existing) {
@@ -141,7 +132,7 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
             rel->setArticleId(article_id);
             rel->setLabelId(lid);
             rel->setUpdateTime(now);
-            if (DB::ArticleLabelRelInfoDao::Insert(rel, db)) {
+            if (ArticleLabelRelRepository::Insert(rel, db)) {
                 return false;
             }
         }
@@ -151,11 +142,11 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
         if (new_ids.count(lid)) {
             continue;
         }
-        auto existing = DB::ArticleLabelRelInfoDao::QueryByArticleIdLabelId(article_id, lid, db);
+        auto existing = ArticleLabelRelRepository::GetByArticleAndLabel(article_id, lid, db);
         if (existing && !existing->getIsDeleted()) {
             existing->setIsDeleted(1);
             existing->setUpdateTime(now);
-            if (DB::ArticleLabelRelInfoDao::Update(existing, db)) {
+            if (ArticleLabelRelRepository::Update(existing, db)) {
                 return false;
             }
         }

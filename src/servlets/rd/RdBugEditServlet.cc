@@ -1,9 +1,10 @@
 #include "RdBugEditServlet.hpp"
 
-#include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/BugManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Permission.hpp"
+#include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -35,43 +36,35 @@ int32_t RdBugEditServlet::handle(
         }
         int32_t org_role = rel->getRole();
 
-        DB::BugInfo::ptr info;
         if (id) {
-            info = BugMgr::GetInstance()->get(id);
-            if (!info || info->getOrgId() != org_id) {
+            auto existing = BugMgr::GetInstance()->get(id);
+            if (!existing || existing->getOrgId() != org_id) {
                 result->setErrno(BUG_NOT_FOUND);
                 break;
             }
-            if (!CanEditBug(org_role, uid, info->getCreatorId())) {
+            if (!CanEditBug(org_role, uid, existing->getCreatorId())) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
-        } else {
-            if (!CanCreateBug(org_role)) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
-            info.reset(new DB::BugInfo);
-            info->setOrgId(org_id);
-            info->setCreatorId(uid);
-            info->setCreateTime(time(0));
+        } else if (!CanCreateBug(org_role)) {
+            result->setErrno(ACCESS_DENIED);
+            break;
         }
 
         DEFINE_AND_CHECK_STRING(result, title, "title");
-        if (!title.empty()) {
-            info->setTitle(title);
-        }
 
-        std::string desc = request->getParam("description");
-        if (!desc.empty()) {
-            info->setDescription(desc);
-        }
+        BugInput input;
+        input.id = id;
+        input.org_id = org_id;
+        input.creator_id = uid;
+        input.title = title;
+        input.description = request->getParam("description");
 
         std::string severity_str = request->getParam("severity");
         if (!severity_str.empty()) {
             int32_t s = StringToSeverity(severity_str);
             if (s >= 0) {
-                info->setSeverity(s);
+                input.severity = s;
             }
         }
 
@@ -79,7 +72,7 @@ int32_t RdBugEditServlet::handle(
         if (!priority_str.empty()) {
             int32_t p = StringToPriority(priority_str);
             if (p >= 0) {
-                info->setPriority(p);
+                input.priority = p;
             }
         }
 
@@ -87,52 +80,32 @@ int32_t RdBugEditServlet::handle(
         if (!status_str.empty()) {
             int32_t s = StringToBugStatus(status_str);
             if (s >= 0) {
-                info->setStatus(s);
+                input.status = s;
             }
         }
 
-        int64_t assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
-        if (assignee_id) {
-            info->setAssigneeId(assignee_id);
-        }
+        input.assignee_id = request->getParamAs<int64_t>("assignee_id", 0);
+        input.requirement_id = request->getParamAs<int64_t>("related_requirement_id", 0);
+        input.module = request->getParam("module");
+        input.steps_to_reproduce = request->getParam("steps_to_reproduce");
+        input.environment = request->getParam("environment");
 
-        int64_t requirement_id = request->getParamAs<int64_t>("related_requirement_id", 0);
-        if (requirement_id) {
-            info->setRequirementId(requirement_id);
-        }
-
-        std::string module = request->getParam("module");
-        if (!module.empty()) {
-            info->setModule(module);
-        }
-
-        std::string steps = request->getParam("steps_to_reproduce");
-        if (!steps.empty()) {
-            info->setStepsToReproduce(steps);
-        }
-
-        std::string env = request->getParam("environment");
-        if (!env.empty()) {
-            info->setEnvironment(env);
-        }
-
-        info->setIsDeleted(0);
-        info->setUpdateTime(time(0));
-
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
+        DB::BugInfo::ptr info;
+        auto rt = BugService::Save(input, info);
+        if (rt == BugService::SaveResult::NotFound) {
+            result->setErrno(BUG_NOT_FOUND);
             break;
         }
-        if (DB::BugInfoDao::InsertOrUpdate(info, db)) {
+        if (rt != BugService::SaveResult::Ok) {
             result->setErrno(RD_UPDATE_FAILED);
             break;
         }
+
         Json::Value data;
         BuildBugJson(data, info);
         result->setData(data);
 
-        notifyAssignee(assignee_id, info);
+        notifyAssignee(input.assignee_id, info);
     } while (0);
 
     response->setBody(result->toJsonString());

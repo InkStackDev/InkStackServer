@@ -1,6 +1,9 @@
 #include "AdminFeedbackConvertServlet.hpp"
 
 #include "../../Include/Managers.hpp"
+#include "../../Service/BugService.hpp"
+#include "../../Service/FaqService.hpp"
+#include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
@@ -80,18 +83,9 @@ int32_t AdminFeedbackConvertServlet::handle(
             // 转换为常见问题
             std::string cat = request->getParam("cat");
 
-            DB::HelpFaqsInfo::ptr faq(new DB::HelpFaqsInfo);
-            faq->setCat(cat);
-            faq->setQ(title);
-            faq->setA(content);
-            faq->setSortOrder(0);
-            faq->setIsDeleted(0);
-            faq->setCreateTime(time(0));
-            faq->setUpdateTime(time(0));
-
-            if (DB::HelpFaqsInfoDao::Insert(faq, db)) {
+            DB::HelpFaqsInfo::ptr faq;
+            if (!FaqService::Create(cat, title, content, 0, faq)) {
                 result->setErrno(DB_OPERATION_FAILED, "insert faq failed");
-                ERROR(logger) << "insert faq failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
 
@@ -109,21 +103,15 @@ int32_t AdminFeedbackConvertServlet::handle(
                 }
             }
 
-            DB::RequirementInfo::ptr req(new DB::RequirementInfo);
-            req->setOrgId(org_id);
-            req->setTitle(title);
-            req->setDescription(content);
-            req->setPriority(1); // 默认低优先级
-            req->setStatus(0);   // 草稿
-            req->setCreatorId(uid);
-            req->setAssigneeId(0);
-            req->setIsDeleted(0);
-            req->setCreateTime(time(0));
-            req->setUpdateTime(time(0));
+            RequirementInput input;
+            input.org_id = org_id;
+            input.creator_id = uid;
+            input.title = title;
+            input.description = content;
 
-            if (DB::RequirementInfoDao::Insert(req, db)) {
+            DB::RequirementInfo::ptr req;
+            if (RequirementService::Save(input, req) != RequirementService::SaveResult::Ok) {
                 result->setErrno(DB_OPERATION_FAILED, "insert requirement failed");
-                ERROR(logger) << "insert requirement failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
 
@@ -141,22 +129,15 @@ int32_t AdminFeedbackConvertServlet::handle(
                 }
             }
 
-            DB::BugInfo::ptr bug(new DB::BugInfo);
-            bug->setOrgId(org_id);
-            bug->setTitle(title);
-            bug->setDescription(content);
-            bug->setSeverity(1); // 默认轻微
-            bug->setPriority(1); // 默认低优先级
-            bug->setStatus(0);   // 待处理
-            bug->setCreatorId(uid);
-            bug->setAssigneeId(0);
-            bug->setIsDeleted(0);
-            bug->setCreateTime(time(0));
-            bug->setUpdateTime(time(0));
+            BugInput input;
+            input.org_id = org_id;
+            input.creator_id = uid;
+            input.title = title;
+            input.description = content;
 
-            if (DB::BugInfoDao::Insert(bug, db)) {
+            DB::BugInfo::ptr bug;
+            if (BugService::Save(input, bug) != BugService::SaveResult::Ok) {
                 result->setErrno(DB_OPERATION_FAILED, "insert bug failed");
-                ERROR(logger) << "insert bug failed, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
                 break;
             }
 

@@ -14,9 +14,6 @@ public:
     bool listByLabelId(std::vector<DB::ArticleLabelRelInfo::ptr>& infos, int64_t label_id, bool valid);
 
     DB::ArticleLabelRelInfo::ptr getByArticleIdLabelId(int64_t article_id, int64_t label_id);
-
-private:
-    static DB::ArticleLabelRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<ArticleLabelRelManager> ArticleLabelRelMgr;

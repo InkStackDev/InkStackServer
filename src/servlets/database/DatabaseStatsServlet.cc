@@ -5,6 +5,7 @@
 #include "../../Manager/CategoryManager.hpp"
 #include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/LabelRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/LabelInfo.hpp"
 
@@ -48,13 +49,7 @@ int32_t DatabaseStatsServlet::handle(
         CategoryMgr::GetInstance()->listAll(categories, true);
         total_categories = categories.size();
 
-        int64_t total_labels = 0;
-        auto db = GetDB();
-        if (db) {
-            auto qb = DB::LabelInfoDao::newQuery();
-            qb->where("is_deleted", "=", (int64_t)0);
-            qb->executeCount(total_labels, db);
-        }
+        int64_t total_labels = LabelRepository::CountValid(GetDB());
 
         int64_t total_backups = 0;
         std::vector<DB::BackupRecordInfo::ptr> backups;

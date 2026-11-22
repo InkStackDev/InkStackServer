@@ -14,9 +14,6 @@ public:
     DB::LabelInfo::ptr getByUserIdName(int64_t id, const std::string& name);
 
     bool listByUserId(std::vector<DB::LabelInfo::ptr>& infos, int64_t id, bool valid);
-
-private:
-    static DB::LabelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<LabelManager> LabelMgr;
