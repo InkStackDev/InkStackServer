@@ -1,5 +1,6 @@
 #include "NotificationManager.hpp"
 
+#include "../Message/MessageRouter.hpp"
 #include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
 #include "WSConnectionManager.hpp"
@@ -73,17 +74,17 @@ data::NotificationInfo::ptr NotificationManager::ParseRow(chen::ISQLData::ptr rt
 
 int32_t NotificationManager::sendToUser(int64_t user_id, const std::string& message)
 {
-    return WSMgr::GetInstance()->sendToUser(user_id, BuildChannelMessage(message, "notification"));
+    return MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "notification"));
 }
 
 void NotificationManager::broadcast(const std::string& message)
 {
-    WSMgr::GetInstance()->broadcast(BuildChannelMessage(message, "notification"));
+    MessageRouter::Get()->Broadcast(BuildChannelMessage(message, "notification"));
 }
 
 int32_t NotificationManager::getOnlineCount()
 {
-    return WSMgr::GetInstance()->onlineUserCount();
+    return static_cast<int32_t>(MessageRouter::Get()->OnlineUserCount());
 }
 
 // ========== DB persistence ==========

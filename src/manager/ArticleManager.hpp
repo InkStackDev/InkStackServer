@@ -63,7 +63,7 @@ public:
     void stop();
 
     /**
-     * @brief 定时发布已到发布时间的文章（由 BlogModule::onTick 调用）
+     * @brief 定时发布已到发布时间的文章 + 刷新计数脏数据（由 JobRunner 的 article:tick 调用）
      * @note 从 Redis sorted set 获取到期文章，避免 DB 全表扫描
      */
     void onTick();
@@ -83,7 +83,7 @@ public:
 
     /**
      * @brief 将脏数据（浏览/点赞/收藏数）刷新到数据库
-     * @note 由 onUpdateTimer 定期调用，也在 stop 时调用以避免 reload/stop 时丢失增量
+     * @note 由 JobRunner 的 article:tick 定时调用
      */
     void flushDirty();
 

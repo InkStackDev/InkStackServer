@@ -264,6 +264,9 @@ rpc:
 - `service` 段约定：`1` = Search，`2` = App，`3` = Bot
 
 > **多实例部署**：每起一个实例都必须让 `bus_id` 的第 4 段（以及 `INSTANCE_ID`）唯一，否则 hub 会拒绝重复注册。
+> **多 worker / 多实例 WebSocket**：消息投递、在线人数、踢设备/撤销会话统一经 Redis 收件箱跨 worker 转发，
+> 无需额外开关；请确保 `server.instance_id` 在多实例间唯一。后台任务（文章发布、计数刷盘、PR 同步、搜索快照）
+> 通过 Redis 租约保证同一时刻只跑一份。
 > **独立 hub**：以后把 hub 拆成独立进程时，只需要改 `RPC_HUB_ADDRESS`，App 侧不用改代码。
 
 > 当前只落了配置与解析（`GetRpcConf()`），连接/注册（`RpcHubMgr`、`registerService`）尚未实现，因此这一节暂不影响运行行为。

@@ -11,6 +11,9 @@ static chen::ConfigVar<std::string>::ptr g_server_work_path =
 static chen::ConfigVar<std::string>::ptr g_server_data_path =
     chen::Config::Lookup("server.data_path", std::string(""), "server data storage path");
 
+static chen::ConfigVar<int32_t>::ptr g_server_instance_id =
+    chen::Config::Lookup("server.instance_id", int32_t(1), "server instance id");
+
 static chen::ConfigVar<std::map<std::string, std::map<std::string, std::string>>>::ptr g_mysql_dbs =
     chen::Config::Lookup("mysql.dbs", std::map<std::string, std::map<std::string, std::string>>(), "mysql dbs");
 
@@ -33,6 +36,11 @@ std::string GetServerWorkPath()
 std::string GetServerDataPath()
 {
     return g_server_data_path->getValue();
+}
+
+int32_t GetServerInstanceId()
+{
+    return g_server_instance_id->getValue();
 }
 
 std::map<std::string, std::map<std::string, std::string>> GetMysqlDbs()

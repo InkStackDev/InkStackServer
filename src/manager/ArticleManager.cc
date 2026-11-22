@@ -492,6 +492,7 @@ void ArticleManager::flushDirty()
         }
         return;
     }
+    std::vector<data::ArticleInfo::ptr> updated;
     for (auto& i : updates) {
         auto info = get(i);
         if (!info) {
@@ -504,7 +505,7 @@ void ArticleManager::flushDirty()
         if (data::ArticleInfoDao::Update(info, conn)) {
             addUpdate(i);
         } else {
-            SetArticleCache(info);
+            updated.push_back(info);
         }
     }
     if (!trans->commit()) {
@@ -514,6 +515,9 @@ void ArticleManager::flushDirty()
             updates_.insert(i);
         }
         return;
+    }
+    for (const auto& info : updated) {
+        SetArticleCache(info);
     }
     INFO(logger) << "flushDirty: flushed " << updates.size() << " articles";
 }
@@ -919,7 +923,12 @@ void ArticleManager::doArticlePublishSchedule()
 
     // 逐个更新文章状态
     std::vector<int64_t> published_ids;
+    std::vector<data::ArticleInfo::ptr> published;
     auto trans = db->openTransaction();
+    if (!trans) {
+        ERROR(logger) << "open transaction failed for scheduled publish";
+        return;
+    }
     for (auto id : article_ids) {
         auto info = get(id);
         if (!info || info->getIsDeleted()) {
@@ -936,15 +945,16 @@ void ArticleManager::doArticlePublishSchedule()
             ERROR(logger) << "Update error errno=" << db->getErrno() << " errstr=" << db->getErrStr() << " data=" << info->toJsonString();
             continue;
         }
-        SetArticleCache(info);
-
-        clearCalendarCache(info->getUserId(), info->getPublishTime());
-
+        published.push_back(info);
         published_ids.push_back(info->getId());
     }
     if (!trans->commit()) {
         ERROR(logger) << "commit scheduled publish failed";
         return;
+    }
+    for (const auto& info : published) {
+        SetArticleCache(info);
+        clearCalendarCache(info->getUserId(), info->getPublishTime());
     }
     for (auto id : published_ids) {
         SearchSyncMgr::GetInstance()->markDirty(id, SearchSync::OP_UPSERT);

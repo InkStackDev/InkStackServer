@@ -22,6 +22,7 @@
 #include "../Manager/ArticleCategoryRelManager.hpp"
 #include "../Manager/ArticleLabelRelManager.hpp"
 #include "../Manager/ArticleManager.hpp"
+#include "../Job/RedisLease.hpp"
 #include "../Config/AppConfig.hpp"
 #include "../Config/SearchConfig.hpp"
 #include "../Util/Util.hpp"
@@ -530,6 +531,13 @@ bool SearchSync::runSnapshot()
     }
     if (!client || !client->isConnected()) {
         return false;
+    }
+
+    // 全量重建只允许一个 worker 执行，避免多 worker 同时推快照
+    RedisLease lease("search:snapshot", 1800);
+    if (!lease.TryAcquire()) {
+        INFO(logger) << "search snapshot is running on another worker, skip";
+        return true;
     }
 
     uint64_t snapshot_id = (chen::TimeUtil::GetCurrentMs() << 8) ^ (static_cast<uint64_t>(::getpid()) & 0xff);

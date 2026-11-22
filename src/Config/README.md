@@ -5,20 +5,20 @@
 
 ## 文件一览
 
-| 文件                   | 覆盖的 key                                                                                        |
-|------------------------|---------------------------------------------------------------------------------------------------|
-| `AppConfig.hpp/.cc`    | `redis.name`、`server.work_path`、`server.data_path`、`mysql.dbs`、`cache.obj.enabled`、`admin.*` |
-| `AuthConfig.hpp/.cc`   | `auth.*`、`webauthn.*`、`oauth.github.*`                                                          |
-| `SearchConfig.hpp/.cc` | `search.*`                                                                                        |
-| `AIConfig.hpp/.cc`     | `ai.*`                                                                                            |
-| `RpcConfig.hpp/.cc`    | `rpc.*`（hub 地址、bus_id 身份、超时）                                                            |
+| 文件                   | 覆盖的 key                                                                                                              |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `AppConfig.hpp/.cc`    | `redis.name`、`server.work_path`、`server.data_path`、`server.instance_id`、`mysql.dbs`、`cache.obj.enabled`、`admin.*` |
+| `AuthConfig.hpp/.cc`   | `auth.*`、`webauthn.*`、`oauth.github.*`                                                                                |
+| `SearchConfig.hpp/.cc` | `search.*`                                                                                                              |
+| `AIConfig.hpp/.cc`     | `ai.*`                                                                                                                  |
+| `RpcConfig.hpp/.cc`    | `rpc.*`（hub 地址、bus_id 身份、超时）                                                                                  |
 
 ## 使用方式
 
 ```cpp
 #include "../Config/AppConfig.hpp"   // 按调用方所在目录使用相对路径
 
-std::string dir = GetServerWorkPath() + "/uploads";
+std::string dir = GetServerDataPath() + "/backups";
 std::string redis_pool = GetRedisPoolName();
 auto search = GetSearchConf();
 auto rpc = GetRpcConf();          // hub_address / bus_id / 超时

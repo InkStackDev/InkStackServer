@@ -3,6 +3,8 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
 
+#include "../Message/MessageRouter.hpp"
+
 #include <json/json.h>
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -35,6 +37,7 @@ WSConnectionManager::AddResult WSConnectionManager::addConnection(
 
     bool user_became_online = false;
     bool old_user_became_offline = false;
+    int64_t old_user_id = 0;
 
     {
         std::unique_lock lock(mutex_);
@@ -48,6 +51,7 @@ WSConnectionManager::AddResult WSConnectionManager::addConnection(
             }
             if (old_conn) {
                 result.replaced_session = old_conn->session;
+                old_user_id = old_conn->user_id;
                 // 暂不移除旧 session 映射，Gateway 还需要通过它发送 replaced 帧；
                 // 旧连接 onClose 时 removeConnection 会清理。
                 auto old_uit = user_devices_.find(old_conn->user_id);
@@ -74,10 +78,13 @@ WSConnectionManager::AddResult WSConnectionManager::addConnection(
         session_devices_[session.get()] = conn;
     }
 
+    result.replaced_user_id = old_user_id;
+    notifyConnection(true, user_id, device_id, old_user_id);
+
     if (user_became_online || old_user_became_offline) {
         result.presence_changed = true;
         if (broadcast_presence) {
-            broadcastPresence();
+            MessageRouter::Get()->BroadcastPresence();
         }
     }
 
@@ -123,6 +130,7 @@ WSConnectionManager::RemoveResult WSConnectionManager::removeConnection(chen::ht
 
         result.removed = true;
         result.user_id = conn->user_id;
+        result.device_id = conn->device_id;
 
         auto uit = user_devices_.find(conn->user_id);
         if (uit != user_devices_.end()) {
@@ -134,8 +142,11 @@ WSConnectionManager::RemoveResult WSConnectionManager::removeConnection(chen::ht
         }
     }
 
+    if (result.removed) {
+        notifyConnection(false, result.user_id, result.device_id, 0);
+    }
     if (result.user_became_offline) {
-        broadcastPresence();
+        MessageRouter::Get()->BroadcastPresence();
     }
 
     INFO(logger) << "WS disconnected: user_id=" << result.user_id;
@@ -343,8 +354,11 @@ bool WSConnectionManager::closeDevice(const std::string& device_id, const std::s
 
     CloseConnection(conn, notify_message);
 
+    if (conn) {
+        notifyConnection(false, conn->user_id, device_id, 0);
+    }
     if (user_became_offline) {
-        broadcastPresence();
+        MessageRouter::Get()->BroadcastPresence();
     }
 
     INFO(logger) << "WS close device: " << device_id.substr(0, 12);
@@ -382,10 +396,13 @@ bool WSConnectionManager::closeUser(int64_t user_id, const std::string& notify_m
 
     for (const auto& conn : conns) {
         CloseConnection(conn, notify_message);
+        if (conn) {
+            notifyConnection(false, conn->user_id, conn->device_id, 0);
+        }
     }
 
     if (!conns.empty()) {
-        broadcastPresence();
+        MessageRouter::Get()->BroadcastPresence();
     }
 
     INFO(logger) << "WS close user: user_id=" << user_id << " devices=" << conns.size();
@@ -410,6 +427,13 @@ int32_t WSConnectionManager::closeAllConnections(const std::string& notify_messa
 
     for (const auto& conn : conns) {
         CloseConnection(conn, notify_message);
+        if (conn) {
+            notifyConnection(false, conn->user_id, conn->device_id, 0);
+        }
+    }
+
+    if (!conns.empty()) {
+        MessageRouter::Get()->BroadcastPresence();
     }
 
     INFO(logger) << "WS close all connections: " << conns.size();
@@ -448,6 +472,39 @@ void WSConnectionManager::broadcastPresence()
     Json::Value msg;
     msg["channel"] = "presence";
     msg["type"] = "online_count";
-    msg["count"] = onlineUserCount();
+    msg["count"] = static_cast<Json::Int64>(MessageRouter::Get()->OnlineUserCount());
     broadcast(chen::JsonUtil::ToString(msg));
+}
+
+void WSConnectionManager::setConnectionObserver(ConnectionObserver observer)
+{
+    std::unique_lock lock(mutex_);
+    observer_ = std::move(observer);
+}
+
+void WSConnectionManager::snapshot(std::vector<std::pair<int64_t, std::string>>& out) const
+{
+    std::shared_lock lock(mutex_);
+    out.clear();
+    out.reserve(devices_.size());
+    for (const auto& item : devices_) {
+        if (item.second) {
+            out.emplace_back(item.second->user_id, item.first);
+        }
+    }
+}
+
+void WSConnectionManager::notifyConnection(bool added,
+    int64_t user_id,
+    const std::string& device_id,
+    int64_t old_user_id) const
+{
+    ConnectionObserver observer;
+    {
+        std::shared_lock lock(mutex_);
+        observer = observer_;
+    }
+    if (observer) {
+        observer(added, user_id, device_id, old_user_id);
+    }
 }

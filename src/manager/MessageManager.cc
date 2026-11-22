@@ -1,5 +1,6 @@
 #include "MessageManager.hpp"
 
+#include "../Message/MessageRouter.hpp"
 #include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
 #include "WSConnectionManager.hpp"
@@ -361,10 +362,10 @@ bool MessageManager::deleteForUser(int64_t conversation_id, int64_t uid)
 
 bool MessageManager::isChatConnected(int64_t user_id)
 {
-    return WSMgr::GetInstance()->isUserOnline(user_id);
+    return MessageRouter::Get()->IsUserOnline(user_id);
 }
 
 int32_t MessageManager::sendToUser(int64_t user_id, const std::string& message)
 {
-    return WSMgr::GetInstance()->sendToUser(user_id, BuildChannelMessage(message, "chat"));
+    return MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "chat"));
 }

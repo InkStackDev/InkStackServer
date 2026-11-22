@@ -9,7 +9,7 @@
 #include <json/json.h>
 
 #include "../SessionData.hpp"
-#include "../Manager/WSConnectionManager.hpp"
+#include "../Message/MessageRouter.hpp"
 #include "../Config/AuthConfig.hpp"
 #include "../Util/Util.hpp"
 
@@ -43,7 +43,7 @@ static void CloseWsForSession(const std::string& session_id, const char* reason)
     Json::Value msg;
     msg["channel"] = "system";
     msg["type"] = reason;
-    WSMgr::GetInstance()->closeDevice(device_id, chen::JsonUtil::ToString(msg));
+    MessageRouter::Get()->CloseDevice(device_id, chen::JsonUtil::ToString(msg));
 }
 
 void AuthService::MirrorSessionData(const std::string& session_id, int64_t uid)
@@ -217,7 +217,7 @@ void AuthService::RevokeAllSessions(int64_t uid)
     Json::Value msg;
     msg["channel"] = "system";
     msg["type"] = "session_revoked";
-    WSMgr::GetInstance()->closeUser(uid, chen::JsonUtil::ToString(msg));
+    MessageRouter::Get()->CloseUser(uid, chen::JsonUtil::ToString(msg));
     INFO(logger) << "revoked all sessions uid=" << uid;
 }
 

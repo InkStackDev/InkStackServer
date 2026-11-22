@@ -1,8 +1,15 @@
 #include "BlogModule.hpp"
 
+#include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
+#include "./Manager/ArticleManager.hpp"
+#include "./Manager/OrganizationRepoManager.hpp"
+#include "./Manager/OrganizationRepoPrManager.hpp"
+#include "./Manager/WSConnectionManager.hpp"
+#include "./Message/MessageRouter.hpp"
+#include "./Search/SearchSync.hpp"
 #include "Config/RpcConfig.hpp"
 
 BlogModule::BlogModule()
@@ -18,13 +25,19 @@ bool BlogModule::onLoad()
 
 bool BlogModule::onUnload()
 {
-
+    JobRunner::StopAll();
+    ArticleMgr::GetInstance()->flushDirty();
+    SearchSyncMgr::GetInstance()->stop();
+    MessageRouter::Shutdown();
     return true;
 }
 
 bool BlogModule::onDeactivate()
 {
-
+    // 停止接受请求后先把内存脏计数落库，再关闭长连接
+    ArticleMgr::GetInstance()->flushDirty();
+    // 热重载/关机：让客户端主动重连到新 worker，避免一直挂到 drain 超时
+    WSMgr::GetInstance()->closeAllConnections(R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
     return true;
 }
 
@@ -115,7 +128,49 @@ bool BlogModule::onServerReady()
 
 bool BlogModule::onServerUp()
 {
+    MessageRouter::Init();
 
+    if (!SearchSyncMgr::GetInstance()->init()) {
+        WARN(LOG_ROOT()) << "SearchSync init failed, search sync disabled";
+    }
+
+    // 文章定时发布 + 计数刷盘（原先 onTick 未被调用）
+    JobRunner::Register(JobRunner::Job{
+        .name = "article:tick",
+        .interval_ms = 5000,
+        .lease_ttl_sec = 30,
+        .run_immediately = true,
+        .run =
+            []() {
+                ArticleMgr::GetInstance()->onTick();
+            },
+    });
+
+    // 组织仓库元数据同步（低频，避免启动时集中请求 GitHub）
+    JobRunner::Register(JobRunner::Job{
+        .name = "org:repo_sync",
+        .interval_ms = 60 * 60 * 1000,
+        .lease_ttl_sec = 20 * 60,
+        .run_immediately = false,
+        .run =
+            []() {
+                OrganizationRepoMgr::GetInstance()->onTick();
+            },
+    });
+
+    // 组织 PR 同步（webhook 之外的低频兜底，注意 GitHub API 限流）
+    JobRunner::Register(JobRunner::Job{
+        .name = "org:pr_sync",
+        .interval_ms = 15 * 60 * 1000,
+        .lease_ttl_sec = 10 * 60,
+        .run_immediately = false,
+        .run =
+            []() {
+                OrganizationRepoPrMgr::GetInstance()->onTick();
+            },
+    });
+
+    JobRunner::StartAll();
     return true;
 }
 

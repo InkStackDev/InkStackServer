@@ -1,5 +1,6 @@
 #include "OrganizationRepoPrManager.hpp"
 
+#include "../Job/RedisLease.hpp"
 #include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
 #include "OrganizationRepoManager.hpp"
@@ -14,8 +15,7 @@
 #include <json/json.h>
 #include <json/reader.h>
 
-#include <mutex>
-#include <set>
+#include <map>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -82,9 +82,7 @@ static void DelOrgRepoPrCache(int64_t id)
     RedisCacheDel(OrgRepoPrCacheKey(id));
 }
 
-/// 单条 PR 同步互斥锁与进行中集合，避免同一 PR 并发重复请求 GitHub
-static std::mutex s_sync_pr_mutex;
-static std::set<int64_t> s_syncing_pr_ids;
+/// 单条 PR 同步使用 Redis 租约，避免多 worker / 多实例并发重复请求 GitHub
 
 data::OrganizationRepoPrsInfo::ptr OrganizationRepoPrManager::ParseRow(chen::ISQLData::ptr rt)
 {
@@ -680,27 +678,10 @@ OrganizationRepoPrManager::SyncPrStatus OrganizationRepoPrManager::SyncPrFromGit
     }
 
     // 同一 PR 加锁，重复触发直接返回 BUSY
-    {
-        std::lock_guard<std::mutex> lock(s_sync_pr_mutex);
-        if (s_syncing_pr_ids.count(pr_id)) {
-            return SyncPrStatus::BUSY;
-        }
-        s_syncing_pr_ids.insert(pr_id);
+    RedisLease lease("sync:pr:" + std::to_string(pr_id), 300);
+    if (!lease.TryAcquire()) {
+        return SyncPrStatus::BUSY;
     }
-
-    // RAII 保证任一出口都移除进行中标记
-    struct SyncGuard {
-        int64_t id;
-        explicit SyncGuard(int64_t v)
-            : id(v)
-        {
-        }
-        ~SyncGuard()
-        {
-            std::lock_guard<std::mutex> lock(s_sync_pr_mutex);
-            s_syncing_pr_ids.erase(id);
-        }
-    } guard(pr_id);
 
     std::map<std::string, std::string> headers;
     headers["Accept"] = "application/vnd.github.v3+json";

@@ -1,6 +1,7 @@
 #include "WsGatewayServlet.hpp"
 
 #include "../../ErrorCodes.hpp"
+#include "../../Message/MessageRouter.hpp"
 #include "../../SessionData.hpp"
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/SessionStore.hpp"
@@ -86,11 +87,11 @@ int32_t WSGatewayServlet::onConnect(chen::http::HttpRequest::ptr header, chen::h
     connected["type"] = "connected";
     connected["uid"] = uid;
     connected["device_id"] = device_id;
-    connected["online_users"] = WSMgr::GetInstance()->onlineUserCount();
+    connected["online_users"] = static_cast<Json::Int64>(MessageRouter::Get()->OnlineUserCount());
     SendFrame(session, chen::JsonUtil::ToString(connected));
 
     if (result.presence_changed) {
-        WSMgr::GetInstance()->broadcastPresence();
+        MessageRouter::Get()->BroadcastPresence();
     }
 
     INFO(logger) << "[WS] onConnect OK: uid=" << uid << " device=" << device_id.substr(0, 12);

@@ -10,12 +10,15 @@
 #include <Chen/Http/WSSession.hpp>
 #include <Chen/Util/Singleton.hpp>
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 /**
  * @brief 统一 WebSocket 连接管理器
@@ -34,6 +37,8 @@ public:
         bool presence_changed = false;
         /// 被新连接替换的旧连接（同一 device_id 已存在时）
         chen::http::WSSession::ptr replaced_session;
+        /// 被替换旧连接的用户 ID（0 表示无替换）
+        int64_t replaced_user_id = 0;
     };
 
     /**
@@ -46,7 +51,27 @@ public:
         int64_t user_id = 0;
         /// 用户是否从在线变为离线（最后一个设备断开）
         bool user_became_offline = false;
+        /// 被移除连接的设备 ID
+        std::string device_id;
     };
+
+    /**
+     * @brief 连接生命周期观察者
+     * @details added=true 时 old_user_id 为同一 device_id 被替换的旧用户；
+     *          added=false 表示连接已从管理器移除。
+     */
+    using ConnectionObserver =
+        std::function<void(bool added, int64_t user_id, const std::string& device_id, int64_t old_user_id)>;
+
+    /**
+     * @brief 安装连接生命周期观察者（MessageRouter 使用）
+     */
+    void setConnectionObserver(ConnectionObserver observer);
+
+    /**
+     * @brief 导出当前本 worker 的连接快照（uid + device_id）
+     */
+    void snapshot(std::vector<std::pair<int64_t, std::string>>& out) const;
 
     /**
      * @brief 注册设备连接
@@ -172,6 +197,11 @@ private:
      */
     static void CloseConnection(const Connection::ptr& conn, const std::string& notify_message);
 
+    /**
+     * @brief 通知观察者连接变化（在释放连接表锁之后调用）
+     */
+    void notifyConnection(bool added, int64_t user_id, const std::string& device_id, int64_t old_user_id) const;
+
 private:
     /// device_id -> connection
     std::unordered_map<std::string, Connection::ptr> devices_;
@@ -179,6 +209,8 @@ private:
     std::unordered_map<int64_t, std::unordered_set<std::string>> user_devices_;
     /// session -> connection（被顶掉的旧连接保留到 onClose，便于发送 replaced 帧）
     std::unordered_map<const chen::http::WSSession*, Connection::ptr> session_devices_;
+    /// 连接生命周期观察者
+    ConnectionObserver observer_;
 
     mutable std::shared_mutex mutex_;
 };

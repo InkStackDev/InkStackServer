@@ -9,6 +9,7 @@
 
 #include <Chen/Config/Config.hpp>
 
+#include <cstdint>
 #include <map>
 #include <sstream>
 #include <string>
@@ -84,6 +85,11 @@ std::string GetServerWorkPath();
  * @brief 数据目录（server.data_path，备份/导出文件根目录）
  */
 std::string GetServerDataPath();
+
+/**
+ * @brief 部署实例编号（server.instance_id，多实例部署时需唯一）
+ */
+int32_t GetServerInstanceId();
 
 /**
  * @brief MySQL 连接配置（mysql.dbs）

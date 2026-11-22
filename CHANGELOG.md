@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### 新增
 
+- 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
+  worker 直接投递作为快路径，长连接本身不经过 RPC。
+- 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多
+  worker 下同一任务只跑一份。
+- 搜索全量重建和单条 PR 同步增加 Redis 租约，避免多 worker 重复执行。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。
