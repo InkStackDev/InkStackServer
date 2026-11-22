@@ -34,22 +34,6 @@ int32_t CommentCreateServlet::handle(
         int64_t parent_id = 0;
         request->checkGetParamAs("parent_id", parent_id);
 
-        // check article exists
-        auto article = ArticleMgr::GetInstance()->get(article_id);
-        if (!article || article->getIsDeleted()) {
-            result->setErrno(ARTICLE_NOT_FOUND);
-            break;
-        }
-
-        // if replying, check parent comment exists
-        if (parent_id > 0) {
-            auto parent = CommentMgr::GetInstance()->get(parent_id);
-            if (!parent || parent->getIsDeleted()) {
-                result->setErrno(COMMENT_PARENT_NOT_FOUND);
-                break;
-            }
-        }
-
         std::string ip = session->getRemoteAddressString();
         std::string user_agent = request->getHeader("User-Agent");
 
@@ -102,14 +86,15 @@ int32_t CommentCreateServlet::handle(
 
         // Notify article author and parent comment author asynchronously
         {
+            auto article = ArticleMgr::GetInstance()->get(article_id);
             auto commenter_info = UserMgr::GetInstance()->get(uid);
 
             EventCommentCreatedData data = {};
             data.commenter_id = uid;
             data.commenter_name = commenter_info ? commenter_info->getName() : "someone";
             data.article_id = article_id;
-            data.article_title = article->getTitle();
-            data.author_id = article->getUserId();
+            data.article_title = article ? article->getTitle() : "";
+            data.author_id = article ? article->getUserId() : 0;
             data.parent_comment_id = parent_id;
             if (parent_id > 0) {
                 auto parent = CommentMgr::GetInstance()->get(parent_id);

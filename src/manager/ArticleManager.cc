@@ -1,14 +1,9 @@
 #include "ArticleManager.hpp"
 
-#include "../Util/Util.hpp"
-#include "CacheUtil.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Service/ArticleCounterService.hpp"
 #include "../Service/ArticleScheduleService.hpp"
-
-#include <Chen/Log/Log.hpp>
-
-static chen::Logger::ptr logger = LOG_ROOT();
+#include "../Util/Util.hpp"
 
 void ArticleManager::add(DB::ArticleInfo::ptr info)
 {
@@ -46,46 +41,7 @@ int64_t ArticleManager::listByLabelPages(std::vector<DB::ArticleInfo::ptr>& info
     int32_t size,
     bool valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::ArticleInfoDao::newQuery("a");
-    qb->select(
-        "a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, a.weight, a.views, a.praise, a.favorites, "
-        "a.create_time, a.update_time");
-    qb->join("article_label_rel alr", "a.id = alr.article_id");
-    qb->where("alr.label_id", "=", label_id);
-    qb->where("alr.is_deleted", "=", (int64_t)0);
-    qb->where("a.state", "=", (int64_t)PUBLISHED);
-    qb->whereIf(valid, "a.is_deleted", "=", (int64_t)0);
-    qb->orderBy("a.id", "DESC");
-
-    // 结果缓存：仅对首页做缓存
-    std::string listKey =
-        "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0") + ":" + std::to_string(offset) + ":" + std::to_string(size);
-    std::vector<int64_t> cachedIds;
-    if (GetCachedListResult(listKey, cachedIds)) {
-        for (auto id : cachedIds) {
-            auto info = get(id);
-            if (info) {
-                infos.push_back(info);
-            }
-        }
-        return ExecuteCountCached(qb, db, "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0"));
-    }
-
-    int64_t total = 0;
-    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
-        return 0;
-    }
-    std::vector<int64_t> ids;
-    for (auto& info : infos) {
-        ids.push_back(info->getId());
-    }
-    CacheListResult(listKey, ids);
-    return total;
+    return ArticleQueryRepository::ListByLabelPages(infos, label_id, offset, size, valid, GetDB());
 }
 
 int64_t ArticleManager::listByCategoryPages(std::vector<DB::ArticleInfo::ptr>& infos,
@@ -94,46 +50,7 @@ int64_t ArticleManager::listByCategoryPages(std::vector<DB::ArticleInfo::ptr>& i
     int32_t size,
     bool valid)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::ArticleInfoDao::newQuery("a");
-    qb->select(
-        "a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, a.weight, a.views, a.praise, a.favorites, "
-        "a.create_time, a.update_time");
-    qb->join("article_category_rel acr", "a.id = acr.article_id");
-    qb->where("acr.category_id", "=", category_id);
-    qb->where("acr.is_deleted", "=", (int64_t)0);
-    qb->where("a.state", "=", (int64_t)PUBLISHED);
-    qb->whereIf(valid, "a.is_deleted", "=", (int64_t)0);
-    qb->orderBy("a.id", "DESC");
-
-    // 结果缓存：仅对首页做缓存
-    std::string listKey =
-        "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0") + ":" + std::to_string(offset) + ":" + std::to_string(size);
-    std::vector<int64_t> cachedIds;
-    if (GetCachedListResult(listKey, cachedIds)) {
-        for (auto id : cachedIds) {
-            auto info = get(id);
-            if (info) {
-                infos.push_back(info);
-            }
-        }
-        return ExecuteCountCached(qb, db, "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0"));
-    }
-
-    int64_t total = 0;
-    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, db)) {
-        return 0;
-    }
-    std::vector<int64_t> ids;
-    for (auto& info : infos) {
-        ids.push_back(info->getId());
-    }
-    CacheListResult(listKey, ids);
-    return total;
+    return ArticleQueryRepository::ListByCategoryPages(infos, category_id, offset, size, valid, GetDB());
 }
 
 int64_t ArticleManager::listByPages(std::vector<DB::ArticleInfo::ptr>& infos,

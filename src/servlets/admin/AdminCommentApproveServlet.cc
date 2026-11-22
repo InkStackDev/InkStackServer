@@ -3,6 +3,7 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -49,7 +50,7 @@ int32_t AdminCommentApproveServlet::handle(
             }
         }
 
-        int64_t affected = CommentMgr::GetInstance()->batchUpdateStatus(ids, CommentManager::APPROVED);
+        int64_t affected = CommentService::BatchUpdateStatus(ids, CommentManager::APPROVED);
 
         Json::Value idList(Json::arrayValue);
         for (auto& id : ids) {

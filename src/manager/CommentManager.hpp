@@ -2,8 +2,13 @@
 
 #include "DB/CommentInfo.hpp"
 
+#include "../Repository/CommentQueryRepository.hpp"
+
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Util/Singleton.hpp>
+
+#include <string>
+#include <vector>
 
 class CommentManager {
 public:
@@ -52,13 +57,7 @@ public:
 
     int64_t batchDelete(const std::vector<int64_t>& ids);
 
-    struct CommentStats {
-        int64_t total = 0;
-        int64_t pending = 0;
-        int64_t approved = 0;
-        int64_t spam = 0;
-        int64_t reported = 0;
-    };
+    using CommentStats = CommentQueryRepository::Stats;
 
     CommentStats getStats();
 };

@@ -18,8 +18,11 @@ All notable changes to this project will be documented in this file.
   Service 内完成）。
 - 新增 `ArticleScheduleService`，定时发布、发布日历缓存从 `ArticleManager` 拆出。
 - 新增 `ArticleCounterService`，浏览/点赞/收藏计数、内存脏集合与刷盘从 `ArticleManager` 拆出。
-- 新增 `ArticleQueryRepository`，文章列表/审核列表/后台分页/统计/上一篇下一篇查询从 `ArticleManager` 拆出。
+- 新增 `ArticleQueryRepository`，文章列表/审核列表/后台分页/标签与分类分页/统计/上一篇下一篇查询从 `ArticleManager` 拆出。
 - 新增 `CommentRepository` / `CommentService` 样板，评论对象缓存收敛到 `EntityCache`，评论创建/删除已迁移。
+- 新增 `CommentQueryRepository` / `CommentPraiseRepository`：评论列表、回复、计数、后台分页与统计查询，以及评论点赞关联读写从
+  `CommentManager` / `CommentPraiseRelManager` 拆出；评论修改、批量审核/删除、点赞切换迁移到 `CommentService`，写操作后失效
+  对应的文章列表/计数与全局统计缓存。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。
@@ -49,6 +52,7 @@ All notable changes to this project will be documented in this file.
 - 崩溃日志现在记录崩溃时间、线程 ID、`si_code`、出错 PC/SP/FP、模块基址与 PC 偏移、栈内容，可在帧丢失时仍用 `addr2line` 定位。
 - 系统设置的写路径（保存设置、上传站点图片）改为先复制再整体替换，避免与 `/api/v1/site/settings` 等读请求并发改写同一个
   `std::string`。
+- 系统设置跨 worker 生效：本地快照按 Redis 版本号最多 1 秒校验一次，任一 worker 保存设置后其他 worker 自动重载。
 - 修复 `server.work_path` / `server.data_path` 使用单参 `Config::Lookup`（只查不注册）时，依赖跨编译单元静态初始化顺序、
   顺序不利会拿到空指针并崩溃的隐患；现在统一由 `src/Config/AppConfig.cc` 带默认值注册。
 

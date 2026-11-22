@@ -3,6 +3,7 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -49,7 +50,7 @@ int32_t AdminCommentDeleteServlet::handle(
             }
         }
 
-        int64_t affected = CommentMgr::GetInstance()->batchDelete(ids);
+        int64_t affected = CommentService::BatchDelete(ids);
 
         Json::Value idList(Json::arrayValue);
         for (auto& id : ids) {

@@ -22,9 +22,6 @@ public:
 
     // count praises for a comment
     int64_t countByComment(int64_t comment_id);
-
-private:
-    static DB::CommentPraiseRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<CommentPraiseRelManager> CommentPraiseRelMgr;

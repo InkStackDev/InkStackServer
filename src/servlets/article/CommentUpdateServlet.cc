@@ -1,8 +1,7 @@
 #include "CommentUpdateServlet.hpp"
 
-#include "../../Manager/CommentManager.hpp"
-#include "../../Manager/CommentPraiseRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -28,19 +27,17 @@ int32_t CommentUpdateServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
         DEFINE_AND_CHECK_STRING(result, content, "content");
 
-        auto comment = CommentMgr::GetInstance()->get(id);
-        if (!comment || comment->getIsDeleted()) {
+        DB::CommentInfo::ptr comment;
+        auto rt = CommentService::UpdateComment(uid, id, content, comment);
+        if (rt == CommentService::UpdateCommentResult::CommentNotFound) {
             result->setErrno(COMMENT_NOT_FOUND);
             break;
         }
-
-        // only the comment author can edit
-        if (comment->getUserId() != uid) {
+        if (rt == CommentService::UpdateCommentResult::AccessDenied) {
             result->setErrno(COMMENT_PERMISSION_DENIED);
             break;
         }
-
-        if (!CommentMgr::GetInstance()->update(id, content)) {
+        if (rt != CommentService::UpdateCommentResult::Ok) {
             result->setErrno(COMMENT_UPDATE_FAILED);
             break;
         }
@@ -61,11 +58,11 @@ int32_t CommentUpdateServlet::handle(
             item["avatar"] = "";
         }
 
-        int64_t likes = CommentPraiseRelMgr::GetInstance()->countByComment(id);
+        int64_t likes = CommentService::CountPraise(id);
         item["likes"] = likes;
-        item["is_liked"] = CommentPraiseRelMgr::GetInstance()->isPraising(uid, id);
+        item["is_liked"] = CommentService::IsPraising(uid, id);
         item["replies"] = Json::Value(Json::arrayValue);
-        item["reply_count"] = CommentMgr::GetInstance()->countReplies(id);
+        item["reply_count"] = CommentService::CountReplies(id);
 
         result->setData(item);
         result->setErrno(SUCCESS);

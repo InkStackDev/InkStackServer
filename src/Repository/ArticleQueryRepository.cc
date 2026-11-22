@@ -6,6 +6,7 @@
 #include <Chen/Util/TypeUtil.hpp>
 
 #include "../Manager/CacheUtil.hpp"
+#include "ArticleRepository.hpp"
 
 namespace {
 constexpr int32_t kStateChecking = 1;
@@ -121,6 +122,110 @@ int64_t ArticleQueryRepository::ListByPages(std::vector<DB::ArticleInfo::ptr>& i
     int64_t total = 0;
     if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, conn)) {
         return 0;
+    }
+    return total;
+}
+
+int64_t ArticleQueryRepository::ListByLabelPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t label_id,
+    int32_t offset,
+    int32_t size,
+    bool valid,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return 0;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery("a");
+    if (!qb) {
+        return 0;
+    }
+    qb->select("a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, "
+               "a.weight, a.views, a.praise, a.favorites, "
+               "a.create_time, a.update_time");
+    qb->join("article_label_rel alr", "a.id = alr.article_id");
+    qb->where("alr.label_id", "=", label_id);
+    qb->where("alr.is_deleted", "=", (int64_t)0);
+    qb->where("a.state", "=", (int64_t)kStatePublished);
+    qb->whereIf(valid, "a.is_deleted", "=", (int64_t)0);
+    qb->orderBy("a.id", "DESC");
+
+    std::string list_key = "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0") + ":"
+        + std::to_string(offset) + ":" + std::to_string(size);
+    std::vector<int64_t> cached_ids;
+    if (GetCachedListResult(list_key, cached_ids)) {
+        for (auto id : cached_ids) {
+            auto info = ArticleRepository::Get(id, conn);
+            if (info) {
+                infos.push_back(info);
+            }
+        }
+        return ExecuteCountCached(qb, conn, "art:lbl:" + std::to_string(label_id) + ":" + (valid ? "1" : "0"));
+    }
+
+    int64_t total = 0;
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, conn)) {
+        return 0;
+    }
+    std::vector<int64_t> ids;
+    ids.reserve(infos.size());
+    for (auto& info : infos) {
+        ids.push_back(info->getId());
+    }
+    if (!ids.empty()) {
+        CacheListResult(list_key, ids);
+    }
+    return total;
+}
+
+int64_t ArticleQueryRepository::ListByCategoryPages(std::vector<DB::ArticleInfo::ptr>& infos,
+    int64_t category_id,
+    int32_t offset,
+    int32_t size,
+    bool valid,
+    chen::IDB::ptr conn)
+{
+    if (!conn) {
+        return 0;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery("a");
+    if (!qb) {
+        return 0;
+    }
+    qb->select("a.id, a.user_id, a.title, a.content, a.type, a.state, a.channel, a.is_deleted, a.publish_time, "
+               "a.weight, a.views, a.praise, a.favorites, "
+               "a.create_time, a.update_time");
+    qb->join("article_category_rel acr", "a.id = acr.article_id");
+    qb->where("acr.category_id", "=", category_id);
+    qb->where("acr.is_deleted", "=", (int64_t)0);
+    qb->where("a.state", "=", (int64_t)kStatePublished);
+    qb->whereIf(valid, "a.is_deleted", "=", (int64_t)0);
+    qb->orderBy("a.id", "DESC");
+
+    std::string list_key = "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0") + ":"
+        + std::to_string(offset) + ":" + std::to_string(size);
+    std::vector<int64_t> cached_ids;
+    if (GetCachedListResult(list_key, cached_ids)) {
+        for (auto id : cached_ids) {
+            auto info = ArticleRepository::Get(id, conn);
+            if (info) {
+                infos.push_back(info);
+            }
+        }
+        return ExecuteCountCached(qb, conn, "art:cat:" + std::to_string(category_id) + ":" + (valid ? "1" : "0"));
+    }
+
+    int64_t total = 0;
+    if (DB::ArticleInfoDao::QueryByBuilderPages(infos, total, qb, offset, size, conn)) {
+        return 0;
+    }
+    std::vector<int64_t> ids;
+    ids.reserve(infos.size());
+    for (auto& info : infos) {
+        ids.push_back(info->getId());
+    }
+    if (!ids.empty()) {
+        CacheListResult(list_key, ids);
     }
     return total;
 }

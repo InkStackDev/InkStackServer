@@ -1,9 +1,8 @@
 #include "CommentPraiseServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/CommentManager.hpp"
-#include "../../Manager/CommentPraiseRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -28,49 +27,36 @@ int32_t CommentPraiseServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, comment_id, "comment_id");
 
-        // check comment exists
-        auto comment = CommentMgr::GetInstance()->get(comment_id);
-        if (!comment || comment->getIsDeleted()) {
+        bool was_praising = CommentService::IsPraising(uid, comment_id);
+        bool is_praising = false;
+        DB::CommentInfo::ptr comment;
+        auto rt = CommentService::TogglePraise(uid, comment_id, is_praising, comment);
+        if (rt == CommentService::PraiseResult::CommentNotFound) {
             result->setErrno(COMMENT_NOT_FOUND);
             break;
         }
-
-        bool already_praising = CommentPraiseRelMgr::GetInstance()->isPraising(uid, comment_id);
-
-        if (already_praising) {
-            // unlike
-            if (!CommentPraiseRelMgr::GetInstance()->unpraise(uid, comment_id)) {
-                result->setErrno(COMMENT_UNPRAISE_FAILED);
-                break;
-            }
-            result->set("is_praising", false);
-        } else {
-            // like
-            auto info = CommentPraiseRelMgr::GetInstance()->praise(uid, comment_id);
-            if (!info) {
-                result->setErrno(COMMENT_PRAISE_FAILED);
-                break;
-            }
-            result->set("is_praising", true);
-
-            // Notify comment author (not self-praise)
-            if (comment->getUserId() != uid) {
-                auto liker_info = UserMgr::GetInstance()->get(uid);
-
-                EventCommentPraiseData data = {};
-                data.comment_author_id = comment->getUserId();
-                data.liker_id = uid;
-                data.liker_name = liker_info ? liker_info->getName() : "someone";
-                data.article_id = comment->getArticleId();
-                data.comment_id = comment_id;
-
-                chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_COMMENT_PRAISE, std::move(data));
-            }
+        if (rt != CommentService::PraiseResult::Ok) {
+            result->setErrno(was_praising ? COMMENT_UNPRAISE_FAILED : COMMENT_PRAISE_FAILED);
+            break;
         }
 
-        int64_t praise_count = CommentPraiseRelMgr::GetInstance()->countByComment(comment_id);
-        result->set("praise_count", praise_count);
+        result->set("is_praising", is_praising);
+        result->set("praise_count", CommentService::CountPraise(comment_id));
         result->setErrno(SUCCESS);
+
+        // Notify comment author (not self-praise)
+        if (is_praising && comment && comment->getUserId() != uid) {
+            auto liker_info = UserMgr::GetInstance()->get(uid);
+
+            EventCommentPraiseData data = {};
+            data.comment_author_id = comment->getUserId();
+            data.liker_id = uid;
+            data.liker_name = liker_info ? liker_info->getName() : "someone";
+            data.article_id = comment->getArticleId();
+            data.comment_id = comment_id;
+
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_COMMENT_PRAISE, std::move(data));
+        }
     } while (0);
 
     response->setBody(result->toJsonString());

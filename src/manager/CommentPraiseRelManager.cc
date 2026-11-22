@@ -1,169 +1,87 @@
 #include "CommentPraiseRelManager.hpp"
 
-#include "../Util/Util.hpp"
-#include "CacheUtil.hpp"
+#include <memory>
 
 #include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+
+#include "../Repository/CommentPraiseRepository.hpp"
+#include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static const int kCacheTTL = 300;
-static const char* kCachePrefix = "cache:obj:cpra:";
-
-static std::string CommentPraiseRelCacheKey(int64_t id)
-{
-    return std::string(kCachePrefix) + std::to_string(id);
-}
-
-static DB::CommentPraiseRelInfo::ptr ParseCommentPraiseRelCache(const Json::Value& v)
-{
-    auto info = std::make_shared<DB::CommentPraiseRelInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setUserId(CacheJsonInt64(v, "user_id"));
-    info->setCommentId(CacheJsonInt64(v, "comment_id"));
-    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->markClean();
-    return info;
-}
-
-static DB::CommentPraiseRelInfo::ptr GetCommentPraiseRelCache(int64_t id)
-{
-    std::string key = CommentPraiseRelCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseCommentPraiseRelCache(v);
-}
-
-static void SetCommentPraiseRelCache(const DB::CommentPraiseRelInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(CommentPraiseRelCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
-
-DB::CommentPraiseRelInfo::ptr CommentPraiseRelManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return DB::CommentPraiseRelInfoDao::ParseRow(rt);
-}
-
 void CommentPraiseRelManager::add(DB::CommentPraiseRelInfo::ptr info)
 {
-    SetCommentPraiseRelCache(info);
+    CommentPraiseRepository::Put(info);
 }
 
 DB::CommentPraiseRelInfo::ptr CommentPraiseRelManager::get(int64_t id)
 {
-    auto v = GetCommentPraiseRelCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = DB::CommentPraiseRelInfoDao::Query(id, db);
-    if (v) {
-        SetCommentPraiseRelCache(v);
-    }
-    return v;
+    return CommentPraiseRepository::Get(id, GetDB());
 }
 
 DB::CommentPraiseRelInfo::ptr CommentPraiseRelManager::getByUserAndComment(int64_t user_id, int64_t comment_id)
 {
-    std::string ck = "cpra:" + std::to_string(user_id) + ":" + std::to_string(comment_id);
-    int64_t cachedId = GetCachedIdMapping(ck);
-    if (cachedId > 0) {
-        return get(cachedId);
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    auto info = DB::CommentPraiseRelInfoDao::QueryByUserIdCommentId(user_id, comment_id, db);
-    if (info) {
-        SetCommentPraiseRelCache(info);
-        CacheIdMapping(ck, info->getId());
-    }
-    return info;
+    return CommentPraiseRepository::GetByUserAndComment(user_id, comment_id, GetDB());
 }
 
 DB::CommentPraiseRelInfo::ptr CommentPraiseRelManager::praise(int64_t user_id, int64_t comment_id)
 {
-    auto existing = getByUserAndComment(user_id, comment_id);
-    if (existing) {
-        if (!existing->getIsDeleted()) {
-            return existing;
-        }
-        auto db = GetDB();
-        if (!db) {
-            ERROR(logger) << "Get DB connection fail";
-            return nullptr;
-        }
-        existing->setIsDeleted(0);
-        existing->setUpdateTime(time(0));
-        if (DB::CommentPraiseRelInfoDao::Update(existing, db)) {
-            ERROR(logger) << "CommentPraiseRelManager praise Update fail";
-            return nullptr;
-        }
-        SetCommentPraiseRelCache(existing);
-        return existing;
-    }
-
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return nullptr;
+    }
+
+    auto existing = CommentPraiseRepository::GetByUserAndComment(user_id, comment_id, db);
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    if (existing) {
+        if (!existing->getIsDeleted()) {
+            return existing;
+        }
+        existing->setIsDeleted(0);
+        existing->setUpdateTime(now);
+        if (!CommentPraiseRepository::Update(existing, db)) {
+            ERROR(logger) << "praise update failed, user=" << user_id << " comment=" << comment_id;
+            return nullptr;
+        }
+        CommentPraiseRepository::Put(existing);
+        return existing;
     }
 
     auto info = std::make_shared<DB::CommentPraiseRelInfo>();
     info->setUserId(user_id);
     info->setCommentId(comment_id);
     info->setIsDeleted(0);
-    info->setCreateTime(time(0));
-    info->setUpdateTime(time(0));
-
-    if (DB::CommentPraiseRelInfoDao::Insert(info, db)) {
-        ERROR(logger) << "CommentPraiseRelManager praise Insert fail";
+    info->setCreateTime(now);
+    info->setUpdateTime(now);
+    if (!CommentPraiseRepository::Insert(info, db)) {
+        ERROR(logger) << "praise insert failed, user=" << user_id << " comment=" << comment_id;
         return nullptr;
     }
-
-    SetCommentPraiseRelCache(info);
+    CommentPraiseRepository::Put(info);
     return info;
 }
 
 bool CommentPraiseRelManager::unpraise(int64_t user_id, int64_t comment_id)
 {
-    auto info = getByUserAndComment(user_id, comment_id);
-    if (!info || info->getIsDeleted()) {
-        return false;
-    }
-
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "Get DB connection fail";
         return false;
     }
-
-    info->setIsDeleted(1);
-    info->setUpdateTime(time(0));
-    if (DB::CommentPraiseRelInfoDao::Update(info, db)) {
-        ERROR(logger) << "CommentPraiseRelManager unpraise Update fail";
+    auto info = CommentPraiseRepository::GetByUserAndComment(user_id, comment_id, db);
+    if (!info || info->getIsDeleted()) {
         return false;
     }
-    SetCommentPraiseRelCache(info);
+
+    info->setIsDeleted(1);
+    info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
+    if (!CommentPraiseRepository::Update(info, db)) {
+        ERROR(logger) << "unpraise update failed, user=" << user_id << " comment=" << comment_id;
+        return false;
+    }
+    CommentPraiseRepository::Put(info);
     return true;
 }
 
@@ -175,18 +93,5 @@ bool CommentPraiseRelManager::isPraising(int64_t user_id, int64_t comment_id)
 
 int64_t CommentPraiseRelManager::countByComment(int64_t comment_id)
 {
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return 0;
-    }
-    auto qb = DB::CommentPraiseRelInfoDao::newQuery();
-    qb->where("comment_id", "=", comment_id);
-    qb->where("is_deleted", "=", (int64_t)0);
-    int64_t total = 0;
-    if (qb->executeCount(total, db)) {
-        ERROR(logger) << "executeCount fail errno=" << db->getErrno();
-        return 0;
-    }
-    return total;
+    return CommentPraiseRepository::CountByComment(comment_id, GetDB());
 }

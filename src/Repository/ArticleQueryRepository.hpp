@@ -54,6 +54,20 @@ public:
         bool valid,
         chen::IDB::ptr conn);
 
+    static int64_t ListByLabelPages(std::vector<DB::ArticleInfo::ptr>& infos,
+        int64_t label_id,
+        int32_t offset,
+        int32_t size,
+        bool valid,
+        chen::IDB::ptr conn);
+
+    static int64_t ListByCategoryPages(std::vector<DB::ArticleInfo::ptr>& infos,
+        int64_t category_id,
+        int32_t offset,
+        int32_t size,
+        bool valid,
+        chen::IDB::ptr conn);
+
     static std::pair<DB::ArticleInfo::ptr, DB::ArticleInfo::ptr> Nearby(int64_t id, chen::IDB::ptr conn);
 
     static Stats GetStats(int32_t category,
