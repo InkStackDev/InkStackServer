@@ -346,3 +346,21 @@ ArticleQueryRepository::Stats ArticleQueryRepository::GetStats(int32_t category,
     }
     return stats;
 }
+
+void ArticleQueryRepository::CountByUsers(const std::vector<int64_t>& user_ids,
+    std::vector<std::pair<int64_t, int64_t>>& rows,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_ids.empty()) {
+        return;
+    }
+    auto qb = DB::ArticleInfoDao::newQuery();
+    if (!qb) {
+        return;
+    }
+    qb->select("user_id, COUNT(*) as cnt");
+    qb->whereIn("user_id", user_ids);
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->groupBy("user_id");
+    qb->queryPairs<int64_t, int64_t>(rows, conn);
+}

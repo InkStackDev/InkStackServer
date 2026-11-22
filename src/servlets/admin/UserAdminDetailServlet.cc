@@ -3,7 +3,7 @@
 #include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/CommentInfo.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 UserAdminDetailServlet::UserAdminDetailServlet()
     : BlogAdminServlet("UserAdminDetailServlet")
@@ -30,10 +30,7 @@ int32_t UserAdminDetailServlet::handle(
         int64_t article_count = articles.size();
 
         std::vector<DB::CommentInfo::ptr> comments;
-        auto db = GetDB();
-        if (db) {
-            DB::CommentInfoDao::QueryByUserId(comments, user_id, db);
-        }
+        CommentQueryRepository::ListByUserId(comments, user_id, GetDB());
         int64_t comment_count = comments.size();
 
         result->set("id", info->getId());

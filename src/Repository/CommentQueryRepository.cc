@@ -267,3 +267,68 @@ void CommentQueryRepository::InvalidateStats()
 {
     chen::RedisUtil::Cmd(GetRedisPoolName(), "del cache:str:cmt:stats");
 }
+
+void CommentQueryRepository::CountByUsers(const std::vector<int64_t>& user_ids,
+    std::vector<std::pair<int64_t, int64_t>>& rows,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_ids.empty()) {
+        return;
+    }
+    auto qb = DB::CommentInfoDao::newQuery();
+    if (!qb) {
+        return;
+    }
+    qb->select("user_id, COUNT(*) as cnt");
+    qb->whereIn("user_id", user_ids);
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->groupBy("user_id");
+    qb->queryPairs<int64_t, int64_t>(rows, conn);
+}
+
+int64_t CommentQueryRepository::CountByArticles(const std::vector<int64_t>& article_ids, chen::IDB::ptr conn)
+{
+    if (!conn || article_ids.empty()) {
+        return 0;
+    }
+    auto qb = DB::CommentInfoDao::newQuery();
+    if (!qb) {
+        return 0;
+    }
+    qb->whereIn("article_id", article_ids);
+    qb->where("is_deleted", "=", (int64_t)0);
+    int64_t total = 0;
+    if (qb->executeCount(total, conn)) {
+        return 0;
+    }
+    return total;
+}
+
+void CommentQueryRepository::ListByUserId(std::vector<DB::CommentInfo::ptr>& results,
+    int64_t user_id,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_id <= 0) {
+        return;
+    }
+    DB::CommentInfoDao::QueryByUserId(results, user_id, conn);
+}
+
+void CommentQueryRepository::ListCreateTimesByUser(int64_t user_id,
+    int64_t cutoff,
+    std::vector<int64_t>& timestamps,
+    chen::IDB::ptr conn)
+{
+    if (!conn || user_id <= 0) {
+        return;
+    }
+    auto qb = DB::CommentInfoDao::newQuery();
+    if (!qb) {
+        return;
+    }
+    qb->select("create_time");
+    qb->where("user_id", "=", user_id);
+    qb->where("is_deleted", "=", (int64_t)0);
+    qb->whereSQL("create_time >= FROM_UNIXTIME(?)", cutoff);
+    qb->queryColumn<int64_t>(timestamps, conn, "create_time");
+}

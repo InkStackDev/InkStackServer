@@ -1,6 +1,7 @@
 #include "UserStatsServlet.hpp"
 
 #include "../../Include/Managers.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/DB/QueryBuilder.hpp>
@@ -74,16 +75,7 @@ int32_t UserStatsServlet::handle(
         result->set("total_views", total_views);
         result->set("total_likes", total_likes);
         // total_comments
-        int64_t total_comments = 0;
-        if (!published_ids.empty()) {
-            auto db = GetDB();
-            if (db) {
-                auto qb = DB::CommentInfoDao::newQuery();
-                qb->whereIn("article_id", published_ids);
-                qb->where("is_deleted", "=", (int64_t)0);
-                qb->executeCount(total_comments, db);
-            }
-        }
+        int64_t total_comments = CommentQueryRepository::CountByArticles(published_ids, GetDB());
         result->set("total_comments", total_comments);
         result->set("total_tags", (int64_t)unique_labels.size());
         result->set("total_organizations", total_organizations);

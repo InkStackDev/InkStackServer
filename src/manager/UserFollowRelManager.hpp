@@ -37,9 +37,6 @@ public:
 
     /// 互相关注的用户ID列表（无分页，集合通常较小）
     void listMutualFollowing(std::vector<int64_t>& user_ids, int64_t uid);
-
-private:
-    static DB::UserFollowRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<UserFollowRelManager> UserFollowRelMgr;

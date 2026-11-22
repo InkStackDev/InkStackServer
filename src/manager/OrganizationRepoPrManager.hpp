@@ -12,6 +12,8 @@
 
 #include <Chen/Util/Singleton.hpp>
 
+#include "../Service/OrganizationRepoPrService.hpp"
+
 // 前置声明 RPC 协议结构体，避免在 header 中引入 protocol 头文件
 struct tagGithubPRInfo;
 struct tagGithubPRReviewInfo;
@@ -20,27 +22,7 @@ class OrganizationRepoPrManager {
 public:
     typedef std::shared_ptr<OrganizationRepoPrManager> ptr;
 
-    /// 单条 PR 同步结果
-    enum class SyncPrStatus {
-        /// 同步成功
-        OK,
-        /// 本地 PR 记录不存在
-        PR_NOT_FOUND,
-        /// 关联仓库不存在
-        REPO_NOT_FOUND,
-        /// 仓库未配置 GitHub Token
-        NO_TOKEN,
-        /// GitHub 上未找到该 PR (404)
-        GITHUB_NOT_FOUND,
-        /// GitHub API 触发限流
-        RATE_LIMITED,
-        /// 同一 PR 正在同步中
-        BUSY,
-        /// GitHub API 请求失败
-        HTTP_ERROR,
-        /// 数据库操作失败
-        DB_ERROR,
-    };
+    using SyncPrStatus = OrganizationRepoPrService::SyncStatus;
 
     void add(DB::OrganizationRepoPrsInfo::ptr info);
 

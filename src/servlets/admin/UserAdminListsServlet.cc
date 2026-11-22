@@ -7,8 +7,8 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
 
-#include "DB/ArticleInfo.hpp"
-#include "DB/CommentInfo.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 static chen::Logger::ptr g_logger = LOG_ROOT();
 
@@ -44,28 +44,15 @@ int32_t UserAdminListsServlet::handle(
             }
 
             std::vector<std::pair<int64_t, int64_t>> rows;
-
-            auto aqb = DB::ArticleInfoDao::newQuery();
-            aqb->select("user_id, COUNT(*) as cnt");
-            aqb->whereIn("user_id", user_ids);
-            aqb->where("is_deleted", "=", (int64_t)0);
-            aqb->groupBy("user_id");
-            if (aqb->queryPairs<int64_t, int64_t>(rows, db) == 0) {
-                for (auto& [uid, cnt] : rows) {
-                    article_counts[uid] = cnt;
-                }
+            ArticleQueryRepository::CountByUsers(user_ids, rows, db);
+            for (auto& [uid, cnt] : rows) {
+                article_counts[uid] = cnt;
             }
 
             rows.clear();
-            auto cqb = DB::CommentInfoDao::newQuery();
-            cqb->select("user_id, COUNT(*) as cnt");
-            cqb->whereIn("user_id", user_ids);
-            cqb->where("is_deleted", "=", (int64_t)0);
-            cqb->groupBy("user_id");
-            if (cqb->queryPairs<int64_t, int64_t>(rows, db) == 0) {
-                for (auto& [uid, cnt] : rows) {
-                    comment_counts[uid] = cnt;
-                }
+            CommentQueryRepository::CountByUsers(user_ids, rows, db);
+            for (auto& [uid, cnt] : rows) {
+                comment_counts[uid] = cnt;
             }
         }
 

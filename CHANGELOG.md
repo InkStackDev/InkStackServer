@@ -50,6 +50,14 @@ All notable changes to this project will be documented in this file.
   PR webhook 写入、后台同步、删除与单条 PR 同步的持久化统一走 Repository。
 - 新增 `PasskeyRepository` / `ResourceRepository` / `UserAIConfigRepository` 与 `UserAIConfigService`：Passkey 凭据、资源元数据、
   用户 AI 配置的读写从 Manager 拆出，AI 配置保存仍保留“按 user_id 回查主键后刷新缓存”的行为。
+- 新增 `OrganizationRepoPrService`：PR 全量/单条同步、GitHub 状态机、限流与重试、仓库 PR 同步状态回写从
+  `OrganizationRepoPrManager` 拆出，Manager 只保留查询/缓存 facade。
+- 新增 `ArticlePraiseRelRepository` / `UserFollowRelRepository` 与对应 Service：文章点赞、用户关注的对象缓存与读写从
+  Manager
+  拆出，Manager 中最后两处手写 Redis 缓存与 `ParseRow` 移除。
+- 新增 `PrStatsQueryRepository`：PR 按天聚合、评审通过率、时间范围内创建数等报表查询从 `RdTrendServlet` /
+  `RdPrDistributionServlet` 拆出，报表 SQL 与业务读写彻底分离。
+- 清理 Servlet 中最后的直接 DAO 调用（评论/文章计数、用户详情、登录密码哈希升级）。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。

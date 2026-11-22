@@ -6,6 +6,7 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 
@@ -68,7 +69,7 @@ int32_t UserLoginServlet::handle(
             if (!passwd_hash.empty() && upgrade_db) {
                 std::string old_hash = info->getPasswd();
                 info->setPasswd(passwd_hash);
-                if (DB::UserInfoDao::Update(info, upgrade_db) == 0) {
+                if (UserRepository::Update(info, upgrade_db)) {
                     UserMgr::GetInstance()->update(info);
                 } else {
                     info->setPasswd(old_hash);

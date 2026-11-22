@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "../../Manager/OrganizationManager.hpp"
+#include "../../Repository/PrStatsQueryRepository.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
@@ -18,17 +19,6 @@
 #include "RdHelper.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
-
-/// 为 PR 查询添加仓库关联、组织和时间范围条件
-static void AddPrBaseConds(chen::QueryBuilder::ptr qb, const std::vector<int64_t>& orgs, time_t start, time_t end)
-{
-    qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
-    if (!orgs.empty()) {
-        qb->whereIn("repos.org_id", orgs);
-    }
-    qb->whereSQL("prs.create_time >= FROM_UNIXTIME(?)", (int64_t)start);
-    qb->whereSQL("prs.create_time < FROM_UNIXTIME(?)", (int64_t)end);
-}
 
 /// 按天聚合 PR 创建数，写入指定字段：total=桶内创建数，merged=其中已合入数
 static bool AddPrSeries(
@@ -41,22 +31,8 @@ static bool AddPrSeries(
     const std::string& field,
     std::map<std::string, Json::Value>& series)
 {
-    auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
-    if (!qb) {
-        ERROR(logger) << "pr-distribution newQuery failed field=" << field;
-        return false;
-    }
-    qb->select("DATE_FORMAT(prs.create_time, '%Y-%m-%d') as d, COUNT(*) as cnt");
-    AddPrBaseConds(qb, orgs, start, end);
-    if (merged_only) {
-        // 未合入时 merged_at 可能被写成 0（1970-01-01），这里排除零值，避免把所有 PR 都算成已合入
-        qb->whereSQL("(prs.state = 'merged' OR prs.merged_at > ?)", std::string("1970-01-02 00:00:00"));
-    }
-    qb->groupBy("d");
-    qb->orderBy("d", "ASC");
-
     std::vector<std::pair<std::string, int64_t>> rows;
-    if (qb->queryPairs<std::string, int64_t>(rows, db) != 0) {
+    if (!PrStatsQueryRepository::CountByDay(rows, orgs, start, end, merged_only, db)) {
         ERROR(logger) << "pr-distribution query failed field=" << field;
         return false;
     }

@@ -6,6 +6,7 @@
 #include <map>
 
 #include "../../Include/Managers.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -82,19 +83,12 @@ int32_t UserAchievementsServlet::handle(
             if (db) {
                 time_t now = time(0);
                 time_t cutoff = now - 371 * 86400;
-                std::string cutoffStr = chen::TimeUtil::Time2StrSec(cutoff, "%Y-%m-%d");
-
-                auto qb = DB::CommentInfoDao::newQuery();
-                qb->where("user_id", "=", uid);
-                qb->where("is_deleted", "=", (int64_t)0);
-                qb->where("create_time", ">=", cutoffStr);
 
                 std::vector<int64_t> timestamps;
-                if (qb->queryColumn<int64_t>(timestamps, db, "create_time") == 0) {
-                    for (auto ts : timestamps) {
-                        std::string dateKey = chen::TimeUtil::Time2StrSec(ts, "%Y-%m-%d");
-                        dateContributions[dateKey]++;
-                    }
+                CommentQueryRepository::ListCreateTimesByUser(uid, cutoff, timestamps, db);
+                for (auto ts : timestamps) {
+                    std::string dateKey = chen::TimeUtil::Time2StrSec(ts, "%Y-%m-%d");
+                    dateContributions[dateKey]++;
                 }
             }
         }

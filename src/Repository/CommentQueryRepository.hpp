@@ -43,6 +43,31 @@ public:
 
     static int64_t CountReplies(int64_t parent_id, chen::IDB::ptr conn);
 
+    /**
+     * @brief 批量统计每个用户的评论数（未删除）
+     */
+    static void CountByUsers(const std::vector<int64_t>& user_ids,
+        std::vector<std::pair<int64_t, int64_t>>& rows,
+        chen::IDB::ptr conn);
+
+    /**
+     * @brief 统计一组文章下的评论数（未删除）
+     */
+    static int64_t CountByArticles(const std::vector<int64_t>& article_ids, chen::IDB::ptr conn);
+
+    /**
+     * @brief 某用户的全部评论（未删除）
+     */
+    static void ListByUserId(std::vector<DB::CommentInfo::ptr>& results, int64_t user_id, chen::IDB::ptr conn);
+
+    /**
+     * @brief 某用户在 cutoff 之后创建的评论时间戳（贡献热力图用）
+     */
+    static void ListCreateTimesByUser(int64_t user_id,
+        int64_t cutoff,
+        std::vector<int64_t>& timestamps,
+        chen::IDB::ptr conn);
+
     static int64_t ListByAdmin(std::vector<DB::CommentInfo::ptr>& results,
         int64_t page_num,
         int64_t page_size,

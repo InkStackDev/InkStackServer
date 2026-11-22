@@ -75,4 +75,11 @@ public:
         int32_t days,
         const std::string& keyword,
         chen::IDB::ptr conn);
+
+    /**
+     * @brief 批量统计每个用户的文章数（未删除）
+     */
+    static void CountByUsers(const std::vector<int64_t>& user_ids,
+        std::vector<std::pair<int64_t, int64_t>>& rows,
+        chen::IDB::ptr conn);
 };

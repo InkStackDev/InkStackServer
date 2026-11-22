@@ -8,6 +8,7 @@
 #include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/PrStatsQueryRepository.hpp"
 #include "../../Repository/TaskRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/OrganizationRepoPrsInfo.hpp"
@@ -37,13 +38,6 @@ static void AddTimeCond(chen::QueryBuilder::ptr qb, time_t start, time_t end)
 {
     qb->whereSQL("create_time >= FROM_UNIXTIME(?)", (int64_t)start);
     qb->whereSQL("create_time < FROM_UNIXTIME(?)", (int64_t)end);
-}
-
-/// 为 QueryBuilder 添加 PR 表的时间范围条件
-static void AddPRTimeCond(chen::QueryBuilder::ptr qb, time_t start, time_t end)
-{
-    qb->whereSQL("prs.create_time >= FROM_UNIXTIME(?)", (int64_t)start);
-    qb->whereSQL("prs.create_time < FROM_UNIXTIME(?)", (int64_t)end);
 }
 
 int64_t RdTrendServlet::countBySql(const TrendContext& ctx, const std::string& table, int32_t min_status)
@@ -195,27 +189,11 @@ int32_t RdTrendServlet::handle(
 
         // avg_review_pass_rate
         {
-            auto buildBaseQB = [&]() {
-                auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
-                qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
-                qb->where("prs.review_status", "!=", std::string(""));
-                qb->where("prs.review_status", "!=", std::string("pending"));
-                if (!ctx.target_orgs.empty()) {
-                    qb->whereIn("repos.org_id", ctx.target_orgs);
-                }
-                AddPRTimeCond(qb, ctx.start_date, ctx.end_date);
-                return qb;
-            };
-
-            auto totalQB = buildBaseQB();
-            int64_t total_reviewed = 0;
-            totalQB->executeCount(total_reviewed, ctx.db);
-
+            int64_t total_reviewed =
+                PrStatsQueryRepository::CountReviewed(ctx.target_orgs, ctx.start_date, ctx.end_date, ctx.db);
             if (total_reviewed > 0) {
-                auto approvedQB = buildBaseQB();
-                approvedQB->where("prs.review_status", "=", std::string("approved"));
-                int64_t approved = 0;
-                approvedQB->executeCount(approved, ctx.db);
+                int64_t approved =
+                    PrStatsQueryRepository::CountApproved(ctx.target_orgs, ctx.start_date, ctx.end_date, ctx.db);
                 ctx.review_pass_rate = approved * 100 / total_reviewed;
             }
         }
@@ -326,15 +304,8 @@ int32_t RdTrendServlet::handle(
         int64_t total_items = ctx.new_req + ctx.bug_total + ctx.new_task;
         Json::Value dist;
         {
-            auto qb = DB::OrganizationRepoPrsInfoDao::newQuery("prs");
-            qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
-            if (!ctx.target_orgs.empty()) {
-                qb->whereIn("repos.org_id", ctx.target_orgs);
-            }
-            AddPRTimeCond(qb, ctx.start_date, ctx.end_date);
-
-            int64_t pr_count = 0;
-            qb->executeCount(pr_count, ctx.db);
+            int64_t pr_count =
+                PrStatsQueryRepository::CountCreated(ctx.target_orgs, ctx.start_date, ctx.end_date, ctx.db);
 
             int64_t dist_total = total_items + pr_count;
             if (dist_total > 0) {

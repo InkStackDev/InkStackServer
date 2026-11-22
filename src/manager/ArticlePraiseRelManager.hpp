@@ -34,9 +34,6 @@ public:
     int64_t countByArticle(int64_t article_id);
 
     int64_t countByUser(int64_t user_id);
-
-private:
-    static DB::ArticlePraiseRelInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 };
 
 typedef chen::Singleton<ArticlePraiseRelManager> ArticlePraiseRelMgr;
