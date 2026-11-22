@@ -69,7 +69,43 @@ RPC_BUS_ID=1.1.2.1     # 第 4 段与 INSTANCE_ID 保持一致，每个实例不
 ### 2.5 初始化数据
 
 - 表结构需要在建库阶段准备好（`dbproxy/xml/` + `make orm` 生成的建表/迁移逻辑）；服务启动流程**不会**自动建表或迁移。
-- 首个管理员需要在部署前建好（服务不再自动创建超级管理员）；多实例同时启动时不要各自初始化，否则会并发写入。
+- 首个管理员由 `admin` 配置引导：`<ENV>.env` 里显式设置 `ADMIN_PASSWD`（>=6 位）即可在首次启动时创建，
+  已存在（邮箱或账号命中）不会被覆盖；`ADMIN_PASSWD` 留空则跳过引导。
+  多实例同时启动依赖 `user` 表唯一索引，重复插入按“已存在”处理。
+
+### 2.6 打包与启动
+
+```bash
+# 构建机上（需要 bin/conf/prod.env 里已有真实连接信息）
+make cluster ENV=prod INSTANCES=3
+# 或：./scripts/cluster/package-cluster.sh prod --instances 3 --deploy-path /opt/techhaven
+# 产物: techhaven-cluster-<version>-<arch>-<ts>.tar.gz (+ .sha256)
+```
+
+产物内已经生成好 `instances/a`、`instances/b`、`instances/c` 的 `conf/` 与 `instance.env`，
+每个实例的端口、`instance_id`、`RPC_BUS_ID`、日志目录、pid 文件互相独立：
+
+| 实例 | 进程标题                      | HTTP | WS   | pid                      | 日志                          |
+|------|-------------------------------|------|------|--------------------------|-------------------------------|
+| a    | `techhaven-a: master process` | 8090 | 8091 | `instances/a/server.pid` | `/data/apps/instances/a/logs` |
+| b    | `techhaven-b: master process` | 8190 | 8191 | `instances/b/server.pid` | `/data/apps/instances/b/logs` |
+| c    | `techhaven-c: master process` | 8290 | 8291 | `instances/c/server.pid` | `/data/apps/instances/c/logs` |
+
+```bash
+# 部署机上
+mkdir -p /opt/techhaven
+tar xzf techhaven-cluster-*.tar.gz -C /opt/techhaven
+cd /opt/techhaven
+./scripts/clusterctl.sh start all
+./scripts/clusterctl.sh health all
+```
+
+- 程序/配置目录来自打包时的 `--deploy-path`（默认 `/opt/techhaven`）；**只有日志**单独放到
+  `--log-root`（默认 `/data/apps`），即 `/data/apps/instances/<name>/logs`。换目录需重新打包，
+  或部署后用 `scripts/render-instance.sh` 重新渲染。
+- 新增实例或修改端口：`./scripts/render-instance.sh --name d --instance-id 4 --deploy-path /opt/techhaven`。
+- 进程管理用框架自带的 `-d` 与 `-s reload|stop`，`clusterctl.sh` 的所有命令都带同一个 `-c`，不会误停其它实例。
+- 业务只作为 RPC Hub 客户端，不再监听 rpc 端口；`RPC_BUS_ID` 末段与 `--instance-id` 保持一致。
 
 ## 3. 定时任务与计数
 
@@ -118,6 +154,7 @@ UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites
 4. `kill -9` 一个实例，确认在线人数与 presence 被清理。
 5. 滚动重启（SIGHUP / SIGTERM）期间无 5xx，旧 worker 正常 drain 退出。
 6. 停掉 Redis，确认业务接口返回明确错误、后台任务不再重复执行；恢复 Redis 后任务自动继续。
+7. `ss -lntp` 只看到 HTTP / WebSocket 端口（不再有 rpc 端口），启动日志为 `2 server type(s)`。
 
 ## 6. 已知限制
 

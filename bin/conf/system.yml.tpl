@@ -1,9 +1,17 @@
-# Chen Blog System Configuration
-# This configuration file defines the settings for the Chen Blog system, including server configurations, worker threads, logging, database connections, and Redis settings.
+# InkStack 业务进程配置（由 switch-env.sh / scripts/cluster/render-instance.sh 渲染）
+#
+# 只保留当前代码实际读取的配置项：
+#   - servers       HTTP / WebSocket 两种接入；业务只作为 RPC Hub 客户端，不再监听 rpc 端口
+#   - fiber         协程栈大小
+#   - workers       accept / io 工作线程
+#   - logs          日志输出
+#   - mysql         业务库
+#   - fox_thread    异步 Redis 依赖的线程池
+#   - redis         Redis 连接池（会话 / 缓存 / WS 路由 / 分布式租约）
 
-# Servers Configuration, defining the HTTP and WebSocket servers with their respective settings.
 servers:
-  - address: ["0.0.0.0:8090"]
+  # HTTP API
+  - address: ["0.0.0.0:${HTTP_PORT}"]
     keepalive: 1
     timeout: 1000
     name: chen-http/1.0.0
@@ -17,7 +25,8 @@ servers:
       accept_burst: 2000    # 瞬时突发上限（缺省 = accept_qps）
       max_conn: 10000       # 最大并发连接数
 
-  - address: ["0.0.0.0:8091"]
+  # WebSocket 网关（/ws/v1/session）
+  - address: ["0.0.0.0:${WS_PORT}"]
     keepalive: 1
     timeout: 120000
     name: chen-ws/1.0.0
@@ -29,35 +38,32 @@ servers:
 fiber:
   stack_size: 65536
 
-# Worker threads configuration, defining the number of threads for IO and accept workers.
 workers:
   io:
     thread_num: 1
   accept:
     thread_num: 1
 
-# Logging configuration, defining different loggers for root, system, and access logs with their respective levels, formatters, and appenders.
 logs:
   - name: root
     level: ${LOG_LEVEL}
     appenders:
       - type: FileLogAppender
-        file: ${WORK_PATH}/logs/root.log
+        file: ${LOG_DIR}/root.log
       - type: StdoutLogAppender
   - name: system
     level: info
     appenders:
       - type: FileLogAppender
-        file: ${WORK_PATH}/logs/system.log
+        file: ${LOG_DIR}/system.log
       - type: StdoutLogAppender
   - name: access
     level: info
     appenders:
       - type: FileLogAppender
-        file: ${WORK_PATH}/logs/access.log
+        file: ${LOG_DIR}/access.log
       - type: StdoutLogAppender
 
-# Database configuration for MySQL, defining the database path and SQL settings for the blog database.
 mysql:
   dbs:
     techhaven:
@@ -66,15 +72,14 @@ mysql:
       port: ${MYSQL_PORT}
       user: ${MYSQL_USER}
       passwd: ${MYSQL_PASSWD}
+      pool: 10              # 单实例连接数；多实例部署时按 实例数 × pool 估算 max_connections
 
-# Redis configuration for Fox Thread, defining the Redis settings for the Fox Thread component, including the name, number of connections, and advance settings.
+# 异步 Redis 依赖的线程池（名字固定为 redis，只读取 num / advance）
 fox_thread:
   redis:
-    name: redis
     num: 1
     advance: 0
 
-# Redis configuration for the blog, defining the host, type, pool size, and timeout settings for the Redis connection used by the blog.
 redis:
   name: ${REDIS_DBNAME}
   config:
@@ -83,4 +88,3 @@ redis:
       type: fox_redis
       pool: 4
       timeout: 1000
-  desc: "type: redis,redis_cluster,fox_redis,fox_redis_cluster"

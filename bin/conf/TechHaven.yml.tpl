@@ -8,9 +8,8 @@ ai:
   timeout_ms: 60000
   max_attempts: 3
 
-# 默认超级管理员：服务启动时若该邮箱对应的管理员不存在则自动创建，用于首次登录并配置 SMTP 等系统设置。
-# 出于安全考虑不提供默认密码：首次部署必须在 <ENV>.env 中显式设置 ADMIN_PASSWD，
-# 已存在的管理员密码不会被启动流程覆盖。
+# 默认超级管理员：服务启动时若该邮箱/账号不存在则创建（已存在不会被覆盖）。
+# 必须显式设置 ADMIN_PASSWD（>=6 位）；留空则跳过引导，首次部署需自行建号。
 admin:
   account: admin
   passwd: ${ADMIN_PASSWD}
@@ -75,13 +74,24 @@ webauthn:
   # 用于生成稳定的 user.id，生产环境请配置随机密钥
   user_handle_secret: ${WEBAUTHN_USER_HANDLE_SECRET}
 
-# Server configuration, including work path, PID file, and email service settings for sending notifications or alerts.
+# Server configuration：运行目录、数据目录、pid 文件与实例编号
 server:
   work_path: ${WORK_PATH}
+  # 备份/导出/上传等文件根目录；多实例同机时建议指向共享目录
   data_path: ${DATA_PATH}
-  pid_file: server.pid
-  # 部署实例编号（日志 / 指标用）；与 rpc.bus_id 第 4 段保持一致
+  # pid 文件落在 work_path 下，多实例各自独立
+  pid_file: ${PID_FILE}
+  # 进程标题前缀（ps/top 可读）；多实例建议 techhaven-a / techhaven-b
+  process_name: ${PROCESS_NAME}
+  # 部署实例编号（日志 / 指标 / hub 总线用）；与 rpc.bus_id 第 4 段保持一致
   instance_id: ${INSTANCE_ID}
+  # 优雅退出：停止 accept 后等待在途协程退出的时间
+  drain_timeout_ms: 3000
+  # 内部 housekeeping 定时器间隔
+  housekeeping_interval_ms: 500
+  # master 等待 worker ready 的超时，以及 worker 崩溃后的重启间隔
+  worker_ready_timeout_ms: 30000
+  worker_restart_interval_ms: 2000
 
 # RPC Hub 客户端配置：App 主动连接 hub，当前 hub 由 InkStackSearchServer 提供（默认 9010）
 rpc:

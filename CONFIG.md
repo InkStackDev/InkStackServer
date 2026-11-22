@@ -17,8 +17,8 @@
 
 > `bin/conf/` 下只有 `.yml` 会被框架加载；`.tpl` / `.env` / `.md` 不会被加载。
 
-> **超级管理员引导**：仅当库中不存在 `admin.email` 对应的账号时才会创建管理员，初始密码取
-> `<ENV>.env` 中的 `ADMIN_PASSWD`（无默认密码）。已存在的管理员密码不会被启动流程覆盖。
+> **超级管理员引导**：库中不存在 `admin.email` / `admin.account` 对应账号时才会创建管理员，初始密码取
+> `<ENV>.env` 中的 `ADMIN_PASSWD`（无默认密码；留空则跳过引导）。已存在的管理员不会被覆盖。
 
 ## 2. 切换环境
 
@@ -38,6 +38,13 @@ cp bin/conf/prod.env.example bin/conf/prod.env   # 填写真实值后
 - 渲染后校验是否残留未替换的 `${...}`，存在则报错并提示缺哪个变量。
 - **只切换配置，不重启服务**。运行中的 worker 通过 inotify 监听 `conf/`，文件变更后会重新加载配置并触发 `ConfigVar`
   listener；如需同时替换模块 `.so`，发送 `SIGHUP` 让 master fork 新 worker（旧 worker drain 后退出）。
+
+> **接入端口**：HTTP / WebSocket 端口由 `HTTP_PORT` / `WS_PORT` 控制（默认 8090 / 8091）。业务只作为 RPC Hub
+> 客户端，不再监听 rpc 端口，配置里也没有 `type: rpc` 的 server 项。
+
+> **多实例部署**：`make cluster ENV=prod INSTANCES=3` 生成 `techhaven-cluster-*.tar.gz`，包内
+> `instances/a|b|c/` 的配置已渲染好（端口、`instance_id`、日志与 pid 彼此独立），部署端直接
+> `scripts/clusterctl.sh start all` 即可；细节见 [`docs/multi-instance.md`](docs/multi-instance.md)。
 
 ## 3. 新增一个配置项
 

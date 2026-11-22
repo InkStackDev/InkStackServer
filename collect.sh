@@ -29,6 +29,26 @@ for lib in "$ROOT_DIR"/chen-sdk-*/lib/libchen.so; do
     fi
 done
 
+# 确保 gettext 目录已编译（缺失时自动尝试 ninja i18n / i18n.py build）
+log() { echo "==> $*"; }
+die() { echo "[collect][ERROR] $*" >&2; exit 1; }
+
+ensure_mo_files() {
+    local mo_dir="$ROOT_DIR/locale/C/LC_MESSAGES"
+    if [ -f "$mo_dir/techhaven_en.mo" ] && [ -f "$mo_dir/techhaven_zh_CN.mo" ]; then
+        return 0
+    fi
+    log "locale/*.mo 缺失，尝试编译（ninja i18n / scripts/i18n.py build）"
+    if [ -d "$ROOT_DIR/build" ] && command -v ninja >/dev/null 2>&1; then
+        ninja -C "$ROOT_DIR/build" i18n >/dev/null 2>&1 || true
+    fi
+    if [ ! -f "$mo_dir/techhaven_en.mo" ] && command -v python3 >/dev/null 2>&1; then
+        python3 "$ROOT_DIR/scripts/i18n.py" --project-dir "$ROOT_DIR" build >/dev/null 2>&1 || true
+    fi
+    [ -f "$mo_dir/techhaven_en.mo" ] && [ -f "$mo_dir/techhaven_zh_CN.mo" ] && return 0
+    die "缺少 locale/C/LC_MESSAGES/*.mo：请在构建机安装 gettext 后执行 make i18n（或 ninja -C build i18n）再打包"
+}
+
 # 预检
 check_file() {
     local path="$1"
@@ -44,8 +64,7 @@ if [ -z "$CHEN_SDK_LIB" ]; then
     exit 1
 fi
 check_file "$ROOT_DIR/errors.json"
-check_file "$ROOT_DIR/locale/C/LC_MESSAGES/techhaven_en.mo"
-check_file "$ROOT_DIR/locale/C/LC_MESSAGES/techhaven_zh_CN.mo"
+ensure_mo_files
 
 shopt -s nullglob
 module_sos=("$ROOT_DIR"/bin/module/*.so)

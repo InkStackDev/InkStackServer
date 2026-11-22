@@ -165,6 +165,14 @@ public:
 
     static DB::UserInfo::ptr GetByAccount(const std::string& account);
 
+    /**
+     * @brief 首次部署引导超级管理员
+     * @details 读取 `admin` 配置；账号/邮箱已存在时跳过，`admin.passwd` 为空时跳过并告警。
+     *          多实例同时启动时依赖 user 表的唯一索引，重复插入按“已存在”处理。
+     * @return 不需要引导或引导成功返回 true；DB/哈希失败返回 false
+     */
+    static bool EnsureSuperAdmin();
+
     static bool UpgradePasswordHash(int64_t uid, const std::string& old_hash, const std::string& new_hash);
 
     /**

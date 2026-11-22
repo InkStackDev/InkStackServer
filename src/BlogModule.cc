@@ -17,6 +17,7 @@
 #include "./Service/NotificationService.hpp"
 #include "./Service/OrganizationRepoPrService.hpp"
 #include "./Service/OrganizationRepoService.hpp"
+#include "./Service/UserService.hpp"
 
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
@@ -38,6 +39,11 @@ bool BlogModule::onLoad()
     if (!ErrorCodeMgr::GetInstance()->load(errors_path)) {
         ERROR(LOG_ROOT()) << "failed to load error codes: " << errors_path;
         return false;
+    }
+
+    // 首次部署引导：admin.passwd 为空则跳过（不改动已存在的管理员）
+    if (!UserService::EnsureSuperAdmin()) {
+        ERROR(LOG_ROOT()) << "super admin bootstrap failed";
     }
 
     chen::FoxThreadMgr::GetInstance()->init();
@@ -146,6 +152,8 @@ bool BlogModule::onServerReady()
         }
     }
 
+    Init(getName(), getVersion(), http_servers, ws_servers);
+
     client_ = std::make_shared<chen::rpc::RpcClient>();
     ASSERT_RET(client_, false);
 
@@ -167,8 +175,6 @@ bool BlogModule::onServerReady()
         ERROR(LOG_ROOT()) << "BlogMsgFromBotInit failed";
         return false;
     }
-
-    Init(getName(), getVersion(), http_servers, ws_servers);
 
     return true;
 }

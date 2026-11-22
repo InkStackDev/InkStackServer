@@ -50,6 +50,10 @@ set +a
 
 # WORK_PATH 可由调用方覆盖（如打包时指定远程部署目录）
 export WORK_PATH="${WORK_PATH:-$ROOT_DIR}"
+# 日志目录与 pid 文件：单实例默认与 work_path 同目录；多实例渲染时分别覆盖
+export LOG_DIR="${LOG_DIR:-$WORK_PATH/logs}"
+export PID_FILE="${PID_FILE:-server.pid}"
+export PROCESS_NAME="${PROCESS_NAME:-techhaven}"
 
 # 渲染单个模板文件
 render() {

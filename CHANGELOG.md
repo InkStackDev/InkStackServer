@@ -111,6 +111,13 @@ All notable changes to this project will be documented in this file.
 - 新增 RPC Hub 客户端配置（`rpc.enabled` / `hub_address` / `bus_id` / 超时），并集中到 `src/Config/RpcConfig.hpp`；
   `bus_id` 为 `<zone>.<group>.<service>.<instance>` 四段位，用于推导 hub 侧的 `peer_id` 与 `func_id`。
   本轮只落配置与解析，连接/注册逻辑后续实现。
+- 新增多实例部署打包：`make cluster ENV=prod INSTANCES=3` →
+  `scripts/cluster/package-cluster.sh` 产出 `techhaven-cluster-<version>-<arch>-<ts>.tar.gz`，
+  包内 `instances/<name>/` 已按实例生成好 `conf/` 与 `instance.env`（端口、instance_id、bus_id、日志/pid 彼此独立）。
+  程序目录默认 `/opt/techhaven`，**只有日志**单独放在 `/data/apps/instances/<name>/logs`
+  （可用 `--deploy-path` / `--log-root` 调整）；
+  另含 `clusterctl.sh`、`render-instance.sh`、Nginx 示例与多实例说明；`make dist-cluster` 为
+  deps + apply + orm + build + cluster 一条龙。
 
 ### 变更
 
@@ -127,6 +134,12 @@ All notable changes to this project will be documented in this file.
   `JobRunner::Job` 新增 `use_lease`，默认租约任务与“每实例各自执行”的任务分离。
 - 文章浏览/点赞/收藏计数改为**进程内增量 + `views = views + ?` 增量写库**，刷盘任务不再占用租约，避免多实例
   用绝对值互相覆盖；刷盘成功后 `Evict` 对象缓存，让缓存重新对齐 DB 真值。新增 `docs/multi-instance.md`。
+- 多实例配置补充 `server.process_name`：每个实例进程标题为 `techhaven-<实例名>: master process` /
+  `techhaven-<实例名>: worker process`，`ps -ef | grep techhaven` 即可区分实例；单实例默认 `techhaven`
+  （`switch-env.sh` 兜底，可用 `PROCESS_NAME` 覆盖）。
+- 配置模板整理：`system.yml.tpl` 删除已废弃的 rpc server 项（业务只作为 hub 客户端）、`fox_thread.redis.name` 与
+  `redis.desc` 等未读取项；接入端口改为 `HTTP_PORT` / `WS_PORT`，MySQL 显式 `pool`；`TechHaven.yml.tpl` 补齐
+  `server.drain_timeout_ms` / `housekeeping_interval_ms` / `worker_ready_timeout_ms` / `worker_restart_interval_ms`。
 
 ### 修复
 
@@ -145,6 +158,10 @@ All notable changes to this project will be documented in this file.
   `SessionDataMgr::check()`，`onUnload` 补 `RedisMgr::freeAll()`。
 - 修复 `BlogLoginedServlet::handlePre` 会话判断写反导致**带 session cookie 的请求全部返回
   `1101 NOT_LOGIN`**（前端表现为“登录后立刻过期/请求被取消”）的问题。
+- 打包脚本（`collect.sh` / `package-cluster.sh`）在 `locale/*.mo` 缺失时自动尝试 `ninja i18n` /
+  `scripts/i18n.py build`，仍失败则提示先安装 gettext 并执行 `make i18n`。
+- 恢复首次部署的超级管理员引导 `UserService::EnsureSuperAdmin()`：按 `admin` 配置创建，账号/邮箱已存在则跳过，
+  `ADMIN_PASSWD` 留空则跳过；多实例并发引导依赖 `user` 表唯一索引，按“已存在”处理。
 
 ### 移除
 

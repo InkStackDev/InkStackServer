@@ -15,6 +15,7 @@
 #include "../Repository/UserRepository.hpp"
 #include "../Util/TotpUtil.hpp"
 #include "../Util/Util.hpp"
+#include "../Config/AppConfig.hpp"
 #include "../Domain/UserTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -104,6 +105,59 @@ DB::UserInfo::ptr UserService::GetByAccount(const std::string& account)
         return nullptr;
     }
     return UserRepository::GetByAccount(account, db);
+}
+
+bool UserService::EnsureSuperAdmin()
+{
+    const AdminConf conf = GetAdminConf();
+    if (conf.passwd.empty()) {
+        WARN(logger) << "admin.passwd is empty, skip super admin bootstrap";
+        return true;
+    }
+
+    auto db = GetDB();
+    if (!db) {
+        ERROR(logger) << "EnsureSuperAdmin: no db connection";
+        return false;
+    }
+
+    // 已存在（任一实例先建好）就不再覆盖密码
+    auto existing = UserRepository::GetByEmail(conf.email, db);
+    if (!existing) {
+        existing = UserRepository::GetByAccount(conf.account, db);
+    }
+    if (existing) {
+        if (existing->getRole() != UserRole::ADMIN) {
+            WARN(logger) << "admin bootstrap skipped: account/email already used by a non-admin user, id="
+                         << existing->getId();
+        } else {
+            DEBUG(logger) << "super admin already exists, skip bootstrap";
+        }
+        return true;
+    }
+
+    CreateUserInput input;
+    input.account = conf.account;
+    input.email = conf.email;
+    input.passwd = conf.passwd;
+    input.role = UserRole::ADMIN;
+    input.state = UserState::ACTIVE;
+
+    DB::UserInfo::ptr out;
+    auto rt = CreateUser(input, out);
+    if (rt == CreateUserResult::Ok) {
+        INFO(logger) << "super admin created, account=" << conf.account << " id=" << out->getId();
+        return true;
+    }
+
+    // 多实例并发引导：唯一索引冲突后回查一次，视为已存在
+    if (UserRepository::GetByEmail(conf.email, db) || UserRepository::GetByAccount(conf.account, db)) {
+        INFO(logger) << "super admin created by another instance, skip";
+        return true;
+    }
+
+    ERROR(logger) << "super admin bootstrap failed, result=" << static_cast<int32_t>(rt);
+    return false;
 }
 
 bool UserService::UpgradePasswordHash(int64_t uid, const std::string& old_hash, const std::string& new_hash)
