@@ -28,6 +28,12 @@ All notable changes to this project will be documented in this file.
 - 新增 `ConversationRepository` / `ConversationMessageRepository` / `ConversationService`：私信会话与消息读写从
   `MessageManager`
   拆出，发消息改为单事务更新消息与会话未读数，会话创建依赖唯一索引 + 回查避免跨 worker 重复插入。
+- 新增 `AssignmentRepository` / `AssignmentRelRepository` / `AssignmentQueryRepository` / `AssignmentService`：作业创建/更新、
+  组织布置、批量删除从 Servlet 与 `Assignment*Manager` 拆出；批量删除不再全表扫后再过滤，改为按 ID 读取并在事务内软删除。
+- 新增 `OrganizationRepository` / `OrganizationUserRelRepository` / `OrganizationApplyRepository` /
+  `OrganizationService`：
+  组织创建/更新、批量删除、加入/审核/踢人/角色调整、组织申请与审核从 Servlet 与 `Organization*Manager` 拆出；组织创建与
+  申请人成员关系、申请通过后的组织 + 关系 + 申请状态更新改为单事务提交。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。
