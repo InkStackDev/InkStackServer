@@ -1,10 +1,8 @@
 #include "RdMyTicketsServlet.hpp"
 
-#include "RdHelper.hpp"
-#include "../../Repository/TaskRepository.hpp"
-#include "../../Repository/BugRepository.hpp"
-#include "../../Repository/RequirementRepository.hpp"
+#include "../../Service/RdTicketService.hpp"
 #include "../../Util/Util.hpp"
+#include "RdHelper.hpp"
 
 RdMyTicketsServlet::RdMyTicketsServlet()
     : BlogLoginedServlet("RdMyTicketsServlet")
@@ -18,7 +16,12 @@ int32_t RdMyTicketsServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
+
         std::string type = request->getParam("type");
         if (type.empty()) {
             result->setErrno(PARAM_MISSING, "type is required");
@@ -28,155 +31,75 @@ int32_t RdMyTicketsServlet::handle(
         int64_t org_id = request->getParamAs<int64_t>("org_id", 0);
         uint64_t page = request->getParamAs<uint64_t>("page", 1);
         uint64_t page_size = request->getParamAs<uint64_t>("page_size", 10);
-        uint64_t offset, size;
+        uint64_t offset = 0;
+        uint64_t size = 0;
         ParsePagination(page, page_size, offset, size);
 
         std::string search = request->getParam("search");
         std::string status_str = request->getParam("status");
+        int32_t status = -1;
+        if (!status_str.empty()) {
+            if (type == "requirement") {
+                status = StringToRequirementStatus(status_str);
+            } else if (type == "bug") {
+                status = StringToBugStatus(status_str);
+            } else if (type == "task") {
+                status = StringToTaskStatus(status_str);
+            }
+            if (status < 0) {
+                result->set("list", Json::Value(Json::arrayValue));
+                result->set("total", 0);
+                break;
+            }
+        }
 
-        Json::Value arr(Json::arrayValue);
-        uint64_t total = 0;
-
-        if (type == "requirement") {
-            std::vector<DB::RequirementInfo::ptr> my;
-            std::vector<DB::RequirementInfo::ptr> all;
-            RequirementRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
-            for (auto& info : all) {
-                if (org_id && info->getOrgId() != org_id) {
-                    continue;
-                }
-                if (info->getCreatorId() != uid && info->getAssigneeId() != uid) {
-                    continue;
-                }
-                if (!status_str.empty() && StringToRequirementStatus(status_str) != info->getStatus()) {
-                    continue;
-                }
-                if (!search.empty()) {
-                    std::string title = info->getTitle();
-                    std::string desc = info->getDescription();
-                    if (title.find(search) == std::string::npos && desc.find(search) == std::string::npos) {
-                        continue;
-                    }
-                }
-                my.push_back(info);
-            }
-            total = my.size();
-            for (uint64_t i = offset; i < my.size() && arr.size() < size; ++i) {
-                Json::Value item;
-                auto& info = my[i];
-                item["id"] = info->getId();
-                item["title"] = info->getTitle();
-                item["description"] = info->getDescription();
-                item["status"] = RequirementStatusToString(info->getStatus());
-                item["priority"] = PriorityToString(info->getPriority());
-                item["creator"] = GetUserName(info->getCreatorId());
-                item["creator_id"] = info->getCreatorId();
-                item["assignee"] = GetUserName(info->getAssigneeId());
-                item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
-                item["assignee_id"] = info->getAssigneeId();
-                item["org_id"] = info->getOrgId();
-                item["org_name"] = GetOrgName(info->getOrgId());
-                item["deadline"] = info->getDeadline();
-                item["created_at"] = info->getCreateTime();
-                item["updated_at"] = info->getUpdateTime();
-                arr.append(item);
-            }
-        } else if (type == "bug") {
-            std::vector<DB::BugInfo::ptr> my;
-            std::vector<DB::BugInfo::ptr> all;
-            BugRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
-            for (auto& info : all) {
-                if (org_id && info->getOrgId() != org_id) {
-                    continue;
-                }
-                if (info->getCreatorId() != uid && info->getAssigneeId() != uid) {
-                    continue;
-                }
-                if (!status_str.empty() && StringToBugStatus(status_str) != info->getStatus()) {
-                    continue;
-                }
-                if (!search.empty()) {
-                    std::string title = info->getTitle();
-                    std::string desc = info->getDescription();
-                    if (title.find(search) == std::string::npos && desc.find(search) == std::string::npos) {
-                        continue;
-                    }
-                }
-                my.push_back(info);
-            }
-            total = my.size();
-            for (uint64_t i = offset; i < my.size() && arr.size() < size; ++i) {
-                Json::Value item;
-                auto& info = my[i];
-                item["id"] = info->getId();
-                item["title"] = info->getTitle();
-                item["description"] = info->getDescription();
-                item["severity"] = SeverityToString(info->getSeverity());
-                item["priority"] = PriorityToString(info->getPriority());
-                item["status"] = BugStatusToString(info->getStatus());
-                item["creator"] = GetUserName(info->getCreatorId());
-                item["creator_id"] = info->getCreatorId();
-                item["assignee"] = GetUserName(info->getAssigneeId());
-                item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
-                item["assignee_id"] = info->getAssigneeId();
-                item["org_id"] = info->getOrgId();
-                item["org_name"] = GetOrgName(info->getOrgId());
-                item["module"] = info->getModule();
-                item["created_at"] = info->getCreateTime();
-                item["updated_at"] = info->getUpdateTime();
-                arr.append(item);
-            }
-        } else if (type == "task") {
-            std::vector<DB::TaskInfo::ptr> my;
-            std::vector<DB::TaskInfo::ptr> all;
-            TaskRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
-            for (auto& info : all) {
-                if (org_id && info->getOrgId() != org_id) {
-                    continue;
-                }
-                if (info->getCreatorId() != uid && info->getAssigneeId() != uid) {
-                    continue;
-                }
-                if (!status_str.empty() && StringToTaskStatus(status_str) != info->getStatus()) {
-                    continue;
-                }
-                if (!search.empty()) {
-                    std::string title = info->getTitle();
-                    if (title.find(search) == std::string::npos) {
-                        continue;
-                    }
-                }
-                my.push_back(info);
-            }
-            total = my.size();
-            for (uint64_t i = offset; i < my.size() && arr.size() < size; ++i) {
-                Json::Value item;
-                auto& info = my[i];
-                item["id"] = info->getId();
-                item["title"] = info->getTitle();
-                item["description"] = info->getDescription();
-                item["status"] = TaskStatusToString(info->getStatus());
-                item["priority"] = PriorityToString(info->getPriority());
-                item["creator"] = GetUserName(info->getCreatorId());
-                item["creator_id"] = info->getCreatorId();
-                item["assignee"] = GetUserName(info->getAssigneeId());
-                item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
-                item["assignee_id"] = info->getAssigneeId();
-                item["org_id"] = info->getOrgId();
-                item["org_name"] = GetOrgName(info->getOrgId());
-                item["deadline"] = info->getDeadline();
-                item["created_at"] = info->getCreateTime();
-                item["updated_at"] = info->getUpdateTime();
-                arr.append(item);
-            }
-        } else {
+        std::vector<RdTicketService::Item> items;
+        int64_t total = 0;
+        auto rt = RdTicketService::ListMine(viewer, type, org_id, status, search, offset, size, items, total);
+        if (rt == RdTicketService::Result::InvalidType) {
             result->setErrno(RD_INVALID_TYPE);
             break;
+        }
+        if (rt != RdTicketService::Result::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+
+        Json::Value arr(Json::arrayValue);
+        for (const auto& item : items) {
+            Json::Value row;
+            row["id"] = item.id;
+            row["title"] = item.title;
+            row["description"] = item.description;
+            row["priority"] = PriorityToString(item.priority);
+            row["creator"] = item.creator;
+            row["creator_id"] = item.creator_id;
+            row["assignee"] = item.assignee;
+            row["assignee_avatar"] = item.assignee_avatar;
+            row["assignee_id"] = item.assignee_id;
+            row["org_id"] = item.org_id;
+            row["org_name"] = item.org_name;
+            row["created_at"] = item.created_at;
+            row["updated_at"] = item.updated_at;
+
+            if (type == "requirement") {
+                row["status"] = RequirementStatusToString(item.status);
+                row["deadline"] = item.deadline;
+            } else if (type == "bug") {
+                row["status"] = BugStatusToString(item.status);
+                row["severity"] = SeverityToString(item.severity);
+                row["module"] = item.module;
+            } else {
+                row["status"] = TaskStatusToString(item.status);
+                row["deadline"] = item.deadline;
+            }
+            arr.append(row);
         }
 
         result->set("list", arr);
         result->set("total", total);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

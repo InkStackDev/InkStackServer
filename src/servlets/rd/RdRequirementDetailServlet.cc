@@ -1,8 +1,6 @@
 #include "RdRequirementDetailServlet.hpp"
 
-#include "../../Access/AccessPolicy.hpp"
-#include "../../Access/AccessScopeResolver.hpp"
-#include "../../Repository/RequirementRepository.hpp"
+#include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -30,25 +28,18 @@ int32_t RdRequirementDetailServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        auto info = RequirementRepository::Get(id, db);
-        if (!info || info->getIsDeleted()) {
+        DB::RequirementInfo::ptr info;
+        auto rt = RequirementService::GetDetail(viewer, id, info);
+        if (rt == RequirementService::ViewResult::NotFound) {
             result->setErrno(REQUIREMENT_NOT_FOUND);
             break;
         }
-
-        OrgScope scope;
-        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
+        if (rt == RequirementService::ViewResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (!AccessPolicy::CanViewRequirement(viewer, scope, info->getOrgId())) {
-            result->setErrno(ACCESS_DENIED);
+        if (rt != RequirementService::ViewResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 

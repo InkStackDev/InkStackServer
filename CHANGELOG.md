@@ -27,6 +27,20 @@ All notable changes to this project will be documented in this file.
 - 新增 `src/Client/` 出站适配层与 `GitHubClient`：GitHub 仓库元数据、PR 列表/详情/评审统一在 Client 内完成
   超时、重试、退避、限流识别、JSON → DTO 和错误分类；`OrganizationRepoService` / `OrganizationRepoPrService`
   不再直接使用 `HttpConnection` 和厂商 JSON。新增 `github` 配置节（默认值兜底）。
+- GitHub OAuth 登录改为 `GitHubClient::ExchangeOAuthCode` / `GetOAuthUser` / `GetPrimaryEmail`：
+  `UserOAuthGithubCallbackServlet` 不再直接发 HTTP、解析厂商 JSON 或打印响应 body；state 校验与本地用户绑定逻辑留在入口/Service。
+- 新增 `LlmClient` / `ArticleAIService`：文章 AI 总结的请求构建、流式解析、首 token 前重试与错误分类下沉到 Client/Service，
+  `SSEStreamParser` 改为通用回调；`ArticleAISummaryServlet` 只负责 SSE 会话、参数和结果事件。`ai` 配置增加
+  `timeout_ms` / `max_attempts`。
+- 新增 `SearchClient`，把 SearchServer 的 RPC 连接、超时、stats、query、upsert/remove、快照 RPC 从
+  `SearchSync` 拆出；`SearchSync` 只保留 Redis outbox、批量调度、快照组装和失败重试。
+- 新增 `MailClient`：SMTP 连接、发送、耗时日志与错误分类从 `EventUserSendCode` 移入 Client；
+  Event 只负责校验邮件数据和触发发送。
+- 新增 `ArticleSearchService`：公共搜索的“只查已发布文章”、搜索调用、文章/作者数据组装从
+  `ArticleSearchServlet` 移入 Service，入口只负责参数与响应。
+- 新增 `RdListService` / `RdAccessService` / `RdTicketService` 与 RD 详情 Service：`src/Servlets/Rd/` 已不再
+  出现 `GetDB()`、Repository 或 `AccessScopeResolver` 直接调用；列表、详情、准入检查和“我的单据”均由 Service
+  完成连接获取与数据范围解析。
 - 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
   worker 直接投递作为快路径，长连接本身不经过 RPC。
 - 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多

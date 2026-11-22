@@ -1,8 +1,6 @@
 #include "RdTaskDetailServlet.hpp"
 
-#include "../../Access/AccessPolicy.hpp"
-#include "../../Access/AccessScopeResolver.hpp"
-#include "../../Repository/TaskRepository.hpp"
+#include "../../Service/TaskService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -30,25 +28,18 @@ int32_t RdTaskDetailServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        auto info = TaskRepository::Get(id, db);
-        if (!info || info->getIsDeleted()) {
+        DB::TaskInfo::ptr info;
+        auto rt = TaskService::GetDetail(viewer, id, info);
+        if (rt == TaskService::ViewResult::NotFound) {
             result->setErrno(TASK_NOT_FOUND);
             break;
         }
-
-        OrgScope scope;
-        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
+        if (rt == TaskService::ViewResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (!AccessPolicy::CanViewTask(viewer, scope, info->getOrgId(), info->getCreatorId(), info->getAssigneeId())) {
-            result->setErrno(ACCESS_DENIED);
+        if (rt != TaskService::ViewResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 

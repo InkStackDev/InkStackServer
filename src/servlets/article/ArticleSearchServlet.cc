@@ -1,12 +1,9 @@
 #include "ArticleSearchServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
-
-#include "../../Search/SearchSync.hpp"
-#include "../../Repository/ArticleRepository.hpp"
-#include "../../Domain/ArticleTypes.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/ArticleSearchService.hpp"
 #include "../../Util/Util.hpp"
+
+#include <Chen/Log/Log.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -50,16 +47,14 @@ int32_t ArticleSearchServlet::handle(
         if (label_id > 0) {
             query.LabelIds.push_back(static_cast<uint64_t>(label_id));
         }
-        // 公共搜索接口只允许查询已发布文章，避免私密/审核中文章被检索
-        query.State = ArticleStatus::PUBLISHED;
         query.Channel = channel;
         query.UserId = user_id;
         query.YearMonth = year_month;
         query.Page = static_cast<int32_t>(page);
         query.PageSize = static_cast<int32_t>(page_size);
 
-        tagSearchResult search_result;
-        if (!SearchSyncMgr::GetInstance()->query(query, search_result)) {
+        ArticleSearchService::Result data;
+        if (!ArticleSearchService::Search(query, data)) {
             WARN(logger) << "article search unavailable, keyword=" << keyword;
             result->setErrno(ARTICLE_SEARCH_UNAVAILABLE);
             result->set("total", 0);
@@ -67,30 +62,26 @@ int32_t ArticleSearchServlet::handle(
             break;
         }
 
-        result->set("total", search_result.Total);
+        result->set("total", data.total);
 
         Json::Value list(Json::arrayValue);
-        for (auto id : search_result.Ids) {
-            auto info = ArticleRepository::Get(static_cast<int64_t>(id), GetDB());
-            if (!info || info->getIsDeleted()) {
-                continue;
-            }
-            Json::Value item;
-            auto uinfo = UserRepository::Get(info->getUserId(), GetDB());
-            item["id"] = info->getId();
-            item["author"] = uinfo ? uinfo->getName() : "";
-            item["title"] = info->getTitle();
-            item["summary"] = info->getContent().substr(0, 100);
-            item["type"] = info->getType();
-            item["state"] = info->getState();
-            item["views"] = info->getViews();
-            item["praise"] = info->getPraise();
-            item["favorites"] = info->getFavorites();
-            item["publish_time"] = info->getPublishTime();
-            list.append(item);
+        for (const auto& item : data.items) {
+            Json::Value row;
+            row["id"] = item.id;
+            row["author"] = item.author;
+            row["title"] = item.title;
+            row["summary"] = item.summary;
+            row["type"] = item.type;
+            row["state"] = item.state;
+            row["views"] = item.views;
+            row["praise"] = item.praise;
+            row["favorites"] = item.favorites;
+            row["publish_time"] = item.publish_time;
+            list.append(row);
         }
         result->set("list", list);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

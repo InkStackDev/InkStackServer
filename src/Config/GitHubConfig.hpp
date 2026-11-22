@@ -23,12 +23,7 @@ struct GitHubConf {
     std::string user_agent = "InkStackServer/1.0";
     int32_t per_page = 50;
 
-    bool operator==(const GitHubConf& other) const
-    {
-        return api_base == other.api_base && oauth_base == other.oauth_base && timeout_ms == other.timeout_ms
-            && detail_timeout_ms == other.detail_timeout_ms && max_attempts == other.max_attempts
-            && backoff_ms == other.backoff_ms && user_agent == other.user_agent && per_page == other.per_page;
-    }
+    bool operator==(const GitHubConf& other) const;
 };
 
 namespace chen {

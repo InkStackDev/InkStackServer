@@ -2,12 +2,11 @@
 
 #include <Chen/Config/Config.hpp>
 #include <Chen/Ds/EventBus.hpp>
-#include <Chen/Email/Smtp.hpp>
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/FSUtil.hpp>
-#include <Chen/Util/TimeUtil.hpp>
 #include <json/json.h>
 
+#include "../Client/MailClient.hpp"
 #include "../Repository/RecordRepository.hpp"
 #include "../Util/Util.hpp"
 #include "EventDefine.hpp"
@@ -35,31 +34,10 @@ static void EventUserSendCode(const std::any& d)
         return;
     }
 
-    const uint64_t connect_begin = chen::TimeUtil::GetCurrentMs();
-    auto client = chen::SmtpClient::Create(data.smtp_host, data.port, data.use_ssl);
-    const uint64_t connect_ms = chen::TimeUtil::GetCurrentMs() - connect_begin;
-    if (!client) {
-        ERROR(logger) << "connect smtp server fail: host=" << data.smtp_host << ":" << data.port << " ssl=" << (data.use_ssl ? 1 : 0)
-                      << " cost=" << connect_ms << "ms";
-        return;
+    auto error = MailClient::Send(data.smtp_host, data.port, data.use_ssl, data.email);
+    if (error != ClientError::Ok) {
+        ERROR(logger) << "send email failed, error=" << (int)error << " host=" << data.smtp_host << ":" << data.port;
     }
-
-    const uint64_t send_begin = chen::TimeUtil::GetCurrentMs();
-    auto r = client->send(data.email, 5000);
-    const uint64_t send_ms = chen::TimeUtil::GetCurrentMs() - send_begin;
-    // SDK 在 IO 失败时可能返回空指针，必须先判空再取字段
-    if (!r) {
-        ERROR(logger) << "send email fail: smtp result is null, host=" << data.smtp_host << ":" << data.port << " ssl=" << (data.use_ssl ? 1 : 0)
-                      << " cost=" << connect_ms + send_ms << "ms";
-        return;
-    }
-    if (r->result != 0) {
-        ERROR(logger) << "send email fail: " << r->result << " " << r->msg << ", host=" << data.smtp_host << ":" << data.port
-                      << " ssl=" << (data.use_ssl ? 1 : 0) << " cost=" << connect_ms + send_ms << "ms";
-        return;
-    }
-    INFO(logger) << "send email ok: host=" << data.smtp_host << ":" << data.port << " ssl=" << (data.use_ssl ? 1 : 0) << " connect=" << connect_ms
-                 << "ms send=" << send_ms << "ms";
 }
 
 static void EventComment(const std::any& d)

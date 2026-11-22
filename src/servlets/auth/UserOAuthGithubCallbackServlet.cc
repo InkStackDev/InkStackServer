@@ -1,23 +1,18 @@
 #include "UserOAuthGithubCallbackServlet.hpp"
 
-#include <map>
 #include <regex>
-#include <unistd.h>
 
-#include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
-#include <Chen/Http/HttpConnection.hpp>
 #include <Chen/Log/Log.hpp>
-#include <Chen/Util/JsonUtil.hpp>
-#include <Chen/Util/StringUtil.hpp>
 
 #include "../../Auth/AuthService.hpp"
-#include "../../Service/UserService.hpp"
-#include "../../Util/Util.hpp"
+#include "../../Client/GitHubClient.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Config/AuthConfig.hpp"
-#include "../../Service/UserOAuthService.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Service/UserOAuthService.hpp"
+#include "../../Service/UserService.hpp"
+#include "../../Util/Util.hpp"
 #include "DB/UserInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -26,19 +21,6 @@ static chen::Logger::ptr logger = LOG_ROOT();
 static const char* kOAuthStatePrefix = "oauth:github:state:";
 /// GitHub 平台标识
 static const char* kProviderGithub = "github";
-/// GitHub OAuth 接口
-static const char* kGithubTokenUrl = "https://github.com/login/oauth/access_token";
-static const char* kGithubUserUrl = "https://api.github.com/user";
-static const char* kGithubEmailsUrl = "https://api.github.com/user/emails";
-static const char* kGithubUserAgent = "TechHaven/1.0";
-
-struct GithubProfile {
-    std::string open_id;
-    std::string login;
-    std::string name;
-    std::string email;
-    std::string avatar;
-};
 
 UserOAuthGithubCallbackServlet::UserOAuthGithubCallbackServlet()
     : BlogServlet("UserOAuthGithubCallbackServlet")
@@ -56,166 +38,6 @@ static std::string NormalizeRedirect(const std::string& raw)
         return "/index";
     }
     return raw;
-}
-
-/// GitHub 请求超时（网络抖动较大，放宽到 30s）
-static const uint64_t kGithubTimeoutMs = 30000;
-/// GitHub 请求最大尝试次数
-static const int kGithubMaxAttempts = 3;
-
-/// 向 GitHub 发起请求，仅对连接失败/超时做重试（退避 0.3s/0.6s）
-static chen::http::HttpResult::ptr DoGithubRequestWithRetry(
-    bool is_post,
-    const std::string& url,
-    const std::map<std::string, std::string>& headers,
-    const std::string& body)
-{
-    chen::http::HttpResult::ptr result;
-    for (int attempt = 0; attempt < kGithubMaxAttempts; attempt++) {
-        result = is_post ? chen::http::HttpConnection::DoPost(url, kGithubTimeoutMs, headers, body)
-                         : chen::http::HttpConnection::DoGet(url, kGithubTimeoutMs, headers, body);
-
-        bool transient =
-            (!result || result->result == (int)chen::http::HttpResult::Error::CONNECT_FAIL
-             || result->result == (int)chen::http::HttpResult::Error::TIMEOUT);
-        if (!transient) {
-            return result;
-        }
-        ERROR(logger) << "github request transient failure url=" << url << " attempt=" << (attempt + 1)
-                      << " result=" << (result ? result->result : -1);
-        if (attempt + 1 < kGithubMaxAttempts) {
-            usleep(300000 * (attempt + 1));
-        }
-    }
-    return result;
-}
-
-/// 用授权码换取 access_token
-static bool ExchangeAccessToken(
-    const std::string& client_id,
-    const std::string& client_secret,
-    const std::string& code,
-    const std::string& callback_url,
-    std::string& access_token)
-{
-    std::map<std::string, std::string> headers;
-    headers["Accept"] = "application/json";
-    headers["User-Agent"] = kGithubUserAgent;
-
-    std::string body = "client_id=" + chen::StringUtil::UrlEncode(client_id, false)
-        + "&client_secret=" + chen::StringUtil::UrlEncode(client_secret, false) + "&code=" + chen::StringUtil::UrlEncode(code, false)
-        + "&redirect_uri=" + chen::StringUtil::UrlEncode(callback_url, false);
-
-    auto result = DoGithubRequestWithRetry(true, kGithubTokenUrl, headers, body);
-    if (!result || result->result != 0 || !result->response || result->response->getStatus() != chen::http::HttpStatus::OK) {
-        ERROR(logger) << "ExchangeAccessToken: http failed result=" << (result ? result->result : -1)
-                      << " status=" << (result && result->response ? (int)result->response->getStatus() : 0)
-                      << " body=" << (result && result->response ? result->response->getBody() : "");
-        return false;
-    }
-
-    Json::Value json;
-    if (!chen::JsonUtil::FromString(json, result->response->getBody())) {
-        ERROR(logger) << "ExchangeAccessToken: parse json failed";
-        return false;
-    }
-    if (!json.isMember("access_token") || !json["access_token"].isString()) {
-        ERROR(logger) << "ExchangeAccessToken: no access_token, body=" << result->response->getBody();
-        return false;
-    }
-    access_token = json["access_token"].asString();
-    return !access_token.empty();
-}
-
-/// 读取 GitHub 用户信息（id/login/name/email/avatar）
-static bool FetchGithubProfile(const std::string& access_token, GithubProfile& profile)
-{
-    std::map<std::string, std::string> headers;
-    headers["Accept"] = "application/vnd.github+json";
-    headers["User-Agent"] = kGithubUserAgent;
-    headers["Authorization"] = "Bearer " + access_token;
-
-    auto result = DoGithubRequestWithRetry(false, kGithubUserUrl, headers, "");
-    if (!result || result->result != 0 || !result->response || result->response->getStatus() != chen::http::HttpStatus::OK) {
-        ERROR(logger) << "FetchGithubProfile: http failed result=" << (result ? result->result : -1)
-                      << " status=" << (result && result->response ? (int)result->response->getStatus() : 0);
-        return false;
-    }
-
-    Json::Value json;
-    if (!chen::JsonUtil::FromString(json, result->response->getBody())) {
-        ERROR(logger) << "FetchGithubProfile: parse json failed";
-        return false;
-    }
-
-    if (json["id"].isInt64()) {
-        profile.open_id = std::to_string(json["id"].asInt64());
-    } else if (json["id"].isUInt64()) {
-        profile.open_id = std::to_string(json["id"].asUInt64());
-    } else if (json["id"].isInt()) {
-        profile.open_id = std::to_string(json["id"].asInt());
-    } else if (json["id"].isUInt()) {
-        profile.open_id = std::to_string(json["id"].asUInt());
-    } else if (json["id"].isString()) {
-        profile.open_id = json["id"].asString();
-    }
-    if (profile.open_id.empty()) {
-        ERROR(logger) << "FetchGithubProfile: missing id";
-        return false;
-    }
-    if (json["login"].isString()) {
-        profile.login = json["login"].asString();
-    }
-    if (json["name"].isString()) {
-        profile.name = json["name"].asString();
-    }
-    if (json["email"].isString()) {
-        profile.email = json["email"].asString();
-    }
-    if (json["avatar_url"].isString()) {
-        profile.avatar = json["avatar_url"].asString();
-    }
-    return true;
-}
-
-/// 拉取 GitHub 邮箱列表，返回 primary + verified 的邮箱
-static std::string FetchPrimaryEmail(const std::string& access_token)
-{
-    std::map<std::string, std::string> headers;
-    headers["Accept"] = "application/vnd.github+json";
-    headers["User-Agent"] = kGithubUserAgent;
-    headers["Authorization"] = "Bearer " + access_token;
-
-    auto result = DoGithubRequestWithRetry(false, kGithubEmailsUrl, headers, "");
-    if (!result || result->result != 0 || !result->response || result->response->getStatus() != chen::http::HttpStatus::OK) {
-        ERROR(logger) << "FetchPrimaryEmail: http failed";
-        return "";
-    }
-
-    Json::Value json;
-    if (!chen::JsonUtil::FromString(json, result->response->getBody()) || !json.isArray()) {
-        ERROR(logger) << "FetchPrimaryEmail: parse json failed";
-        return "";
-    }
-    std::string fallback;
-    for (const auto& item : json) {
-        if (!item["email"].isString()) {
-            continue;
-        }
-        std::string email = item["email"].asString();
-        if (email.empty()) {
-            continue;
-        }
-        bool verified = item["verified"].asBool();
-        bool primary = item["primary"].asBool();
-        if (primary && verified) {
-            return email;
-        }
-        if (verified && fallback.empty()) {
-            fallback = email;
-        }
-    }
-    return fallback;
 }
 
 /// 重定向到前端登录页并携带错误码
@@ -270,18 +92,25 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
         chen::RedisUtil::Cmd(GetRedisPoolName(), "del %s", stateKey.c_str());
 
         // 换取 GitHub 身份
-        std::string access_token;
-        if (!ExchangeAccessToken(client_id, client_secret, code, callback_url, access_token)) {
+        auto token = GitHubClient::ExchangeOAuthCode(client_id, client_secret, code, callback_url);
+        if (!token.ok()) {
+            ERROR(logger) << "github oauth token failed, error=" << (int)token.error << " detail=" << token.detail;
             error = GITHUB_OAUTH_FAILED;
             break;
         }
-        GithubProfile profile;
-        if (!FetchGithubProfile(access_token, profile)) {
+
+        auto gh_user = GitHubClient::GetOAuthUser(token.value.access_token);
+        if (!gh_user.ok()) {
+            ERROR(logger) << "github oauth user failed, error=" << (int)gh_user.error << " detail=" << gh_user.detail;
             error = GITHUB_OAUTH_FAILED;
             break;
         }
+        GitHubOAuthUser profile = gh_user.value;
         if (profile.email.empty()) {
-            profile.email = FetchPrimaryEmail(access_token);
+            auto email = GitHubClient::GetPrimaryEmail(token.value.access_token);
+            if (email.ok()) {
+                profile.email = email.value;
+            }
         }
 
         // 查询或创建本地用户

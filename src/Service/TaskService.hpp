@@ -49,6 +49,15 @@ public:
         DbError
     };
 
+    enum class ViewResult {
+        Ok,
+        NotFound,
+        AccessDenied,
+        DbError
+    };
+
+    static ViewResult GetDetail(const Viewer& viewer, int64_t id, DB::TaskInfo::ptr& out);
+
     static SaveResult Save(const Viewer& viewer, const TaskInput& input, DB::TaskInfo::ptr& out);
 
     static DeleteResult DeleteMany(const Viewer& viewer,

@@ -6,6 +6,7 @@
 #include <Chen/Http/HttpConnection.hpp>
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
+#include <Chen/Util/StringUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
 #include <json/json.h>
@@ -47,15 +48,16 @@ bool IsRateLimited(const chen::http::HttpResponse::ptr& response)
     return false;
 }
 
-bool DoGetWithRetry(const std::string& url,
-    const std::string& token,
+bool DoRequestWithRetry(chen::http::HttpMethod method,
+    const std::string& url,
+    const std::map<std::string, std::string>& headers,
+    const std::string& request_body,
     int64_t timeout_ms,
     ClientError& error,
     std::string& body,
     std::string& link_header)
 {
     GitHubConf conf = GetGitHubConf();
-    auto headers = BuildHeaders(token, conf);
     int attempts = conf.max_attempts > 0 ? conf.max_attempts : 1;
 
     error = ClientError::Unknown;
@@ -65,17 +67,19 @@ bool DoGetWithRetry(const std::string& url,
     for (int attempt = 0; attempt < attempts; ++attempt) {
         chen::http::HttpResult::ptr result;
         try {
-            result = chen::http::HttpClient::get(url, (uint64_t)timeout_ms, headers).get();
+            result = chen::http::HttpClient::request(method, url, (uint64_t)timeout_ms, headers, request_body).get();
         } catch (...) {
             result = nullptr;
         }
         if (!result) {
-            result = chen::http::HttpConnection::DoGet(url, (uint64_t)timeout_ms, headers);
+            result = method == chen::http::HttpMethod::POST
+                ? chen::http::HttpConnection::DoPost(url, (uint64_t)timeout_ms, headers, request_body)
+                : chen::http::HttpConnection::DoGet(url, (uint64_t)timeout_ms, headers, request_body);
         }
         if (!result) {
             error = ClientError::ConnectFailed;
             if (attempt + 1 < attempts) {
-                WARN(logger) << "github get retry " << (attempt + 1) << "/" << attempts << " url=" << url;
+                WARN(logger) << "github request retry " << (attempt + 1) << "/" << attempts << " url=" << url;
                 int64_t backoff = conf.backoff_ms * (attempt + 1);
                 if (backoff > 5000) {
                     backoff = 5000;
@@ -91,7 +95,7 @@ bool DoGetWithRetry(const std::string& url,
             error = result->result == (int)chen::http::HttpResult::Error::TIMEOUT ? ClientError::Timeout
                                                                                   : ClientError::ConnectFailed;
             if (attempt + 1 < attempts) {
-                WARN(logger) << "github get retry " << (attempt + 1) << "/" << attempts << " url=" << url;
+                WARN(logger) << "github request retry " << (attempt + 1) << "/" << attempts << " url=" << url;
                 int64_t backoff = conf.backoff_ms * (attempt + 1);
                 if (backoff > 5000) {
                     backoff = 5000;
@@ -129,7 +133,7 @@ bool DoGetWithRetry(const std::string& url,
         if (status >= 500) {
             error = ClientError::ServerError;
             if (attempt + 1 < attempts) {
-                WARN(logger) << "github get retry " << (attempt + 1) << "/" << attempts << " status=" << status
+                WARN(logger) << "github request retry " << (attempt + 1) << "/" << attempts << " status=" << status
                              << " url=" << url;
                 int64_t backoff = conf.backoff_ms * (attempt + 1);
                 if (backoff > 5000) {
@@ -146,6 +150,18 @@ bool DoGetWithRetry(const std::string& url,
     }
 
     return false;
+}
+
+bool DoGetWithRetry(const std::string& url,
+    const std::string& token,
+    int64_t timeout_ms,
+    ClientError& error,
+    std::string& body,
+    std::string& link_header)
+{
+    GitHubConf conf = GetGitHubConf();
+    auto headers = BuildHeaders(token, conf);
+    return DoRequestWithRetry(chen::http::HttpMethod::GET, url, headers, "", timeout_ms, error, body, link_header);
 }
 
 std::string GetNextPageUrl(const std::string& link_header)
@@ -412,6 +428,174 @@ ClientResult<GitHubReviewSummary> GitHubClient::GetReviewSummary(const std::stri
         result.value.status = "pending";
     }
     result.value.reviewers = chen::JsonUtil::ToString(reviewers);
+    result.error = ClientError::Ok;
+    return result;
+}
+
+ClientResult<GitHubOAuthToken> GitHubClient::ExchangeOAuthCode(const std::string& client_id,
+    const std::string& client_secret,
+    const std::string& code,
+    const std::string& redirect_uri)
+{
+    ClientResult<GitHubOAuthToken> result;
+    if (client_id.empty() || client_secret.empty() || code.empty()) {
+        result.error = ClientError::MalformedResponse;
+        result.detail = "missing oauth params";
+        return result;
+    }
+
+    GitHubConf conf = GetGitHubConf();
+    std::map<std::string, std::string> headers;
+    headers["Accept"] = "application/json";
+    headers["Content-Type"] = "application/x-www-form-urlencoded";
+    headers["User-Agent"] = conf.user_agent;
+
+    std::string body = "client_id=" + chen::StringUtil::UrlEncode(client_id, false) + "&client_secret="
+        + chen::StringUtil::UrlEncode(client_secret, false) + "&code=" + chen::StringUtil::UrlEncode(code, false)
+        + "&redirect_uri=" + chen::StringUtil::UrlEncode(redirect_uri, false);
+
+    std::string response_body;
+    std::string link_header;
+    std::string url = conf.oauth_base + "/login/oauth/access_token";
+    if (!DoRequestWithRetry(chen::http::HttpMethod::POST, url, headers, body, conf.detail_timeout_ms, result.error,
+            response_body, link_header)) {
+        result.detail = "oauth token request failed";
+        return result;
+    }
+
+    Json::Value json;
+    if (!chen::JsonUtil::FromString(json, response_body) || !json.isObject()) {
+        result.error = ClientError::MalformedResponse;
+        result.detail = "invalid oauth token json";
+        return result;
+    }
+    if (!json.isMember("access_token") || !json["access_token"].isString()) {
+        result.error = ClientError::Unauthorized;
+        result.detail = "missing access_token";
+        return result;
+    }
+
+    result.value.access_token = json["access_token"].asString();
+    result.value.token_type = JsonStr(json, "token_type");
+    result.value.scope = JsonStr(json, "scope");
+    if (result.value.access_token.empty()) {
+        result.error = ClientError::Unauthorized;
+        result.detail = "empty access_token";
+        return result;
+    }
+    result.error = ClientError::Ok;
+    return result;
+}
+
+ClientResult<GitHubOAuthUser> GitHubClient::GetOAuthUser(const std::string& access_token)
+{
+    ClientResult<GitHubOAuthUser> result;
+    if (access_token.empty()) {
+        result.error = ClientError::Unauthorized;
+        result.detail = "empty access_token";
+        return result;
+    }
+
+    GitHubConf conf = GetGitHubConf();
+    std::map<std::string, std::string> headers;
+    headers["Accept"] = "application/vnd.github+json";
+    headers["User-Agent"] = conf.user_agent;
+    headers["Authorization"] = "Bearer " + access_token;
+
+    std::string body;
+    std::string link_header;
+    std::string url = conf.api_base + "/user";
+    if (!DoRequestWithRetry(
+            chen::http::HttpMethod::GET, url, headers, "", conf.timeout_ms, result.error, body, link_header)) {
+        result.detail = "get oauth user failed";
+        return result;
+    }
+
+    Json::Value json;
+    if (!chen::JsonUtil::FromString(json, body) || !json.isObject()) {
+        result.error = ClientError::MalformedResponse;
+        result.detail = "invalid oauth user json";
+        return result;
+    }
+
+    if (json.isMember("id")) {
+        const auto& id = json["id"];
+        if (id.isInt64()) {
+            result.value.open_id = std::to_string(id.asInt64());
+        } else if (id.isUInt64()) {
+            result.value.open_id = std::to_string(id.asUInt64());
+        } else if (id.isInt()) {
+            result.value.open_id = std::to_string(id.asInt());
+        } else if (id.isUInt()) {
+            result.value.open_id = std::to_string(id.asUInt());
+        } else if (id.isString()) {
+            result.value.open_id = id.asString();
+        }
+    }
+    if (result.value.open_id.empty()) {
+        result.error = ClientError::MalformedResponse;
+        result.detail = "missing oauth user id";
+        return result;
+    }
+
+    result.value.login = JsonStr(json, "login");
+    result.value.name = JsonStr(json, "name");
+    result.value.email = JsonStr(json, "email");
+    result.value.avatar = JsonStr(json, "avatar_url");
+    result.error = ClientError::Ok;
+    return result;
+}
+
+ClientResult<std::string> GitHubClient::GetPrimaryEmail(const std::string& access_token)
+{
+    ClientResult<std::string> result;
+    if (access_token.empty()) {
+        result.error = ClientError::Unauthorized;
+        result.detail = "empty access_token";
+        return result;
+    }
+
+    GitHubConf conf = GetGitHubConf();
+    std::map<std::string, std::string> headers;
+    headers["Accept"] = "application/vnd.github+json";
+    headers["User-Agent"] = conf.user_agent;
+    headers["Authorization"] = "Bearer " + access_token;
+
+    std::string body;
+    std::string link_header;
+    std::string url = conf.api_base + "/user/emails";
+    if (!DoRequestWithRetry(
+            chen::http::HttpMethod::GET, url, headers, "", conf.timeout_ms, result.error, body, link_header)) {
+        result.detail = "get oauth emails failed";
+        return result;
+    }
+
+    Json::Value arr;
+    if (!chen::JsonUtil::FromString(arr, body) || !arr.isArray()) {
+        result.error = ClientError::MalformedResponse;
+        result.detail = "invalid oauth emails json";
+        return result;
+    }
+
+    std::string fallback;
+    for (const auto& item : arr) {
+        std::string email = JsonStr(item, "email");
+        if (email.empty()) {
+            continue;
+        }
+        bool verified = item.isMember("verified") && item["verified"].isBool() && item["verified"].asBool();
+        bool primary = item.isMember("primary") && item["primary"].isBool() && item["primary"].asBool();
+        if (primary && verified) {
+            result.value = email;
+            result.error = ClientError::Ok;
+            return result;
+        }
+        if (verified && fallback.empty()) {
+            fallback = email;
+        }
+    }
+
+    result.value = fallback;
     result.error = ClientError::Ok;
     return result;
 }

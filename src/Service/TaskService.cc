@@ -13,6 +13,31 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+TaskService::ViewResult TaskService::GetDetail(const Viewer& viewer, int64_t id, DB::TaskInfo::ptr& out)
+{
+    out.reset();
+    if (!viewer.valid()) {
+        return ViewResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ViewResult::DbError;
+    }
+    auto info = TaskRepository::Get(id, db);
+    if (!info || info->getIsDeleted()) {
+        return ViewResult::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return ViewResult::DbError;
+    }
+    if (!AccessPolicy::CanViewTask(viewer, scope, info->getOrgId(), info->getCreatorId(), info->getAssigneeId())) {
+        return ViewResult::AccessDenied;
+    }
+    out = info;
+    return ViewResult::Ok;
+}
+
 TaskService::SaveResult TaskService::Save(const Viewer& viewer, const TaskInput& input, DB::TaskInfo::ptr& out)
 {
     out.reset();

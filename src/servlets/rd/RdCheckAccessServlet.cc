@@ -1,9 +1,6 @@
 #include "RdCheckAccessServlet.hpp"
 
-#include "../../Access/AccessPolicy.hpp"
-#include "../../Access/AccessScopeResolver.hpp"
-#include "../../Domain/UserTypes.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/RdAccessService.hpp"
 #include "../../Util/Util.hpp"
 
 RdCheckAccessServlet::RdCheckAccessServlet()
@@ -33,44 +30,23 @@ int32_t RdCheckAccessServlet::handle(
                 result->setErrno(PARAM_INVALID, "invalid user_id");
                 break;
             }
-            if (target_uid != viewer.user_id && !viewer.is_platform_admin) {
-                result->setErrno(ACCESS_DENIED);
-                break;
-            }
         }
 
-        auto db = GetDB();
-        if (!db) {
+        RdAccessService::CheckResult check;
+        auto rt = RdAccessService::CheckPlatformAccess(viewer, target_uid, check);
+        if (rt == RdAccessService::Result::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
+            break;
+        }
+        if (rt != RdAccessService::Result::Ok) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-
-        Viewer target = viewer;
-        if (target_uid != viewer.user_id) {
-            auto target_user = UserRepository::Get(target_uid, db);
-            if (!target_user || target_user->getState() != UserState::ACTIVE) {
-                result->setErrno(SUCCESS);
-                result->set("can_access", "0");
-                result->set("reason", "user not found or disabled");
-                break;
-            }
-            target.user_id = target_uid;
-            target.system_role = target_user->getRole();
-            target.is_platform_admin = (target.system_role == UserRole::ADMIN);
-        }
-
-        OrgScope scope;
-        if (!AccessScopeResolver::ResolveOrgs(scope, target, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        bool can_access = AccessPolicy::CanAccessPlatform(target, scope);
 
         result->setErrno(SUCCESS);
-        result->set("can_access", can_access ? "1" : "0");
-        if (!can_access) {
-            result->set("reason", "requires system admin or organization role >= reporter");
+        result->set("can_access", check.can_access ? "1" : "0");
+        if (!check.can_access) {
+            result->set("reason", check.reason);
         }
     } while (0);
 

@@ -19,6 +19,7 @@ enum class ClientError {
     RateLimited,
     ServerError,
     MalformedResponse,
+    UnsupportedProvider,
     Unknown,
 };
 

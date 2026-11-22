@@ -7,20 +7,21 @@
  */
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
-#include <Chen/Http/SSESession.hpp>
-
 #include "AIProvider.hpp"
 
-/// SSE 流式回调解析器，每收到一块 body 数据就逐行解析、提取文本、推送 SSE 事件
-/// 用法：传给 HttpConnection::DoRequestStreaming 作为 HttpStreamCallback
+/// SSE 流式回调解析器，每收到一块 body 数据就逐行解析、提取文本并回调
 class SSEStreamParser {
 public:
     typedef std::shared_ptr<SSEStreamParser> ptr;
+    typedef std::function<void(const std::string&)> TextCallback;
+    typedef std::function<void(const std::string&)> ErrorCallback;
+    typedef std::function<void()> DoneCallback;
 
-    SSEStreamParser(chen::http::SSESession::ptr session, AIProvider::ptr provider);
+    SSEStreamParser(AIProvider::ptr provider, TextCallback on_chunk, ErrorCallback on_error, DoneCallback on_done);
 
     /// HttpStreamCallback 接口
     bool operator()(const char* data, size_t len);
@@ -31,8 +32,10 @@ public:
 private:
     void processEvent();
 
-    chen::http::SSESession::ptr session_;
     AIProvider::ptr provider_;
+    TextCallback on_chunk_;
+    ErrorCallback on_error_;
+    DoneCallback on_done_;
     std::string line_buf_;
     std::string current_event_;
 };

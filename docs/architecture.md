@@ -21,16 +21,16 @@ Service 的策略决定。外部网络调用统一走 Client，Repository 不直
 
 ## 1. 目录与职责
 
-| 目录                       | 职责                                                               | 禁止                                                     |
-|----------------------------|--------------------------------------------------------------------|----------------------------------------------------------|
-| `src/Servlets/`            | HTTP 参数解析、登录态/粗粒度路由鉴权、组装响应、发 EventBus 事件   | 直接调用 `DB::*Dao`、开启事务、写缓存、成员/角色数据过滤 |
-| `src/Event/`、`src/Logic/` | 事件处理、RPC 入口、Bot/Webhook 适配                               | 直接调用 `DB::*Dao`、复制业务规则                        |
-| `src/Service/`             | 用例编排、命令级鉴权、跨表事务、业务校验、调用 Repository / Client | 直接使用 `DB::*Dao`、拼 SQL、操作 Servlet/HTTP 对象      |
-| `src/Access/`              | 访问者身份到数据范围/策略的解析                                    | 拼 SQL、返回 errcode、依赖 Servlet                       |
-| `src/Repository/`          | 本地存储取数、数据范围、分页、计数、`EntityCache` 读写             | 调用外部 API、开启事务、跨聚合业务规则、发通知/事件      |
-| `src/Client/`              | 外部系统适配、网络治理、DTO 映射、错误分类                         | 访问 DB、开启事务、业务规则、返回 `Result`/errcode       |
-| `src/Manager/`             | 兼容 facade、进程内只读状态、WS/路由等非 DB 能力                   | 新增业务逻辑、手写 Redis 对象缓存、`ParseRow`            |
-| `src/Cache/`               | 缓存模板与缓存工具                                                 | 业务规则                                                 |
+| 目录                       | 职责                                                               | 禁止                                                                     |
+|----------------------------|--------------------------------------------------------------------|--------------------------------------------------------------------------|
+| `src/Servlets/`            | HTTP 参数解析、登录态/粗粒度路由鉴权、组装响应、发 EventBus 事件   | 调用 `GetDB()`、直接调用 `DB::*Dao`、开启事务、写缓存、成员/角色数据过滤 |
+| `src/Event/`、`src/Logic/` | 事件处理、RPC 入口、Bot/Webhook 适配                               | 直接调用 `DB::*Dao`、复制业务规则                                        |
+| `src/Service/`             | 用例编排、命令级鉴权、跨表事务、业务校验、调用 Repository / Client | 直接使用 `DB::*Dao`、拼 SQL、操作 Servlet/HTTP 对象                      |
+| `src/Access/`              | 访问者身份到数据范围/策略的解析                                    | 拼 SQL、返回 errcode、依赖 Servlet                                       |
+| `src/Repository/`          | 本地存储取数、数据范围、分页、计数、`EntityCache` 读写             | 调用外部 API、开启事务、跨聚合业务规则、发通知/事件                      |
+| `src/Client/`              | 外部系统适配、网络治理、DTO 映射、错误分类                         | 访问 DB、开启事务、业务规则、返回 `Result`/errcode                       |
+| `src/Manager/`             | 兼容 facade、进程内只读状态、WS/路由等非 DB 能力                   | 新增业务逻辑、手写 Redis 对象缓存、`ParseRow`                            |
+| `src/Cache/`               | 缓存模板与缓存工具                                                 | 业务规则                                                                 |
 
 **依赖方向**：Servlet/Event → Service → Repository / Client。Repository 不得反向 include Service 或 Client；Client 不得
 include Repository；Manager 可以调用 Repository，但 Service 不应依赖 Manager。
@@ -152,6 +152,9 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 提交前建议执行：
 
 ```bash
+# Servlet 层不得获取数据库连接（迁移目标；当前 RD 已清零）
+rg 'GetDB\(\)' src/Servlets
+
 # Repository 之外不应出现网关 DAO
 rg 'DB::[A-Za-z]+InfoDao::' src --glob '!src/Repository/**' --glob '!src/DB/DBManager.cc'
 

@@ -1,8 +1,6 @@
 #include "RdBugDetailServlet.hpp"
 
-#include "../../Access/AccessPolicy.hpp"
-#include "../../Access/AccessScopeResolver.hpp"
-#include "../../Repository/BugRepository.hpp"
+#include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -30,25 +28,18 @@ int32_t RdBugDetailServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        auto info = BugRepository::Get(id, db);
-        if (!info || info->getIsDeleted()) {
+        DB::BugInfo::ptr info;
+        auto rt = BugService::GetDetail(viewer, id, info);
+        if (rt == BugService::ViewResult::NotFound) {
             result->setErrno(BUG_NOT_FOUND);
             break;
         }
-
-        OrgScope scope;
-        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
+        if (rt == BugService::ViewResult::AccessDenied) {
+            result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (!AccessPolicy::CanViewBug(viewer, scope, info->getOrgId())) {
-            result->setErrno(ACCESS_DENIED);
+        if (rt != BugService::ViewResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 

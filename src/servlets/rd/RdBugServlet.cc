@@ -1,9 +1,7 @@
 #include "RdBugServlet.hpp"
 
-#include "../../Access/AccessPolicy.hpp"
-#include "../../Access/AccessScopeResolver.hpp"
-#include "../../Repository/BugRepository.hpp"
-#include "../../Repository/RdListQueryRepository.hpp"
+#include "../../Service/BugService.hpp"
+#include "../../Service/RdListService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -28,26 +26,19 @@ int32_t RdBugServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        OrgScope scope;
-        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
         if (id) {
-            auto info = BugRepository::Get(id, db);
-            if (!info || info->getIsDeleted()) {
+            DB::BugInfo::ptr info;
+            auto rt = BugService::GetDetail(viewer, id, info);
+            if (rt == BugService::ViewResult::NotFound) {
                 result->setErrno(BUG_NOT_FOUND);
                 break;
             }
-            if (!AccessPolicy::CanViewBug(viewer, scope, info->getOrgId())) {
+            if (rt == BugService::ViewResult::AccessDenied) {
                 result->setErrno(ACCESS_DENIED);
+                break;
+            }
+            if (rt != BugService::ViewResult::Ok) {
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
             Json::Value data;
@@ -81,7 +72,7 @@ int32_t RdBugServlet::handle(
 
         std::vector<DB::BugInfo::ptr> bugs;
         int64_t total = 0;
-        if (!RdListQueryRepository::ListBugs(bugs, total, scope, org_id, filter, db)) {
+        if (!RdListService::ListBugs(viewer, org_id, filter, bugs, total)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

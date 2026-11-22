@@ -1,6 +1,6 @@
 /**
  * @file SearchSync.hpp
- * @brief 搜索索引同步客户端
+ * @brief 搜索索引同步器
  * @author Christins
  * @date 2026-11-19
  * @copyright Apache 2.0
@@ -12,15 +12,15 @@
 #include <map>
 #include <mutex>
 
-#include <Chen/Rpc/RpcClient.hpp>
 #include <Chen/Timer/Timer.hpp>
 #include <Chen/Util/Singleton.hpp>
 
+#include "../Client/SearchClient.hpp"
 #include "protocol_ss_search.h" // IWYU pragma: keep
 
 /**
- * @brief 搜索索引同步客户端
- * @details 负责连接 SearchServer hub、查询、增量文档推送、失败重试与全量快照。
+ * @brief 搜索索引同步器
+ * @details 只负责 outbox、批量调度与全量快照；连接、超时、RPC 调用在 SearchClient。
  *          待同步文章 ID 同时写入 Redis hash（持久化 outbox）和进程内 map，
  *          SearchServer 不可用时不会丢失变更。
  */
@@ -66,21 +66,11 @@ private:
 
     void syncLoop();
 
-    bool ensureConnected();
-
-    void invalidateClient();
-
-    bool checkStats(tagSearchStats& stats);
-
     bool runSnapshot();
 
     bool flushDirty();
 
     bool buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc& doc, bool& missing);
-
-    bool sendUpsert(const tagSearchDoc& doc);
-
-    bool sendRemove(uint64_t article_id, int64_t update_time);
 
     std::map<uint64_t, DirtyEntry> loadDirty();
 
@@ -94,10 +84,8 @@ private:
     std::atomic<bool> sync_scheduled_{false};
     std::atomic<bool> syncing_{false};
     std::atomic<uint64_t> last_stats_ms_{0};
-    std::atomic<uint64_t> last_connect_ms_{0};
 
-    std::mutex client_mutex_;
-    chen::rpc::RpcClient::ptr client_;
+    SearchClient client_;
 
     std::mutex dirty_mutex_;
     std::map<uint64_t, DirtyEntry> local_dirty_;

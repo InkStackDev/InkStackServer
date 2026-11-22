@@ -47,6 +47,20 @@ struct GitHubReviewSummary {
     std::string reviewers = "[]";
 };
 
+struct GitHubOAuthToken {
+    std::string access_token;
+    std::string token_type;
+    std::string scope;
+};
+
+struct GitHubOAuthUser {
+    std::string open_id;
+    std::string login;
+    std::string name;
+    std::string email;
+    std::string avatar;
+};
+
 class GitHubClient {
 public:
     /**
@@ -79,4 +93,22 @@ public:
     static ClientResult<GitHubReviewSummary> GetReviewSummary(const std::string& token,
         const std::string& repo_path,
         int32_t number);
+
+    /**
+     * @brief OAuth 授权码换取 access_token
+     */
+    static ClientResult<GitHubOAuthToken> ExchangeOAuthCode(const std::string& client_id,
+        const std::string& client_secret,
+        const std::string& code,
+        const std::string& redirect_uri);
+
+    /**
+     * @brief 读取 OAuth 用户信息
+     */
+    static ClientResult<GitHubOAuthUser> GetOAuthUser(const std::string& access_token);
+
+    /**
+     * @brief 读取 primary + verified 的邮箱，没有则返回第一个 verified 邮箱
+     */
+    static ClientResult<std::string> GetPrimaryEmail(const std::string& access_token);
 };

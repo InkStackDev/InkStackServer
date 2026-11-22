@@ -1,10 +1,18 @@
 #include "SSEStreamParser.hpp"
 
-#include "../Util/Util.hpp"
+#include <json/json.h>
+#include <json/reader.h>
 
-SSEStreamParser::SSEStreamParser(chen::http::SSESession::ptr session, AIProvider::ptr provider)
-    : session_(session)
-    , provider_(provider)
+#include <utility>
+
+SSEStreamParser::SSEStreamParser(AIProvider::ptr provider,
+    TextCallback on_chunk,
+    ErrorCallback on_error,
+    DoneCallback on_done)
+    : provider_(std::move(provider))
+    , on_chunk_(std::move(on_chunk))
+    , on_error_(std::move(on_error))
+    , on_done_(std::move(on_done))
 {
 }
 
@@ -36,28 +44,35 @@ bool SSEStreamParser::operator()(const char* data, size_t len)
 void SSEStreamParser::processEvent()
 {
     if (provider_->isDoneMarker(current_event_)) {
-        SendSSEJson(session_, "done", "message", "总结生成完成");
+        if (on_done_) {
+            on_done_();
+        }
         return;
     }
 
     Json::Value parsed;
     Json::Reader reader;
-    if (!reader.parse(current_event_, parsed))
+    if (!reader.parse(current_event_, parsed)) {
         return;
+    }
 
     std::string content = provider_->extractContent(parsed);
     if (!content.empty()) {
-        SendSSEJson(session_, "chunk", "content", content);
+        if (on_chunk_) {
+            on_chunk_(content);
+        }
         full_text += content;
     }
 
     if (provider_->isTerminal(parsed)) {
-        SendSSEJson(session_, "done", "message", "总结生成完成");
+        if (on_done_) {
+            on_done_();
+        }
         return;
     }
 
-    std::string errMsg = provider_->getError(parsed);
-    if (!errMsg.empty()) {
-        SendSSEJson(session_, "error", "message", errMsg);
+    std::string err_msg = provider_->getError(parsed);
+    if (!err_msg.empty() && on_error_) {
+        on_error_(err_msg);
     }
 }

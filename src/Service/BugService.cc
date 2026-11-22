@@ -13,6 +13,31 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+BugService::ViewResult BugService::GetDetail(const Viewer& viewer, int64_t id, DB::BugInfo::ptr& out)
+{
+    out.reset();
+    if (!viewer.valid()) {
+        return ViewResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ViewResult::DbError;
+    }
+    auto info = BugRepository::Get(id, db);
+    if (!info || info->getIsDeleted()) {
+        return ViewResult::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return ViewResult::DbError;
+    }
+    if (!AccessPolicy::CanViewBug(viewer, scope, info->getOrgId())) {
+        return ViewResult::AccessDenied;
+    }
+    out = info;
+    return ViewResult::Ok;
+}
+
 BugService::SaveResult BugService::Save(const Viewer& viewer, const BugInput& input, DB::BugInfo::ptr& out)
 {
     out.reset();

@@ -22,10 +22,15 @@ struct AIConf {
     std::string model;
     /// 默认 API key（明文）
     std::string api_key;
+    /// 流式请求超时（毫秒）
+    int64_t timeout_ms = 60000;
+    /// 首个文本块前最大尝试次数
+    int32_t max_attempts = 3;
 
     bool operator==(const AIConf& other) const
     {
-        return type == other.type && model == other.model && api_key == other.api_key;
+        return type == other.type && model == other.model && api_key == other.api_key && timeout_ms == other.timeout_ms
+            && max_attempts == other.max_attempts;
     }
 };
 
@@ -50,6 +55,12 @@ public:
         if (node["api_key"].IsScalar()) {
             conf.api_key = node["api_key"].Scalar();
         }
+        if (node["timeout_ms"].IsScalar()) {
+            conf.timeout_ms = LexicalCast<std::string, int64_t>()(node["timeout_ms"].Scalar());
+        }
+        if (node["max_attempts"].IsScalar()) {
+            conf.max_attempts = LexicalCast<std::string, int32_t>()(node["max_attempts"].Scalar());
+        }
         return conf;
     }
 };
@@ -63,6 +74,8 @@ public:
         node["type"] = conf.type;
         node["model"] = conf.model;
         node["api_key"] = conf.api_key;
+        node["timeout_ms"] = conf.timeout_ms;
+        node["max_attempts"] = conf.max_attempts;
         std::stringstream ss;
         ss << node;
         return ss.str();

@@ -13,6 +13,33 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
+RequirementService::ViewResult RequirementService::GetDetail(const Viewer& viewer,
+    int64_t id,
+    DB::RequirementInfo::ptr& out)
+{
+    out.reset();
+    if (!viewer.valid()) {
+        return ViewResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ViewResult::DbError;
+    }
+    auto info = RequirementRepository::Get(id, db);
+    if (!info || info->getIsDeleted()) {
+        return ViewResult::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return ViewResult::DbError;
+    }
+    if (!AccessPolicy::CanViewRequirement(viewer, scope, info->getOrgId())) {
+        return ViewResult::AccessDenied;
+    }
+    out = info;
+    return ViewResult::Ok;
+}
+
 RequirementService::SaveResult RequirementService::Save(const Viewer& viewer,
     const RequirementInput& input,
     DB::RequirementInfo::ptr& out)

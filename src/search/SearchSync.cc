@@ -7,11 +7,9 @@
 
 #include <unistd.h>
 
-#include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
 #include <Chen/IOManager/IOManager.hpp>
 #include <Chen/Log/Log.hpp>
-#include <Chen/Socket/Address.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 #include <Chen/Util/TypeUtil.hpp>
 
@@ -59,6 +57,9 @@ bool SearchSync::init()
         return false;
     }
 
+    client_.Close();
+    last_stats_ms_.store(0);
+
     if (timer_) {
         timer_->cancel();
         timer_.reset();
@@ -85,58 +86,7 @@ void SearchSync::stop()
         timer_->cancel();
         timer_.reset();
     }
-    invalidateClient();
-}
-
-void SearchSync::invalidateClient()
-{
-    std::lock_guard<std::mutex> lock(client_mutex_);
-    if (client_) {
-        client_->close();
-        client_.reset();
-    }
-    last_stats_ms_.store(0);
-}
-
-bool SearchSync::ensureConnected()
-{
-    if (!enabled_.load() || stopped_.load()) {
-        return false;
-    }
-
-    const SearchConf conf = GetSearchConf();
-    std::lock_guard<std::mutex> lock(client_mutex_);
-    if (client_ && client_->isConnected()) {
-        return true;
-    }
-
-    if (client_) {
-        client_->close();
-        client_.reset();
-    }
-
-    uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
-    uint64_t reconnect_interval = conf.reconnect_interval_ms;
-    if (reconnect_interval > 0 && now_ms < last_connect_ms_.load() + reconnect_interval) {
-        return false;
-    }
-    last_connect_ms_.store(now_ms);
-
-    auto addr = chen::Address::LookupAny(conf.hub_address);
-    if (!addr) {
-        ERROR(logger) << "invalid search hub address: " << conf.hub_address;
-        return false;
-    }
-
-    auto client = std::make_shared<chen::rpc::RpcClient>();
-    if (!client->connect(addr, conf.connect_timeout_ms)) {
-        DEBUG(logger) << "connect search hub failed: " << conf.hub_address;
-        return false;
-    }
-    client_ = client;
-    last_stats_ms_.store(0);
-    INFO(logger) << "connected search hub: " << conf.hub_address;
-    return true;
+    client_.Close();
 }
 
 void SearchSync::wake()
@@ -178,7 +128,7 @@ void SearchSync::syncLoop()
                 last_stats_ms_.store(now_ms);
             }
 
-            if (!ensureConnected()) {
+            if (!client_.EnsureConnected()) {
                 break;
             }
             // 新建连接后强制做一次 stats，避免 SearchServer 重启后长时间返回未就绪
@@ -189,7 +139,7 @@ void SearchSync::syncLoop()
 
             if (need_stats) {
                 tagSearchStats stats;
-                if (!checkStats(stats)) {
+                if (!client_.CheckStats(stats)) {
                     break;
                 }
                 if (!stats.Ready || stats.IndexVersion != SS_SEARCH_INDEX_VERSION) {
@@ -207,36 +157,14 @@ void SearchSync::syncLoop()
     } catch (const std::exception& e) {
         ERROR(logger) << "search sync loop failed: " << e.what();
         last_stats_ms_.store(0);
-        invalidateClient();
+        client_.Close();
     } catch (...) {
         ERROR(logger) << "search sync loop failed: unknown error";
         last_stats_ms_.store(0);
-        invalidateClient();
+        client_.Close();
     }
 
     syncing_.store(false);
-}
-
-bool SearchSync::checkStats(tagSearchStats& stats)
-{
-    chen::rpc::RpcClient::ptr client;
-    {
-        std::lock_guard<std::mutex> lock(client_mutex_);
-        client = client_;
-    }
-    if (!client || !client->isConnected()) {
-        return false;
-    }
-
-    try {
-        stats = client->callWithTimeout<tagSearchStats>(
-            GetSearchConf().timeout_ms, static_cast<uint32_t>(SS_CMD_SEARCH_GET_STATS));
-        return stats.Code == SEARCH_OK;
-    } catch (const std::exception& e) {
-        WARN(logger) << "search stats failed: " << e.what();
-        invalidateClient();
-        return false;
-    }
 }
 
 bool SearchSync::query(const tagSearchQuery& query, tagSearchResult& result)
@@ -244,32 +172,10 @@ bool SearchSync::query(const tagSearchQuery& query, tagSearchResult& result)
     if (!enabled_.load() || stopped_.load()) {
         return false;
     }
-    if (!ensureConnected()) {
+    if (!client_.EnsureConnected()) {
         return false;
     }
-
-    chen::rpc::RpcClient::ptr client;
-    {
-        std::lock_guard<std::mutex> lock(client_mutex_);
-        client = client_;
-    }
-    if (!client || !client->isConnected()) {
-        return false;
-    }
-
-    try {
-        result = client->callWithTimeout<tagSearchResult>(
-            GetSearchConf().timeout_ms, static_cast<uint32_t>(SS_CMD_SEARCH_ARTICLES), query);
-        if (result.Code != SEARCH_OK) {
-            WARN(logger) << "search query rejected, code=" << result.Code;
-            return false;
-        }
-        return true;
-    } catch (const std::exception& e) {
-        WARN(logger) << "search query failed: " << e.what();
-        invalidateClient();
-        return false;
-    }
+    return client_.Query(query, result);
 }
 
 void SearchSync::markDirty(uint64_t article_id, int32_t op)
@@ -400,64 +306,6 @@ bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc
     return true;
 }
 
-bool SearchSync::sendUpsert(const tagSearchDoc& doc)
-{
-    chen::rpc::RpcClient::ptr client;
-    {
-        std::lock_guard<std::mutex> lock(client_mutex_);
-        client = client_;
-    }
-    if (!client || !client->isConnected()) {
-        return false;
-    }
-
-    try {
-        int32_t rt = client->callWithTimeout<int32_t>(
-            GetSearchConf().update_timeout_ms, static_cast<uint32_t>(SS_CMD_SEARCH_UPSERT_DOC), doc);
-        if (rt != SEARCH_OK) {
-            WARN(logger) << "upsert search doc rejected, article_id=" << doc.ArticleId << ", code=" << rt;
-            if (rt == SEARCH_NOT_READY) {
-                last_stats_ms_.store(0);
-            }
-            return false;
-        }
-        return true;
-    } catch (const std::exception& e) {
-        WARN(logger) << "upsert search doc failed, article_id=" << doc.ArticleId << ": " << e.what();
-        invalidateClient();
-        return false;
-    }
-}
-
-bool SearchSync::sendRemove(uint64_t article_id, int64_t update_time)
-{
-    chen::rpc::RpcClient::ptr client;
-    {
-        std::lock_guard<std::mutex> lock(client_mutex_);
-        client = client_;
-    }
-    if (!client || !client->isConnected()) {
-        return false;
-    }
-
-    try {
-        int32_t rt = client->callWithTimeout<int32_t>(GetSearchConf().update_timeout_ms,
-            static_cast<uint32_t>(SS_CMD_SEARCH_REMOVE_ARTICLE), article_id, update_time);
-        if (rt != SEARCH_OK) {
-            WARN(logger) << "remove search article rejected, article_id=" << article_id << ", code=" << rt;
-            if (rt == SEARCH_NOT_READY) {
-                last_stats_ms_.store(0);
-            }
-            return false;
-        }
-        return true;
-    } catch (const std::exception& e) {
-        WARN(logger) << "remove search article failed, article_id=" << article_id << ": " << e.what();
-        invalidateClient();
-        return false;
-    }
-}
-
 bool SearchSync::flushDirty()
 {
     auto dirty = loadDirty();
@@ -493,23 +341,26 @@ bool SearchSync::flushDirty()
         }
 
         auto& entry = dirty[article_id];
-        bool ok = false;
+        int32_t rt = SEARCH_OK;
         if (entry.op == OP_REMOVE) {
-            ok = sendRemove(article_id, entry.ts);
+            rt = client_.Remove(article_id, entry.ts);
         } else {
             tagSearchDoc doc;
             bool missing = false;
             if (buildDoc(article_id, entry.ts, doc, missing)) {
-                ok = sendUpsert(doc);
+                rt = client_.Upsert(doc);
             } else if (missing) {
-                ok = sendRemove(article_id, entry.ts);
+                rt = client_.Remove(article_id, entry.ts);
             } else {
                 WARN(logger) << "build search doc failed, retry later, article_id=" << article_id;
                 return false;
             }
         }
 
-        if (!ok) {
+        if (rt != SEARCH_OK) {
+            if (rt == SEARCH_NOT_READY) {
+                last_stats_ms_.store(0);
+            }
             return false;
         }
         ackDirty(article_id, entry);
@@ -520,16 +371,7 @@ bool SearchSync::flushDirty()
 
 bool SearchSync::runSnapshot()
 {
-    if (!ensureConnected()) {
-        return false;
-    }
-
-    chen::rpc::RpcClient::ptr client;
-    {
-        std::lock_guard<std::mutex> lock(client_mutex_);
-        client = client_;
-    }
-    if (!client || !client->isConnected()) {
+    if (!client_.EnsureConnected()) {
         return false;
     }
 
@@ -542,11 +384,10 @@ bool SearchSync::runSnapshot()
 
     uint64_t snapshot_id = (chen::TimeUtil::GetCurrentMs() << 8) ^ (static_cast<uint64_t>(::getpid()) & 0xff);
     const SearchConf conf = GetSearchConf();
-    uint64_t rpc_timeout = conf.snapshot_rpc_timeout_ms;
 
     try {
         int64_t started_at = static_cast<int64_t>(chen::TimeUtil::GetCurrentMs());
-        int32_t rt = client->callWithTimeout<int32_t>(rpc_timeout, static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_BEGIN), snapshot_id, started_at);
+        int32_t rt = client_.RebuildBegin(snapshot_id, started_at);
         if (rt != SEARCH_OK) {
             WARN(logger) << "search rebuild begin rejected, code=" << rt;
             return false;
@@ -561,7 +402,7 @@ bool SearchSync::runSnapshot()
             if (batch.empty()) {
                 return true;
             }
-            int32_t code = client->callWithTimeout<int32_t>(rpc_timeout, static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_DOCS), snapshot_id, batch);
+            int32_t code = client_.RebuildDocs(snapshot_id, batch);
             if (code != SEARCH_OK) {
                 WARN(logger) << "search rebuild docs rejected, snapshot_id=" << snapshot_id << ", code=" << code;
                 return false;
@@ -673,8 +514,7 @@ bool SearchSync::runSnapshot()
         }
 
         int64_t finished_at = static_cast<int64_t>(chen::TimeUtil::GetCurrentMs());
-        int32_t commit_rt = client->callWithTimeout<int32_t>(
-            rpc_timeout, static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_COMMIT), snapshot_id, finished_at);
+        int32_t commit_rt = client_.RebuildCommit(snapshot_id, finished_at);
         if (commit_rt != SEARCH_OK) {
             WARN(logger) << "search rebuild commit rejected, snapshot_id=" << snapshot_id << ", code=" << commit_rt;
             return false;
@@ -684,7 +524,7 @@ bool SearchSync::runSnapshot()
         return true;
     } catch (const std::exception& e) {
         WARN(logger) << "search snapshot failed: " << e.what();
-        invalidateClient();
+        client_.Close();
         return false;
     }
 }

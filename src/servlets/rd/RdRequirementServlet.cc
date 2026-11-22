@@ -1,9 +1,7 @@
 #include "RdRequirementServlet.hpp"
 
-#include "../../Access/AccessPolicy.hpp"
-#include "../../Access/AccessScopeResolver.hpp"
-#include "../../Repository/RdListQueryRepository.hpp"
-#include "../../Repository/RequirementRepository.hpp"
+#include "../../Service/RdListService.hpp"
+#include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 
@@ -28,26 +26,19 @@ int32_t RdRequirementServlet::handle(
             break;
         }
 
-        auto db = GetDB();
-        if (!db) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
-        OrgScope scope;
-        if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-            result->setErrno(DB_OPERATION_FAILED);
-            break;
-        }
-
         if (id) {
-            auto info = RequirementRepository::Get(id, db);
-            if (!info || info->getIsDeleted()) {
+            DB::RequirementInfo::ptr info;
+            auto rt = RequirementService::GetDetail(viewer, id, info);
+            if (rt == RequirementService::ViewResult::NotFound) {
                 result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;
             }
-            if (!AccessPolicy::CanViewRequirement(viewer, scope, info->getOrgId())) {
+            if (rt == RequirementService::ViewResult::AccessDenied) {
                 result->setErrno(ACCESS_DENIED);
+                break;
+            }
+            if (rt != RequirementService::ViewResult::Ok) {
+                result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
             Json::Value data;
@@ -77,7 +68,7 @@ int32_t RdRequirementServlet::handle(
 
         std::vector<DB::RequirementInfo::ptr> requirements;
         int64_t total = 0;
-        if (!RdListQueryRepository::ListRequirements(requirements, total, scope, org_id, filter, db)) {
+        if (!RdListService::ListRequirements(viewer, org_id, filter, requirements, total)) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
