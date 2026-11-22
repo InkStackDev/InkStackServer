@@ -11,6 +11,7 @@
 #include "../../Repository/BadgeRepository.hpp"
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Domain/ArticleTypes.hpp"
+#include "../../Repository/UserFollowRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -122,7 +123,7 @@ int32_t UserAchievementsServlet::handle(
         }
 
         // ========== 4. 计算关注者数 ==========
-        int64_t total_followers = UserFollowRelMgr::GetInstance()->countFollowers(uid);
+        int64_t total_followers = UserFollowRelRepository::CountFollowers(uid, GetDB());
 
         // ========== 5. 徽章解锁判断 ==========
         std::vector<DB::BadgeInfo::ptr> badges;

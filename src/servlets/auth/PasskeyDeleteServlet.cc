@@ -1,6 +1,6 @@
 #include "PasskeyDeleteServlet.hpp"
 
-#include "../../Manager/PasskeyManager.hpp"
+#include "../../Service/PasskeyService.hpp"
 
 PasskeyDeleteServlet::PasskeyDeleteServlet()
     : BlogLoginedServlet("PasskeyDeleteServlet")
@@ -26,13 +26,13 @@ int32_t PasskeyDeleteServlet::handle(
             break;
         }
 
-        auto passkey = PasskeyMgr::GetInstance()->get(id);
+        auto passkey = PasskeyService::Get(id);
         if (!passkey || passkey->getUserId() != uid) {
             result->setErrno(PASSKEY_NOT_FOUND);
             break;
         }
 
-        if (PasskeyMgr::GetInstance()->remove(id) != 0) {
+        if (PasskeyService::Remove(id) != 0) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

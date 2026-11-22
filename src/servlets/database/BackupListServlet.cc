@@ -1,7 +1,7 @@
 #include "BackupListServlet.hpp"
 
-#include "../../Manager/BackupRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/RecordRepository.hpp"
 
 BackupListServlet::BackupListServlet()
     : BlogLoginedServlet("BackupListServlet")
@@ -47,7 +47,7 @@ int32_t BackupListServlet::handle(
 
         std::vector<DB::BackupRecordInfo::ptr> list;
         int64_t total = 0;
-        if (!BackupRecordMgr::GetInstance()->list(list, total, search, type, status, offset, pageSize)) {
+        if (!BackupRecordRepository::ListByPages(list, total, search, type, status, offset, pageSize, GetDB())) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

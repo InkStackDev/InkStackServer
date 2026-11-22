@@ -4,8 +4,8 @@
 
 #include <algorithm>
 
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserFollowRelRepository.hpp"
 
 UserMutualFollowingListServlet::UserMutualFollowingListServlet()
     : BlogLoginedServlet("UserMutualFollowingListServlet")
@@ -31,7 +31,7 @@ int32_t UserMutualFollowingListServlet::handle(
         std::string kw_lower = chen::StringUtil::ToLower(keyword);
 
         std::vector<int64_t> mutual_ids;
-        UserFollowRelMgr::GetInstance()->listMutualFollowing(mutual_ids, uid);
+        UserFollowRelRepository::ListMutualFollowing(mutual_ids, uid, GetDB());
 
         std::vector<int64_t> filtered_ids;
         filtered_ids.reserve(mutual_ids.size());

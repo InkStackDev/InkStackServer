@@ -1,7 +1,7 @@
 #include "UserFollowerListServlet.hpp"
 
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserFollowRelRepository.hpp"
 
 UserFollowerListServlet::UserFollowerListServlet()
     : BlogLoginedServlet("UserFollowerListServlet")
@@ -26,7 +26,7 @@ int32_t UserFollowerListServlet::handle(
         int32_t size = request->getParamAs<int32_t>("size", 20);
 
         std::vector<DB::UserFollowRelInfo::ptr> rels;
-        UserFollowRelMgr::GetInstance()->listFollowers(rels, target_uid, offset, size);
+        UserFollowRelRepository::ListFollowers(rels, target_uid, offset, size, GetDB());
 
         Json::Value arr(Json::arrayValue);
         for (auto& rel : rels) {
@@ -41,13 +41,13 @@ int32_t UserFollowerListServlet::handle(
             item["account"] = user->getAccount();
             item["avatar"] = user->getAvatar();
             item["bio"] = user->getBio();
-            item["following_count"] = UserFollowRelMgr::GetInstance()->countFollowing(follower_id);
-            item["follower_count"] = UserFollowRelMgr::GetInstance()->countFollowers(follower_id);
+            item["following_count"] = UserFollowRelRepository::CountFollowing(follower_id, GetDB());
+            item["follower_count"] = UserFollowRelRepository::CountFollowers(follower_id, GetDB());
             item["create_time"] = rel->getCreateTime();
             arr.append(item);
         }
 
-        int64_t total = UserFollowRelMgr::GetInstance()->countFollowers(target_uid);
+        int64_t total = UserFollowRelRepository::CountFollowers(target_uid, GetDB());
 
         result->setErrno(SUCCESS);
         result->set("list", arr);

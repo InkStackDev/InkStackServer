@@ -1,7 +1,8 @@
 #include "ExportDeleteServlet.hpp"
 
-#include "../../Manager/ExportRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/RecordRepository.hpp"
+#include "../../Service/RecordService.hpp"
 
 ExportDeleteServlet::ExportDeleteServlet()
     : BlogLoginedServlet("ExportDeleteServlet")
@@ -41,13 +42,13 @@ int32_t ExportDeleteServlet::handle(
             break;
         }
 
-        auto info = ExportRecordMgr::GetInstance()->get(id);
+        auto info = ExportRecordRepository::Get(id, GetDB());
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "export record not found");
             break;
         }
 
-        if (!ExportRecordMgr::GetInstance()->remove(id)) {
+        if (!ExportRecordService::Remove(id)) {
             result->setErrno(DB_OPERATION_FAILED, "delete export failed");
             break;
         }

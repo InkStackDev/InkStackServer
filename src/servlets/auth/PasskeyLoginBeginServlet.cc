@@ -4,9 +4,9 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
-#include "../../Manager/PasskeyManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Service/PasskeyService.hpp"
 
 PasskeyLoginBeginServlet::PasskeyLoginBeginServlet()
     : BlogServlet("PasskeyLoginBeginServlet")
@@ -50,7 +50,7 @@ int32_t PasskeyLoginBeginServlet::handle(
             }
 
             std::vector<DB::UserPasskeyInfo::ptr> passkeys;
-            if (PasskeyMgr::GetInstance()->listByUser(passkeys, user->getId()) < 0) {
+            if (PasskeyService::ListByUser(passkeys, user->getId()) < 0) {
                 result->setErrno(DB_OPERATION_FAILED);
                 break;
             }

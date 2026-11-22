@@ -1,7 +1,8 @@
 #include "BackupDeleteServlet.hpp"
 
-#include "../../Manager/BackupRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/RecordRepository.hpp"
+#include "../../Service/RecordService.hpp"
 
 BackupDeleteServlet::BackupDeleteServlet()
     : BlogLoginedServlet("BackupDeleteServlet")
@@ -41,13 +42,13 @@ int32_t BackupDeleteServlet::handle(
             break;
         }
 
-        auto info = BackupRecordMgr::GetInstance()->get(id);
+        auto info = BackupRecordRepository::Get(id, GetDB());
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "backup record not found");
             break;
         }
 
-        if (!BackupRecordMgr::GetInstance()->remove(id)) {
+        if (!BackupRecordService::Remove(id)) {
             result->setErrno(DB_OPERATION_FAILED, "delete backup failed");
             break;
         }

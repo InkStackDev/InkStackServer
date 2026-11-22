@@ -5,8 +5,8 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
-#include "../../Manager/PasskeyManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/PasskeyService.hpp"
 
 PasskeyLoginFinishServlet::PasskeyLoginFinishServlet()
     : BlogServlet("PasskeyLoginFinishServlet")
@@ -38,7 +38,7 @@ int32_t PasskeyLoginFinishServlet::handle(
             break;
         }
 
-        auto passkey = PasskeyMgr::GetInstance()->getByCredentialId(credential_id);
+        auto passkey = PasskeyService::GetByCredentialId(credential_id);
         if (!passkey) {
             result->setErrno(PASSKEY_NOT_FOUND);
             break;
@@ -69,7 +69,7 @@ int32_t PasskeyLoginFinishServlet::handle(
         passkey->setSignCount(auth_result.sign_count);
         passkey->setLastUsedAt(chen::TimeUtil::GetCurrentSec());
         passkey->setBackupState(auth_result.backup_state);
-        if (PasskeyMgr::GetInstance()->update(passkey) != 0) {
+        if (PasskeyService::Update(passkey) != 0) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

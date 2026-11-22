@@ -1,7 +1,7 @@
 #include "ExportCreateServlet.hpp"
 
-#include "../../Manager/ExportRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Service/RecordService.hpp"
 
 ExportCreateServlet::ExportCreateServlet()
     : BlogLoginedServlet("ExportCreateServlet")
@@ -43,7 +43,7 @@ int32_t ExportCreateServlet::handle(
         std::string timestamp = std::to_string(time(0));
         std::string name = "export_" + type + "_" + timestamp;
 
-        auto info = ExportRecordMgr::GetInstance()->create(uid, type, name);
+        auto info = ExportRecordService::Create(uid, type, name);
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "create export failed");
             break;

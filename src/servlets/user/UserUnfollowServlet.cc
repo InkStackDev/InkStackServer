@@ -1,7 +1,7 @@
 #include "UserUnfollowServlet.hpp"
 
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Service/UserFollowRelService.hpp"
 
 UserUnfollowServlet::UserUnfollowServlet()
     : BlogLoginedServlet("UserUnfollowServlet")
@@ -23,7 +23,7 @@ int32_t UserUnfollowServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, following_id, "following_id");
 
-        if (!UserFollowRelMgr::GetInstance()->unfollow(uid, following_id)) {
+        if (!UserFollowRelService::Unfollow(uid, following_id)) {
             result->setErrno(USER_NOT_FOLLOWING);
             break;
         }

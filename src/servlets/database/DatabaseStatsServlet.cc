@@ -1,6 +1,5 @@
 #include "DatabaseStatsServlet.hpp"
 
-#include "../../Manager/BackupRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Repository/LabelRepository.hpp"
 #include "../../Util/Util.hpp"
@@ -8,6 +7,7 @@
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/CategoryRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/RecordRepository.hpp"
 
 DatabaseStatsServlet::DatabaseStatsServlet()
     : BlogLoginedServlet("DatabaseStatsServlet")
@@ -53,7 +53,7 @@ int32_t DatabaseStatsServlet::handle(
 
         int64_t total_backups = 0;
         std::vector<DB::BackupRecordInfo::ptr> backups;
-        BackupRecordMgr::GetInstance()->list(backups, total_backups, "", "", "", 0, 1);
+        BackupRecordRepository::ListByPages(backups, total_backups, "", "", "", 0, 1, GetDB());
 
         auto du = GetDiskUsage();
 

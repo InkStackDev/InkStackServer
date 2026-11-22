@@ -1,7 +1,7 @@
 #include "ExportListServlet.hpp"
 
-#include "../../Manager/ExportRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/RecordRepository.hpp"
 
 ExportListServlet::ExportListServlet()
     : BlogLoginedServlet("ExportListServlet")
@@ -47,7 +47,7 @@ int32_t ExportListServlet::handle(
 
         std::vector<DB::ExportRecordInfo::ptr> list;
         int64_t total = 0;
-        if (!ExportRecordMgr::GetInstance()->list(list, total, search, type, status, offset, pageSize)) {
+        if (!ExportRecordRepository::ListByPages(list, total, search, type, status, offset, pageSize, GetDB())) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

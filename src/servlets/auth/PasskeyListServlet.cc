@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../../Manager/PasskeyManager.hpp"
+#include "../../Service/PasskeyService.hpp"
 
 PasskeyListServlet::PasskeyListServlet()
     : BlogLoginedServlet("PasskeyListServlet")
@@ -23,7 +23,7 @@ int32_t PasskeyListServlet::handle(
         }
 
         std::vector<DB::UserPasskeyInfo::ptr> passkeys;
-        if (PasskeyMgr::GetInstance()->listByUser(passkeys, uid) < 0) {
+        if (PasskeyService::ListByUser(passkeys, uid) < 0) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

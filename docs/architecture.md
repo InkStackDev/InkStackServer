@@ -82,6 +82,7 @@ Service 不应依赖 Manager。
     （枚举已迁至 `src/Domain/ArticleTypes.hpp` / `src/Domain/CommentTypes.hpp`）
   - RD：`TaskManager`、`BugManager`、`RequirementManager`、`AssignmentManager`、`AssignmentOrganizationRelManager`
     （枚举已迁至 `src/Domain/RdTypes.hpp`）
+  - 账号/记录：`PasskeyManager`、`BackupRecordManager`、`ExportRecordManager`、`UserFollowRelManager`
 - 现有 Manager 中不得再出现：
   - `static ... ParseRow(...)`
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec

@@ -4,13 +4,13 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/BackupRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <sys/stat.h>
 
 #include "../../Config/AppConfig.hpp"
+#include "../../Service/RecordService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -54,7 +54,7 @@ int32_t BackupCreateServlet::handle(
         std::string timestamp = std::to_string(time(0));
         std::string name = "backup_" + type + "_" + timestamp;
 
-        auto info = BackupRecordMgr::GetInstance()->create(uid, type, name, "");
+        auto info = BackupRecordService::Create(uid, type, name, "");
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "create backup failed");
             break;

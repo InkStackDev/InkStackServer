@@ -1,11 +1,11 @@
 #include "UserFollowServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+#include "../../Service/UserFollowRelService.hpp"
 
 UserFollowServlet::UserFollowServlet()
     : BlogLoginedServlet("UserFollowServlet")
@@ -39,9 +39,9 @@ int32_t UserFollowServlet::handle(
             break;
         }
 
-        bool already_following = UserFollowRelMgr::GetInstance()->isFollowing(uid, following_id);
+        bool already_following = UserFollowRelService::IsFollowing(uid, following_id);
 
-        auto info = UserFollowRelMgr::GetInstance()->follow(uid, following_id);
+        auto info = UserFollowRelService::Follow(uid, following_id);
         if (!info) {
             result->setErrno(USER_FOLLOW_FAILED);
             break;

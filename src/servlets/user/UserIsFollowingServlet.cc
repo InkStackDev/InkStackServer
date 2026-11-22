@@ -1,7 +1,7 @@
 #include "UserIsFollowingServlet.hpp"
 
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Service/UserFollowRelService.hpp"
 
 UserIsFollowingServlet::UserIsFollowingServlet()
     : BlogLoginedServlet("UserIsFollowingServlet")
@@ -23,7 +23,7 @@ int32_t UserIsFollowingServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, user_id, "user_id");
 
-        bool following = UserFollowRelMgr::GetInstance()->isFollowing(uid, user_id);
+        bool following = UserFollowRelService::IsFollowing(uid, user_id);
 
         result->setErrno(SUCCESS);
         result->set("is_following", following);

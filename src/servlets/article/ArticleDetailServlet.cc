@@ -2,7 +2,6 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/ArticleRepository.hpp"
@@ -11,6 +10,7 @@
 #include "../../Repository/LabelRepository.hpp"
 #include "../../Repository/ArticleRelRepository.hpp"
 #include "../../Domain/ArticleTypes.hpp"
+#include "../../Repository/UserFollowRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -79,7 +79,7 @@ int32_t ArticleDetailServlet::handle(
         }
         result->set("author_article_count", author_article_count);
         result->set("author_praise_count", author_praise_total);
-        result->set("author_follower_count", UserFollowRelMgr::GetInstance()->countFollowers(uid));
+        result->set("author_follower_count", UserFollowRelRepository::CountFollowers(uid, GetDB()));
         result->set("title", info->getTitle());
         result->set("content", info->getContent());
         result->set("user_id", uid);

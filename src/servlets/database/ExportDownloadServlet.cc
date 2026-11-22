@@ -4,12 +4,12 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/Util.hpp>
 
-#include "../../Manager/ExportRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
 
 #include <fstream>
 
 #include "../../Config/AppConfig.hpp"
+#include "../../Repository/RecordRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -52,7 +52,7 @@ int32_t ExportDownloadServlet::handle(
             break;
         }
 
-        auto info = ExportRecordMgr::GetInstance()->get(id);
+        auto info = ExportRecordRepository::Get(id, GetDB());
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "export record not found");
             break;

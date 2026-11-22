@@ -8,7 +8,6 @@
 #include <Chen/Util/TimeUtil.hpp>
 #include <json/json.h>
 
-#include "../Manager/BackupRecordManager.hpp"
 #include "../Repository/RecordRepository.hpp"
 #include "../Manager/NotificationManager.hpp"
 #include "../Manager/UserManager.hpp"
@@ -771,7 +770,7 @@ static void EventDatabaseBackup(const std::any& d)
 
     if (data.mysql_dbs.empty()) {
         ERROR(logger) << "mysql config not found for backup " << data.backup_id;
-        auto info = BackupRecordMgr::GetInstance()->get(data.backup_id);
+        auto info = BackupRecordRepository::Get(data.backup_id, GetDB());
         if (info) {
             info->setStatus("failed");
             info->setDescription("mysql config not found");
@@ -786,7 +785,7 @@ static void EventDatabaseBackup(const std::any& d)
     for (const char* key : {"host", "port", "user", "passwd", "dbname"}) {
         if (dbcfg.find(key) == dbcfg.end()) {
             ERROR(logger) << "mysql config missing key=" << key << " for backup " << data.backup_id;
-            auto info = BackupRecordMgr::GetInstance()->get(data.backup_id);
+            auto info = BackupRecordRepository::Get(data.backup_id, GetDB());
             if (info) {
                 info->setStatus("failed");
                 info->setDescription(std::string("mysql config missing: ") + key);
@@ -816,7 +815,7 @@ static void EventDatabaseBackup(const std::any& d)
     INFO(logger) << "Backup " << data.backup_id << " starting, cmd=" << cmd;
     int rc = std::system(cmd.c_str());
 
-    auto info = BackupRecordMgr::GetInstance()->get(data.backup_id);
+    auto info = BackupRecordRepository::Get(data.backup_id, GetDB());
     if (!info) {
         ERROR(logger) << "Backup record " << data.backup_id << " not found after execution";
         return;

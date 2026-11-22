@@ -4,12 +4,12 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/Util.hpp>
 
-#include "../../Manager/BackupRecordManager.hpp"
 #include "../../Manager/UserManager.hpp"
 
 #include <fstream>
 
 #include "../../Config/AppConfig.hpp"
+#include "../../Repository/RecordRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -52,7 +52,7 @@ int32_t BackupDownloadServlet::handle(
             break;
         }
 
-        auto info = BackupRecordMgr::GetInstance()->get(id);
+        auto info = BackupRecordRepository::Get(id, GetDB());
         if (!info) {
             result->setErrno(DB_OPERATION_FAILED, "backup record not found");
             break;

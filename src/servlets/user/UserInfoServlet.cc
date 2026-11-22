@@ -1,7 +1,7 @@
 #include "UserInfoServlet.hpp"
 
-#include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/UserFollowRelRepository.hpp"
 
 UserInfoServlet::UserInfoServlet()
     : BlogServlet("UserInfoServlet")
@@ -57,10 +57,10 @@ int32_t UserInfoServlet::handle(
         result->set("login_time", info->getLoginTime());
         result->set("create_time", info->getCreateTime());
 
-        int64_t following = UserFollowRelMgr::GetInstance()->countFollowing(target_uid);
+        int64_t following = UserFollowRelRepository::CountFollowing(target_uid, GetDB());
         result->set("following_count", following);
 
-        int64_t follower = UserFollowRelMgr::GetInstance()->countFollowers(target_uid);
+        int64_t follower = UserFollowRelRepository::CountFollowers(target_uid, GetDB());
         result->set("follower_count", follower);
     } while (0);
     response->setBody(result->toJsonString());

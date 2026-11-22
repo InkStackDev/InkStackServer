@@ -4,7 +4,7 @@
 #include <Chen/Util/TimeUtil.hpp>
 
 #include "../../Auth/WebAuthn/WebAuthn.hpp"
-#include "../../Manager/PasskeyManager.hpp"
+#include "../../Service/PasskeyService.hpp"
 
 PasskeyRegisterFinishServlet::PasskeyRegisterFinishServlet()
     : BlogLoginedServlet("PasskeyRegisterFinishServlet")
@@ -53,7 +53,7 @@ int32_t PasskeyRegisterFinishServlet::handle(
             break;
         }
 
-        if (PasskeyMgr::GetInstance()->getByCredentialId(registration.credential_id)) {
+        if (PasskeyService::GetByCredentialId(registration.credential_id)) {
             result->setErrno(PASSKEY_ALREADY_EXISTS);
             break;
         }
@@ -73,7 +73,7 @@ int32_t PasskeyRegisterFinishServlet::handle(
         info->setCreatedAt(chen::TimeUtil::GetCurrentSec());
         info->setLastUsedAt(chen::TimeUtil::GetCurrentSec());
 
-        if (PasskeyMgr::GetInstance()->add(info) != 0) {
+        if (PasskeyService::Add(info) != 0) {
             result->setErrno(PASSKEY_REGISTER_FAILED);
             break;
         }
