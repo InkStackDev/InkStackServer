@@ -320,7 +320,7 @@ void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& it
 
 void PublishSnapshot()
 {
-    auto* registry = RegistryMgr::GetInstance();
+    auto* registry = chen::metrics::RegistryMgr::GetInstance();
     if (!registry) {
         return;
     }
@@ -330,15 +330,16 @@ void PublishSnapshot()
     const std::string now = std::to_string(chen::TimeUtil::GetCurrentSec());
     const std::string cleanup_before = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec * 2);
 
-    chen::RedisUtil::Cmd(GetRedisPoolName(), {"setex", key, ttl, registry->RenderJson()});
-    chen::RedisUtil::Cmd(GetRedisPoolName(), {"zadd", kSnapshotIndexKey, now, key});
+    using RedisArgs = std::vector<std::string>;
+    chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"setex", key, ttl, registry->RenderJson()});
+    chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"zadd", kSnapshotIndexKey, now, key});
     chen::RedisUtil::Cmd(
-        GetRedisPoolName(), {"zremrangebyscore", kSnapshotIndexKey, "-inf", cleanup_before});
+        GetRedisPoolName(), RedisArgs{"zremrangebyscore", kSnapshotIndexKey, "-inf", cleanup_before});
 }
 
 bool CollectClusterMetrics(Json::Value& out)
 {
-    auto* registry = RegistryMgr::GetInstance();
+    auto* registry = chen::metrics::RegistryMgr::GetInstance();
     if (!registry) {
         return false;
     }
@@ -356,8 +357,9 @@ bool CollectClusterMetrics(Json::Value& out)
     snapshots.push_back({SnapshotKey(), std::move(own)});
 
     const std::string min_score = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec);
+    using RedisArgs = std::vector<std::string>;
     auto index = chen::RedisUtil::Cmd(
-        GetRedisPoolName(), {"zrangebyscore", kSnapshotIndexKey, min_score, "+inf"});
+        GetRedisPoolName(), RedisArgs{"zrangebyscore", kSnapshotIndexKey, min_score, "+inf"});
     if (index && index->type == REDIS_REPLY_ARRAY) {
         const std::string own_key = SnapshotKey();
         for (size_t i = 0; i < index->elements; ++i) {
@@ -369,7 +371,7 @@ bool CollectClusterMetrics(Json::Value& out)
             if (key == own_key) {
                 continue;
             }
-            auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), {"get", key});
+            auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"get", key});
             if (!rpy || rpy->type != REDIS_REPLY_STRING) {
                 continue;
             }
