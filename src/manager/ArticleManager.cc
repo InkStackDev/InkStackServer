@@ -3,6 +3,7 @@
 #include "../Search/SearchSync.hpp"
 #include "../Util/Util.hpp"
 #include "CacheUtil.hpp"
+#include "../Repository/ArticleRepository.hpp"
 
 #include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
@@ -17,97 +18,22 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static const int kCacheTTL = 300;
-static const char* kCachePrefix = "cache:obj:art:";
 /// 浏览去重窗口（秒）
 static const int kViewDedupTTL = 10 * 60;
 
-static std::string ArticleCacheKey(int64_t id)
-{
-    return std::string(kCachePrefix) + std::to_string(id);
-}
-
-static DB::ArticleInfo::ptr ParseArticleCache(const Json::Value& v)
-{
-    auto info = std::make_shared<DB::ArticleInfo>();
-    info->setId(CacheJsonInt64(v, "id"));
-    info->setUserId(CacheJsonInt64(v, "user_id"));
-    info->setTitle(CacheJsonString(v, "title"));
-    info->setContent(CacheJsonString(v, "content"));
-    info->setType(CacheJsonInt32(v, "type"));
-    info->setState(CacheJsonInt32(v, "state"));
-    info->setChannel(CacheJsonInt64(v, "channel"));
-    info->setIsDeleted(CacheJsonInt32(v, "is_deleted"));
-    info->setPublishTime(CacheJsonTime(v, "publish_time"));
-    info->setWeight(CacheJsonInt64(v, "weight"));
-    info->setViews(CacheJsonInt64(v, "views"));
-    info->setPraise(CacheJsonInt64(v, "praise"));
-    info->setFavorites(CacheJsonInt64(v, "favorites"));
-    info->setCreateTime(CacheJsonTime(v, "create_time"));
-    info->setUpdateTime(CacheJsonTime(v, "update_time"));
-    info->markClean();
-    return info;
-}
-
-static DB::ArticleInfo::ptr GetArticleCache(int64_t id)
-{
-    std::string key = ArticleCacheKey(id);
-    std::string data = RedisCacheGet(key);
-    if (data.empty()) {
-        return nullptr;
-    }
-    Json::Value v;
-    if (!chen::JsonUtil::FromString(v, data) || !v.isObject()) {
-        RedisCacheDel(key);
-        return nullptr;
-    }
-    return ParseArticleCache(v);
-}
-
-static void SetArticleCache(const DB::ArticleInfo::ptr& info)
-{
-    if (!info) {
-        return;
-    }
-    RedisCacheSetex(ArticleCacheKey(info->getId()), info->toJsonString(), kCacheTTL);
-}
-
-static void DelArticleCache(int64_t id)
-{
-    RedisCacheDel(ArticleCacheKey(id));
-}
-
-DB::ArticleInfo::ptr ArticleManager::ParseRow(chen::ISQLData::ptr rt)
-{
-    return DB::ArticleInfoDao::ParseRow(rt);
-}
-
 void ArticleManager::add(DB::ArticleInfo::ptr info)
 {
-    SetArticleCache(info);
+    ArticleRepository::Put(info);
 }
 
 void ArticleManager::del(int64_t id)
 {
-    DelArticleCache(id);
+    ArticleRepository::Evict(id);
 }
 
 DB::ArticleInfo::ptr ArticleManager::get(int64_t id)
 {
-    auto v = GetArticleCache(id);
-    if (v) {
-        return v;
-    }
-    auto db = GetDB();
-    if (!db) {
-        ERROR(logger) << "Get DB connection fail";
-        return nullptr;
-    }
-    v = DB::ArticleInfoDao::Query(id, db);
-    if (v) {
-        SetArticleCache(v);
-    }
-    return v;
+    return ArticleRepository::Get(id, GetDB());
 }
 
 bool ArticleManager::listByUserId(std::vector<DB::ArticleInfo::ptr>& infos, int64_t id, bool valid)
@@ -300,12 +226,12 @@ int64_t ArticleManager::listByPages(std::vector<DB::ArticleInfo::ptr>& infos,
 
 void ArticleManager::delVerify(int64_t id)
 {
-    DelArticleCache(id);
+    ArticleRepository::Evict(id);
 }
 
 void ArticleManager::addVerify(DB::ArticleInfo::ptr info)
 {
-    SetArticleCache(info);
+    ArticleRepository::Put(info);
 }
 
 int64_t ArticleManager::listVerifyPages(std::vector<DB::ArticleInfo::ptr>& infos, int32_t offset, int32_t size)
@@ -325,7 +251,7 @@ int64_t ArticleManager::listVerifyPages(std::vector<DB::ArticleInfo::ptr>& infos
     }
     for (auto& info : infos) {
         if (info->getIsDeleted()) {
-            DelArticleCache(info->getId());
+            ArticleRepository::Evict(info->getId());
             continue;
         }
     }
@@ -456,13 +382,6 @@ ArticleManager::ArticleStats ArticleManager::getStats(int32_t category, int32_t 
     return stats;
 }
 
-std::string ArticleManager::statusString()
-{
-    std::stringstream ss;
-    ss << "ArticleManager cache=redis prefix=" << kCachePrefix << " ttl=" << kCacheTTL;
-    return ss.str();
-}
-
 void ArticleManager::start()
 {
     syncStatsFromDB();
@@ -529,7 +448,7 @@ void ArticleManager::flushDirty()
         return;
     }
     for (const auto& info : updated) {
-        SetArticleCache(info);
+        ArticleRepository::Put(info);
     }
     INFO(logger) << "flushDirty: flushed " << updates.size() << " articles";
 }
@@ -544,7 +463,7 @@ bool ArticleManager::incViews(uint64_t id, const std::string& cookie_id, uint64_
     bool v = addViews(id, cookie_id);
     if (v) {
         info->setViews(info->getViews() + 1);
-        SetArticleCache(info);
+        ArticleRepository::Put(info);
         addUpdate(id);
         chen::IOManager::GetThis()->schedule([user_id]() {
             chen::RedisUtil::Cmd(GetRedisPoolName(), "incr blog:total_visits");
@@ -584,7 +503,7 @@ bool ArticleManager::incPraise(uint64_t id, const std::string& cookie_id, uint64
         chen::RedisUtil::Cmd(GetRedisPoolName(), "hset pra_u2a:%lld %lld %lld", user_id, id, time(0));
     });
     info->setPraise(info->getPraise() + 1);
-    SetArticleCache(info);
+    ArticleRepository::Put(info);
     addUpdate(id);
 
     return true;
@@ -614,7 +533,7 @@ bool ArticleManager::incFavorites(uint64_t id, const std::string& cookie_id, uin
         chen::RedisUtil::Cmd(GetRedisPoolName(), "hset fav_u2a:%lld %lld %lld", user_id, id, time(0));
     });
     info->setFavorites(info->getFavorites() + 1);
-    SetArticleCache(info);
+    ArticleRepository::Put(info);
     addUpdate(id);
 
     return true;
@@ -646,7 +565,7 @@ bool ArticleManager::decPraise(uint64_t id, const std::string& cookie_id, uint64
     }
     if (v) {
         info->setPraise(info->getPraise() - 1);
-        SetArticleCache(info);
+        ArticleRepository::Put(info);
         addUpdate(id);
     }
 
@@ -679,7 +598,7 @@ bool ArticleManager::decFavorites(uint64_t id, const std::string& cookie_id, uin
     }
     if (v) {
         info->setFavorites(info->getFavorites() - 1);
-        SetArticleCache(info);
+        ArticleRepository::Put(info);
         addUpdate(id);
     }
 
@@ -765,7 +684,7 @@ void ArticleManager::incPraiseCount(int64_t id)
         return;
     }
     info->setPraise(info->getPraise() + 1);
-    SetArticleCache(info);
+    ArticleRepository::Put(info);
     addUpdate(id);
 }
 
@@ -778,7 +697,7 @@ void ArticleManager::decPraiseCount(int64_t id)
     }
     if (info->getPraise() > 0) {
         info->setPraise(info->getPraise() - 1);
-        SetArticleCache(info);
+        ArticleRepository::Put(info);
         addUpdate(id);
     }
 }
@@ -965,7 +884,7 @@ void ArticleManager::doArticlePublishSchedule()
         return;
     }
     for (const auto& info : published) {
-        SetArticleCache(info);
+        ArticleRepository::Put(info);
         clearCalendarCache(info->getUserId(), info->getPublishTime());
     }
     for (auto id : published_ids) {

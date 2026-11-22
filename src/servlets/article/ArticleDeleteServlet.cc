@@ -1,13 +1,10 @@
 #include "ArticleDeleteServlet.hpp"
 
-#include <Chen/Log/Log.hpp>
+#include <set>
+#include <vector>
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Search/SearchSync.hpp"
+#include "../../Service/ArticleService.hpp"
 #include "../../Util/Util.hpp"
-#include "DB/ArticleInfo.hpp"
-
-static chen::Logger::ptr logger = LOG_ROOT();
 
 ArticleDeleteServlet::ArticleDeleteServlet()
     : BlogLoginedServlet("ArticleDeleteServlet")
@@ -27,61 +24,19 @@ int32_t ArticleDeleteServlet::handle(
         for (auto& i : tmp) {
             art_ids.insert(chen::TypeUtil::Atoi(i));
         }
+        std::vector<int64_t> id_list(art_ids.begin(), art_ids.end());
 
         int64_t uid = getUserId(request);
-        std::vector<DB::ArticleInfo::ptr> infos;
-        for (auto& id : art_ids) {
-            auto info = ArticleMgr::GetInstance()->get(id);
-            if (!info) {
-                continue;
-            }
-            if (info->getUserId() != uid) {
-                continue;
-            }
-            if (info->getIsDeleted()) {
-                continue;
-            }
-            infos.push_back(info);
-        }
-
-        auto db = GetDB();
-        if (!db) {
+        std::vector<int64_t> deleted;
+        auto rt = ArticleService::DeleteArticles(uid, id_list, deleted);
+        if (rt != ArticleService::DeleteArticlesResult::Ok) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
-        auto trans = db->openTransaction();
-        if (!trans) {
-            result->setErrno(DB_TRANSACTION_FAILED);
-            break;
-        }
-        time_t now = time(0);
-        for (auto& i : infos) {
-            i->setIsDeleted(1);
-            i->setUpdateTime(now);
-            DB::ArticleInfoDao::Update(i, db);
-        }
-        if (!trans->commit()) {
-            ERROR(logger) << "commit fail";
-            result->setErrno(DB_COMMIT_FAILED);
-
-            for (auto& i : infos) {
-                i->setIsDeleted(0);
-            }
-            break;
-        }
-        if (!infos.empty()) {
+        if (!deleted.empty()) {
             Json::Value json_ids;
-            for (auto& i : infos) {
-                json_ids.append(i->getId());
-                ArticleMgr::GetInstance()->del(i->getId());
-                // 从搜索索引中移除
-                SearchSyncMgr::GetInstance()->markDirty(i->getId(), SearchSync::OP_REMOVE);
-                // 从定时发布调度中移除
-                ArticleMgr::GetInstance()->unscheduleArticle(i->getId());
-                // 删除的文章如果是已发布状态，清除对应月份的日历缓存
-                if (i->getState() == ArticleManager::Status::PUBLISHED && i->getPublishTime() > 0) {
-                    ArticleMgr::GetInstance()->clearCalendarCache(i->getUserId(), i->getPublishTime());
-                }
+            for (auto id : deleted) {
+                json_ids.append(id);
             }
             result->set("ids", json_ids);
         }

@@ -68,8 +68,6 @@ public:
 
     std::pair<DB::ArticleInfo::ptr, DB::ArticleInfo::ptr> nearby(int64_t id);
 
-    std::string statusString();
-
     void start();
 
     void stop();
@@ -159,8 +157,6 @@ private:
     bool addViews(uint64_t id, const std::string& cookie_id);
 
     void addUpdate(int64_t id);
-
-    static DB::ArticleInfo::ptr ParseRow(chen::ISQLData::ptr rt);
 
     void doArticlePublishSchedule();
 
