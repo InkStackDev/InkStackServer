@@ -2,11 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/AssignmentRelRepository.hpp"
 #include "../../Repository/ResourceRepository.hpp"
+#include "../../Repository/AssignmentRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -24,7 +24,7 @@ int32_t AssignmentSubmissionListServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, assign_id, "assign_id");
 
-        auto assign_info = AssignmentMgr::GetInstance()->get(assign_id);
+        auto assign_info = AssignmentRepository::Get(assign_id, GetDB());
         if (!assign_info) {
             result->setErrno(ASSIGNMENT_NOT_FOUND);
             break;

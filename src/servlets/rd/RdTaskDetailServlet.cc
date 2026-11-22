@@ -1,12 +1,12 @@
 #include "RdTaskDetailServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/TaskRepository.hpp"
 
 RdTaskDetailServlet::RdTaskDetailServlet()
     : BlogLoginedServlet("RdTaskDetailServlet")
@@ -39,7 +39,7 @@ int32_t RdTaskDetailServlet::handle(
         int32_t system_role = user->getRole();
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
 
-        auto info = TaskMgr::GetInstance()->get(id);
+        auto info = TaskRepository::Get(id, GetDB());
         if (!info || info->getIsDeleted()) {
             result->setErrno(TASK_NOT_FOUND);
             break;

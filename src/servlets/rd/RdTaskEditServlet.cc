@@ -1,13 +1,13 @@
 #include "RdTaskEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/TaskService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/TaskRepository.hpp"
 
 RdTaskEditServlet::RdTaskEditServlet()
     : BlogLoginedServlet("RdTaskEditServlet")
@@ -38,7 +38,7 @@ int32_t RdTaskEditServlet::handle(
         int32_t org_role = rel->getRole();
 
         if (id) {
-            auto existing = TaskMgr::GetInstance()->get(id);
+            auto existing = TaskRepository::Get(id, GetDB());
             if (!existing || existing->getOrgId() != org_id) {
                 result->setErrno(TASK_NOT_FOUND);
                 break;

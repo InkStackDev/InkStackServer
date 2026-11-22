@@ -3,11 +3,11 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../../Permission.hpp"
-#include "../../Manager/AssignmentManager.hpp"
-#include "../../Manager/AssignmentOrganizationRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/AssignmentRepository.hpp"
+#include "../../Repository/AssignmentRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -59,16 +59,18 @@ int32_t OrganizationAssignmentListServlet::handle(
 
         // get assignments in organization
         std::vector<DB::AssignmentOrganizationRelInfo::ptr> assign_rels;
-        int64_t total = AssignmentOrganizationRelMgr::GetInstance()->getByPages(assign_rels, org_id, offset, page_size, status, true);
+        int64_t total = AssignmentOrganizationRelRepository::ListByOrgPages(
+            assign_rels, org_id, offset, page_size, status, true, GetDB());
 
         Json::Value list;
         for (auto& i : assign_rels) {
             Json::Value item;
-            auto assign = AssignmentMgr::GetInstance()->get(i->getAssignmentId());
+            auto assign = AssignmentRepository::Get(i->getAssignmentId(), GetDB());
             if (assign->getIsDeleted()) {
                 continue;
             }
-            auto assign_org_rel = AssignmentOrganizationRelMgr::GetInstance()->getByOrgAndAssign(org_id, i->getAssignmentId());
+            auto assign_org_rel =
+                AssignmentOrganizationRelRepository::GetByOrgAndAssign(org_id, i->getAssignmentId(), GetDB());
             item["id"] = i->getId();
             item["assign_id"] = i->getAssignmentId();
             item["assigned_by"] = assign_org_rel->getAssignedBy();

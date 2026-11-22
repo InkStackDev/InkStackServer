@@ -2,10 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/AssignmentManager.hpp"
-#include "../../Manager/AssignmentOrganizationRelManager.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/AssignmentRepository.hpp"
+#include "../../Repository/AssignmentRelRepository.hpp"
+#include "../../Domain/RdTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -39,13 +40,15 @@ int32_t UserAssignmentListServlet::handle(
         for (auto& org_rel : user_org_rels) {
             // 该组织下的所有作业关系
             std::vector<DB::AssignmentOrganizationRelInfo::ptr> assignment_org_rels;
-            AssignmentOrganizationRelMgr::GetInstance()->getByPages(assignment_org_rels, org_rel->getOrgId(), 0, INT32_MAX, -1, true);
+            AssignmentOrganizationRelRepository::ListByOrgPages(
+                assignment_org_rels, org_rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
             for (auto& assign_org_rel : assignment_org_rels) {
                 // 把作业信息加入结果集中
                 int64_t assign_id = assign_org_rel->getAssignmentId();
-                auto assign_info = AssignmentMgr::GetInstance()->get(assign_id);
+                auto assign_info = AssignmentRepository::Get(assign_id, GetDB());
                 // 只返回激活状态的作业
-                if (!assign_info || assign_info->getStatus() == AssignmentManager::Status::DRAFT || assign_info->getIsDeleted()) {
+                if (!assign_info || assign_info->getStatus() == AssignmentStatus::DRAFT
+                    || assign_info->getIsDeleted()) {
                     continue;
                 }
                 Json::Value item;

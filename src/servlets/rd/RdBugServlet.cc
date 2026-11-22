@@ -1,12 +1,12 @@
 #include "RdBugServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/BugManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/BugRepository.hpp"
 
 RdBugServlet::RdBugServlet()
     : BlogLoginedServlet("RdBugServlet")
@@ -36,7 +36,7 @@ int32_t RdBugServlet::handle(
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
 
         if (id) {
-            auto info = BugMgr::GetInstance()->get(id);
+            auto info = BugRepository::Get(id, GetDB());
             if (!info || info->getIsDeleted()) {
                 result->setErrno(BUG_NOT_FOUND);
                 break;
@@ -71,7 +71,7 @@ int32_t RdBugServlet::handle(
 
         std::vector<DB::BugInfo::ptr> all;
         if (is_platform_admin && org_id) {
-            BugMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
+            BugRepository::ListByOrg(all, org_id, 0, INT32_MAX, -1, true, GetDB());
         } else if (!is_platform_admin) {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
@@ -80,7 +80,7 @@ int32_t RdBugServlet::handle(
                     continue;
                 }
                 std::vector<DB::BugInfo::ptr> org_bugs;
-                BugMgr::GetInstance()->listByOrg(org_bugs, rel->getOrgId(), 0, INT32_MAX, -1, true);
+                BugRepository::ListByOrg(org_bugs, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
                 for (auto& bug : org_bugs) {
                     if (CanViewBug(rel->getRole(), uid, bug->getCreatorId())) {
                         all.push_back(bug);
@@ -88,7 +88,7 @@ int32_t RdBugServlet::handle(
                 }
             }
         } else {
-            BugMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
+            BugRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
         }
 
         std::vector<DB::BugInfo::ptr> filtered;

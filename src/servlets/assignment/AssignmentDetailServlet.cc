@@ -2,8 +2,8 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/AssignmentManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/AssignmentRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -20,7 +20,7 @@ int32_t AssignmentDetailServlet::handle(
 {
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
-        auto assignment = AssignmentMgr::GetInstance()->get(id);
+        auto assignment = AssignmentRepository::Get(id, GetDB());
 
         if (!assignment || assignment->getIsDeleted()) {
             result->setErrno(ARTICLE_INVALID_ID);

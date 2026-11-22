@@ -1,12 +1,12 @@
 #include "RdRequirementDetailServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/RequirementManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/RequirementRepository.hpp"
 
 RdRequirementDetailServlet::RdRequirementDetailServlet()
     : BlogLoginedServlet("RdRequirementDetailServlet")
@@ -39,7 +39,7 @@ int32_t RdRequirementDetailServlet::handle(
         int32_t system_role = user->getRole();
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
 
-        auto info = RequirementMgr::GetInstance()->get(id);
+        auto info = RequirementRepository::Get(id, GetDB());
         if (!info || info->getIsDeleted()) {
             result->setErrno(REQUIREMENT_NOT_FOUND);
             break;

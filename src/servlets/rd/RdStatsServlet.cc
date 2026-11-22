@@ -1,12 +1,13 @@
 #include "RdStatsServlet.hpp"
 
-#include "../../Manager/BugManager.hpp"
-#include "../../Manager/RequirementManager.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/TaskRepository.hpp"
+#include "../../Repository/BugRepository.hpp"
+#include "../../Repository/RequirementRepository.hpp"
+#include "../../Domain/RdTypes.hpp"
 
 RdStatsServlet::RdStatsServlet()
     : BlogLoginedServlet("RdStatsServlet")
@@ -41,13 +42,13 @@ int32_t RdStatsServlet::handle(
 
         if (is_platform_admin) {
             if (org_id) {
-                RequirementMgr::GetInstance()->listByOrg(reqs, org_id, 0, INT32_MAX, -1, true);
-                BugMgr::GetInstance()->listByOrg(bugs, org_id, 0, INT32_MAX, -1, true);
-                TaskMgr::GetInstance()->listByOrg(tasks, org_id, 0, INT32_MAX, -1, true);
+                RequirementRepository::ListByOrg(reqs, org_id, 0, INT32_MAX, -1, true, GetDB());
+                BugRepository::ListByOrg(bugs, org_id, 0, INT32_MAX, -1, true, GetDB());
+                TaskRepository::ListByOrg(tasks, org_id, 0, INT32_MAX, -1, true, GetDB());
             } else {
-                RequirementMgr::GetInstance()->listByPages(reqs, 0, INT32_MAX, -1, true);
-                BugMgr::GetInstance()->listByPages(bugs, 0, INT32_MAX, -1, true);
-                TaskMgr::GetInstance()->listByPages(tasks, 0, INT32_MAX, -1, true);
+                RequirementRepository::ListByPages(reqs, 0, INT32_MAX, -1, true, GetDB());
+                BugRepository::ListByPages(bugs, 0, INT32_MAX, -1, true, GetDB());
+                TaskRepository::ListByPages(tasks, 0, INT32_MAX, -1, true, GetDB());
             }
         } else {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
@@ -57,13 +58,13 @@ int32_t RdStatsServlet::handle(
                     continue;
                 }
                 std::vector<DB::RequirementInfo::ptr> oReqs;
-                RequirementMgr::GetInstance()->listByOrg(oReqs, rel->getOrgId(), 0, INT32_MAX, -1, true);
+                RequirementRepository::ListByOrg(oReqs, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
                 reqs.insert(reqs.end(), oReqs.begin(), oReqs.end());
                 std::vector<DB::BugInfo::ptr> oBugs;
-                BugMgr::GetInstance()->listByOrg(oBugs, rel->getOrgId(), 0, INT32_MAX, -1, true);
+                BugRepository::ListByOrg(oBugs, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
                 bugs.insert(bugs.end(), oBugs.begin(), oBugs.end());
                 std::vector<DB::TaskInfo::ptr> oTasks;
-                TaskMgr::GetInstance()->listByOrg(oTasks, rel->getOrgId(), 0, INT32_MAX, -1, true);
+                TaskRepository::ListByOrg(oTasks, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
                 tasks.insert(tasks.end(), oTasks.begin(), oTasks.end());
             }
         }
@@ -72,7 +73,7 @@ int32_t RdStatsServlet::handle(
         for (auto& info : reqs) {
             total_reqs++;
             int st = info->getStatus();
-            if (st != RequirementManager::STATUS_DONE && st != RequirementManager::STATUS_CLOSED) {
+            if (st != RequirementStatus::DONE && st != RequirementStatus::CLOSED) {
                 open_reqs++;
             }
         }
@@ -81,7 +82,7 @@ int32_t RdStatsServlet::handle(
         for (auto& info : bugs) {
             total_bugs++;
             int st = info->getStatus();
-            if (st != BugManager::STATUS_FIXED && st != BugManager::STATUS_CLOSED) {
+            if (st != BugStatus::FIXED && st != BugStatus::CLOSED) {
                 unresolved_bugs++;
             }
         }
@@ -90,7 +91,8 @@ int32_t RdStatsServlet::handle(
         for (auto& info : tasks) {
             total_tasks++;
             int st = info->getStatus();
-            if (st != TaskManager::STATUS_DONE && st != TaskManager::STATUS_CLOSED && info->getDeadline() > 0 && info->getDeadline() < now) {
+            if (st != TaskStatus::DONE && st != TaskStatus::CLOSED && info->getDeadline() > 0
+                && info->getDeadline() < now) {
                 overdue_tasks++;
             }
         }

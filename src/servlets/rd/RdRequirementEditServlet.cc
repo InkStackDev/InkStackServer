@@ -1,13 +1,13 @@
 #include "RdRequirementEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/RequirementManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/RequirementRepository.hpp"
 
 RdRequirementEditServlet::RdRequirementEditServlet()
     : BlogLoginedServlet("RdRequirementEditServlet")
@@ -38,7 +38,7 @@ int32_t RdRequirementEditServlet::handle(
         int32_t org_role = rel->getRole();
 
         if (id) {
-            auto existing = RequirementMgr::GetInstance()->get(id);
+            auto existing = RequirementRepository::Get(id, GetDB());
             if (!existing || existing->getOrgId() != org_id) {
                 result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;

@@ -7,9 +7,6 @@
  */
 #pragma once
 
-#include "../../Manager/BugManager.hpp"
-#include "../../Manager/RequirementManager.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Repository/OrganizationRepository.hpp"
 #include "../../Util/Util.hpp"
@@ -24,6 +21,7 @@
 #include <ctime>
 #include <string>
 #include "../../Domain/OrganizationTypes.hpp"
+#include "../../Domain/RdTypes.hpp"
 
 // ============================================================================
 // 分页: page/page_size → offset/size
@@ -67,15 +65,15 @@ inline std::string FormatGroupKey(time_t t, const std::string& granularity)
 inline const char* RequirementStatusToString(int32_t status)
 {
     switch (status) {
-    case RequirementManager::STATUS_DRAFT:
+    case RequirementStatus::DRAFT:
         return "new";
-    case RequirementManager::STATUS_PENDING:
+    case RequirementStatus::PENDING:
         return "developing";
-    case RequirementManager::STATUS_INPROGRESS:
+    case RequirementStatus::IN_PROGRESS:
         return "testing";
-    case RequirementManager::STATUS_DONE:
+    case RequirementStatus::DONE:
         return "done";
-    case RequirementManager::STATUS_CLOSED:
+    case RequirementStatus::CLOSED:
         return "closed";
     default:
         return "new";
@@ -85,19 +83,19 @@ inline const char* RequirementStatusToString(int32_t status)
 inline int32_t StringToRequirementStatus(const std::string& s)
 {
     if (s == "new") {
-        return RequirementManager::STATUS_DRAFT;
+        return RequirementStatus::DRAFT;
     }
     if (s == "developing") {
-        return RequirementManager::STATUS_PENDING;
+        return RequirementStatus::PENDING;
     }
     if (s == "testing") {
-        return RequirementManager::STATUS_INPROGRESS;
+        return RequirementStatus::IN_PROGRESS;
     }
     if (s == "done") {
-        return RequirementManager::STATUS_DONE;
+        return RequirementStatus::DONE;
     }
     if (s == "closed") {
-        return RequirementManager::STATUS_CLOSED;
+        return RequirementStatus::CLOSED;
     }
     return -1;
 }
@@ -108,15 +106,15 @@ inline int32_t StringToRequirementStatus(const std::string& s)
 inline const char* BugStatusToString(int32_t status)
 {
     switch (status) {
-    case BugManager::STATUS_PENDING:
+    case BugStatus::PENDING:
         return "new";
-    case BugManager::STATUS_INPROGRESS:
+    case BugStatus::IN_PROGRESS:
         return "processing";
-    case BugManager::STATUS_FIXED:
+    case BugStatus::FIXED:
         return "verified";
-    case BugManager::STATUS_CLOSED:
+    case BugStatus::CLOSED:
         return "closed";
-    case BugManager::STATUS_REOPENED:
+    case BugStatus::REOPENED:
         return "reopened";
     default:
         return "new";
@@ -126,19 +124,19 @@ inline const char* BugStatusToString(int32_t status)
 inline int32_t StringToBugStatus(const std::string& s)
 {
     if (s == "new") {
-        return BugManager::STATUS_PENDING;
+        return BugStatus::PENDING;
     }
     if (s == "processing") {
-        return BugManager::STATUS_INPROGRESS;
+        return BugStatus::IN_PROGRESS;
     }
     if (s == "verified") {
-        return BugManager::STATUS_FIXED;
+        return BugStatus::FIXED;
     }
     if (s == "closed") {
-        return BugManager::STATUS_CLOSED;
+        return BugStatus::CLOSED;
     }
     if (s == "reopened") {
-        return BugManager::STATUS_REOPENED;
+        return BugStatus::REOPENED;
     }
     return -1;
 }
@@ -149,13 +147,13 @@ inline int32_t StringToBugStatus(const std::string& s)
 inline const char* TaskStatusToString(int32_t status)
 {
     switch (status) {
-    case TaskManager::STATUS_TODO:
+    case TaskStatus::TODO:
         return "todo";
-    case TaskManager::STATUS_INPROGRESS:
+    case TaskStatus::IN_PROGRESS:
         return "doing";
-    case TaskManager::STATUS_DONE:
+    case TaskStatus::DONE:
         return "done";
-    case TaskManager::STATUS_CLOSED:
+    case TaskStatus::CLOSED:
         return "closed";
     default:
         return "todo";
@@ -165,16 +163,16 @@ inline const char* TaskStatusToString(int32_t status)
 inline int32_t StringToTaskStatus(const std::string& s)
 {
     if (s == "todo") {
-        return TaskManager::STATUS_TODO;
+        return TaskStatus::TODO;
     }
     if (s == "doing") {
-        return TaskManager::STATUS_INPROGRESS;
+        return TaskStatus::IN_PROGRESS;
     }
     if (s == "done") {
-        return TaskManager::STATUS_DONE;
+        return TaskStatus::DONE;
     }
     if (s == "closed") {
-        return TaskManager::STATUS_CLOSED;
+        return TaskStatus::CLOSED;
     }
     return -1;
 }

@@ -1,9 +1,9 @@
 #include "RdMyTicketsServlet.hpp"
 
-#include "../../Manager/BugManager.hpp"
-#include "../../Manager/RequirementManager.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "RdHelper.hpp"
+#include "../../Repository/TaskRepository.hpp"
+#include "../../Repository/BugRepository.hpp"
+#include "../../Repository/RequirementRepository.hpp"
 
 RdMyTicketsServlet::RdMyTicketsServlet()
     : BlogLoginedServlet("RdMyTicketsServlet")
@@ -39,7 +39,7 @@ int32_t RdMyTicketsServlet::handle(
         if (type == "requirement") {
             std::vector<DB::RequirementInfo::ptr> my;
             std::vector<DB::RequirementInfo::ptr> all;
-            RequirementMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
+            RequirementRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
             for (auto& info : all) {
                 if (org_id && info->getOrgId() != org_id) {
                     continue;
@@ -83,7 +83,7 @@ int32_t RdMyTicketsServlet::handle(
         } else if (type == "bug") {
             std::vector<DB::BugInfo::ptr> my;
             std::vector<DB::BugInfo::ptr> all;
-            BugMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
+            BugRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
             for (auto& info : all) {
                 if (org_id && info->getOrgId() != org_id) {
                     continue;
@@ -128,7 +128,7 @@ int32_t RdMyTicketsServlet::handle(
         } else if (type == "task") {
             std::vector<DB::TaskInfo::ptr> my;
             std::vector<DB::TaskInfo::ptr> all;
-            TaskMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
+            TaskRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
             for (auto& info : all) {
                 if (org_id && info->getOrgId() != org_id) {
                     continue;

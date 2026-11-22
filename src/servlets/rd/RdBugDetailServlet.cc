@@ -1,12 +1,12 @@
 #include "RdBugDetailServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/BugManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/BugRepository.hpp"
 
 RdBugDetailServlet::RdBugDetailServlet()
     : BlogLoginedServlet("RdBugDetailServlet")
@@ -39,7 +39,7 @@ int32_t RdBugDetailServlet::handle(
         int32_t system_role = user->getRole();
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
 
-        auto info = BugMgr::GetInstance()->get(id);
+        auto info = BugRepository::Get(id, GetDB());
         if (!info || info->getIsDeleted()) {
             result->setErrno(BUG_NOT_FOUND);
             break;

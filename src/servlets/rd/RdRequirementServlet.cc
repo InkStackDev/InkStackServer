@@ -1,12 +1,12 @@
 #include "RdRequirementServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/RequirementManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/RequirementRepository.hpp"
 
 RdRequirementServlet::RdRequirementServlet()
     : BlogLoginedServlet("RdRequirementServlet")
@@ -37,7 +37,7 @@ int32_t RdRequirementServlet::handle(
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
 
         if (id) {
-            auto info = RequirementMgr::GetInstance()->get(id);
+            auto info = RequirementRepository::Get(id, GetDB());
             if (!info || info->getIsDeleted()) {
                 result->setErrno(REQUIREMENT_NOT_FOUND);
                 break;
@@ -71,7 +71,7 @@ int32_t RdRequirementServlet::handle(
 
         std::vector<DB::RequirementInfo::ptr> all;
         if (is_platform_admin && org_id) {
-            RequirementMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
+            RequirementRepository::ListByOrg(all, org_id, 0, INT32_MAX, -1, true, GetDB());
         } else if (!is_platform_admin) {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
@@ -80,7 +80,7 @@ int32_t RdRequirementServlet::handle(
                     continue;
                 }
                 std::vector<DB::RequirementInfo::ptr> org_reqs;
-                RequirementMgr::GetInstance()->listByOrg(org_reqs, rel->getOrgId(), 0, INT32_MAX, -1, true);
+                RequirementRepository::ListByOrg(org_reqs, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
                 for (auto& req : org_reqs) {
                     if (CanViewRequirement(rel->getRole(), uid, req->getCreatorId())) {
                         all.push_back(req);
@@ -88,7 +88,7 @@ int32_t RdRequirementServlet::handle(
                 }
             }
         } else {
-            RequirementMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
+            RequirementRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
         }
 
         std::vector<DB::RequirementInfo::ptr> filtered;

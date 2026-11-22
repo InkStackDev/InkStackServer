@@ -1,12 +1,12 @@
 #include "AssignmentAdminListsServlet.hpp"
 
-#include "../../Manager/AssignmentManager.hpp"
-#include "../../Manager/AssignmentOrganizationRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
 #include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/AssignmentQueryRepository.hpp"
+#include "../../Repository/AssignmentRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -44,7 +44,7 @@ int32_t AssignmentAdminListsServlet::handle(
         uint64_t offset = (page_num - 1) * page_size;
 
         std::vector<DB::AssignmentInfo::ptr> infos;
-        uint64_t total = AssignmentMgr::GetInstance()->listByPages(infos, offset, page_size, state, true);
+        uint64_t total = AssignmentQueryRepository::ListByPages(infos, offset, page_size, state, true, GetDB());
 
         result->set("total", total);
 
@@ -64,7 +64,7 @@ int32_t AssignmentAdminListsServlet::handle(
 
             // organization info (负责人)
             std::vector<DB::AssignmentOrganizationRelInfo::ptr> org_rels;
-            AssignmentOrganizationRelMgr::GetInstance()->getByAssignmentId(org_rels, i->getId());
+            AssignmentOrganizationRelRepository::ListByAssignment(org_rels, i->getId(), GetDB());
             if (!org_rels.empty() && org_rels[0]) {
                 auto org = OrganizationRepository::Get(org_rels[0]->getOrganizationId(), GetDB());
                 if (org) {

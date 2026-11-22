@@ -1,13 +1,13 @@
 #include "RdBugEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/BugManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/BugRepository.hpp"
 
 RdBugEditServlet::RdBugEditServlet()
     : BlogLoginedServlet("RdBugEditServlet")
@@ -38,7 +38,7 @@ int32_t RdBugEditServlet::handle(
         int32_t org_role = rel->getRole();
 
         if (id) {
-            auto existing = BugMgr::GetInstance()->get(id);
+            auto existing = BugRepository::Get(id, GetDB());
             if (!existing || existing->getOrgId() != org_id) {
                 result->setErrno(BUG_NOT_FOUND);
                 break;

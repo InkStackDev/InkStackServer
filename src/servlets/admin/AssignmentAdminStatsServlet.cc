@@ -1,7 +1,7 @@
 #include "AssignmentAdminStatsServlet.hpp"
 
-#include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/AssignmentQueryRepository.hpp"
 
 AssignmentAdminStatsServlet::AssignmentAdminStatsServlet()
     : BlogLoginedServlet("AssignmentAdminStatsServlet")
@@ -30,7 +30,7 @@ int32_t AssignmentAdminStatsServlet::handle(
             break;
         }
 
-        auto stats = AssignmentMgr::GetInstance()->getStats();
+        auto stats = AssignmentQueryRepository::GetStats();
 
         result->setErrno(SUCCESS);
         result->set("total_assignments", stats.total);

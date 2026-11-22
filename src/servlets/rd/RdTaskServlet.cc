@@ -1,12 +1,12 @@
 #include "RdTaskServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/TaskRepository.hpp"
 
 RdTaskServlet::RdTaskServlet()
     : BlogLoginedServlet("RdTaskServlet")
@@ -36,7 +36,7 @@ int32_t RdTaskServlet::handle(
         bool is_platform_admin = (system_role == UserManager::Role::ADMIN);
 
         if (id) {
-            auto info = TaskMgr::GetInstance()->get(id);
+            auto info = TaskRepository::Get(id, GetDB());
             if (!info || info->getIsDeleted()) {
                 result->setErrno(TASK_NOT_FOUND);
                 break;
@@ -72,7 +72,7 @@ int32_t RdTaskServlet::handle(
 
         std::vector<DB::TaskInfo::ptr> all;
         if (is_platform_admin && org_id) {
-            TaskMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
+            TaskRepository::ListByOrg(all, org_id, 0, INT32_MAX, -1, true, GetDB());
         } else if (!is_platform_admin) {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
             OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
@@ -81,7 +81,7 @@ int32_t RdTaskServlet::handle(
                     continue;
                 }
                 std::vector<DB::TaskInfo::ptr> org_tasks;
-                TaskMgr::GetInstance()->listByOrg(org_tasks, rel->getOrgId(), 0, INT32_MAX, -1, true);
+                TaskRepository::ListByOrg(org_tasks, rel->getOrgId(), 0, INT32_MAX, -1, true, GetDB());
                 for (auto& task : org_tasks) {
                     bool is_related = (uid == task->getCreatorId() || uid == task->getAssigneeId());
                     if (CanViewTask(rel->getRole(), is_related)) {
@@ -90,7 +90,7 @@ int32_t RdTaskServlet::handle(
                 }
             }
         } else {
-            TaskMgr::GetInstance()->listByPages(all, 0, INT32_MAX, -1, true);
+            TaskRepository::ListByPages(all, 0, INT32_MAX, -1, true, GetDB());
         }
 
         std::vector<DB::TaskInfo::ptr> filtered;

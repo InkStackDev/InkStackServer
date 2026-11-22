@@ -80,6 +80,8 @@ Service 不应依赖 Manager。
   - 内容：`ArticleManager`、`CategoryManager`、`LabelManager`、`ArticleCategoryRelManager`、`ArticleLabelRelManager`、
     `ArticlePraiseRelManager`、`CommentManager`、`CommentPraiseRelManager`
     （枚举已迁至 `src/Domain/ArticleTypes.hpp` / `src/Domain/CommentTypes.hpp`）
+  - RD：`TaskManager`、`BugManager`、`RequirementManager`、`AssignmentManager`、`AssignmentOrganizationRelManager`
+    （枚举已迁至 `src/Domain/RdTypes.hpp`）
 - 现有 Manager 中不得再出现：
   - `static ... ParseRow(...)`
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec
