@@ -4,6 +4,7 @@
 #include "../../Repository/TaskRepository.hpp"
 #include "../../Repository/BugRepository.hpp"
 #include "../../Repository/RequirementRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdMyTicketsServlet::RdMyTicketsServlet()
     : BlogLoginedServlet("RdMyTicketsServlet")

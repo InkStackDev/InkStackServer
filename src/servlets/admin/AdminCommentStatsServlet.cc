@@ -3,6 +3,7 @@
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 AdminCommentStatsServlet::AdminCommentStatsServlet()
     : BlogLoginedServlet("AdminCommentStatsServlet")
@@ -32,7 +33,7 @@ int32_t AdminCommentStatsServlet::handle(
             break;
         }
 
-        auto stats = CommentQueryRepository::GetStats();
+        auto stats = CommentQueryRepository::GetStats(GetDB());
 
         result->set("total_comments", stats.total);
         result->set("pending_comments", stats.pending);

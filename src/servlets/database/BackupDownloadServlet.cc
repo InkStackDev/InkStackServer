@@ -11,6 +11,7 @@
 #include "../../Repository/RecordRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

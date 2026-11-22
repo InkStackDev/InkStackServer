@@ -18,6 +18,7 @@
 #include "../../Config/AuthConfig.hpp"
 #include "../../Service/UserOAuthService.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "DB/UserInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

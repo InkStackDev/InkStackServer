@@ -589,9 +589,9 @@ void MessageRouter::Shutdown()
     }
 }
 
-void SendNotificationToUser(int64_t user_id, const std::string& message)
+int32_t SendNotificationToUser(int64_t user_id, const std::string& message)
 {
-    MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "notification"));
+    return MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "notification"));
 }
 
 void BroadcastNotification(const std::string& message)
@@ -599,7 +599,7 @@ void BroadcastNotification(const std::string& message)
     MessageRouter::Get()->Broadcast(BuildChannelMessage(message, "notification"));
 }
 
-void SendChatToUser(int64_t user_id, const std::string& message)
+int32_t SendChatToUser(int64_t user_id, const std::string& message)
 {
-    MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "chat"));
+    return MessageRouter::Get()->SendToUser(user_id, BuildChannelMessage(message, "chat"));
 }

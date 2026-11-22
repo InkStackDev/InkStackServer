@@ -1,6 +1,7 @@
 #include "NotificationUnreadCountServlet.hpp"
 
 #include "../../Repository/NotificationQueryRepository.hpp"
+#include "../../Util/Util.hpp"
 
 NotificationUnreadCountServlet::NotificationUnreadCountServlet()
     : BlogLoginedServlet("NotificationUnreadCountServlet")

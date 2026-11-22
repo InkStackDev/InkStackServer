@@ -4,6 +4,7 @@
 #include "../../Util/UaParser.hpp"
 #include "../../Service/PasskeyService.hpp"
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 PasskeyRegisterBeginServlet::PasskeyRegisterBeginServlet()
     : BlogLoginedServlet("PasskeyRegisterBeginServlet")

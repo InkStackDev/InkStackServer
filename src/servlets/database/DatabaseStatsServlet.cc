@@ -38,7 +38,7 @@ int32_t DatabaseStatsServlet::handle(
         }
 
         auto astats = ArticleQueryRepository::GetStats(0, -1, 0, "", GetDB());
-        auto cstats = CommentQueryRepository::GetStats();
+        auto cstats = CommentQueryRepository::GetStats(GetDB());
 
         int64_t total_users = 0;
         std::vector<int64_t> uids;

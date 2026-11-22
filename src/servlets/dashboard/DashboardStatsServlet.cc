@@ -4,6 +4,7 @@
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 DashboardStatsServlet::DashboardStatsServlet()
     : BlogLoginedServlet("DashboardStatsServlet")
@@ -95,7 +96,7 @@ int32_t DashboardStatsServlet::handle(
         }
 
         // --- comments ---
-        auto cstats = CommentQueryRepository::GetStats();
+        auto cstats = CommentQueryRepository::GetStats(GetDB());
         int64_t total_comments = cstats.total;
 
         std::vector<DB::CommentInfo::ptr> comments;

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "ErrorCodes.hpp"
+#include "DB/UserInfo.hpp"
 #include "Domain/OrganizationTypes.hpp"
 #include "Domain/UserTypes.hpp"
 

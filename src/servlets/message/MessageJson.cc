@@ -3,6 +3,7 @@
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Message/MessageRouter.hpp"
+#include "../../Util/Util.hpp"
 
 void BuildMessageJson(Json::Value& json, DB::ConversationMessageInfo::ptr msg, int64_t uid)
 {

@@ -7,6 +7,7 @@
 #include "../../Repository/ArticleRelRepository.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

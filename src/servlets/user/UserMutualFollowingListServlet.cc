@@ -6,6 +6,7 @@
 
 #include "../../Repository/UserFollowRelRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 UserMutualFollowingListServlet::UserMutualFollowingListServlet()
     : BlogLoginedServlet("UserMutualFollowingListServlet")

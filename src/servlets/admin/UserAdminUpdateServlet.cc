@@ -3,6 +3,7 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
+#include "DB/UserInfo.hpp"
 
 UserAdminUpdateServlet::UserAdminUpdateServlet()
     : BlogAdminServlet("UserAdminUpdateServlet")

@@ -5,6 +5,7 @@
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Repository/ArticlePraiseRelRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 ArticlePraiseListServlet::ArticlePraiseListServlet()
     : BlogLoginedServlet("ArticlePraiseListServlet")

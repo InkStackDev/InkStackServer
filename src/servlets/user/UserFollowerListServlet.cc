@@ -2,6 +2,7 @@
 
 #include "../../Repository/UserFollowRelRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 UserFollowerListServlet::UserFollowerListServlet()
     : BlogLoginedServlet("UserFollowerListServlet")

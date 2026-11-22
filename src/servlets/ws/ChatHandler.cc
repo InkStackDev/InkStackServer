@@ -10,6 +10,7 @@
 #include "../../Repository/ConversationRepository.hpp"
 #include "../../Service/ConversationService.hpp"
 #include "../../Message/MessageRouter.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

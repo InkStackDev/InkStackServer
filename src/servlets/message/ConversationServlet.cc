@@ -5,6 +5,7 @@
 #include "MessageJson.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Service/ConversationService.hpp"
+#include "../../Util/Util.hpp"
 
 ConversationServlet::ConversationServlet()
     : BlogLoginedServlet("ConversationServlet")

@@ -8,6 +8,7 @@
 #include "../../Service/PasskeyService.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 PasskeyLoginFinishServlet::PasskeyLoginFinishServlet()
     : BlogServlet("PasskeyLoginFinishServlet")

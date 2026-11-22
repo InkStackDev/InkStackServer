@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

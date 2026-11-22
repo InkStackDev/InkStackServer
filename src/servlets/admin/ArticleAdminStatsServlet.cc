@@ -3,6 +3,7 @@
 #include "../../Repository/ArticleQueryRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 ArticleAdminStatsServlet::ArticleAdminStatsServlet()
     : BlogLoginedServlet("ArticleAdminStatsServlet")

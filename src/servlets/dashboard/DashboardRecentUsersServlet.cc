@@ -2,6 +2,7 @@
 
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 DashboardRecentUsersServlet::DashboardRecentUsersServlet()
     : BlogLoginedServlet("DashboardRecentUsersServlet")

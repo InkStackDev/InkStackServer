@@ -1,6 +1,7 @@
 #include "NotificationListServlet.hpp"
 
 #include "../../Repository/NotificationQueryRepository.hpp"
+#include "../../Util/Util.hpp"
 
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")

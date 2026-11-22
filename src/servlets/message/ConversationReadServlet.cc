@@ -3,6 +3,7 @@
 #include "MessageJson.hpp"
 #include "../../Repository/ConversationRepository.hpp"
 #include "../../Service/ConversationService.hpp"
+#include "../../Util/Util.hpp"
 
 ConversationReadServlet::ConversationReadServlet()
     : BlogLoginedServlet("ConversationReadServlet")

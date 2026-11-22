@@ -4,6 +4,7 @@
 #include "../../Service/RecordService.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 BackupDeleteServlet::BackupDeleteServlet()
     : BlogLoginedServlet("BackupDeleteServlet")

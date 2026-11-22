@@ -10,6 +10,7 @@
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
+#include "DB/UserInfo.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

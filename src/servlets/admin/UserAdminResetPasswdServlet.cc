@@ -6,6 +6,7 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
+#include "DB/UserInfo.hpp"
 
 UserAdminResetPasswdServlet::UserAdminResetPasswdServlet()
     : BlogAdminServlet("UserAdminResetPasswdServlet")

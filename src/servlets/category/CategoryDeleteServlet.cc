@@ -66,14 +66,14 @@ int32_t CategoryDeleteServlet::handle(
         std::vector<DB::CategoryInfo::ptr> infos;
         if (admin_route) {
             if (req_uid) {
-                if (!CategoryRepository::ListByUserId(infos, req_uid, GetDB())) {
+                if (!CategoryRepository::ListByUserId(infos, req_uid, false, GetDB())) {
                     result->setErrno(DB_OPERATION_FAILED);
                     break;
                 }
             } else {
-                CategoryRepository::ListAll(infos, GetDB());
+                CategoryRepository::ListAll(infos, false, GetDB());
             }
-        } else if (!CategoryRepository::ListByUserId(infos, uid, GetDB())) {
+        } else if (!CategoryRepository::ListByUserId(infos, uid, false, GetDB())) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

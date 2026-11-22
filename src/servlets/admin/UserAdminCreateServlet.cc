@@ -2,6 +2,7 @@
 
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
+#include "DB/UserInfo.hpp"
 
 UserAdminCreateServlet::UserAdminCreateServlet()
     : BlogAdminServlet("UserAdminCreateServlet")

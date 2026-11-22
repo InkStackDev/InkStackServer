@@ -7,6 +7,7 @@
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
+#include "DB/UserInfo.hpp"
 
 UserCreateServlet::UserCreateServlet()
     : BlogServlet("UserCreateServlet")

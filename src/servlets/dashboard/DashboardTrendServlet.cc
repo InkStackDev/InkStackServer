@@ -6,6 +6,7 @@
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 DashboardTrendServlet::DashboardTrendServlet()
     : BlogLoginedServlet("DashboardTrendServlet")

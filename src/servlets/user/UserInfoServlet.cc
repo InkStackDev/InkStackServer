@@ -3,6 +3,7 @@
 #include "../../Repository/UserFollowRelRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 UserInfoServlet::UserInfoServlet()
     : BlogServlet("UserInfoServlet")

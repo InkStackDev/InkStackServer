@@ -3,6 +3,7 @@
 #include "../../Repository/AssignmentQueryRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 AssignmentAdminStatsServlet::AssignmentAdminStatsServlet()
     : BlogLoginedServlet("AssignmentAdminStatsServlet")
@@ -31,7 +32,7 @@ int32_t AssignmentAdminStatsServlet::handle(
             break;
         }
 
-        auto stats = AssignmentQueryRepository::GetStats();
+        auto stats = AssignmentQueryRepository::GetStats(GetDB());
 
         result->setErrno(SUCCESS);
         result->set("total_assignments", stats.total);

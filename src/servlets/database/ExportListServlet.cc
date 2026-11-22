@@ -3,6 +3,7 @@
 #include "../../Repository/RecordRepository.hpp"
 #include "../../Repository/UserRepository.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Util/Util.hpp"
 
 ExportListServlet::ExportListServlet()
     : BlogLoginedServlet("ExportListServlet")

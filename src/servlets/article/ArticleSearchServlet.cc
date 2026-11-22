@@ -6,6 +6,7 @@
 #include "../../Repository/ArticleRepository.hpp"
 #include "../../Domain/ArticleTypes.hpp"
 #include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
