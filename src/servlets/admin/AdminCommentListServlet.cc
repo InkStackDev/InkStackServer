@@ -1,12 +1,13 @@
 #include "AdminCommentListServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CommentManager.hpp"
-#include "../../Manager/CommentPraiseRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/CommentPraiseRepository.hpp"
+#include "../../Domain/CommentTypes.hpp"
 
 AdminCommentListServlet::AdminCommentListServlet()
     : BlogLoginedServlet("AdminCommentListServlet")
@@ -43,13 +44,13 @@ int32_t AdminCommentListServlet::handle(
         int32_t status = 0;
         if (!status_str.empty()) {
             if (status_str == "approved") {
-                status = CommentManager::APPROVED;
+                status = CommentStatus::APPROVED;
             } else if (status_str == "pending") {
-                status = CommentManager::PENDING;
+                status = CommentStatus::PENDING;
             } else if (status_str == "rejected") {
-                status = CommentManager::REJECTED;
+                status = CommentStatus::REJECTED;
             } else if (status_str == "spam") {
-                status = CommentManager::SPAM;
+                status = CommentStatus::SPAM;
             }
         }
         std::string keyword = request->getParam("keyword");
@@ -57,7 +58,8 @@ int32_t AdminCommentListServlet::handle(
         int32_t is_reported = request->getParamAs<int32_t>("is_reported", -1);
 
         std::vector<DB::CommentInfo::ptr> comments;
-        int64_t total = CommentMgr::GetInstance()->listByAdmin(comments, page_num, page_size, status, keyword, article_id, is_reported);
+        int64_t total = CommentQueryRepository::ListByAdmin(
+            comments, page_num, page_size, status, keyword, article_id, is_reported, GetDB());
 
         Json::Value list(Json::arrayValue);
         for (auto& c : comments) {
@@ -67,13 +69,13 @@ int32_t AdminCommentListServlet::handle(
             item["parent_id"] = c->getParentId() > 0 ? std::to_string(c->getParentId()) : "";
             item["status"] = [](int32_t s) -> const char* {
                 switch (s) {
-                case CommentManager::PENDING:
+                case CommentStatus::PENDING:
                     return "pending";
-                case CommentManager::APPROVED:
+                case CommentStatus::APPROVED:
                     return "approved";
-                case CommentManager::REJECTED:
+                case CommentStatus::REJECTED:
                     return "rejected";
-                case CommentManager::SPAM:
+                case CommentStatus::SPAM:
                     return "spam";
                 default:
                     return "unknown";
@@ -81,8 +83,8 @@ int32_t AdminCommentListServlet::handle(
             }(c->getStatus());
             item["created_at"] = c->getCreateTime();
             item["updated_at"] = c->getUpdateTime();
-            item["likes"] = CommentPraiseRelMgr::GetInstance()->countByComment(c->getId());
-            item["reply_count"] = CommentMgr::GetInstance()->countReplies(c->getId());
+            item["likes"] = CommentPraiseRepository::CountByComment(c->getId(), GetDB());
+            item["reply_count"] = CommentQueryRepository::CountReplies(c->getId(), GetDB());
             item["is_reported"] = c->getIsReported() != 0;
             item["report_count"] = c->getReportCount();
             item["ip"] = c->getIp();
@@ -101,7 +103,7 @@ int32_t AdminCommentListServlet::handle(
 
             // article info
             Json::Value article;
-            auto a = ArticleMgr::GetInstance()->get(c->getArticleId());
+            auto a = ArticleRepository::Get(c->getArticleId(), GetDB());
             if (a) {
                 article["id"] = std::to_string(a->getId());
                 article["title"] = a->getTitle();

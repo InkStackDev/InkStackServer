@@ -1,7 +1,7 @@
 #include "ArticleIsPraisingServlet.hpp"
 
-#include "../../Manager/ArticlePraiseRelManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Service/ArticlePraiseRelService.hpp"
 
 ArticleIsPraisingServlet::ArticleIsPraisingServlet()
     : BlogLoginedServlet("ArticleIsPraisingServlet")
@@ -23,7 +23,7 @@ int32_t ArticleIsPraisingServlet::handle(
 
         DEFINE_AND_CHECK_TYPE(result, int64_t, article_id, "article_id");
 
-        bool praising = ArticlePraiseRelMgr::GetInstance()->isPraising(uid, article_id);
+        bool praising = ArticlePraiseRelService::IsPraising(uid, article_id);
 
         result->setErrno(SUCCESS);
         result->set("is_praising", praising);

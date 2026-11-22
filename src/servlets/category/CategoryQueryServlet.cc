@@ -1,12 +1,12 @@
 #include "CategoryQueryServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/ArticleCategoryRelManager.hpp"
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CategoryManager.hpp"
 #include "../../Manager/UserManager.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Repository/CategoryRepository.hpp"
+#include "../../Repository/ArticleRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -56,13 +56,13 @@ int32_t CategoryQueryServlet::handle(
 
         std::vector<DB::CategoryInfo::ptr> infos;
         if (req_uid) {
-            if (!CategoryMgr::GetInstance()->listByUserId(infos, req_uid, true)) {
+            if (!CategoryRepository::ListByUserId(infos, req_uid, true, GetDB())) {
                 result->setErrno(DB_OPERATION_FAILED);
                 break;
             }
         } else if (isAdminRoute()) {
-            CategoryMgr::GetInstance()->listAll(infos, true);
-        } else if (!CategoryMgr::GetInstance()->listByUserId(infos, uid, true)) {
+            CategoryRepository::ListAll(infos, true, GetDB());
+        } else if (!CategoryRepository::ListByUserId(infos, uid, true, GetDB())) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }
@@ -88,9 +88,9 @@ int32_t CategoryQueryServlet::handle(
             int64_t article_count = 0;
             int64_t view_count = 0;
             std::vector<DB::ArticleCategoryRelInfo::ptr> rels;
-            ArticleCategoryRelMgr::GetInstance()->listByCategoryId(rels, cat->getId(), true);
+            ArticleCategoryRelRepository::ListByCategory(rels, cat->getId(), true, GetDB());
             for (const auto& rel : rels) {
-                auto article = ArticleMgr::GetInstance()->get(rel->getArticleId());
+                auto article = ArticleRepository::Get(rel->getArticleId(), GetDB());
                 if (article) {
                     ++article_count;
                     view_count += article->getViews();

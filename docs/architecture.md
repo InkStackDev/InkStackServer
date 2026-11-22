@@ -76,7 +76,10 @@ Service 不应依赖 Manager。
   - 基础：`BadgeManager`、`FaqManager`、`FeedbackManager`、`ResourceManager`、`UserOAuthManager`、
     `OrganizationApplyManager`、`UserAIConfigManager`、`AssignmentUserRelManager`
   - 组织：`OrganizationManager`、`OrganizationUserRelManager`、`OrganizationRepoManager`、`OrganizationRepoPrManager`
-    （组织角色/状态枚举已迁至 `src/Domain/OrganizationTypes.hpp`）
+    （枚举已迁至 `src/Domain/OrganizationTypes.hpp`）
+  - 内容：`ArticleManager`、`CategoryManager`、`LabelManager`、`ArticleCategoryRelManager`、`ArticleLabelRelManager`、
+    `ArticlePraiseRelManager`、`CommentManager`、`CommentPraiseRelManager`
+    （枚举已迁至 `src/Domain/ArticleTypes.hpp` / `src/Domain/CommentTypes.hpp`）
 - 现有 Manager 中不得再出现：
   - `static ... ParseRow(...)`
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec

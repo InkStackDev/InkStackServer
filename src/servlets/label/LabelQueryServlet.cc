@@ -7,6 +7,7 @@
 #include <json/json.h>
 
 #include <map>
+#include "../../Repository/LabelRepository.hpp"
 
 LabelQueryServlet::LabelQueryServlet()
     : BlogLoginedServlet("LabelQueryServlet")
@@ -29,12 +30,12 @@ int32_t LabelQueryServlet::handle(
 
         std::vector<DB::LabelInfo::ptr> infos;
         if (user_id) {
-            LabelMgr::GetInstance()->listByUserId(infos, user_id, true);
+            LabelRepository::ListByUserId(infos, user_id, true, GetDB());
         } else {
             for (auto& i : chen::StringUtil::Split(ids, ",")) {
                 auto id = chen::TypeUtil::Atoi(i);
                 if (id) {
-                    auto info = LabelMgr::GetInstance()->get(id);
+                    auto info = LabelRepository::Get(id, GetDB());
                     if (info) {
                         infos.push_back(info);
                     }

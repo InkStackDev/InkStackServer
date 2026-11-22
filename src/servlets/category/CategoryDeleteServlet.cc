@@ -4,11 +4,11 @@
 
 #include <set>
 
-#include "../../Manager/CategoryManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/CategoryService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/CategoryRepository.hpp"
 
 CategoryDeleteServlet::CategoryDeleteServlet()
     : BlogLoginedServlet("CategoryDeleteServlet")
@@ -66,14 +66,14 @@ int32_t CategoryDeleteServlet::handle(
         std::vector<DB::CategoryInfo::ptr> infos;
         if (admin_route) {
             if (req_uid) {
-                if (!CategoryMgr::GetInstance()->listByUserId(infos, req_uid)) {
+                if (!CategoryRepository::ListByUserId(infos, req_uid, GetDB())) {
                     result->setErrno(DB_OPERATION_FAILED);
                     break;
                 }
             } else {
-                CategoryMgr::GetInstance()->listAll(infos);
+                CategoryRepository::ListAll(infos, GetDB());
             }
-        } else if (!CategoryMgr::GetInstance()->listByUserId(infos, uid)) {
+        } else if (!CategoryRepository::ListByUserId(infos, uid, GetDB())) {
             result->setErrno(DB_OPERATION_FAILED);
             break;
         }

@@ -9,7 +9,7 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/ArticleManager.hpp"
+#include "../../Service/ArticleScheduleService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -35,7 +35,7 @@ int32_t ArticleCalendarServlet::handle(
         }
 
         std::vector<int32_t> days;
-        ArticleMgr::GetInstance()->getCalendarDays(user_id, static_cast<int32_t>(year), static_cast<int32_t>(month), days);
+        ArticleScheduleService::GetCalendarDays(user_id, static_cast<int32_t>(year), static_cast<int32_t>(month), days);
 
         result->set("year", year);
         result->set("month", month);

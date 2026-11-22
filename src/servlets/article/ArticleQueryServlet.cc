@@ -2,11 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/ArticleCategoryRelManager.hpp"
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CategoryManager.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CategoryRepository.hpp"
+#include "../../Repository/ArticleRelRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -29,7 +29,7 @@ int32_t ArticleQueryServlet::handle(
 
         int offset = (page_from - 1) * page_size;
         std::vector<DB::ArticleInfo::ptr> infos;
-        auto total = ArticleMgr::GetInstance()->listByUserIdPages(infos, user_id, offset, page_size, true, state);
+        auto total = ArticleQueryRepository::ListByUserIdPages(infos, user_id, offset, page_size, true, state, GetDB());
         result->set("total", total);
         Json::Value list;
         for (auto& i : infos) {
@@ -45,14 +45,14 @@ int32_t ArticleQueryServlet::handle(
             item["praise"] = i->getPraise();
             item["favorites"] = i->getFavorites();
             item["publish_time"] = i->getPublishTime();
-            item["comment_count"] = CommentMgr::GetInstance()->countByArticle(i->getId());
+            item["comment_count"] = CommentQueryRepository::CountByArticle(i->getId(), GetDB());
             // 查询文章分类
             {
                 std::vector<DB::ArticleCategoryRelInfo::ptr> rels;
-                ArticleCategoryRelMgr::GetInstance()->listByArticleId(rels, i->getId(), true);
+                ArticleCategoryRelRepository::ListByArticle(rels, i->getId(), true, GetDB());
                 Json::Value categories(Json::arrayValue);
                 for (auto& rel : rels) {
-                    auto cat = CategoryMgr::GetInstance()->get(rel->getCategoryId());
+                    auto cat = CategoryRepository::Get(rel->getCategoryId(), GetDB());
                     if (cat && !cat->getIsDeleted()) {
                         Json::Value c;
                         c["id"] = cat->getId();

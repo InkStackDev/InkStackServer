@@ -1,9 +1,9 @@
 #include "StatsServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/NotificationManager.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Service/ArticleCounterService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -21,9 +21,9 @@ int32_t StatsServlet::handle(
     do {
         int64_t online_users = NotificationMgr::GetInstance()->getOnlineCount();
 
-        int64_t today_visits = ArticleMgr::GetInstance()->getTodayViews();
-        int64_t total_visits = ArticleMgr::GetInstance()->getTotalViews();
-        int64_t total_visitors = ArticleMgr::GetInstance()->getTotalVisitors();
+        int64_t today_visits = ArticleCounterService::GetTodayViews();
+        int64_t total_visits = ArticleCounterService::GetTotalViews();
+        int64_t total_visitors = ArticleCounterService::GetTotalVisitors();
 
         result->set("online_users", online_users);
         result->set("today_visits", today_visits);

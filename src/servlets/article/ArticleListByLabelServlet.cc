@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -26,7 +26,7 @@ int32_t ArticleListByLabelServlet::handle(
 
         int offset = (page_from - 1) * page_size;
         std::vector<DB::ArticleInfo::ptr> infos;
-        auto total = ArticleMgr::GetInstance()->listByLabelPages(infos, label_id, offset, page_size, true);
+        auto total = ArticleQueryRepository::ListByLabelPages(infos, label_id, offset, page_size, true, GetDB());
         result->set("total", total);
         Json::Value list;
         for (auto& i : infos) {

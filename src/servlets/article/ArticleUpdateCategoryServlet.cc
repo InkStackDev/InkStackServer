@@ -1,11 +1,11 @@
 #include "ArticleUpdateCategoryServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Search/SearchSync.hpp"
 #include "../../Service/ArticleCategoryService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+#include "../../Repository/ArticleRepository.hpp"
 
 ArticleUpdateCategoryServlet::ArticleUpdateCategoryServlet()
     : BlogLoginedServlet("ArticleUpdateCategoryServlet")
@@ -28,7 +28,7 @@ int32_t ArticleUpdateCategoryServlet::handle(
             break;
         }
 
-        auto ainfo = ArticleMgr::GetInstance()->get(id);
+        auto ainfo = ArticleRepository::Get(id, GetDB());
         if (!ainfo) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;

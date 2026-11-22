@@ -1,7 +1,7 @@
 #include "ArticleAdminStatsServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
 
 ArticleAdminStatsServlet::ArticleAdminStatsServlet()
     : BlogLoginedServlet("ArticleAdminStatsServlet")
@@ -36,7 +36,7 @@ int32_t ArticleAdminStatsServlet::handle(
             break;
         }
 
-        auto stats = ArticleMgr::GetInstance()->getStats(category, role, days, keyword);
+        auto stats = ArticleQueryRepository::GetStats(category, role, days, keyword, GetDB());
 
         result->setErrno(SUCCESS);
         result->set("total_articles", stats.total);

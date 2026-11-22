@@ -1,12 +1,13 @@
 #include "CommentRepliesServlet.hpp"
 
-#include "../../Manager/CommentManager.hpp"
-#include "../../Manager/CommentPraiseRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Util/Util.hpp>
 #include <json/json.h>
+#include "../../Repository/CommentRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/CommentPraiseRepository.hpp"
 
 CommentRepliesServlet::CommentRepliesServlet()
     : BlogServlet("CommentRepliesServlet")
@@ -26,7 +27,7 @@ int32_t CommentRepliesServlet::handle(
         int64_t size = request->getParamAs<int64_t>("size", 20);
 
         // check parent comment exists
-        auto parent = CommentMgr::GetInstance()->get(comment_id);
+        auto parent = CommentRepository::Get(comment_id, GetDB());
         if (!parent || parent->getIsDeleted()) {
             result->setErrno(COMMENT_NOT_FOUND);
             break;
@@ -35,8 +36,8 @@ int32_t CommentRepliesServlet::handle(
         int64_t uid = getUserId(request);
 
         std::vector<DB::CommentInfo::ptr> replies;
-        CommentMgr::GetInstance()->listReplies(replies, comment_id, offset, size);
-        int64_t total = CommentMgr::GetInstance()->countReplies(comment_id);
+        CommentQueryRepository::ListReplies(replies, comment_id, offset, size, GetDB());
+        int64_t total = CommentQueryRepository::CountReplies(comment_id, GetDB());
 
         Json::Value list(Json::arrayValue);
         for (auto& r : replies) {
@@ -55,14 +56,14 @@ int32_t CommentRepliesServlet::handle(
                 item["avatar"] = "";
             }
 
-            int64_t likes = CommentPraiseRelMgr::GetInstance()->countByComment(r->getId());
+            int64_t likes = CommentPraiseRepository::CountByComment(r->getId(), GetDB());
             item["likes"] = likes;
             if (uid > 0) {
-                item["is_liked"] = CommentPraiseRelMgr::GetInstance()->isPraising(uid, r->getId());
+                item["is_liked"] = CommentPraiseRepository::IsPraising(uid, r->getId(), GetDB());
             } else {
                 item["is_liked"] = false;
             }
-            item["reply_count"] = CommentMgr::GetInstance()->countReplies(r->getId());
+            item["reply_count"] = CommentQueryRepository::CountReplies(r->getId(), GetDB());
 
             list.append(item);
         }

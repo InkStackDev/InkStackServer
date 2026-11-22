@@ -1,9 +1,9 @@
 #include "ArticleAdminListsServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 ArticleAdminListsServlet::ArticleAdminListsServlet()
     : BlogLoginedServlet("ArticleAdminListsServlet")
@@ -42,7 +42,8 @@ int32_t ArticleAdminListsServlet::handle(
 
         uint64_t offset = (page_num - 1) * page_size;
         std::vector<DB::ArticleInfo::ptr> articles;
-        uint64_t total = ArticleMgr::GetInstance()->listByPages(articles, offset, state, category, rrole, days, page_size, true);
+        uint64_t total = ArticleQueryRepository::ListByPages(
+            articles, offset, state, category, rrole, days, page_size, true, GetDB());
 
         result->set("total", total);
 
@@ -64,7 +65,7 @@ int32_t ArticleAdminListsServlet::handle(
             item["favorites"] = atc->getFavorites();
             item["publish_time"] = atc->getPublishTime();
             item["summary"] = atc->getContent().substr(0, 100);
-            item["comment_count"] = CommentMgr::GetInstance()->countByArticle(atc->getId());
+            item["comment_count"] = CommentQueryRepository::CountByArticle(atc->getId(), GetDB());
             list.append(item);
         }
         result->set("list", list);

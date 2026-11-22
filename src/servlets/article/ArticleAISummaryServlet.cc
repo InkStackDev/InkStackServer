@@ -3,7 +3,6 @@
 #include "../../AI/AIProvider.hpp"
 #include "../../AI/SSEStreamParser.hpp"
 #include "../../Auth/AuthService.hpp"
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Config/Config.hpp>
@@ -12,6 +11,7 @@
 
 #include "../../Config/AIConfig.hpp"
 #include "../../Repository/UserAIConfigRepository.hpp"
+#include "../../Repository/ArticleRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -47,7 +47,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
             return -1;
         }
 
-        auto article = ArticleMgr::GetInstance()->get(article_id);
+        auto article = ArticleRepository::Get(article_id, GetDB());
         if (!article) {
             session->sendEvent(R"({"type":"error","message":"article not found"})");
             return -1;

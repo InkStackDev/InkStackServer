@@ -1,10 +1,10 @@
 #include "DashboardTrendServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 
 #include <ctime>
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 DashboardTrendServlet::DashboardTrendServlet()
     : BlogLoginedServlet("DashboardTrendServlet")
@@ -93,7 +93,7 @@ int32_t DashboardTrendServlet::handle(
 
         // aggregate articles
         std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleMgr::GetInstance()->listByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true);
+        ArticleQueryRepository::ListByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true, GetDB());
         for (auto& a : articles) {
             int64_t ts = a->getCreateTime();
             if (ts >= period_start) {
@@ -106,7 +106,7 @@ int32_t DashboardTrendServlet::handle(
 
         // aggregate comments
         std::vector<DB::CommentInfo::ptr> comments;
-        CommentMgr::GetInstance()->listByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1);
+        CommentQueryRepository::ListByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1, GetDB());
         for (auto& c : comments) {
             int64_t ts = c->getCreateTime();
             if (ts >= period_start) {

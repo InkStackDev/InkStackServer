@@ -1,13 +1,13 @@
 #include "DatabaseStatsServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/BackupRecordManager.hpp"
-#include "../../Manager/CategoryManager.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Repository/LabelRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/LabelInfo.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CategoryRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 DatabaseStatsServlet::DatabaseStatsServlet()
     : BlogLoginedServlet("DatabaseStatsServlet")
@@ -36,8 +36,8 @@ int32_t DatabaseStatsServlet::handle(
             break;
         }
 
-        auto astats = ArticleMgr::GetInstance()->getStats(0, -1, 0, "");
-        auto cstats = CommentMgr::GetInstance()->getStats();
+        auto astats = ArticleQueryRepository::GetStats(0, -1, 0, "", GetDB());
+        auto cstats = CommentQueryRepository::GetStats();
 
         int64_t total_users = 0;
         std::vector<int64_t> uids;
@@ -46,7 +46,7 @@ int32_t DatabaseStatsServlet::handle(
 
         int64_t total_categories = 0;
         std::vector<DB::CategoryInfo::ptr> categories;
-        CategoryMgr::GetInstance()->listAll(categories, true);
+        CategoryRepository::ListAll(categories, true, GetDB());
         total_categories = categories.size();
 
         int64_t total_labels = LabelRepository::CountValid(GetDB());

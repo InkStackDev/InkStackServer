@@ -1,10 +1,10 @@
 #include "ArticlePraiseListServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/ArticlePraiseRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 
 #include <json/json.h>
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Repository/ArticlePraiseRelRepository.hpp"
 
 ArticlePraiseListServlet::ArticlePraiseListServlet()
     : BlogLoginedServlet("ArticlePraiseListServlet")
@@ -40,7 +40,7 @@ int32_t ArticlePraiseListServlet::handle(
 
         if (article_id > 0) {
             // list users who praised this article
-            ArticlePraiseRelMgr::GetInstance()->listByArticle(results, article_id, offset, size);
+            ArticlePraiseRelRepository::ListByArticle(results, article_id, offset, size, GetDB());
             Json::Value arr(Json::arrayValue);
             for (auto& rel : results) {
                 Json::Value item;
@@ -56,11 +56,11 @@ int32_t ArticlePraiseListServlet::handle(
                 arr.append(item);
             }
             result->set("list", arr);
-            result->set("total", ArticlePraiseRelMgr::GetInstance()->countByArticle(article_id));
+            result->set("total", ArticlePraiseRelRepository::CountByArticle(article_id, GetDB()));
         } else {
             // list articles praised by this user
             int64_t query_user_id = user_id > 0 ? user_id : uid;
-            ArticlePraiseRelMgr::GetInstance()->listByUser(results, query_user_id, offset, size);
+            ArticlePraiseRelRepository::ListByUser(results, query_user_id, offset, size, GetDB());
             Json::Value arr(Json::arrayValue);
             for (auto& rel : results) {
                 Json::Value item;
@@ -68,14 +68,14 @@ int32_t ArticlePraiseListServlet::handle(
                 item["user_id"] = rel->getUserId();
                 item["article_id"] = rel->getArticleId();
                 item["create_time"] = rel->getCreateTime();
-                auto article = ArticleMgr::GetInstance()->get(rel->getArticleId());
+                auto article = ArticleRepository::Get(rel->getArticleId(), GetDB());
                 if (article && !article->getIsDeleted()) {
                     item["title"] = article->getTitle();
                 }
                 arr.append(item);
             }
             result->set("list", arr);
-            result->set("total", ArticlePraiseRelMgr::GetInstance()->countByUser(query_user_id));
+            result->set("total", ArticlePraiseRelRepository::CountByUser(query_user_id, GetDB()));
         }
 
         result->setErrno(SUCCESS);

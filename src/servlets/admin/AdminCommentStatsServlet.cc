@@ -1,7 +1,7 @@
 #include "AdminCommentStatsServlet.hpp"
 
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 AdminCommentStatsServlet::AdminCommentStatsServlet()
     : BlogLoginedServlet("AdminCommentStatsServlet")
@@ -31,7 +31,7 @@ int32_t AdminCommentStatsServlet::handle(
             break;
         }
 
-        auto stats = CommentMgr::GetInstance()->getStats();
+        auto stats = CommentQueryRepository::GetStats();
 
         result->set("total_comments", stats.total);
         result->set("pending_comments", stats.pending);

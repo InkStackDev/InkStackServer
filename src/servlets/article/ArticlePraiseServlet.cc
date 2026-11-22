@@ -1,12 +1,13 @@
 #include "ArticlePraiseServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/ArticlePraiseRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Service/ArticleCounterService.hpp"
+#include "../../Service/ArticlePraiseRelService.hpp"
 
 ArticlePraiseServlet::ArticlePraiseServlet()
     : BlogLoginedServlet("ArticlePraiseServlet")
@@ -29,30 +30,30 @@ int32_t ArticlePraiseServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, article_id, "article_id");
 
         // check article exists
-        auto article = ArticleMgr::GetInstance()->get(article_id);
+        auto article = ArticleRepository::Get(article_id, GetDB());
         if (!article || article->getIsDeleted()) {
             result->setErrno(ARTICLE_NOT_FOUND);
             break;
         }
 
-        bool already_praising = ArticlePraiseRelMgr::GetInstance()->isPraising(uid, article_id);
+        bool already_praising = ArticlePraiseRelService::IsPraising(uid, article_id);
 
         if (already_praising) {
             // unlike
-            if (!ArticlePraiseRelMgr::GetInstance()->unpraise(uid, article_id)) {
+            if (!ArticlePraiseRelService::Unpraise(uid, article_id)) {
                 result->setErrno(ARTICLE_UNPRAISE_FAILED);
                 break;
             }
-            ArticleMgr::GetInstance()->decPraiseCount(article_id);
+            ArticleCounterService::DecPraiseCount(article_id);
             result->set("is_praising", false);
         } else {
             // like
-            auto info = ArticlePraiseRelMgr::GetInstance()->praise(uid, article_id);
+            auto info = ArticlePraiseRelService::Praise(uid, article_id);
             if (!info) {
                 result->setErrno(ARTICLE_PRAISE_FAILED);
                 break;
             }
-            ArticleMgr::GetInstance()->incPraiseCount(article_id);
+            ArticleCounterService::IncPraiseCount(article_id);
             result->set("is_praising", true);
 
             // Notify article author (not self-praise)

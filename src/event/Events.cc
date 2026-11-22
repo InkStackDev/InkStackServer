@@ -8,16 +8,16 @@
 #include <Chen/Util/TimeUtil.hpp>
 #include <json/json.h>
 
-#include "../Manager/ArticleManager.hpp"
 #include "../Manager/BackupRecordManager.hpp"
 #include "../Repository/RecordRepository.hpp"
-#include "../Manager/CommentManager.hpp"
 #include "../Manager/NotificationManager.hpp"
 #include "../Manager/UserManager.hpp"
 #include "../Util/Util.hpp"
 #include "EventDefine.hpp"
 #include "../Domain/OrganizationTypes.hpp"
 #include "../Repository/OrganizationUserRelRepository.hpp"
+#include "../Domain/ArticleTypes.hpp"
+#include "../Repository/CommentRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -65,7 +65,7 @@ static void EventComment(const std::any& d)
 {
     auto data = std::any_cast<const EventCommentData&>(d);
 
-    auto comment = CommentMgr::GetInstance()->get(data.comment_id);
+    auto comment = CommentRepository::Get(data.comment_id, GetDB());
     if (!comment) {
         ERROR(logger) << "comment not found, id=" << data.comment_id;
         return;
@@ -193,8 +193,8 @@ static void EventArticleStateChanged(const std::any& d)
     auto data = std::any_cast<const EventArticleStateChangedData&>(d);
 
     std::string title = "文章状态变更";
-    std::string content =
-        "你的文章《" + data.article_title + "》状态已被管理员变更为「" + (data.new_state == ArticleManager::PUBLISHED ? "已发布" : "私密") + "」";
+    std::string content = "你的文章《" + data.article_title + "》状态已被管理员变更为「"
+        + (data.new_state == ArticleStatus::PUBLISHED ? "已发布" : "私密") + "」";
 
     NotificationData notif_data{};
     notif_data.user_id = data.author_id;

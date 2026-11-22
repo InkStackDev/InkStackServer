@@ -9,6 +9,8 @@
 #include "../../Repository/CommentQueryRepository.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/BadgeRepository.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Domain/ArticleTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -54,7 +56,7 @@ int32_t UserAchievementsServlet::handle(
 
         // ========== 1. 获取用户所有文章 ==========
         std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleMgr::GetInstance()->listByUserId(articles, uid, true);
+        ArticleQueryRepository::ListByUserId(articles, uid, true, GetDB());
 
         int64_t published_articles = 0;
         int64_t total_likes = 0;
@@ -67,7 +69,7 @@ int32_t UserAchievementsServlet::handle(
             if (a->getIsDeleted()) {
                 continue;
             }
-            if (a->getState() == ArticleManager::PUBLISHED) {
+            if (a->getState() == ArticleStatus::PUBLISHED) {
                 published_articles++;
                 total_likes += a->getPraise();
 

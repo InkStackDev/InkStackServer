@@ -21,13 +21,11 @@
 
 #include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRelRepository.hpp"
-#include "../Manager/ArticleLabelRelManager.hpp"
-#include "../Manager/ArticleCategoryRelManager.hpp"
-#include "../Manager/ArticleManager.hpp"
 #include "../Job/RedisLease.hpp"
 #include "../Config/AppConfig.hpp"
 #include "../Config/SearchConfig.hpp"
 #include "../Util/Util.hpp"
+#include "../Repository/ArticleRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -367,7 +365,7 @@ bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc
         return false;
     }
 
-    auto info = ArticleMgr::GetInstance()->get(static_cast<int64_t>(article_id));
+    auto info = ArticleRepository::Get(static_cast<int64_t>(article_id), GetDB());
     if (!info || info->getIsDeleted()) {
         missing = true;
         return false;
@@ -385,7 +383,7 @@ bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc
     doc.Content = info->getContent();
 
     std::vector<DB::ArticleCategoryRelInfo::ptr> categories;
-    if (!ArticleCategoryRelMgr::GetInstance()->listByArticleId(categories, info->getId(), true)) {
+    if (!ArticleCategoryRelRepository::ListByArticle(categories, info->getId(), true, GetDB())) {
         return false;
     }
     for (auto& category : categories) {
@@ -393,7 +391,7 @@ bool SearchSync::buildDoc(uint64_t article_id, int64_t update_time, tagSearchDoc
     }
 
     std::vector<DB::ArticleLabelRelInfo::ptr> labels;
-    if (!ArticleLabelRelMgr::GetInstance()->listByArticleId(labels, info->getId(), true)) {
+    if (!ArticleLabelRelRepository::ListByArticle(labels, info->getId(), true, GetDB())) {
         return false;
     }
     for (auto& label : labels) {

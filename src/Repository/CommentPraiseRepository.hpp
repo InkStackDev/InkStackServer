@@ -28,4 +28,6 @@ public:
     static void Evict(int64_t id);
 
     static int64_t CountByComment(int64_t comment_id, chen::IDB::ptr conn);
+
+    static bool IsPraising(int64_t user_id, int64_t comment_id, chen::IDB::ptr conn);
 };

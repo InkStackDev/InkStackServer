@@ -1,7 +1,6 @@
 #include "AdminCommentSpamServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
@@ -9,6 +8,8 @@
 #include <json/json.h>
 
 #include <sstream>
+#include "../../Repository/CommentRepository.hpp"
+#include "../../Domain/CommentTypes.hpp"
 
 AdminCommentSpamServlet::AdminCommentSpamServlet()
     : BlogLoginedServlet("AdminCommentSpamServlet")
@@ -50,7 +51,7 @@ int32_t AdminCommentSpamServlet::handle(
             }
         }
 
-        int64_t affected = CommentService::BatchUpdateStatus(ids, CommentManager::SPAM);
+        int64_t affected = CommentService::BatchUpdateStatus(ids, CommentStatus::SPAM);
 
         Json::Value idList(Json::arrayValue);
         for (auto& id : ids) {
@@ -62,7 +63,7 @@ int32_t AdminCommentSpamServlet::handle(
 
         // Notify comment authors
         for (auto& cid : ids) {
-            auto comment = CommentMgr::GetInstance()->get(cid);
+            auto comment = CommentRepository::Get(cid, GetDB());
             if (!comment) {
                 continue;
             }

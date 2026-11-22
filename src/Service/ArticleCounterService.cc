@@ -14,7 +14,6 @@
 #include "DB/ArticleInfo.hpp"
 
 #include "../Config/AppConfig.hpp"
-#include "../Manager/ArticleManager.hpp"
 #include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Util/Util.hpp"

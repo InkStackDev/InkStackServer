@@ -1,8 +1,9 @@
 #include "DashboardActivitiesServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 DashboardActivitiesServlet::DashboardActivitiesServlet()
     : BlogLoginedServlet("DashboardActivitiesServlet")
@@ -90,7 +91,7 @@ int32_t DashboardActivitiesServlet::handle(
         // recent articles
         {
             std::vector<DB::ArticleInfo::ptr> articles;
-            ArticleMgr::GetInstance()->listByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true);
+            ArticleQueryRepository::ListByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true, GetDB());
             std::sort(articles.begin(), articles.end(), [](auto& a, auto& b) {
                 return a->getCreateTime() > b->getCreateTime();
             });
@@ -109,14 +110,14 @@ int32_t DashboardActivitiesServlet::handle(
         // recent comments
         {
             std::vector<DB::CommentInfo::ptr> comments;
-            CommentMgr::GetInstance()->listByAdmin(comments, 1, fetch_count, 0, "", 0, -1);
+            CommentQueryRepository::ListByAdmin(comments, 1, fetch_count, 0, "", 0, -1, GetDB());
             for (auto& c : comments) {
                 ActivityItem act;
                 act.type = "comment_create";
                 auto commenter = UserMgr::GetInstance()->get(c->getUserId());
                 std::string commenter_name = commenter ? commenter->getName() : "Unknown";
                 // get article title for context
-                auto article = ArticleMgr::GetInstance()->get(c->getArticleId());
+                auto article = ArticleRepository::Get(c->getArticleId(), GetDB());
                 std::string article_title = article ? article->getTitle() : "Unknown";
                 act.title = commenter_name + " 在《" + article_title + "》中发表了评论";
                 act.create_time = c->getCreateTime();

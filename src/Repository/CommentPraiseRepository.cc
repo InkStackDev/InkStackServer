@@ -127,3 +127,9 @@ int64_t CommentPraiseRepository::CountByComment(int64_t comment_id, chen::IDB::p
     qb->where("is_deleted", "=", (int64_t)0);
     return ExecuteCountCached(qb, conn, "cpra:cnt:" + std::to_string(comment_id));
 }
+
+bool CommentPraiseRepository::IsPraising(int64_t user_id, int64_t comment_id, chen::IDB::ptr conn)
+{
+    auto info = GetByUserAndComment(user_id, comment_id, conn);
+    return info && info->getIsDeleted() == 0;
+}

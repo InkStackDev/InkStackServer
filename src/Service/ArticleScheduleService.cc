@@ -15,11 +15,11 @@
 #include "DB/ArticleInfo.hpp"
 
 #include "../Config/AppConfig.hpp"
-#include "../Manager/ArticleManager.hpp"
 #include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Search/SearchSync.hpp"
 #include "../Util/Util.hpp"
+#include "../Domain/ArticleTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -80,11 +80,11 @@ void ArticleScheduleService::PublishDue()
         if (!info || info->getIsDeleted()) {
             continue;
         }
-        if (info->getState() == ArticleManager::Status::PUBLISHED) {
+        if (info->getState() == ArticleStatus::PUBLISHED) {
             continue;
         }
 
-        info->setState(ArticleManager::Status::PUBLISHED);
+        info->setState(ArticleStatus::PUBLISHED);
         info->setUpdateTime(now);
         if (!ArticleRepository::Update(info, db)) {
             ERROR(logger) << "PublishDue update failed, id=" << id;

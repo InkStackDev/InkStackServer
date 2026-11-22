@@ -12,7 +12,6 @@
 #include "DB/CategoryInfo.hpp"
 #include "DB/LabelInfo.hpp"
 
-#include "../Manager/ArticleManager.hpp"
 #include "../Manager/UserManager.hpp"
 #include "../Permission.hpp"
 #include "../Repository/ArticleRelRepository.hpp"
@@ -23,6 +22,8 @@
 #include "../Search/SearchSync.hpp"
 #include "../Util/Util.hpp"
 #include "../Event/EventDefine.hpp"
+#include "ArticleScheduleService.hpp"
+#include "../Domain/ArticleTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -215,9 +216,9 @@ ArticleService::DeleteArticlesResult ArticleService::DeleteArticles(int64_t uid,
         deleted.push_back(info->getId());
 
         SearchSyncMgr::GetInstance()->markDirty(info->getId(), SearchSync::OP_REMOVE);
-        ArticleMgr::GetInstance()->unscheduleArticle(info->getId());
-        if (info->getState() == ArticleManager::Status::PUBLISHED && info->getPublishTime() > 0) {
-            ArticleMgr::GetInstance()->clearCalendarCache(info->getUserId(), info->getPublishTime());
+        ArticleScheduleService::Unschedule(info->getId());
+        if (info->getState() == ArticleStatus::PUBLISHED && info->getPublishTime() > 0) {
+            ArticleScheduleService::ClearCalendarCache(info->getUserId(), info->getPublishTime());
         }
     }
     return DeleteArticlesResult::Ok;
@@ -244,7 +245,7 @@ ArticleService::SwitchStateResult ArticleService::SwitchState(int64_t uid, int64
         if (article->getUserId() != uid) {
             return SwitchStateResult::AccessDenied;
         }
-        if (new_state != ArticleManager::Status::PRIVATE) {
+        if (new_state != ArticleStatus::PRIVATE) {
             return SwitchStateResult::InvalidState;
         }
     }
@@ -263,9 +264,9 @@ ArticleService::SwitchStateResult ArticleService::SwitchState(int64_t uid, int64
     ArticleRepository::Put(article);
 
     SearchSyncMgr::GetInstance()->markDirty(article->getId(), SearchSync::OP_UPSERT);
-    ArticleMgr::GetInstance()->unscheduleArticle(article->getId());
+    ArticleScheduleService::Unschedule(article->getId());
     if (old_publish_time > 0) {
-        ArticleMgr::GetInstance()->clearCalendarCache(article->getUserId(), old_publish_time);
+        ArticleScheduleService::ClearCalendarCache(article->getUserId(), old_publish_time);
     }
 
     if (notify_author) {
@@ -283,7 +284,7 @@ ArticleService::CreateArticleResult ArticleService::CreateArticle(const CreateAr
     DB::ArticleInfo::ptr& out)
 {
     out.reset();
-    if (input.type != ArticleManager::Type::ORIGINAL && input.type != ArticleManager::Type::REPRINT) {
+    if (input.type != ArticleType::ORIGINAL && input.type != ArticleType::REPRINT) {
         return CreateArticleResult::InvalidType;
     }
 
@@ -301,7 +302,7 @@ ArticleService::CreateArticleResult ArticleService::CreateArticle(const CreateAr
     info->setContent(input.content);
     info->setType(input.type);
     info->setUserId(input.user_id);
-    info->setState(ArticleManager::Status::PRIVATE);
+    info->setState(ArticleStatus::PRIVATE);
     int64_t now = chen::TimeUtil::GetCurrentSec();
     info->setCreateTime(now);
     info->setUpdateTime(now);
@@ -346,7 +347,7 @@ ArticleService::UpdateArticleResult ArticleService::UpdateArticle(const UpdateAr
     article->setTitle(input.title);
     article->setContent(input.content);
     if (input.has_type) {
-        if (input.type != ArticleManager::Type::ORIGINAL && input.type != ArticleManager::Type::REPRINT) {
+        if (input.type != ArticleType::ORIGINAL && input.type != ArticleType::REPRINT) {
             return UpdateArticleResult::InvalidType;
         }
         article->setType(input.type);
@@ -358,12 +359,12 @@ ArticleService::UpdateArticleResult ArticleService::UpdateArticle(const UpdateAr
     auto author = UserRepository::Get(article->getUserId(), db);
     bool bypass_review = author && CanBypassReview(author->getRole());
 
-    if (old_state == ArticleManager::Status::PUBLISHED) {
+    if (old_state == ArticleStatus::PUBLISHED) {
         if (!bypass_review) {
-            article->setState(ArticleManager::Status::CHECKING);
+            article->setState(ArticleStatus::CHECKING);
         }
-    } else if (old_state == ArticleManager::Status::REJECTED) {
-        article->setState(ArticleManager::Status::PRIVATE);
+    } else if (old_state == ArticleStatus::REJECTED) {
+        article->setState(ArticleStatus::PRIVATE);
     }
     int64_t now = chen::TimeUtil::GetCurrentSec();
     article->setUpdateTime(now);
@@ -392,14 +393,14 @@ ArticleService::UpdateArticleResult ArticleService::UpdateArticle(const UpdateAr
     ArticleRepository::Put(article);
     SearchSyncMgr::GetInstance()->markDirty(article->getId(), SearchSync::OP_UPSERT);
 
-    ArticleMgr::GetInstance()->unscheduleArticle(article->getId());
+    ArticleScheduleService::Unschedule(article->getId());
     int32_t new_state = article->getState();
-    if ((new_state == ArticleManager::Status::CHECKING || new_state == ArticleManager::Status::PRIVATE)
+    if ((new_state == ArticleStatus::CHECKING || new_state == ArticleStatus::PRIVATE)
         && article->getPublishTime() > now) {
-        ArticleMgr::GetInstance()->scheduleArticle(article->getId(), article->getPublishTime());
+        ArticleScheduleService::Schedule(article->getId(), article->getPublishTime());
     }
-    if (old_state == ArticleManager::Status::PUBLISHED && article->getPublishTime() > 0) {
-        ArticleMgr::GetInstance()->clearCalendarCache(article->getUserId(), article->getPublishTime());
+    if (old_state == ArticleStatus::PUBLISHED && article->getPublishTime() > 0) {
+        ArticleScheduleService::ClearCalendarCache(article->getUserId(), article->getPublishTime());
     }
 
     out = article;
@@ -408,7 +409,7 @@ ArticleService::UpdateArticleResult ArticleService::UpdateArticle(const UpdateAr
 
 ArticleService::VerifyArticleResult ArticleService::VerifyArticle(int64_t uid, int64_t article_id, int32_t state)
 {
-    if (state != ArticleManager::Status::PUBLISHED && state != ArticleManager::Status::REJECTED) {
+    if (state != ArticleStatus::PUBLISHED && state != ArticleStatus::REJECTED) {
         return VerifyArticleResult::InvalidState;
     }
 
@@ -429,17 +430,17 @@ ArticleService::VerifyArticleResult ArticleService::VerifyArticle(int64_t uid, i
     if (!article || article->getIsDeleted()) {
         return VerifyArticleResult::ArticleNotFound;
     }
-    if (article->getState() != ArticleManager::Status::CHECKING) {
+    if (article->getState() != ArticleStatus::CHECKING) {
         return VerifyArticleResult::InvalidState;
     }
 
     int64_t now = chen::TimeUtil::GetCurrentSec();
-    if (state == ArticleManager::Status::REJECTED) {
-        article->setState(ArticleManager::Status::REJECTED);
+    if (state == ArticleStatus::REJECTED) {
+        article->setState(ArticleStatus::REJECTED);
     } else if (article->getPublishTime() <= now) {
-        article->setState(ArticleManager::Status::PUBLISHED);
+        article->setState(ArticleStatus::PUBLISHED);
     } else {
-        article->setState(ArticleManager::Status::PRIVATE);
+        article->setState(ArticleStatus::PRIVATE);
     }
     article->setUpdateTime(now);
 
@@ -448,10 +449,10 @@ ArticleService::VerifyArticleResult ArticleService::VerifyArticle(int64_t uid, i
         return VerifyArticleResult::DbError;
     }
     ArticleRepository::Put(article);
-    ArticleMgr::GetInstance()->unscheduleArticle(article_id);
+    ArticleScheduleService::Unschedule(article_id);
     SearchSyncMgr::GetInstance()->markDirty(article_id, SearchSync::OP_UPSERT);
 
-    bool approved = article->getState() == ArticleManager::Status::PUBLISHED;
+    bool approved = article->getState() == ArticleStatus::PUBLISHED;
     EventArticleReviewData data = {};
     data.type = approved ? "approved" : "rejected";
     data.article_id = article->getId();
@@ -474,13 +475,12 @@ ArticleService::PublishArticleResult ArticleService::PublishArticle(int64_t uid,
     if (!article || article->getIsDeleted()) {
         return PublishArticleResult::ArticleNotFound;
     }
-    if (article->getState() == ArticleManager::Status::PUBLISHED
-        || article->getState() == ArticleManager::Status::CHECKING) {
+    if (article->getState() == ArticleStatus::PUBLISHED || article->getState() == ArticleStatus::CHECKING) {
         return PublishArticleResult::InvalidState;
     }
 
     int64_t now = chen::TimeUtil::GetCurrentSec();
-    article->setState(ArticleManager::Status::CHECKING);
+    article->setState(ArticleStatus::CHECKING);
     article->setPublishTime(publish_time > now ? publish_time : now);
     article->setUpdateTime(now);
 
@@ -488,9 +488,9 @@ ArticleService::PublishArticleResult ArticleService::PublishArticle(int64_t uid,
     bool bypass_review = author && CanBypassReview(author->getRole());
     if (bypass_review) {
         if (article->getPublishTime() <= now) {
-            article->setState(ArticleManager::Status::PUBLISHED);
+            article->setState(ArticleStatus::PUBLISHED);
         } else {
-            article->setState(ArticleManager::Status::PRIVATE);
+            article->setState(ArticleStatus::PRIVATE);
         }
     }
 
@@ -501,9 +501,9 @@ ArticleService::PublishArticleResult ArticleService::PublishArticle(int64_t uid,
     ArticleRepository::Put(article);
     SearchSyncMgr::GetInstance()->markDirty(article->getId(), SearchSync::OP_UPSERT);
 
-    ArticleMgr::GetInstance()->clearCalendarCache(article->getUserId(), article->getPublishTime());
-    if (article->getPublishTime() > now && article->getState() != ArticleManager::Status::PUBLISHED) {
-        ArticleMgr::GetInstance()->scheduleArticle(article_id, article->getPublishTime());
+    ArticleScheduleService::ClearCalendarCache(article->getUserId(), article->getPublishTime());
+    if (article->getPublishTime() > now && article->getState() != ArticleStatus::PUBLISHED) {
+        ArticleScheduleService::Schedule(article_id, article->getPublishTime());
     }
 
     if (!bypass_review) {

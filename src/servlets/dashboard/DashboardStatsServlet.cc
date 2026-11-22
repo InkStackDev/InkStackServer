@@ -1,8 +1,8 @@
 #include "DashboardStatsServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CommentQueryRepository.hpp"
 
 DashboardStatsServlet::DashboardStatsServlet()
     : BlogLoginedServlet("DashboardStatsServlet")
@@ -71,11 +71,11 @@ int32_t DashboardStatsServlet::handle(
         }
 
         // --- articles ---
-        auto astats = ArticleMgr::GetInstance()->getStats(0, -1, 0, "");
+        auto astats = ArticleQueryRepository::GetStats(0, -1, 0, "", GetDB());
         int64_t total_articles = astats.total;
 
         std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleMgr::GetInstance()->listByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true);
+        ArticleQueryRepository::ListByPages(articles, 0, 0, 0, -1, 0, 0x7FFFFFFF, true, GetDB());
 
         int64_t this_week_articles = 0, last_week_articles = 0;
         int64_t today_articles = 0, yesterday_articles = 0;
@@ -94,11 +94,11 @@ int32_t DashboardStatsServlet::handle(
         }
 
         // --- comments ---
-        auto cstats = CommentMgr::GetInstance()->getStats();
+        auto cstats = CommentQueryRepository::GetStats();
         int64_t total_comments = cstats.total;
 
         std::vector<DB::CommentInfo::ptr> comments;
-        CommentMgr::GetInstance()->listByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1);
+        CommentQueryRepository::ListByAdmin(comments, 1, 0x7FFFFFFFLL, 0, "", 0, -1, GetDB());
         int64_t this_week_comments = 0, last_week_comments = 0;
         int64_t today_comments = 0, yesterday_comments = 0;
         for (auto& c : comments) {

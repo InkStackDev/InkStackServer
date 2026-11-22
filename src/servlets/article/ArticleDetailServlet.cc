@@ -2,14 +2,15 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/ArticleCategoryRelManager.hpp"
-#include "../../Manager/ArticleLabelRelManager.hpp"
-#include "../../Manager/ArticleManager.hpp"
-#include "../../Manager/CategoryManager.hpp"
-#include "../../Manager/LabelManager.hpp"
 #include "../../Manager/UserFollowRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/CategoryRepository.hpp"
+#include "../../Repository/LabelRepository.hpp"
+#include "../../Repository/ArticleRelRepository.hpp"
+#include "../../Domain/ArticleTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -33,7 +34,7 @@ int32_t ArticleDetailServlet::handle(
             result->setErrno(NOT_LOGIN);
             break;
         }
-        DB::ArticleInfo::ptr info = ArticleMgr::GetInstance()->get(id);
+        DB::ArticleInfo::ptr info = ArticleRepository::Get(id, GetDB());
         if (!info) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
@@ -51,7 +52,7 @@ int32_t ArticleDetailServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
-        if (state != ArticleManager::Status::PUBLISHED && role != UserManager::Role::ADMIN && !is_author) {
+        if (state != ArticleStatus::PUBLISHED && role != UserManager::Role::ADMIN && !is_author) {
             result->setErrno(ACCESS_DENIED);
             break;
         }
@@ -67,11 +68,11 @@ int32_t ArticleDetailServlet::handle(
 
         // author stats
         std::vector<DB::ArticleInfo::ptr> authorArticles;
-        ArticleMgr::GetInstance()->listByUserId(authorArticles, uid, true);
+        ArticleQueryRepository::ListByUserId(authorArticles, uid, true, GetDB());
         int64_t author_praise_total = 0;
         int64_t author_article_count = 0;
         for (auto& a : authorArticles) {
-            if (a->getState() == ArticleManager::Status::PUBLISHED) {
+            if (a->getState() == ArticleStatus::PUBLISHED) {
                 author_article_count++;
                 author_praise_total += a->getPraise();
             }
@@ -92,10 +93,10 @@ int32_t ArticleDetailServlet::handle(
         result->set("favorites", info->getFavorites());
 
         std::vector<DB::ArticleCategoryRelInfo::ptr> cinfos;
-        ArticleCategoryRelMgr::GetInstance()->listByArticleId(cinfos, id, true);
+        ArticleCategoryRelRepository::ListByArticle(cinfos, id, true, GetDB());
 
         for (auto& i : cinfos) {
-            auto c = CategoryMgr::GetInstance()->get(i->getCategoryId());
+            auto c = CategoryRepository::Get(i->getCategoryId(), GetDB());
             if (c && c->getIsDeleted() == 0) {
                 Json::Value item;
                 item["id"] = c->getId();
@@ -106,9 +107,9 @@ int32_t ArticleDetailServlet::handle(
         }
 
         std::vector<DB::ArticleLabelRelInfo::ptr> linfos;
-        ArticleLabelRelMgr::GetInstance()->listByArticleId(linfos, id, true);
+        ArticleLabelRelRepository::ListByArticle(linfos, id, true, GetDB());
         for (auto& i : linfos) {
-            auto l = LabelMgr::GetInstance()->get(i->getLabelId());
+            auto l = LabelRepository::Get(i->getLabelId(), GetDB());
             if (l && l->getIsDeleted() == 0) {
                 Json::Value item;
                 item["id"] = l->getId();

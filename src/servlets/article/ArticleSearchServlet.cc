@@ -2,9 +2,10 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Search/SearchSync.hpp"
+#include "../../Repository/ArticleRepository.hpp"
+#include "../../Domain/ArticleTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -49,7 +50,7 @@ int32_t ArticleSearchServlet::handle(
             query.LabelIds.push_back(static_cast<uint64_t>(label_id));
         }
         // 公共搜索接口只允许查询已发布文章，避免私密/审核中文章被检索
-        query.State = ArticleManager::Status::PUBLISHED;
+        query.State = ArticleStatus::PUBLISHED;
         query.Channel = channel;
         query.UserId = user_id;
         query.YearMonth = year_month;
@@ -69,7 +70,7 @@ int32_t ArticleSearchServlet::handle(
 
         Json::Value list(Json::arrayValue);
         for (auto id : search_result.Ids) {
-            auto info = ArticleMgr::GetInstance()->get(static_cast<int64_t>(id));
+            auto info = ArticleRepository::Get(static_cast<int64_t>(id), GetDB());
             if (!info || info->getIsDeleted()) {
                 continue;
             }

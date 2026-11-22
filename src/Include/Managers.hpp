@@ -7,20 +7,12 @@
  */
 #pragma once
 
-#include "../Manager/ArticleCategoryRelManager.hpp"
-#include "../Manager/ArticleLabelRelManager.hpp"
-#include "../Manager/ArticleManager.hpp"
-#include "../Manager/ArticlePraiseRelManager.hpp"
 #include "../Manager/AssignmentManager.hpp"
 #include "../Manager/AssignmentOrganizationRelManager.hpp"
 #include "../Manager/BackupRecordManager.hpp"
 #include "../Manager/BugManager.hpp"
-#include "../Manager/CategoryManager.hpp"
-#include "../Manager/CommentManager.hpp"
-#include "../Manager/CommentPraiseRelManager.hpp"
 #include "../Manager/ErrorCodeManager.hpp"
 #include "../Manager/ExportRecordManager.hpp"
-#include "../Manager/LabelManager.hpp"
 #include "../Manager/MessageManager.hpp"
 #include "../Manager/NotificationManager.hpp"
 #include "../Manager/PasskeyManager.hpp"

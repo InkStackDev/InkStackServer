@@ -1,10 +1,10 @@
 #include "CategoryCreateServlet.hpp"
 
-#include "../../Manager/CategoryManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/CategoryService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/CategoryRepository.hpp"
 
 CategoryCreateServlet::CategoryCreateServlet()
     : BlogLoginedServlet("CategoryCreateServlet")
@@ -62,7 +62,7 @@ int32_t CategoryCreateServlet::handle(
 
         int64_t owner_id = uid;
         if (cid) {
-            auto existing = CategoryMgr::GetInstance()->get(cid);
+            auto existing = CategoryRepository::Get(cid, GetDB());
             if (!existing) {
                 result->setErrno(PARAM_INVALID, "invalid cid");
                 break;

@@ -4,7 +4,6 @@
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
-#include "./Manager/ArticleManager.hpp"
 #include "./Manager/NotificationManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
@@ -12,6 +11,8 @@
 #include "Config/RpcConfig.hpp"
 #include "Service/OrganizationRepoService.hpp"
 #include "Service/OrganizationRepoPrService.hpp"
+#include "Service/ArticleCounterService.hpp"
+#include "Service/ArticleScheduleService.hpp"
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -27,7 +28,7 @@ bool BlogModule::onLoad()
 bool BlogModule::onUnload()
 {
     JobRunner::StopAll();
-    ArticleMgr::GetInstance()->flushDirty();
+    ArticleCounterService::FlushDirty();
     SearchSyncMgr::GetInstance()->stop();
     MessageRouter::Shutdown();
     return true;
@@ -36,7 +37,7 @@ bool BlogModule::onUnload()
 bool BlogModule::onDeactivate()
 {
     // 停止接受请求后先把内存脏计数落库，再关闭长连接
-    ArticleMgr::GetInstance()->flushDirty();
+    ArticleCounterService::FlushDirty();
     // 热重载/关机：让客户端主动重连到新 worker，避免一直挂到 drain 超时
     WSMgr::GetInstance()->closeAllConnections(R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
     return true;
@@ -143,7 +144,8 @@ bool BlogModule::onServerUp()
         .run_immediately = true,
         .run =
             []() {
-                ArticleMgr::GetInstance()->onTick();
+                ArticleScheduleService::PublishDue();
+                ArticleCounterService::FlushDirty();
             },
     });
 

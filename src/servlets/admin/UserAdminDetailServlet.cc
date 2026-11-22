@@ -1,9 +1,9 @@
 #include "UserAdminDetailServlet.hpp"
 
-#include "../../Manager/ArticleManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Repository/CommentQueryRepository.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
 
 UserAdminDetailServlet::UserAdminDetailServlet()
     : BlogAdminServlet("UserAdminDetailServlet")
@@ -26,7 +26,7 @@ int32_t UserAdminDetailServlet::handle(
         }
 
         std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleMgr::GetInstance()->listByUserId(articles, user_id, false);
+        ArticleQueryRepository::ListByUserId(articles, user_id, false, GetDB());
         int64_t article_count = articles.size();
 
         std::vector<DB::CommentInfo::ptr> comments;

@@ -9,6 +9,9 @@
 #include <set>
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/ArticleQueryRepository.hpp"
+#include "../../Repository/ArticleRelRepository.hpp"
+#include "../../Domain/ArticleTypes.hpp"
 
 UserStatsServlet::UserStatsServlet()
     : BlogLoginedServlet("UserStatsServlet")
@@ -32,7 +35,7 @@ int32_t UserStatsServlet::handle(
         }
 
         std::vector<DB::ArticleInfo::ptr> articles;
-        ArticleMgr::GetInstance()->listByUserId(articles, uid, true);
+        ArticleQueryRepository::ListByUserId(articles, uid, true, GetDB());
 
         int64_t total_articles = 0;
         int64_t published_articles = 0;
@@ -48,10 +51,10 @@ int32_t UserStatsServlet::handle(
             total_articles++;
 
             int32_t state = a->getState();
-            if (state == ArticleManager::PUBLISHED) {
+            if (state == ArticleStatus::PUBLISHED) {
                 published_articles++;
                 published_ids.push_back(a->getId());
-            } else if (state == ArticleManager::PRIVATE) {
+            } else if (state == ArticleStatus::PRIVATE) {
                 private_articles++;
             }
 
@@ -59,7 +62,7 @@ int32_t UserStatsServlet::handle(
             total_likes += a->getPraise();
 
             std::vector<DB::ArticleLabelRelInfo::ptr> labels;
-            ArticleLabelRelMgr::GetInstance()->listByArticleId(labels, a->getId(), true);
+            ArticleLabelRelRepository::ListByArticle(labels, a->getId(), true, GetDB());
             for (auto& l : labels) {
                 unique_labels.insert(l->getLabelId());
             }

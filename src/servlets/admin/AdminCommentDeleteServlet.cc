@@ -1,7 +1,6 @@
 #include "AdminCommentDeleteServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/CommentManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/CommentService.hpp"
 #include "../../Util/Util.hpp"
@@ -9,6 +8,7 @@
 #include <json/json.h>
 
 #include <sstream>
+#include "../../Repository/CommentRepository.hpp"
 
 AdminCommentDeleteServlet::AdminCommentDeleteServlet()
     : BlogLoginedServlet("AdminCommentDeleteServlet")
@@ -62,7 +62,7 @@ int32_t AdminCommentDeleteServlet::handle(
 
         // Notify comment authors
         for (auto& cid : ids) {
-            auto comment = CommentMgr::GetInstance()->get(cid);
+            auto comment = CommentRepository::Get(cid, GetDB());
             if (!comment) {
                 continue;
             }

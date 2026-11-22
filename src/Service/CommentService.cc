@@ -6,12 +6,12 @@
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
-#include "../Manager/CommentManager.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Repository/CommentPraiseRepository.hpp"
 #include "../Repository/CommentQueryRepository.hpp"
 #include "../Repository/CommentRepository.hpp"
 #include "../Util/Util.hpp"
+#include "../Domain/CommentTypes.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -59,7 +59,7 @@ CommentService::CreateCommentResult CommentService::CreateComment(const CreateCo
     info->setParentId(input.parent_id);
     info->setIp(input.ip);
     info->setUserAgent(input.user_agent);
-    info->setStatus(CommentManager::Status::APPROVED);
+    info->setStatus(CommentStatus::APPROVED);
     info->setIsReported(0);
     info->setReportCount(0);
     info->setIsDeleted(0);
