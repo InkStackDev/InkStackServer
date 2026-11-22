@@ -12,7 +12,8 @@
 /**
  * @brief 基于 Redis SET NX EX 的短租约
  * @details 用于后台任务、全量重建、外部 API 同步等需要“同一时刻只跑一份”的场景。
- *          Redis 不可用时不阻塞业务：TryAcquire 返回 true，退化成本进程执行。
+ *          Redis 不可用时 fail-closed：TryAcquire 返回 false，本轮任务跳过，
+ *          避免多 worker / 多实例在无法确认互斥时同时执行。
  */
 class RedisLease {
 public:
@@ -29,7 +30,7 @@ public:
 
     /**
      * @brief 尝试获取租约
-     * @return true 获取成功（或 Redis 不可用时降级执行），false 已被其它 worker 持有
+     * @return true 获取成功；false 已被其它 worker 持有，或 Redis 不可用（fail-closed）
      */
     bool TryAcquire();
 

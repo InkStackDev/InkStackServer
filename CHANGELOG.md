@@ -123,6 +123,10 @@ All notable changes to this project will be documented in this file.
 - `blog_online_users` 改为按 `uid` 去重的在线用户数。
 - 业务侧配置统一收敛到 `src/Config/`（`AppConfig` / `AuthConfig` / `SearchConfig` / `AIConfig`），各模块不再各自声明
   `Config::Lookup`；新增配置项需在该目录登记并更新 key 对照表。
+- 多实例部署适配：`RedisLease` 改为 **fail-closed**（Redis 不可用时跳过本轮任务，日志每 60s 节流），
+  `JobRunner::Job` 新增 `use_lease`，默认租约任务与“每实例各自执行”的任务分离。
+- 文章浏览/点赞/收藏计数改为**进程内增量 + `views = views + ?` 增量写库**，刷盘任务不再占用租约，避免多实例
+  用绝对值互相覆盖；刷盘成功后 `Evict` 对象缓存，让缓存重新对齐 DB 真值。新增 `docs/multi-instance.md`。
 
 ### 修复
 
@@ -136,6 +140,11 @@ All notable changes to this project will be documented in this file.
 - 系统设置跨 worker 生效：本地快照按 Redis 版本号最多 1 秒校验一次，任一 worker 保存设置后其他 worker 自动重载。
 - 修复 `server.work_path` / `server.data_path` 使用单参 `Config::Lookup`（只查不注册）时，依赖跨编译单元静态初始化顺序、
   顺序不利会拿到空指针并崩溃的隐患；现在统一由 `src/Config/AppConfig.cc` 带默认值注册。
+- 修复模块重写后丢失的启动初始化：`onLoad` 恢复 `FoxThreadMgr::init/start` + `RedisMgr::init`、`I18n::Init`、
+  `ErrorCodeMgr::load`，`onServerReady` 恢复 `Init(...)` 服务指标注册，`onTick` 恢复 `SampleRates()` 与
+  `SessionDataMgr::check()`，`onUnload` 补 `RedisMgr::freeAll()`。
+- 修复 `BlogLoginedServlet::handlePre` 会话判断写反导致**带 session cookie 的请求全部返回
+  `1101 NOT_LOGIN`**（前端表现为“登录后立刻过期/请求被取消”）的问题。
 
 ### 移除
 

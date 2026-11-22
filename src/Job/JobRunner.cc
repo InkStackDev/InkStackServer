@@ -118,10 +118,13 @@ void JobRunner::Run(const std::shared_ptr<State>& state)
         return;
     }
 
-    RedisLease lease("job:" + state->job.name, state->job.lease_ttl_sec);
-    if (!lease.TryAcquire()) {
-        state->running.store(false);
-        return;
+    std::unique_ptr<RedisLease> lease;
+    if (state->job.use_lease) {
+        lease = std::make_unique<RedisLease>("job:" + state->job.name, state->job.lease_ttl_sec);
+        if (!lease->TryAcquire()) {
+            state->running.store(false);
+            return;
+        }
     }
 
     try {

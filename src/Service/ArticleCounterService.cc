@@ -1,7 +1,7 @@
 #include "ArticleCounterService.hpp"
 
+#include <map>
 #include <mutex>
-#include <set>
 #include <shared_mutex>
 #include <vector>
 
@@ -23,16 +23,55 @@ static chen::Logger::ptr logger = LOG_ROOT();
 /// 浏览去重窗口（秒）
 static const int kViewDedupTTL = 10 * 60;
 
-static std::shared_mutex g_updates_mutex;
-static std::set<int64_t> g_updates;
 static std::mutex g_counter_mutex;
 
 namespace {
 
-void AddUpdate(int64_t id)
+/**
+ * @brief 进程内待刷盘计数增量
+ * @details 多实例部署时每个实例各持一份增量，`FlushDirty` 用
+ *          `views = views + ?` 增量写库，避免多实例之间用绝对值互相覆盖。
+ */
+struct CounterDelta {
+    int64_t views = 0;
+    int64_t praise = 0;
+    int64_t favorites = 0;
+};
+
+std::shared_mutex g_deltas_mutex;
+std::map<int64_t, CounterDelta> g_deltas;
+
+void AddDelta(int64_t id, int64_t views, int64_t praise, int64_t favorites)
 {
-    std::unique_lock<std::shared_mutex> lock(g_updates_mutex);
-    g_updates.insert(id);
+    if (id <= 0 || (views == 0 && praise == 0 && favorites == 0)) {
+        return;
+    }
+    std::unique_lock<std::shared_mutex> lock(g_deltas_mutex);
+    auto& delta = g_deltas[id];
+    delta.views += views;
+    delta.praise += praise;
+    delta.favorites += favorites;
+    if (delta.views == 0 && delta.praise == 0 && delta.favorites == 0) {
+        g_deltas.erase(id);
+    }
+}
+
+/// 刷盘失败时把增量合并回本地，等待下一轮重试
+void MergeDeltas(const std::map<int64_t, CounterDelta>& deltas)
+{
+    if (deltas.empty()) {
+        return;
+    }
+    std::unique_lock<std::shared_mutex> lock(g_deltas_mutex);
+    for (const auto& [id, delta] : deltas) {
+        auto& target = g_deltas[id];
+        target.views += delta.views;
+        target.praise += delta.praise;
+        target.favorites += delta.favorites;
+        if (target.views == 0 && target.praise == 0 && target.favorites == 0) {
+            g_deltas.erase(id);
+        }
+    }
 }
 
 bool AddViews(uint64_t id, const std::string& cookie_id)
@@ -57,7 +96,7 @@ bool ArticleCounterService::IncViews(uint64_t id, const std::string& cookie_id, 
     if (AddViews(id, cookie_id)) {
         info->setViews(info->getViews() + 1);
         ArticleRepository::Put(info);
-        AddUpdate(id);
+        AddDelta(id, 1, 0, 0);
         chen::IOManager::GetThis()->schedule([user_id]() {
             chen::RedisUtil::Cmd(GetRedisPoolName(), "incr blog:total_visits");
             auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "incr blog:today_visits");
@@ -97,7 +136,7 @@ bool ArticleCounterService::IncPraise(uint64_t id, const std::string& cookie_id,
     });
     info->setPraise(info->getPraise() + 1);
     ArticleRepository::Put(info);
-    AddUpdate(id);
+    AddDelta(id, 0, 1, 0);
     return true;
 }
 
@@ -126,7 +165,7 @@ bool ArticleCounterService::IncFavorites(uint64_t id, const std::string& cookie_
     });
     info->setFavorites(info->getFavorites() + 1);
     ArticleRepository::Put(info);
-    AddUpdate(id);
+    AddDelta(id, 0, 0, 1);
     return true;
 }
 
@@ -157,7 +196,7 @@ bool ArticleCounterService::DecPraise(uint64_t id, const std::string& cookie_id,
     if (changed) {
         info->setPraise(info->getPraise() - 1);
         ArticleRepository::Put(info);
-        AddUpdate(id);
+        AddDelta(id, 0, -1, 0);
     }
     return true;
 }
@@ -189,7 +228,7 @@ bool ArticleCounterService::DecFavorites(uint64_t id, const std::string& cookie_
     if (changed) {
         info->setFavorites(info->getFavorites() - 1);
         ArticleRepository::Put(info);
-        AddUpdate(id);
+        AddDelta(id, 0, 0, -1);
     }
     return true;
 }
@@ -203,7 +242,7 @@ void ArticleCounterService::IncPraiseCount(int64_t id)
     }
     info->setPraise(info->getPraise() + 1);
     ArticleRepository::Put(info);
-    AddUpdate(id);
+    AddDelta(id, 0, 1, 0);
 }
 
 void ArticleCounterService::DecPraiseCount(int64_t id)
@@ -216,7 +255,7 @@ void ArticleCounterService::DecPraiseCount(int64_t id)
     if (info->getPraise() > 0) {
         info->setPraise(info->getPraise() - 1);
         ArticleRepository::Put(info);
-        AddUpdate(id);
+        AddDelta(id, 0, -1, 0);
     }
 }
 
@@ -294,60 +333,64 @@ void ArticleCounterService::SyncStatsFromDB()
 
 void ArticleCounterService::FlushDirty()
 {
-    std::set<int64_t> updates;
+    std::map<int64_t, CounterDelta> deltas;
     {
-        std::unique_lock<std::shared_mutex> lock(g_updates_mutex);
-        updates.swap(g_updates);
+        std::unique_lock<std::shared_mutex> lock(g_deltas_mutex);
+        deltas.swap(g_deltas);
     }
-    if (updates.empty()) {
+    if (deltas.empty()) {
         return;
     }
 
     auto conn = GetDB();
     if (!conn) {
         ERROR(logger) << "FlushDirty: get db connect fail";
-        std::unique_lock<std::shared_mutex> lock(g_updates_mutex);
-        for (auto& id : updates) {
-            g_updates.insert(id);
-        }
+        MergeDeltas(deltas);
         return;
     }
     auto trans = conn->openTransaction();
     if (!trans) {
         ERROR(logger) << "FlushDirty: open transaction failed";
-        std::unique_lock<std::shared_mutex> lock(g_updates_mutex);
-        for (auto& id : updates) {
-            g_updates.insert(id);
-        }
+        MergeDeltas(deltas);
         return;
     }
 
-    std::vector<DB::ArticleInfo::ptr> updated;
-    for (auto& id : updates) {
-        auto info = ArticleRepository::Get(id, conn);
-        if (!info) {
-            continue;
-        }
-        // Redis 反序列化后对象是 clean 的，这里显式标记计数字段，确保能写回 DB
-        info->setViews(info->getViews());
-        info->setPraise(info->getPraise());
-        info->setFavorites(info->getFavorites());
-        if (!ArticleRepository::Update(info, conn)) {
-            AddUpdate(id);
-        } else {
-            updated.push_back(info);
-        }
-    }
-    if (!trans->commit()) {
-        ERROR(logger) << "FlushDirty: commit failed";
-        std::unique_lock<std::shared_mutex> lock(g_updates_mutex);
-        for (auto& id : updates) {
-            g_updates.insert(id);
-        }
+    // 增量写：多实例各自刷自己的增量，DB 侧不会出现“绝对值互相覆盖”
+    auto stmt = conn->prepare(
+        "UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites + ? WHERE id = ?");
+    if (!stmt) {
+        ERROR(logger) << "FlushDirty: prepare failed";
+        MergeDeltas(deltas);
         return;
     }
-    for (const auto& info : updated) {
-        ArticleRepository::Put(info);
+
+    std::map<int64_t, CounterDelta> failed;
+    for (const auto& [id, delta] : deltas) {
+        if (delta.views == 0 && delta.praise == 0 && delta.favorites == 0) {
+            continue;
+        }
+        stmt->bindInt64(1, delta.views);
+        stmt->bindInt64(2, delta.praise);
+        stmt->bindInt64(3, delta.favorites);
+        stmt->bindInt64(4, id);
+        if (stmt->execute() != 0) {
+            ERROR(logger) << "FlushDirty: update failed, id=" << id << ", err=" << stmt->getErrStr();
+            failed[id] = delta;
+        }
     }
-    INFO(logger) << "FlushDirty: flushed " << updates.size() << " articles";
+
+    if (!trans->commit()) {
+        ERROR(logger) << "FlushDirty: commit failed";
+        MergeDeltas(deltas);
+        return;
+    }
+
+    // 写库成功：让对象缓存下次从 DB 重新加载，避免缓存值与 DB 长期漂移
+    for (const auto& [id, delta] : deltas) {
+        if (failed.find(id) == failed.end()) {
+            ArticleRepository::Evict(id);
+        }
+    }
+    MergeDeltas(failed);
+    DEBUG(logger) << "FlushDirty: flushed " << (deltas.size() - failed.size()) << " articles";
 }

@@ -42,7 +42,8 @@ public:
     static int64_t GetTotalVisitors();
 
     /**
-     * @brief 将内存脏计数刷新到 DB
+     * @brief 将进程内累计的计数增量按 `+ ?` 增量写回 DB
+     * @details 每个实例各刷自己的增量；写库成功后 `Evict` 对应对象缓存。
      */
     static void FlushDirty();
 

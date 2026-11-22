@@ -14,9 +14,10 @@
 
 /**
  * @brief 后台任务执行器
- * @details 每个任务注册后由 IOManager 定时触发；触发时先抢 Redis 租约，
+ * @details 每个任务注册后由 IOManager 定时触发；默认触发时先抢 Redis 租约，
  *          同一时刻只有一个 worker 执行，避免多 worker / 多实例重复跑。
- *          任务必须幂等、可重入，且不会长期阻塞事件循环。
+ *          需要“每个实例各跑一份”的任务（如刷各自的计数增量）把 `use_lease`
+ *          设为 false。任务必须幂等、可重入，且不会长期阻塞事件循环。
  */
 class JobRunner {
 public:
@@ -29,6 +30,8 @@ public:
         int lease_ttl_sec = 60;
         /// 启动时是否立即执行一次
         bool run_immediately = false;
+        /// 是否用 Redis 租约保证全局只跑一份；false 表示每个 worker 各自执行
+        bool use_lease = true;
         /// 任务体
         std::function<void()> run;
     };

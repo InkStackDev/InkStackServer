@@ -79,7 +79,7 @@ void BlogModule::onTick()
     static uint32_t tick = 0;
     ++tick;
 
-    // 10s 采样一次路由 QPS
+    // 5s 采样一次路由 QPS
     if (tick % 50 == 0) {
         SampleRates();
     }
@@ -181,15 +181,26 @@ bool BlogModule::onServerUp()
         WARN(LOG_ROOT()) << "SearchSync init failed, search sync disabled";
     }
 
-    // 文章定时发布 + 计数刷盘（原先 onTick 未被调用）
+    // 文章定时发布：多实例只需要一个执行者，保留租约
     JobRunner::Register(JobRunner::Job{
-        .name = "article:tick",
+        .name = "article:publish",
         .interval_ms = 5000,
         .lease_ttl_sec = 30,
         .run_immediately = true,
         .run =
             []() {
                 ArticleScheduleService::PublishDue();
+            },
+    });
+
+    // 计数刷盘：每个实例只刷自己进程内的增量，不能用租约（否则其它实例的增量要等抢到租约）
+    JobRunner::Register(JobRunner::Job{
+        .name = "article:flush",
+        .interval_ms = 5000,
+        .run_immediately = true,
+        .use_lease = false,
+        .run =
+            []() {
                 ArticleCounterService::FlushDirty();
             },
     });

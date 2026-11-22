@@ -146,13 +146,14 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 7. 更新 `src/Include/Managers.hpp`（如需兼容旧入口）
 8. 新错误码同时更新 `src/ErrorCodes.hpp` 与 `errors.json`
 9. 涉及跨 worker 状态时，确认已使用 Redis/JobRunner/MessageRouter
+10. 多实例部署前过一遍 [`multi-instance.md`](multi-instance.md)：Redis 高可用、共享存储、实例标识、`use_lease` 选择
 
 ## 8. 静态检查清单
 
 提交前建议执行：
 
 ```bash
-# Servlet 层不得获取数据库连接（迁移目标；当前 RD 已清零）
+# Servlet 层不得获取数据库连接（当前已清零）
 rg 'GetDB\(\)' src/Servlets
 
 # Repository 之外不应出现网关 DAO

@@ -26,15 +26,6 @@ servers:
     process_worker: io
     type: ws
 
-  - address: ["0.0.0.0:8092"]
-    keepalive: 1
-    timeout: 1000
-    name: chen-rpc/1.0.0
-    accept_worker: accept
-    io_worker: io
-    process_worker: io
-    type: rpc
-
 fiber:
   stack_size: 65536
 
@@ -90,6 +81,6 @@ redis:
     ${REDIS_DBNAME}:
       host: ${REDIS_HOST}
       type: fox_redis
-      pool: 1
-      timeout: 100
+      pool: 4
+      timeout: 1000
   desc: "type: redis,redis_cluster,fox_redis,fox_redis_cluster"
