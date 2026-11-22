@@ -2,11 +2,12 @@
 
 #include "../../Event/EventDefine.hpp"
 #include "../../Manager/BugManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/BugService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 RdBugEditServlet::RdBugEditServlet()
     : BlogLoginedServlet("RdBugEditServlet")
@@ -29,8 +30,8 @@ int32_t RdBugEditServlet::handle(
             break;
         }
 
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-        if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
         }

@@ -2,8 +2,10 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -22,7 +24,7 @@ int32_t OrganizationListServlet::handle(
         int32_t status = request->getParamAs<int32_t>("status", -1);
 
         std::vector<DB::OrganizationInfo::ptr> orgs;
-        int64_t total = OrganizationMgr::GetInstance()->listByPages(orgs, 0, INT32_MAX, status, true);
+        int64_t total = OrganizationQueryRepository::ListByPages(orgs, 0, INT32_MAX, status, true, GetDB());
 
         result->set("total", total);
         Json::Value list;
@@ -34,8 +36,8 @@ int32_t OrganizationListServlet::handle(
             item["type"] = i->getType();
             item["description"] = i->getDescription();
             // 获取成员数量
-            int32_t status = OrganizationUserRelManager::Status::APPROVED;
-            item["count"] = OrganizationUserRelMgr::GetInstance()->getMemberCount(i->getId(), status, true);
+            int32_t status = OrgMemberStatus::APPROVED;
+            item["count"] = OrganizationUserRelRepository::CountByOrg(i->getId(), status, true, GetDB());
             list.append(item);
         }
         result->set("list", list);

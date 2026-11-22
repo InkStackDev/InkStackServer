@@ -8,10 +8,11 @@
 #pragma once
 
 #include "../../Manager/BugManager.hpp"
-#include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/RequirementManager.hpp"
 #include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Util/Util.hpp"
 #include "DB/BugInfo.hpp"
 #include "DB/RequirementInfo.hpp"
 #include "DB/TaskInfo.hpp"
@@ -22,6 +23,7 @@
 
 #include <ctime>
 #include <string>
+#include "../../Domain/OrganizationTypes.hpp"
 
 // ============================================================================
 // 分页: page/page_size → offset/size
@@ -256,15 +258,15 @@ inline int32_t OrgRoleToFrontend(int32_t role)
 {
     // 前端期望: 1=报告者, 2=开发者, 3=研发主管, 4=组织管理员
     switch (role) {
-    case OrganizationManager::Role::MEMBER:
+    case OrgRole::MEMBER:
         return 0;
-    case OrganizationManager::Role::REPORTER:
+    case OrgRole::REPORTER:
         return 1;
-    case OrganizationManager::Role::DEVELOPER:
+    case OrgRole::DEVELOPER:
         return 2;
-    case OrganizationManager::Role::DEV_LEAD:
+    case OrgRole::DEV_LEAD:
         return 3;
-    case OrganizationManager::Role::ORG_ADMIN:
+    case OrgRole::ORG_ADMIN:
         return 4;
     default:
         return 0;
@@ -277,7 +279,7 @@ inline int32_t OrgRoleToFrontend(int32_t role)
 
 inline std::string GetOrgName(int64_t org_id)
 {
-    auto org = OrganizationMgr::GetInstance()->get(org_id);
+    auto org = OrganizationRepository::Get(org_id, GetDB());
     return org ? org->getName() : "";
 }
 

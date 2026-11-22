@@ -2,12 +2,13 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -58,7 +59,7 @@ int32_t OrganizationReposAddServlet::handle(
         }
 
         // 检查组织是否存在
-        auto org = OrganizationMgr::GetInstance()->get(org_id);
+        auto org = OrganizationRepository::Get(org_id, GetDB());
         if (!org) {
             result->setErrno(ORG_NOT_FOUND);
             break;
@@ -74,20 +75,20 @@ int32_t OrganizationReposAddServlet::handle(
         bool is_admin = (system_role == UserManager::Role::ADMIN);
 
         if (!is_admin) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED, "无权访问该组织");
                 break;
             }
             int32_t org_role = rel->getRole();
-            if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
+            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
                 result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可添加仓库");
                 break;
             }
         }
 
         // 检查同组织下名称是否重复
-        auto existing = OrganizationRepoMgr::GetInstance()->getByOrgAndName(org_id, name);
+        auto existing = OrganizationRepoRepository::GetByOrgAndName(org_id, name, GetDB());
         if (existing) {
             result->setErrno(ORG_REPO_NAME_EXISTS, "该组织下已存在同名仓库");
             break;

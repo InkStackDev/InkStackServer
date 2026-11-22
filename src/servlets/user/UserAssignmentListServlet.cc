@@ -4,7 +4,8 @@
 
 #include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/AssignmentOrganizationRelManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -25,7 +26,7 @@ int32_t UserAssignmentListServlet::handle(
 
         // 当前用户的所有组织关系
         std::vector<DB::OrganizationUserRelInfo::ptr> user_org_rels;
-        OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_org_rels, uid, -1, true);
+        OrganizationUserRelRepository::ListByUser(user_org_rels, uid, -1, true, GetDB());
 
         if (user_org_rels.empty()) {
             result->set("total", 0);

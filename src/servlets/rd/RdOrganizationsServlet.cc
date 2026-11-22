@@ -1,7 +1,9 @@
 #include "RdOrganizationsServlet.hpp"
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdOrganizationsServlet::RdOrganizationsServlet()
     : BlogLoginedServlet("RdOrganizationsServlet")
@@ -18,15 +20,15 @@ int32_t RdOrganizationsServlet::handle(
         int64_t uid = getUserId(request);
 
         std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-        OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, -1, true);
+        OrganizationUserRelRepository::ListByUser(user_orgs, uid, -1, true, GetDB());
 
         Json::Value arr(Json::arrayValue);
         for (auto& rel : user_orgs) {
-            if (rel->getRole() < OrganizationManager::Role::REPORTER) {
+            if (rel->getRole() < OrgRole::REPORTER) {
                 continue;
             }
 
-            auto org = OrganizationMgr::GetInstance()->get(rel->getOrgId());
+            auto org = OrganizationRepository::Get(rel->getOrgId(), GetDB());
             if (!org) {
                 continue;
             }

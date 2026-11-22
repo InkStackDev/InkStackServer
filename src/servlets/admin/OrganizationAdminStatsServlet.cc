@@ -1,7 +1,8 @@
 #include "OrganizationAdminStatsServlet.hpp"
 
-#include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Util/Util.hpp"
 
 OrganizationAdminStatsServlet::OrganizationAdminStatsServlet()
     : BlogLoginedServlet("OrganizationAdminStatsServlet")
@@ -26,7 +27,7 @@ int32_t OrganizationAdminStatsServlet::handle(
             break;
         }
 
-        auto stats = OrganizationMgr::GetInstance()->getStats();
+        auto stats = OrganizationQueryRepository::GetStats(GetDB());
 
         result->setErrno(SUCCESS);
         result->set("total_organizations", stats.total);

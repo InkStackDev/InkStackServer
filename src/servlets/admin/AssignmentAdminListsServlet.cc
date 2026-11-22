@@ -2,11 +2,11 @@
 
 #include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/AssignmentOrganizationRelManager.hpp"
-#include "../../Manager/OrganizationManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../../Repository/OrganizationRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -66,7 +66,7 @@ int32_t AssignmentAdminListsServlet::handle(
             std::vector<DB::AssignmentOrganizationRelInfo::ptr> org_rels;
             AssignmentOrganizationRelMgr::GetInstance()->getByAssignmentId(org_rels, i->getId());
             if (!org_rels.empty() && org_rels[0]) {
-                auto org = OrganizationMgr::GetInstance()->get(org_rels[0]->getOrganizationId());
+                auto org = OrganizationRepository::Get(org_rels[0]->getOrganizationId(), GetDB());
                 if (org) {
                     item["organization_name"] = org->getName();
                 }

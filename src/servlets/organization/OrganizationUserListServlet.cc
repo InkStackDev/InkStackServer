@@ -2,10 +2,10 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -26,9 +26,9 @@ int32_t OrganizationUserListServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, uint64_t, page_size, "page_size");
         DEFINE_AND_CHECK_TYPE(result, int32_t, status, "status");
 
-        if (status == OrganizationUserRelManager::Status::PENDING) {
+        if (status == OrgMemberStatus::PENDING) {
             int64_t uid = getUserId(request);
-            auto info = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
+            auto info = OrganizationUserRelRepository::GetByOrgAndUser(id, uid, GetDB());
             if (!info) {
                 result->setErrno(ORG_NOT_MEMBER);
                 break;
@@ -38,7 +38,7 @@ int32_t OrganizationUserListServlet::handle(
                 result->setErrno(USER_NOT_FOUND);
                 break;
             }
-            if (info->getRole() != OrganizationManager::Role::ORG_ADMIN && info->getRole() != OrganizationManager::Role::DEV_LEAD
+            if (info->getRole() != OrgRole::ORG_ADMIN && info->getRole() != OrgRole::DEV_LEAD
                 && current_user->getRole() != UserManager::Role::ADMIN) {
                 result->setErrno(ACCESS_DENIED);
                 break;
@@ -48,7 +48,8 @@ int32_t OrganizationUserListServlet::handle(
         uint64_t offset = (page_num - 1) * page_size;
 
         std::vector<DB::OrganizationUserRelInfo::ptr> rels;
-        int64_t total = OrganizationUserRelMgr::GetInstance()->getByPages(rels, id, offset, page_size, status, true);
+        int64_t total =
+            OrganizationUserRelRepository::ListByOrgPages(rels, id, offset, page_size, status, true, GetDB());
 
         std::sort(rels.begin(), rels.end(), [](const auto& a, const auto& b) {
             return a->getCreateTime() < b->getCreateTime();

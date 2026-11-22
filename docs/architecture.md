@@ -72,8 +72,11 @@ Service 不应依赖 Manager。
   - `ErrorCodeManager`：`errors.json` 内存表与 i18n
   - `SessionManager`：session TTL 计算
   - `NotificationManager` / `MessageManager`：目前仅剩 WS 推送入口，后续迁入 `MessageRouter` 后删除
-- 已删除的纯 facade（示例）：`BadgeManager`、`FaqManager`、`FeedbackManager`、`ResourceManager`、
-  `UserOAuthManager`、`OrganizationApplyManager`、`UserAIConfigManager`、`AssignmentUserRelManager`。
+- 已删除的纯 facade（示例）：
+  - 基础：`BadgeManager`、`FaqManager`、`FeedbackManager`、`ResourceManager`、`UserOAuthManager`、
+    `OrganizationApplyManager`、`UserAIConfigManager`、`AssignmentUserRelManager`
+  - 组织：`OrganizationManager`、`OrganizationUserRelManager`、`OrganizationRepoManager`、`OrganizationRepoPrManager`
+    （组织角色/状态枚举已迁至 `src/Domain/OrganizationTypes.hpp`）
 - 现有 Manager 中不得再出现：
   - `static ... ParseRow(...)`
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec

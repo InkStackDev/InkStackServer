@@ -2,9 +2,11 @@
 
 #include "../../Permission.hpp"
 #include "../../Manager/BugManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdBugDetailServlet::RdBugDetailServlet()
     : BlogLoginedServlet("RdBugDetailServlet")
@@ -45,8 +47,8 @@ int32_t RdBugDetailServlet::handle(
 
         int64_t info_org_id = info->getOrgId();
         if (!is_platform_admin) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(info_org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(info_org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }

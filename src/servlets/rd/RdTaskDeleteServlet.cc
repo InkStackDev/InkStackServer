@@ -1,6 +1,5 @@
 #include "RdTaskDeleteServlet.hpp"
 
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/TaskService.hpp"
@@ -9,6 +8,8 @@
 #include <json/json.h>
 
 #include <set>
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 RdTaskDeleteServlet::RdTaskDeleteServlet()
     : BlogLoginedServlet("RdTaskDeleteServlet")
@@ -51,8 +52,8 @@ int32_t RdTaskDeleteServlet::handle(
 
         int32_t org_role = 0;
         if (!is_platform_admin) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }

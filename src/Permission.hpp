@@ -9,10 +9,9 @@
 #pragma once
 
 #include "ErrorCodes.hpp"
-#include "Manager/OrganizationManager.hpp"
+#include "Domain/OrganizationTypes.hpp"
 #include "Manager/UserManager.hpp"
 
-using OrgRole = OrganizationManager::Role;
 
 // ============================================================================
 // 成员管理权限

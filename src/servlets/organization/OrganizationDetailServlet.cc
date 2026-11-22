@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -22,14 +22,14 @@ int32_t OrganizationDetailServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, id, "id");
 
-        auto org = OrganizationMgr::GetInstance()->get(id);
+        auto org = OrganizationRepository::Get(id, GetDB());
         if (!org) {
             result->setErrno(ORG_NOT_FOUND);
             break;
         }
 
         int64_t uid = getUserId(request);
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(id, uid);
+        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(id, uid, GetDB());
         if (rel) {
             result->set("user_in_org", rel->getStatus());
             result->set("user_role", rel->getRole());

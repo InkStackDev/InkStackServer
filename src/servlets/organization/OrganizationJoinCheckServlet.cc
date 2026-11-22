@@ -4,11 +4,12 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 OrganizationJoinCheckServlet::OrganizationJoinCheckServlet()
     : BlogLoginedServlet("OrganizationJoinCheckServlet")
@@ -26,13 +27,13 @@ int32_t OrganizationJoinCheckServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
         DEFINE_AND_CHECK_TYPE(result, int32_t, state, "state");
 
-        if (state != OrganizationUserRelManager::Status::REJECTED && state != OrganizationUserRelManager::Status::APPROVED) {
+        if (state != OrgMemberStatus::REJECTED && state != OrgMemberStatus::APPROVED) {
             result->setErrno(PARAM_INVALID, "invalid state");
             break;
         }
 
         auto user = UserMgr::GetInstance()->get(user_id);
-        auto org = OrganizationMgr::GetInstance()->get(org_id);
+        auto org = OrganizationRepository::Get(org_id, GetDB());
         if (!user || !org) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;
@@ -51,7 +52,7 @@ int32_t OrganizationJoinCheckServlet::handle(
         }
         int32_t system_role = current_user->getRole();
 
-        auto operator_rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        auto operator_rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
         if (!operator_rel) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
@@ -81,7 +82,7 @@ int32_t OrganizationJoinCheckServlet::handle(
         // Notify applicant
         {
             EventOrgMemberData data = {};
-            data.type = (state == OrganizationUserRelManager::Status::APPROVED) ? "join_approved" : "join_rejected";
+            data.type = (state == OrgMemberStatus::APPROVED) ? "join_approved" : "join_rejected";
             data.org_id = org_id;
             data.org_name = org->getName();
             data.applicant_id = user_id;

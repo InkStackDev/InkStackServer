@@ -9,44 +9,45 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
-#include "../../Manager/OrganizationRepoPrManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
+#include "../../Repository/OrganizationRepoPrRepository.hpp"
+#include "../../Service/OrganizationRepoPrService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
 /// 将单条同步状态映射为业务错误码（OK 不处理）
-static void MapSyncPrError(OrganizationRepoPrManager::SyncPrStatus st, Result::ptr result)
+static void MapSyncPrError(OrganizationRepoPrService::SyncStatus st, Result::ptr result)
 {
     switch (st) {
-    case OrganizationRepoPrManager::SyncPrStatus::PR_NOT_FOUND:
+    case OrganizationRepoPrService::SyncStatus::PR_NOT_FOUND:
         result->setErrno(ORG_PR_NOT_FOUND);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::REPO_NOT_FOUND:
+    case OrganizationRepoPrService::SyncStatus::REPO_NOT_FOUND:
         result->setErrno(ORG_REPO_NOT_FOUND);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::NO_TOKEN:
+    case OrganizationRepoPrService::SyncStatus::NO_TOKEN:
         result->setErrno(ORG_REPO_TOKEN_MISSING);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::GITHUB_NOT_FOUND:
+    case OrganizationRepoPrService::SyncStatus::GITHUB_NOT_FOUND:
         result->setErrno(GITHUB_PR_NOT_FOUND);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::RATE_LIMITED:
+    case OrganizationRepoPrService::SyncStatus::RATE_LIMITED:
         result->setErrno(GITHUB_RATE_LIMITED);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::BUSY:
+    case OrganizationRepoPrService::SyncStatus::BUSY:
         result->setErrno(ORG_PR_SYNC_IN_PROGRESS);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::HTTP_ERROR:
+    case OrganizationRepoPrService::SyncStatus::HTTP_ERROR:
         result->setErrno(GITHUB_API_FAILED);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::DB_ERROR:
+    case OrganizationRepoPrService::SyncStatus::DB_ERROR:
         result->setErrno(DB_OPERATION_FAILED);
         break;
-    case OrganizationRepoPrManager::SyncPrStatus::OK:
+    case OrganizationRepoPrService::SyncStatus::OK:
     default:
         break;
     }
@@ -79,7 +80,7 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
 
         // 传 id 时定位到其所属仓库
         if (id) {
-            auto pr = OrganizationRepoPrMgr::GetInstance()->get(id);
+            auto pr = OrganizationRepoPrRepository::Get(id, GetDB());
             if (!pr) {
                 result->setErrno(ORG_PR_NOT_FOUND);
                 break;
@@ -88,7 +89,7 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
         }
 
         // 检查仓库是否存在
-        auto repo = OrganizationRepoMgr::GetInstance()->get(repo_id);
+        auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
         if (!repo) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
@@ -105,13 +106,13 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
             int32_t org_role = rel->getRole();
-            if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
+            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
                 result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可同步 PR");
                 break;
             }
@@ -125,8 +126,8 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
             }
 
             DB::OrganizationRepoPrsInfo::ptr updated;
-            auto st = OrganizationRepoPrManager::SyncPrFromGitHub(id, updated);
-            if (st != OrganizationRepoPrManager::SyncPrStatus::OK) {
+            auto st = OrganizationRepoPrService::SyncPrFromGitHub(id, updated);
+            if (st != OrganizationRepoPrService::SyncStatus::OK) {
                 MapSyncPrError(st, result);
                 break;
             }
@@ -158,7 +159,7 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
 
         // 异步调度全量同步
         chen::Scheduler::GetThis()->schedule([repo_id, url, token]() {
-            OrganizationRepoPrManager::SyncFromGitHub(repo_id, url, token);
+            OrganizationRepoPrService::SyncFromGitHub(repo_id, url, token);
         });
     } while (0);
     response->setBody(result->toJsonString());

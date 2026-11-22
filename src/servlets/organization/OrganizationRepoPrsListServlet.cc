@@ -9,10 +9,12 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
-#include "../../Manager/OrganizationRepoPrManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
+#include "../../Repository/OrganizationRepoPrRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -53,34 +55,34 @@ int32_t OrganizationRepoPrsListServlet::handle(
 
         if (repo_id) {
             // 模式1: 按仓库查
-            auto repo = OrganizationRepoMgr::GetInstance()->get(repo_id);
+            auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
             if (!repo) {
                 result->setErrno(ORG_REPO_NOT_FOUND);
                 break;
             }
             int64_t rid = repo->getOrgId();
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(rid, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(rid, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED, "无权访问该组织");
                 break;
             }
-            total = OrganizationRepoPrMgr::GetInstance()->listByRepoPages(prs, repo_id, state, offset, page_size);
+            total = OrganizationRepoPrRepository::ListByRepoPages(prs, repo_id, state, offset, page_size, GetDB());
         } else if (org_id) {
             // 模式2: 按组织查
-            auto org = OrganizationMgr::GetInstance()->get(org_id);
+            auto org = OrganizationRepository::Get(org_id, GetDB());
             if (!org) {
                 result->setErrno(ORG_NOT_FOUND);
                 break;
             }
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED, "无权访问该组织");
                 break;
             }
-            total = OrganizationRepoPrMgr::GetInstance()->listByOrgPages(prs, org_id, state, offset, page_size);
+            total = OrganizationRepoPrRepository::ListByOrgPages(prs, org_id, state, offset, page_size, GetDB());
         } else {
             // 模式3: 按用户所有组织查
-            total = OrganizationRepoPrMgr::GetInstance()->listByUserPages(prs, uid, state, offset, page_size);
+            total = OrganizationRepoPrRepository::ListByUserPages(prs, uid, state, offset, page_size, GetDB());
         }
 
         result->set("total", total);

@@ -2,10 +2,11 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -38,22 +39,22 @@ int32_t OrganizationReposListServlet::handle(
         }
 
         // 检查组织是否存在
-        auto org = OrganizationMgr::GetInstance()->get(org_id);
+        auto org = OrganizationRepository::Get(org_id, GetDB());
         if (!org) {
             result->setErrno(ORG_NOT_FOUND);
             break;
         }
 
         // 检查用户是否是该组织成员（任意角色即可查看仓库）
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-        if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
             result->setErrno(ACCESS_DENIED, "无权访问该组织");
             break;
         }
 
         uint64_t offset = (page - 1) * page_size;
         std::vector<DB::OrganizationReposInfo::ptr> repos;
-        int64_t total = OrganizationRepoMgr::GetInstance()->listByOrgPages(repos, org_id, offset, page_size);
+        int64_t total = OrganizationRepoRepository::ListByOrgPages(repos, org_id, offset, page_size, GetDB());
 
         result->set("total", total);
         result->set("page", page);

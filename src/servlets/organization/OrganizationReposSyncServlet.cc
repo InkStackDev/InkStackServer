@@ -2,12 +2,12 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationRepoService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -32,7 +32,7 @@ int32_t OrganizationReposSyncServlet::handle(
         }
 
         // 检查仓库是否存在
-        auto repo = OrganizationRepoMgr::GetInstance()->get(repo_id);
+        auto repo = OrganizationRepoRepository::Get(repo_id, GetDB());
         if (!repo) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
@@ -47,13 +47,13 @@ int32_t OrganizationReposSyncServlet::handle(
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
             int32_t org_role = rel->getRole();
-            if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
+            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
                 result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可触发仓库同步");
                 break;
             }

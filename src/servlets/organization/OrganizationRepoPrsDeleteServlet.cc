@@ -9,13 +9,12 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
-#include "../../Manager/OrganizationRepoPrManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Repository/OrganizationRepoPrRepository.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -39,13 +38,13 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
             break;
         }
 
-        auto pr = OrganizationRepoPrMgr::GetInstance()->get(id);
+        auto pr = OrganizationRepoPrRepository::Get(id, GetDB());
         if (!pr) {
             result->setErrno(PARAM_INVALID, "PR 记录不存在");
             break;
         }
 
-        auto repo = OrganizationRepoMgr::GetInstance()->get(pr->getRepoId());
+        auto repo = OrganizationRepoRepository::Get(pr->getRepoId(), GetDB());
         if (!repo) {
             result->setErrno(ORG_REPO_NOT_FOUND);
             break;
@@ -60,13 +59,13 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
             int32_t org_role = rel->getRole();
-            if (org_role != OrganizationManager::Role::ORG_ADMIN && org_role != OrganizationManager::Role::DEV_LEAD) {
+            if (org_role != OrgRole::ORG_ADMIN && org_role != OrgRole::DEV_LEAD) {
                 result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
                 break;
             }
@@ -84,7 +83,7 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
             break;
         }
 
-        OrganizationRepoPrMgr::GetInstance()->del(id);
+        OrganizationRepoPrRepository::Evict(id);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

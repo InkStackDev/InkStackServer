@@ -1,17 +1,17 @@
 #include "BlogMsgFromBot.hpp"
 
-#include "../Manager/OrganizationRepoPrManager.hpp"
 #include "../Repository/OrganizationRepoPrRepository.hpp"
 #include "../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>
+#include "../Service/OrganizationRepoPrService.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
 static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
 {
     // 1. 查找本地仓库
-    auto repo = OrganizationRepoPrManager::FindRepoByOwnerAndName(info.RepoOwner, info.RepoName);
+    auto repo = OrganizationRepoPrService::FindRepoByOwnerAndName(info.RepoOwner, info.RepoName);
     if (!repo) {
         WARN(logger) << "HandlePRWebhook: repo not found for " << info.RepoOwner << "/" << info.RepoName << ", PR #" << info.Number << " \""
                      << info.Title << "\"";
@@ -32,7 +32,7 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
     }
 
     // 4. 查找已有记录（幂等去重）
-    auto existing = OrganizationRepoPrMgr::GetInstance()->getByRepoAndPrId(repo_id, info.Number);
+    auto existing = OrganizationRepoPrRepository::GetByRepoAndPrId(repo_id, info.Number, GetDB());
 
     DB::OrganizationRepoPrsInfo::ptr pr;
     if (existing) {
@@ -85,7 +85,7 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
                       << ", errno=" << db->getErrno();
         return GITHUB_DB_OPERATION_FAILED;
     }
-    OrganizationRepoPrMgr::GetInstance()->add(pr);
+    OrganizationRepoPrRepository::Put(pr);
     DEBUG(logger) << "HandlePRWebhook: updated PR #" << info.Number << " state=" << pr->getState() << " action=" << info.Action;
 
     return 0;
@@ -94,7 +94,7 @@ static int32_t HandlePRWebhook(const tagGithubPRInfo& info)
 static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
 {
     // 1. 查找本地仓库
-    auto repo = OrganizationRepoPrManager::FindRepoByOwnerAndName(info.RepoOwner, info.RepoName);
+    auto repo = OrganizationRepoPrService::FindRepoByOwnerAndName(info.RepoOwner, info.RepoName);
     if (!repo) {
         WARN(logger) << "HandlePRReviewWebhook: repo not found for " << info.RepoOwner << "/" << info.RepoName << ", PR #" << info.PRNumber;
         return GITHUB_REPO_NOT_FOUND;
@@ -102,7 +102,7 @@ static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
     int64_t repo_id = repo->getId();
 
     // 2. 查找 PR
-    auto pr = OrganizationRepoPrMgr::GetInstance()->getByRepoAndPrId(repo_id, info.PRNumber);
+    auto pr = OrganizationRepoPrRepository::GetByRepoAndPrId(repo_id, info.PRNumber, GetDB());
     if (!pr) {
         WARN(logger) << "HandlePRReviewWebhook: PR #" << info.PRNumber << " not found in repo " << repo_id << " (" << info.RepoOwner << "/"
                      << info.RepoName << ")";
@@ -180,7 +180,7 @@ static int32_t HandlePRReviewWebhook(const tagGithubPRReviewInfo& info)
                       << ", errno=" << db->getErrno();
         return GITHUB_DB_OPERATION_FAILED;
     }
-    OrganizationRepoPrMgr::GetInstance()->add(pr);
+    OrganizationRepoPrRepository::Put(pr);
 
     DEBUG(logger) << "HandlePRReviewWebhook: updated review for PR #" << info.PRNumber << " reviewer=" << info.Reviewer << " state=" << info.State;
     return 0;

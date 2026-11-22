@@ -1,8 +1,10 @@
 #include "RdCheckAccessServlet.hpp"
 
 #include "../../Permission.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdCheckAccessServlet::RdCheckAccessServlet()
     : BlogLoginedServlet("RdCheckAccessServlet")
@@ -44,7 +46,7 @@ int32_t RdCheckAccessServlet::handle(
 
         int32_t system_role = targetUser->getRole();
         std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-        OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, target_uid, OrganizationUserRelManager::APPROVED, true);
+        OrganizationUserRelRepository::ListByUser(user_orgs, target_uid, OrgMemberStatus::APPROVED, true, GetDB());
 
         int32_t highest_org_role = 0;
         for (auto& rel : user_orgs) {

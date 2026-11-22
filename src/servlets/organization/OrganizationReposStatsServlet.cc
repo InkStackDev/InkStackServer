@@ -2,9 +2,9 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationRepoManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationRepoRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -29,13 +29,13 @@ int32_t OrganizationReposStatsServlet::handle(
         }
 
         // 检查组织是否存在
-        auto org = OrganizationMgr::GetInstance()->get(org_id);
+        auto org = OrganizationRepository::Get(org_id, GetDB());
         if (!org) {
             result->setErrno(ORG_NOT_FOUND);
             break;
         }
 
-        int64_t total = OrganizationRepoMgr::GetInstance()->getCountByOrg(org_id);
+        int64_t total = OrganizationRepoRepository::CountByOrg(org_id, GetDB());
 
         result->set("total_repos", total);
     } while (0);

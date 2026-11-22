@@ -6,12 +6,12 @@
 #include "./Logic/BlogMsgWS.hpp"
 #include "./Manager/ArticleManager.hpp"
 #include "./Manager/NotificationManager.hpp"
-#include "./Manager/OrganizationRepoManager.hpp"
-#include "./Manager/OrganizationRepoPrManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
 #include "./Search/SearchSync.hpp"
 #include "Config/RpcConfig.hpp"
+#include "Service/OrganizationRepoService.hpp"
+#include "Service/OrganizationRepoPrService.hpp"
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -155,7 +155,7 @@ bool BlogModule::onServerUp()
         .run_immediately = false,
         .run =
             []() {
-                OrganizationRepoMgr::GetInstance()->onTick();
+                OrganizationRepoService::SyncAll();
             },
     });
 
@@ -167,7 +167,7 @@ bool BlogModule::onServerUp()
         .run_immediately = false,
         .run =
             []() {
-                OrganizationRepoPrMgr::GetInstance()->onTick();
+                OrganizationRepoPrService::SyncAll();
             },
     });
 

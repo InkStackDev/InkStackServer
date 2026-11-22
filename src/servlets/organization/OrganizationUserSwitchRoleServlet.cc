@@ -4,11 +4,12 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 OrganizationUserSwitchRoleServlet::OrganizationUserSwitchRoleServlet()
     : BlogLoginedServlet("OrganizationUserSwitchRoleServlet")
@@ -40,7 +41,7 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
         }
         int32_t system_role = current_user->getRole();
 
-        auto operator_rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        auto operator_rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
         if (!operator_rel) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
@@ -52,9 +53,8 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             break;
         }
 
-        if (role != OrganizationManager::Role::MEMBER && role != OrganizationManager::Role::REPORTER
-            && role != OrganizationManager::Role::DEVELOPER && role != OrganizationManager::Role::DEV_LEAD
-            && role != OrganizationManager::Role::ORG_ADMIN) {
+        if (role != OrgRole::MEMBER && role != OrgRole::REPORTER && role != OrgRole::DEVELOPER
+            && role != OrgRole::DEV_LEAD && role != OrgRole::ORG_ADMIN) {
             result->setErrno(PARAM_INVALID, "invalid role");
             break;
         }
@@ -72,16 +72,16 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
 
         // Notify user about role change
         {
-            auto org = OrganizationMgr::GetInstance()->get(org_id);
+            auto org = OrganizationRepository::Get(org_id, GetDB());
             std::string org_name = org ? org->getName() : std::to_string(org_id);
             const char* role_name = "普通成员";
-            if (role == OrganizationManager::Role::REPORTER) {
+            if (role == OrgRole::REPORTER) {
                 role_name = "报告者";
-            } else if (role == OrganizationManager::Role::DEVELOPER) {
+            } else if (role == OrgRole::DEVELOPER) {
                 role_name = "开发者";
-            } else if (role == OrganizationManager::Role::DEV_LEAD) {
+            } else if (role == OrgRole::DEV_LEAD) {
                 role_name = "研发主管";
-            } else if (role == OrganizationManager::Role::ORG_ADMIN) {
+            } else if (role == OrgRole::ORG_ADMIN) {
                 role_name = "组织管理员";
             }
 

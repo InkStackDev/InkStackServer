@@ -2,10 +2,11 @@
 
 #include "../../Permission.hpp"
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Service/AssignmentService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 AssignmentOrganizationCreateServlet::AssignmentOrganizationCreateServlet()
     : BlogLoginedServlet("AssignmentOrganizationCreateServlet")
@@ -43,7 +44,7 @@ int32_t AssignmentOrganizationCreateServlet::handle(
         }
         std::string oper_name = current_user->getName();
         int32_t system_role = current_user->getRole();
-        auto org_rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+        auto org_rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
         if (!org_rel) {
             result->setErrno(ACCESS_DENIED);
             break;
@@ -88,9 +89,9 @@ int32_t AssignmentOrganizationCreateServlet::handle(
             // Notify org members about new assignment
             std::vector<int64_t> member_ids;
             std::vector<DB::OrganizationUserRelInfo::ptr> org_members;
-            OrganizationUserRelMgr::GetInstance()->getByPages(org_members, org_id, 0, 10000, -1, true);
+            OrganizationUserRelRepository::ListByOrgPages(org_members, org_id, 0, 10000, -1, true, GetDB());
             for (auto& m : org_members) {
-                if (m->getStatus() != OrganizationUserRelManager::Status::APPROVED)
+                if (m->getStatus() != OrgMemberStatus::APPROVED)
                     continue;
                 if (m->getUserId() == uid)
                     continue;

@@ -1,10 +1,12 @@
 #include "RdStatsServlet.hpp"
 
 #include "../../Manager/BugManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/RequirementManager.hpp"
 #include "../../Manager/TaskManager.hpp"
 #include "../../Manager/UserManager.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdStatsServlet::RdStatsServlet()
     : BlogLoginedServlet("RdStatsServlet")
@@ -49,7 +51,7 @@ int32_t RdStatsServlet::handle(
             }
         } else {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-            OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
+            OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
             for (auto& rel : user_orgs) {
                 if (org_id && rel->getOrgId() != org_id) {
                     continue;

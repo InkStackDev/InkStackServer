@@ -3,9 +3,9 @@
 #include <json/json.h>
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationManager.hpp"
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
 
 OrganizationJoinServlet::OrganizationJoinServlet()
     : BlogLoginedServlet("OrganizationJoinServlet")
@@ -50,7 +50,7 @@ int32_t OrganizationJoinServlet::handle(
             break;
         }
 
-        auto org = OrganizationMgr::GetInstance()->get(id);
+        auto org = OrganizationRepository::Get(id, GetDB());
         if (!org) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;

@@ -5,9 +5,9 @@
 #include "../../Permission.hpp"
 #include "../../Manager/AssignmentManager.hpp"
 #include "../../Manager/AssignmentOrganizationRelManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -42,7 +42,7 @@ int32_t OrganizationAssignmentListServlet::handle(
         }
         int32_t system_role = user->getRole();
         if (system_role != UserManager::Role::ADMIN) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
             if (!rel) {
                 result->setErrno(ORG_NOT_MEMBER);
                 break;

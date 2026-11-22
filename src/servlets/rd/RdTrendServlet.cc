@@ -5,8 +5,6 @@
 
 #include <cmath>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Repository/PrStatsQueryRepository.hpp"
 #include "../../Repository/TaskRepository.hpp"
@@ -14,6 +12,8 @@
 #include "DB/OrganizationRepoPrsInfo.hpp"
 #include "DB/TaskInfo.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -152,7 +152,7 @@ int32_t RdTrendServlet::handle(
             ctx.target_orgs.push_back(org_id);
         } else if (!is_admin) {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-            OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
+            OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
             for (auto& rel : user_orgs) {
                 ctx.target_orgs.push_back(rel->getOrgId());
             }
@@ -165,8 +165,8 @@ int32_t RdTrendServlet::handle(
 
         // 权限校验
         if (org_id && !is_admin) {
-            auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-            if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED || rel->getRole() < OrganizationManager::Role::REPORTER) {
+            auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+            if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED || rel->getRole() < OrgRole::REPORTER) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }

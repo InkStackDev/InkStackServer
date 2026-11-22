@@ -1,8 +1,9 @@
 #include "RdOrganizationMembersServlet.hpp"
 
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 RdOrganizationMembersServlet::RdOrganizationMembersServlet()
     : BlogLoginedServlet("RdOrganizationMembersServlet")
@@ -19,18 +20,19 @@ int32_t RdOrganizationMembersServlet::handle(
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
 
         int64_t uid = getUserId(request);
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-        if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
         }
 
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
-        OrganizationUserRelMgr::GetInstance()->getByPages(members, org_id, 0, INT32_MAX, OrganizationUserRelManager::Status::APPROVED, true);
+        OrganizationUserRelRepository::ListByOrgPages(
+            members, org_id, 0, INT32_MAX, OrgMemberStatus::APPROVED, true, GetDB());
 
         Json::Value arr(Json::arrayValue);
         for (auto& m : members) {
-            if (m->getRole() < OrganizationManager::Role::REPORTER) {
+            if (m->getRole() < OrgRole::REPORTER) {
                 continue;
             }
             Json::Value item;

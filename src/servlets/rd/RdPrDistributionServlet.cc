@@ -10,13 +10,14 @@
 #include <string>
 #include <vector>
 
-#include "../../Manager/OrganizationManager.hpp"
 #include "../../Repository/PrStatsQueryRepository.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/OrganizationRepoPrsInfo.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -106,15 +107,15 @@ int32_t RdPrDistributionServlet::handle(
 
         std::vector<int64_t> target_orgs;
         if (org_id > 0) {
-            auto org = OrganizationMgr::GetInstance()->get(org_id);
+            auto org = OrganizationRepository::Get(org_id, GetDB());
             if (!org || org->getIsDeleted()) {
                 result->setErrno(ORG_NOT_FOUND);
                 break;
             }
             if (!is_admin) {
-                auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-                if (!rel || rel->getIsDeleted() || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED
-                    || rel->getRole() < OrganizationManager::Role::REPORTER) {
+                auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+                if (!rel || rel->getIsDeleted() || rel->getStatus() != OrgMemberStatus::APPROVED
+                    || rel->getRole() < OrgRole::REPORTER) {
                     result->setErrno(ACCESS_DENIED);
                     break;
                 }
@@ -122,9 +123,9 @@ int32_t RdPrDistributionServlet::handle(
             target_orgs.push_back(org_id);
         } else if (!is_admin) {
             std::vector<DB::OrganizationUserRelInfo::ptr> rels;
-            OrganizationUserRelMgr::GetInstance()->getOrgByUserId(rels, uid, OrganizationUserRelManager::Status::APPROVED, true);
+            OrganizationUserRelRepository::ListByUser(rels, uid, OrgMemberStatus::APPROVED, true, GetDB());
             for (auto& rel : rels) {
-                if (rel && !rel->getIsDeleted() && rel->getRole() >= OrganizationManager::Role::REPORTER) {
+                if (rel && !rel->getIsDeleted() && rel->getRole() >= OrgRole::REPORTER) {
                     target_orgs.push_back(rel->getOrgId());
                 }
             }

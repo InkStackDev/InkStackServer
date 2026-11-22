@@ -1,12 +1,13 @@
 #include "RdRequirementEditServlet.hpp"
 
 #include "../../Event/EventDefine.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/RequirementManager.hpp"
 #include "../../Permission.hpp"
 #include "../../Service/RequirementService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 RdRequirementEditServlet::RdRequirementEditServlet()
     : BlogLoginedServlet("RdRequirementEditServlet")
@@ -29,8 +30,8 @@ int32_t RdRequirementEditServlet::handle(
             break;
         }
 
-        auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(org_id, uid);
-        if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
+        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
             result->setErrno(ORG_NOT_MEMBER);
             break;
         }

@@ -7,6 +7,8 @@
 #include <Chen/DB/QueryBuilder.hpp>
 
 #include <set>
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 UserStatsServlet::UserStatsServlet()
     : BlogLoginedServlet("UserStatsServlet")
@@ -65,7 +67,7 @@ int32_t UserStatsServlet::handle(
 
         // total_organizations
         std::vector<DB::OrganizationUserRelInfo::ptr> orgs;
-        OrganizationUserRelMgr::GetInstance()->getOrgByUserId(orgs, uid, OrganizationUserRelManager::APPROVED, true);
+        OrganizationUserRelRepository::ListByUser(orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
         int64_t total_organizations = orgs.size();
 
         result->setErrno(SUCCESS);

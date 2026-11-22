@@ -4,8 +4,10 @@
 
 #include <algorithm>
 
-#include "../../Manager/OrganizationManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -24,7 +26,7 @@ int32_t UserOrganizationListServlet::handle(
         int64_t uid = getUserId(request);
 
         std::vector<DB::OrganizationUserRelInfo::ptr> orgs;
-        OrganizationUserRelMgr::GetInstance()->getOrgByUserId(orgs, uid, -1, true);
+        OrganizationUserRelRepository::ListByUser(orgs, uid, -1, true, GetDB());
 
         std::sort(orgs.begin(), orgs.end(), [](const auto& a, const auto& b) {
             return a->getCreateTime() < b->getCreateTime();
@@ -33,7 +35,7 @@ int32_t UserOrganizationListServlet::handle(
         Json::Value list;
         for (auto& i : orgs) {
             Json::Value item;
-            auto org = OrganizationMgr::GetInstance()->get(i->getOrgId());
+            auto org = OrganizationRepository::Get(i->getOrgId(), GetDB());
             item["id"] = i->getId();
             item["org_id"] = i->getOrgId();
             item["org_name"] = org->getName();
@@ -42,8 +44,8 @@ int32_t UserOrganizationListServlet::handle(
             item["role"] = i->getRole();
             item["join_time"] = i->getCreateTime();
             // 成员数
-            int32_t status = OrganizationUserRelManager::Status::APPROVED;
-            item["count"] = OrganizationUserRelMgr::GetInstance()->getMemberCount(i->getOrgId(), status, true);
+            int32_t status = OrgMemberStatus::APPROVED;
+            item["count"] = OrganizationUserRelRepository::CountByOrg(i->getOrgId(), status, true, GetDB());
             list.append(item);
         }
         result->set("list", list);

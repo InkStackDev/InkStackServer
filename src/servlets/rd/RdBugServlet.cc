@@ -2,9 +2,11 @@
 
 #include "../../Permission.hpp"
 #include "../../Manager/BugManager.hpp"
-#include "../../Manager/OrganizationUserRelManager.hpp"
 #include "../../Manager/UserManager.hpp"
 #include "RdHelper.hpp"
+#include "../../Domain/OrganizationTypes.hpp"
+#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdBugServlet::RdBugServlet()
     : BlogLoginedServlet("RdBugServlet")
@@ -41,8 +43,8 @@ int32_t RdBugServlet::handle(
             }
             int64_t info_org_id = info->getOrgId();
             if (!is_platform_admin) {
-                auto rel = OrganizationUserRelMgr::GetInstance()->getByOrgAndUser(info_org_id, uid);
-                if (!rel || rel->getStatus() != OrganizationUserRelManager::Status::APPROVED) {
+                auto rel = OrganizationUserRelRepository::GetByOrgAndUser(info_org_id, uid, GetDB());
+                if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
                     result->setErrno(ACCESS_DENIED);
                     break;
                 }
@@ -72,7 +74,7 @@ int32_t RdBugServlet::handle(
             BugMgr::GetInstance()->listByOrg(all, org_id, 0, INT32_MAX, -1, true);
         } else if (!is_platform_admin) {
             std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-            OrganizationUserRelMgr::GetInstance()->getOrgByUserId(user_orgs, uid, OrganizationUserRelManager::Status::APPROVED, true);
+            OrganizationUserRelRepository::ListByUser(user_orgs, uid, OrgMemberStatus::APPROVED, true, GetDB());
             for (auto& rel : user_orgs) {
                 if (org_id && rel->getOrgId() != org_id) {
                     continue;

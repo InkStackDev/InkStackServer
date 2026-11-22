@@ -13,11 +13,11 @@
 #include "../Repository/RecordRepository.hpp"
 #include "../Manager/CommentManager.hpp"
 #include "../Manager/NotificationManager.hpp"
-#include "../Manager/OrganizationManager.hpp"
-#include "../Manager/OrganizationUserRelManager.hpp"
 #include "../Manager/UserManager.hpp"
 #include "../Util/Util.hpp"
 #include "EventDefine.hpp"
+#include "../Domain/OrganizationTypes.hpp"
+#include "../Repository/OrganizationUserRelRepository.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -441,9 +441,9 @@ static void EventOrgMember(const std::any& d)
         std::string content = "「" + data.operator_name + "」将「" + data.applicant_name + "」移出了组织「" + data.org_name + "」";
         // Notify all org admins
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
-        OrganizationUserRelMgr::GetInstance()->getByPages(members, data.org_id, 0, 10000, -1, true);
+        OrganizationUserRelRepository::ListByOrgPages(members, data.org_id, 0, 10000, -1, true, GetDB());
         for (auto& m : members) {
-            if (m->getRole() == OrganizationManager::Role::ORG_ADMIN) {
+            if (m->getRole() == OrgRole::ORG_ADMIN) {
                 NotificationData notif_data{};
                 notif_data.user_id = m->getUserId();
                 notif_data.title = title;
@@ -494,9 +494,9 @@ static void EventOrgMember(const std::any& d)
         std::string title = "新的加入申请";
         std::string content = "用户「" + applicant_name + "」申请加入组织「" + data.org_name + "」";
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
-        OrganizationUserRelMgr::GetInstance()->getByPages(members, data.org_id, 0, 10000, -1, true);
+        OrganizationUserRelRepository::ListByOrgPages(members, data.org_id, 0, 10000, -1, true, GetDB());
         for (auto& m : members) {
-            if (m->getRole() == OrganizationManager::Role::ORG_ADMIN) {
+            if (m->getRole() == OrgRole::ORG_ADMIN) {
                 NotificationData notif_data{};
                 notif_data.user_id = m->getUserId();
                 notif_data.title = title;
@@ -544,9 +544,9 @@ static void EventOrgMember(const std::any& d)
         }
         // Mark other admins' org_join_request as read
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
-        OrganizationUserRelMgr::GetInstance()->getByPages(members, data.org_id, 0, 10000, -1, true);
+        OrganizationUserRelRepository::ListByOrgPages(members, data.org_id, 0, 10000, -1, true, GetDB());
         for (auto& m : members) {
-            if (m->getRole() == OrganizationManager::Role::ORG_ADMIN) {
+            if (m->getRole() == OrgRole::ORG_ADMIN) {
                 NotificationMgr::GetInstance()->markReadByType(m->getUserId(), "org_join_request");
             }
         }
