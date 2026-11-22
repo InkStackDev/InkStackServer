@@ -17,6 +17,8 @@
  */
 class AccessPolicy {
 public:
+    static bool CanAccessPlatform(const Viewer& viewer, const OrgScope& scope);
+
     static bool CanViewRequirement(const Viewer& viewer, const OrgScope& scope, int64_t org_id);
 
     static bool CanViewBug(const Viewer& viewer, const OrgScope& scope, int64_t org_id);

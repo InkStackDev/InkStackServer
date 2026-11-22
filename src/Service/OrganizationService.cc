@@ -1,13 +1,18 @@
 #include "OrganizationService.hpp"
 
+#include <climits>
 #include <memory>
+#include <utility>
 
 #include <Chen/Log/Log.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
+#include "../Access/AccessScopeResolver.hpp"
+#include "../Domain/OrganizationTypes.hpp"
 #include "../Repository/OrganizationApplyRepository.hpp"
 #include "../Repository/OrganizationRepository.hpp"
 #include "../Repository/OrganizationUserRelRepository.hpp"
+#include "../Repository/UserRepository.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -27,6 +32,70 @@ constexpr int32_t kApplyPending = 0;
 constexpr int32_t kApplyApproved = 1;
 constexpr int32_t kApplyRejected = 2;
 } // namespace
+
+bool OrganizationService::ListUserOrganizations(const Viewer& viewer, std::vector<UserOrganizationView>& out)
+{
+    out.clear();
+    if (!viewer.valid()) {
+        return false;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+
+    std::vector<std::pair<int64_t, int32_t>> grants;
+    if (!OrganizationQueryRepository::ListUserOrgGrants(grants, viewer.user_id, db)) {
+        return false;
+    }
+    for (const auto& [org_id, role] : grants) {
+        if (role < OrgRole::REPORTER) {
+            continue;
+        }
+        auto org = OrganizationRepository::Get(org_id, db);
+        if (!org || org->getIsDeleted()) {
+            continue;
+        }
+        out.push_back({org->getId(), org->getName(), role});
+    }
+    return true;
+}
+
+OrganizationService::ListResult OrganizationService::ListMembers(const Viewer& viewer,
+    int64_t org_id,
+    std::vector<OrganizationMemberView>& out)
+{
+    out.clear();
+    if (!viewer.valid()) {
+        return ListResult::AccessDenied;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return ListResult::DbError;
+    }
+
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return ListResult::DbError;
+    }
+    if (!scope.allows(org_id, OrgRole::MEMBER)) {
+        return ListResult::AccessDenied;
+    }
+
+    std::vector<DB::OrganizationUserRelInfo::ptr> members;
+    OrganizationUserRelRepository::ListByOrgPages(members, org_id, 0, INT32_MAX, OrgMemberStatus::APPROVED, true, db);
+    for (const auto& member : members) {
+        if (!member || member->getRole() < OrgRole::REPORTER) {
+            continue;
+        }
+        auto user = UserRepository::Get(member->getUserId(), db);
+        if (!user) {
+            continue;
+        }
+        out.push_back({member->getUserId(), user->getName(), user->getAvatar(), member->getRole()});
+    }
+    return ListResult::Ok;
+}
 
 OrganizationService::Result OrganizationService::CreateOrUpdate(const OrganizationInput& input,
     DB::OrganizationInfo::ptr& out,

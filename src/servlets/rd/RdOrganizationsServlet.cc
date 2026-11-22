@@ -1,8 +1,6 @@
 #include "RdOrganizationsServlet.hpp"
 
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationRepository.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 
 RdOrganizationsServlet::RdOrganizationsServlet()
@@ -17,31 +15,30 @@ int32_t RdOrganizationsServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t uid = getUserId(request);
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
 
-        std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-        OrganizationUserRelRepository::ListByUser(user_orgs, uid, -1, true, GetDB());
+        std::vector<OrganizationService::UserOrganizationView> orgs;
+        if (!OrganizationService::ListUserOrganizations(viewer, orgs)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         Json::Value arr(Json::arrayValue);
-        for (auto& rel : user_orgs) {
-            if (rel->getRole() < OrgRole::REPORTER) {
-                continue;
-            }
-
-            auto org = OrganizationRepository::Get(rel->getOrgId(), GetDB());
-            if (!org) {
-                continue;
-            }
-
+        for (const auto& org : orgs) {
             Json::Value item;
-            item["org_id"] = org->getId();
-            item["org_name"] = org->getName();
-            item["role"] = rel->getRole();
+            item["org_id"] = org.org_id;
+            item["org_name"] = org.name;
+            item["role"] = org.role;
             arr.append(item);
         }
 
         result->set("list", arr);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

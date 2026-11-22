@@ -2,6 +2,14 @@
 
 #include "../Domain/OrganizationTypes.hpp"
 
+bool AccessPolicy::CanAccessPlatform(const Viewer& viewer, const OrgScope& scope)
+{
+    if (viewer.is_platform_admin) {
+        return true;
+    }
+    return !scope.orgIds(OrgRole::REPORTER).empty();
+}
+
 bool AccessPolicy::CanViewRequirement(const Viewer& viewer, const OrgScope& scope, int64_t org_id)
 {
     return viewer.is_platform_admin || scope.allows(org_id, OrgRole::REPORTER);

@@ -1,11 +1,10 @@
 #include "RdCheckAccessServlet.hpp"
 
-#include "../../Permission.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
-#include "../../Util/Util.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Access/AccessPolicy.hpp"
+#include "../../Access/AccessScopeResolver.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../Repository/UserRepository.hpp"
+#include "../../Util/Util.hpp"
 
 RdCheckAccessServlet::RdCheckAccessServlet()
     : BlogLoginedServlet("RdCheckAccessServlet")
@@ -19,51 +18,62 @@ int32_t RdCheckAccessServlet::handle(
     Result::ptr result)
 {
     do {
-        int64_t current_uid = getUserId(request);
-        DB::UserInfo::ptr currentUser = UserRepository::Get(current_uid, GetDB());
-        if (!currentUser || currentUser->getState() != 1) {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
             result->setErrno(RD_INVALID_USER);
             break;
         }
 
-        int64_t target_uid = current_uid;
-        std::string uidParam = request->getParam("user_id");
-        if (!uidParam.empty()) {
-            target_uid = atol(uidParam.c_str());
-            // 只有管理员可以查询其他用户的平台访问权限
-            if (target_uid != current_uid && currentUser->getRole() != UserRole::ADMIN) {
+        int64_t target_uid = viewer.user_id;
+        std::string uid_param = request->getParam("user_id");
+        if (!uid_param.empty()) {
+            try {
+                target_uid = chen::TypeUtil::Atoi(uid_param);
+            } catch (...) {
+                result->setErrno(PARAM_INVALID, "invalid user_id");
+                break;
+            }
+            if (target_uid != viewer.user_id && !viewer.is_platform_admin) {
                 result->setErrno(ACCESS_DENIED);
                 break;
             }
         }
 
-        DB::UserInfo::ptr targetUser = UserRepository::Get(target_uid, GetDB());
-        if (!targetUser || targetUser->getState() != 1) {
-            result->setErrno(SUCCESS);
-            result->set("can_access", "0");
-            result->set("reason", "user not found or disabled");
+        auto db = GetDB();
+        if (!db) {
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
-        int32_t system_role = targetUser->getRole();
-        std::vector<DB::OrganizationUserRelInfo::ptr> user_orgs;
-        OrganizationUserRelRepository::ListByUser(user_orgs, target_uid, OrgMemberStatus::APPROVED, true, GetDB());
-
-        int32_t highest_org_role = 0;
-        for (auto& rel : user_orgs) {
-            if (rel->getRole() > highest_org_role) {
-                highest_org_role = rel->getRole();
+        Viewer target = viewer;
+        if (target_uid != viewer.user_id) {
+            auto target_user = UserRepository::Get(target_uid, db);
+            if (!target_user || target_user->getState() != UserState::ACTIVE) {
+                result->setErrno(SUCCESS);
+                result->set("can_access", "0");
+                result->set("reason", "user not found or disabled");
+                break;
             }
+            target.user_id = target_uid;
+            target.system_role = target_user->getRole();
+            target.is_platform_admin = (target.system_role == UserRole::ADMIN);
         }
 
-        bool canAccess = CanAccessPlatform(system_role, highest_org_role);
+        OrgScope scope;
+        if (!AccessScopeResolver::ResolveOrgs(scope, target, db)) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
+
+        bool can_access = AccessPolicy::CanAccessPlatform(target, scope);
 
         result->setErrno(SUCCESS);
-        result->set("can_access", canAccess ? "1" : "0");
-        if (!canAccess) {
+        result->set("can_access", can_access ? "1" : "0");
+        if (!can_access) {
             result->set("reason", "requires system admin or organization role >= reporter");
         }
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }

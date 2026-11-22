@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include "../Domain/AccessTypes.hpp"
+
 #include "DB/OrganizationApplyInfo.hpp"
 #include "DB/OrganizationInfo.hpp"
 #include "DB/OrganizationUserRelInfo.hpp"
@@ -48,6 +50,35 @@ public:
         InvalidState,
         DbError
     };
+
+    enum class ListResult {
+        Ok,
+        AccessDenied,
+        DbError
+    };
+
+    struct UserOrganizationView {
+        int64_t org_id = 0;
+        std::string name;
+        int32_t role = 0;
+    };
+
+    struct OrganizationMemberView {
+        int64_t user_id = 0;
+        std::string name;
+        std::string avatar;
+        int32_t role = 0;
+    };
+
+    /**
+     * @brief 当前用户可进入研发平台的组织（role >= REPORTER）
+     */
+    static bool ListUserOrganizations(const Viewer& viewer, std::vector<UserOrganizationView>& out);
+
+    /**
+     * @brief 组织成员列表；普通成员可查看，非成员拒绝
+     */
+    static ListResult ListMembers(const Viewer& viewer, int64_t org_id, std::vector<OrganizationMemberView>& out);
 
     static Result CreateOrUpdate(const OrganizationInput& input, DB::OrganizationInfo::ptr& out, bool& created);
 

@@ -1,9 +1,8 @@
 #include "RdOrganizationMembersServlet.hpp"
 
+#include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 #include "RdHelper.hpp"
-#include "../../Domain/OrganizationTypes.hpp"
-#include "../../Repository/OrganizationUserRelRepository.hpp"
 
 RdOrganizationMembersServlet::RdOrganizationMembersServlet()
     : BlogLoginedServlet("RdOrganizationMembersServlet")
@@ -19,32 +18,36 @@ int32_t RdOrganizationMembersServlet::handle(
     do {
         DEFINE_AND_CHECK_TYPE(result, int64_t, org_id, "org_id");
 
-        int64_t uid = getUserId(request);
-        auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, GetDB());
-        if (!rel || rel->getStatus() != OrgMemberStatus::APPROVED) {
-            result->setErrno(ORG_NOT_MEMBER);
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
             break;
         }
 
-        std::vector<DB::OrganizationUserRelInfo::ptr> members;
-        OrganizationUserRelRepository::ListByOrgPages(
-            members, org_id, 0, INT32_MAX, OrgMemberStatus::APPROVED, true, GetDB());
+        std::vector<OrganizationService::OrganizationMemberView> members;
+        auto rt = OrganizationService::ListMembers(viewer, org_id, members);
+        if (rt == OrganizationService::ListResult::AccessDenied) {
+            result->setErrno(ORG_NOT_MEMBER);
+            break;
+        }
+        if (rt != OrganizationService::ListResult::Ok) {
+            result->setErrno(DB_OPERATION_FAILED);
+            break;
+        }
 
         Json::Value arr(Json::arrayValue);
-        for (auto& m : members) {
-            if (m->getRole() < OrgRole::REPORTER) {
-                continue;
-            }
+        for (const auto& member : members) {
             Json::Value item;
-            item["user_id"] = m->getUserId();
-            item["name"] = GetUserName(m->getUserId());
-            item["role"] = OrgRoleToFrontend(m->getRole());
-            item["avatar"] = GetUserAvatar(m->getUserId());
+            item["user_id"] = member.user_id;
+            item["name"] = member.name;
+            item["role"] = OrgRoleToFrontend(member.role);
+            item["avatar"] = member.avatar;
             arr.append(item);
         }
 
         result->set("list", arr);
     } while (0);
+
     response->setBody(result->toJsonString());
     return 0;
 }
