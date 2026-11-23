@@ -48,7 +48,7 @@ DB::ConversationInfo::ptr ConversationService::GetOrCreate(int64_t uid_a, int64_
         info->setCreateTime(now);
         info->setUpdateTime(now);
 
-        if (ConversationRepository::Insert(info, db)) {
+        if (!ConversationRepository::Insert(info, db)) {
             // 并发下唯一索引冲突时回查
             conv = ConversationRepository::GetByUsers(uid_a, uid_b, db);
             if (!conv) {

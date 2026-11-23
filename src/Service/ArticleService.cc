@@ -64,7 +64,7 @@ bool SyncCategoryRels(int64_t article_id,
         if (existing && existing->getIsDeleted()) {
             existing->setIsDeleted(0);
             existing->setUpdateTime(now);
-            if (ArticleCategoryRelRepository::Update(existing, db)) {
+            if (!ArticleCategoryRelRepository::Update(existing, db)) {
                 return false;
             }
         } else if (!existing) {
@@ -72,7 +72,7 @@ bool SyncCategoryRels(int64_t article_id,
             rel->setArticleId(article_id);
             rel->setCategoryId(cid);
             rel->setUpdateTime(now);
-            if (ArticleCategoryRelRepository::Insert(rel, db)) {
+            if (!ArticleCategoryRelRepository::Insert(rel, db)) {
                 return false;
             }
         }
@@ -86,7 +86,7 @@ bool SyncCategoryRels(int64_t article_id,
         if (existing && !existing->getIsDeleted()) {
             existing->setIsDeleted(1);
             existing->setUpdateTime(now);
-            if (ArticleCategoryRelRepository::Update(existing, db)) {
+            if (!ArticleCategoryRelRepository::Update(existing, db)) {
                 return false;
             }
         }
@@ -125,7 +125,7 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
         if (existing && existing->getIsDeleted()) {
             existing->setIsDeleted(0);
             existing->setUpdateTime(now);
-            if (ArticleLabelRelRepository::Update(existing, db)) {
+            if (!ArticleLabelRelRepository::Update(existing, db)) {
                 return false;
             }
         } else if (!existing) {
@@ -133,7 +133,7 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
             rel->setArticleId(article_id);
             rel->setLabelId(lid);
             rel->setUpdateTime(now);
-            if (ArticleLabelRelRepository::Insert(rel, db)) {
+            if (!ArticleLabelRelRepository::Insert(rel, db)) {
                 return false;
             }
         }
@@ -147,7 +147,7 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
         if (existing && !existing->getIsDeleted()) {
             existing->setIsDeleted(1);
             existing->setUpdateTime(now);
-            if (ArticleLabelRelRepository::Update(existing, db)) {
+            if (!ArticleLabelRelRepository::Update(existing, db)) {
                 return false;
             }
         }
