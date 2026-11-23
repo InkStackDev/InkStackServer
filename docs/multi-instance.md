@@ -82,14 +82,14 @@ make cluster ENV=prod INSTANCES=3
 # 产物: techhaven-cluster-<version>-<arch>-<ts>.tar.gz (+ .sha256)
 ```
 
-产物内已经生成好 `instances/a`、`instances/b`、`instances/c` 的 `conf/` 与 `instance.env`，
-每个实例的端口、`instance_id`、`RPC_BUS_ID`、日志目录、pid 文件互相独立：
+产物根目录下已经生成好 `server_1/`、`server_2/`、`server_3/`（实例目录直接位于部署根目录），
+每个实例的 `conf/`、`instance.env`、端口、`instance_id`、`RPC_BUS_ID`、日志目录、pid 文件互相独立：
 
-| 实例 | 进程标题                      | HTTP | WS   | pid                      | 日志                          |
-|------|-------------------------------|------|------|--------------------------|-------------------------------|
-| a    | `techhaven-a: master process` | 8090 | 8091 | `instances/a/server.pid` | `/data/apps/instances/a/logs` |
-| b    | `techhaven-b: master process` | 8190 | 8191 | `instances/b/server.pid` | `/data/apps/instances/b/logs` |
-| c    | `techhaven-c: master process` | 8290 | 8291 | `instances/c/server.pid` | `/data/apps/instances/c/logs` |
+| 实例     | 进程标题                             | HTTP | WS   | pid                   | 日志                       |
+|----------|--------------------------------------|------|------|-----------------------|----------------------------|
+| server_1 | `techhaven-server_1: master process` | 8090 | 8091 | `server_1/server.pid` | `/data/apps/server_1/logs` |
+| server_2 | `techhaven-server_2: master process` | 8190 | 8191 | `server_2/server.pid` | `/data/apps/server_2/logs` |
+| server_3 | `techhaven-server_3: master process` | 8290 | 8291 | `server_3/server.pid` | `/data/apps/server_3/logs` |
 
 ```bash
 # 部署机上
@@ -100,10 +100,10 @@ cd /opt/techhaven
 ./scripts/clusterctl.sh health all
 ```
 
-- 程序/配置目录来自打包时的 `--deploy-path`（默认 `/opt/techhaven`）；**只有日志**单独放到
-  `--log-root`（默认 `/data/apps`），即 `/data/apps/instances/<name>/logs`。换目录需重新打包，
+- 程序/配置目录来自打包时的 `--deploy-path`（默认 `/opt/techhaven`），实例目录直接放在该目录下；**只有日志**单独放到
+  `--log-root`（默认 `/data/apps`），即 `/data/apps/<name>/logs`。换目录需重新打包，
   或部署后用 `scripts/render-instance.sh` 重新渲染。
-- 新增实例或修改端口：`./scripts/render-instance.sh --name d --instance-id 4 --deploy-path /opt/techhaven`。
+- 新增实例或修改端口：`./scripts/render-instance.sh --name server_4 --instance-id 4 --deploy-path /opt/techhaven`。
 - 进程管理用框架自带的 `-d` 与 `-s reload|stop`，`clusterctl.sh` 的所有命令都带同一个 `-c`，不会误停其它实例。
 - 业务只作为 RPC Hub 客户端，不再监听 rpc 端口；`RPC_BUS_ID` 末段与 `--instance-id` 保持一致。
 
@@ -123,14 +123,14 @@ CI（GitHub Actions）：
 
   ```bash
   cd /opt/techhaven
-  ./scripts/clusterctl.sh reload a && ./scripts/clusterctl.sh health a   # 先切一个实例
-  ./scripts/clusterctl.sh rolling-restart all                            # 确认后全量
+  ./scripts/clusterctl.sh reload server_1 && ./scripts/clusterctl.sh health server_1   # 先切一个实例
+  ./scripts/clusterctl.sh rolling-restart all                                           # 确认后全量
   ```
 
   回滚：`cd module && for f in *.so.prev; do mv "$f" "${f%.prev}"; done`，再 reload。
 - `Deploy` 使用的仓库变量 `DEPLOY_PATH` 必须与打包时的 `deploy_path` 一致，否则实例配置里的
   `work_path`/pid 路径与运行目录不匹配。
-- 集群包里 `instances/*/conf/*.yml` 是预渲染的，**包含真实密码与密钥**：仓库保持 private，
+- 集群包里 `<name>/conf/*.yml` 是预渲染的，**包含真实密码与密钥**：仓库保持 private，
   artifact 保留期设短，Release 资产按敏感文件管理。
 
 ## 3. 定时任务与计数

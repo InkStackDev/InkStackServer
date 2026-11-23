@@ -71,7 +71,7 @@ DB::SystemSettingsInfo::ptr SystemSettingsManager::get()
         // 创建默认行
         info.reset(new DB::SystemSettingsInfo);
         info->setId(1);
-        if (SystemSettingsRepository::Insert(info, db)) {
+        if (!SystemSettingsRepository::Insert(info, db)) {
             ERROR(logger) << "SystemSettingsManager insert default row fail";
             return info;
         }
@@ -107,7 +107,7 @@ bool SystemSettingsManager::update(DB::SystemSettingsInfo::ptr info)
     if (info->getUpdatedAt() <= 0) {
         info->setUpdatedAt(time(0));
     }
-    if (SystemSettingsRepository::InsertOrUpdate(info, db)) {
+    if (!SystemSettingsRepository::InsertOrUpdate(info, db)) {
         ERROR(logger) << "SystemSettingsManager update fail, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
         return false;
     }

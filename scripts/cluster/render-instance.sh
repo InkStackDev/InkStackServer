@@ -3,12 +3,12 @@
 # render-instance.sh — 为单个实例渲染一份独立配置
 #
 # 用法:
-#   ./scripts/render-instance.sh --name a --instance-id 1
+#   ./scripts/render-instance.sh --name server_1 --instance-id 1
 #   ./scripts/render-instance.sh --root dist-cluster --deploy-path /opt/techhaven \
-#       --name b --instance-id 2 --http-port 8190 --ws-port 8191
+#       --name server_2 --instance-id 2 --http-port 8190 --ws-port 8191
 #
 # 参数:
-#   --name NAME          实例名，对应 <root>/instances/NAME/
+#   --name NAME          实例名，对应 <root>/NAME/
 #   --instance-id N      实例编号（server.instance_id / rpc.bus_id 末段）
 #   --http-port PORT     默认 8090 + (N-1)*100
 #   --ws-port PORT       默认 8091 + (N-1)*100
@@ -16,15 +16,15 @@
 #   --env-file PATH      指定 env 文件（优先于 --env）
 #   --root PATH          配置模板根目录，默认当前目录
 #   --deploy-path PATH   部署根目录（程序/配置所在路径），默认 /opt/techhaven
-#   --log-root PATH      日志根目录，默认 /data/apps，即 <log-root>/instances/NAME/logs
+#   --log-root PATH      日志根目录，默认 /data/apps，即 <log-root>/NAME/logs
 #   --data-path PATH     备份/导出目录，默认 <deploy-path>/share/data
 #   --bus-id ID          默认 1.1.2.<N>
 #   --process-name NAME  进程标题前缀，默认 techhaven-<实例名>
 #
 # 产物:
-#   <root>/instances/NAME/conf/system.yml
-#   <root>/instances/NAME/conf/TechHaven.yml
-#   <root>/instances/NAME/instance.env
+#   <root>/NAME/conf/system.yml
+#   <root>/NAME/conf/TechHaven.yml
+#   <root>/NAME/instance.env
 #
 # 说明:
 #   - server.work_path 指向部署根目录（errors.json / locale / uploads 共享）
@@ -80,6 +80,11 @@ done
 
 ROOT="$(cd "$ROOT" && pwd)"
 [ -n "$NAME" ] || { echo "错误: 缺少 --name" >&2; exit 2; }
+case "$NAME" in
+    *[!A-Za-z0-9_-]*) echo "错误: 非法 --name '$NAME'（只允许字母/数字/_/-）" >&2; exit 2 ;;
+    conf|module|lib|scripts|nginx|docs|locale|share|server|errors.json|VERSION)
+        echo "错误: --name '$NAME' 与部署根目录的既有文件/目录冲突" >&2; exit 2 ;;
+esac
 [ -n "$ARG_INSTANCE_ID" ] || { echo "错误: 缺少 --instance-id" >&2; exit 2; }
 case "$ARG_INSTANCE_ID" in
     ''|*[!0-9]*) echo "错误: --instance-id 必须是正整数" >&2; exit 2 ;;
@@ -117,12 +122,12 @@ DATA_PATH="${ARG_DATA_PATH:-${DATA_PATH:-$DEPLOY_PATH/share/data}}"
 BUS_ID="${ARG_BUS_ID:-1.1.2.$ARG_INSTANCE_ID}"
 PROCESS_NAME="${ARG_PROCESS_NAME:-techhaven-$NAME}"
 
-INSTANCE_DIR="$DEPLOY_PATH/instances/$NAME"
-CONF_DIR="$ROOT/instances/$NAME/conf"
+INSTANCE_DIR="$DEPLOY_PATH/$NAME"
+CONF_DIR="$ROOT/$NAME/conf"
 
 export WORK_PATH="$DEPLOY_PATH"
-export LOG_DIR="$LOG_ROOT/instances/$NAME/logs"
-export PID_FILE="instances/$NAME/server.pid"
+export LOG_DIR="$LOG_ROOT/$NAME/logs"
+export PID_FILE="$NAME/server.pid"
 export DATA_PATH
 export INSTANCE_ID="$ARG_INSTANCE_ID"
 export RPC_BUS_ID="$BUS_ID"
@@ -158,7 +163,7 @@ for tpl in "$ROOT"/conf/*.yml.tpl; do
     render_one "$tpl" "$CONF_DIR/$(basename "${tpl%.tpl}")"
 done
 
-cat > "$ROOT/instances/$NAME/instance.env" <<EOF
+cat > "$ROOT/$NAME/instance.env" <<EOF
 NAME=$NAME
 PROCESS_NAME=$PROCESS_NAME
 INSTANCE_ID=$INSTANCE_ID

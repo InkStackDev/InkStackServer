@@ -40,7 +40,7 @@ fiber:
 
 workers:
   io:
-    thread_num: 1
+    thread_num: 4
   accept:
     thread_num: 1
 

@@ -14,10 +14,9 @@ locale/
 conf/                       # 配置模板 + env 示例（新增实例 / 改配置后重新渲染用）
 scripts/render-instance.sh  # 追加实例或改配置后重新渲染
 scripts/clusterctl.sh       # 启停 / 状态 / 健康检查
-instances/
-├── a/{conf/system.yml, conf/TechHaven.yml, instance.env}
-├── b/{...}
-└── c/{...}
+server_1/{conf/system.yml, conf/TechHaven.yml, instance.env}
+server_2/{...}
+server_3/{...}
 nginx/techhaven.conf.example
 docs/multi-instance.md
 VERSION
@@ -25,16 +24,17 @@ VERSION
 
 每个实例的 `conf/` 中是**已经渲染好的最终配置**：
 
-| 实例 | 进程标题                      | HTTP | WS   | pid 文件                 | 日志目录                      |
-|------|-------------------------------|------|------|--------------------------|-------------------------------|
-| a    | `techhaven-a: master process` | 8090 | 8091 | `instances/a/server.pid` | `/data/apps/instances/a/logs` |
-| b    | `techhaven-b: master process` | 8190 | 8191 | `instances/b/server.pid` | `/data/apps/instances/b/logs` |
-| c    | `techhaven-c: master process` | 8290 | 8291 | `instances/c/server.pid` | `/data/apps/instances/c/logs` |
+| 实例     | 进程标题                             | HTTP | WS   | pid 文件              | 日志目录                   |
+|----------|--------------------------------------|------|------|-----------------------|----------------------------|
+| server_1 | `techhaven-server_1: master process` | 8090 | 8091 | `server_1/server.pid` | `/data/apps/server_1/logs` |
+| server_2 | `techhaven-server_2: master process` | 8190 | 8191 | `server_2/server.pid` | `/data/apps/server_2/logs` |
+| server_3 | `techhaven-server_3: master process` | 8290 | 8291 | `server_3/server.pid` | `/data/apps/server_3/logs` |
 
 所有实例共享部署根目录下的 `errors.json` / `locale`，以及 `share/data`（备份、导出）。
 
-> **目录约定**：程序/配置目录由打包时的 `--deploy-path` 决定（默认 `/opt/techhaven`）；
-> **只有日志**单独放在 `--log-root`（默认 `/data/apps`），即 `/data/apps/instances/<name>/logs`。
+> **目录约定**：程序/配置目录由打包时的 `--deploy-path` 决定（默认 `/opt/techhaven`），实例目录直接放在该目录下
+> （如 `/opt/techhaven/server_1`）；
+> **只有日志**单独放在 `--log-root`（默认 `/data/apps`），即 `/data/apps/<name>/logs`。
 > 如果解压到别的路径，需要重新打包，或在部署端用 `scripts/render-instance.sh` 重新生成实例配置。
 
 ## 2. 首次部署
@@ -57,9 +57,9 @@ cd /opt/techhaven
 ```bash
 ./scripts/clusterctl.sh status                  # 所有实例状态
 ./scripts/clusterctl.sh health all              # GET /api/v1/site/status
-./scripts/clusterctl.sh reload a                # 热重载单个实例
+./scripts/clusterctl.sh reload server_1         # 热重载单个实例
 ./scripts/clusterctl.sh rolling-restart all     # 逐个停→起，失败即停
-./scripts/clusterctl.sh stop b                  # 只停 b
+./scripts/clusterctl.sh stop server_2           # 只停 server_2
 ```
 
 开机自启直接在你现有的启动入口里执行：
@@ -75,9 +75,9 @@ cd /opt/techhaven
 
 ```bash
 cp conf/prod.env.example conf/prod.env   # 填 MySQL / Redis / hub / 密钥
-./scripts/render-instance.sh --name d --instance-id 4 \
+./scripts/render-instance.sh --name server_4 --instance-id 4 \
     --deploy-path /opt/techhaven --env prod
-./scripts/clusterctl.sh start d
+./scripts/clusterctl.sh start server_4
 ```
 
 也可以修改 `conf/*.yml.tpl` 后，对所有实例重新渲染再滚动重启。
@@ -89,8 +89,8 @@ tar xzf techhaven-cluster-<new>.tar.gz -C /tmp/new
 cp /tmp/new/module/libblog.so /opt/techhaven/module/
 cp /tmp/new/errors.json /opt/techhaven/errors.json
 rsync -a /tmp/new/locale/ /opt/techhaven/locale/
-# 若新包带了实例配置变化：
-rsync -a /tmp/new/instances/ /opt/techhaven/instances/
+# 若新包带了实例配置变化（实例目录直接位于部署根目录）：
+for d in /tmp/new/server_*/; do rsync -a "$d" "/opt/techhaven/$(basename "$d")/"; done
 ./scripts/clusterctl.sh rolling-restart all
 ```
 

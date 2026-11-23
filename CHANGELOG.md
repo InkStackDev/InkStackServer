@@ -113,8 +113,9 @@ All notable changes to this project will be documented in this file.
   本轮只落配置与解析，连接/注册逻辑后续实现。
 - 新增多实例部署打包：`make cluster ENV=prod INSTANCES=3` →
   `scripts/cluster/package-cluster.sh` 产出 `techhaven-cluster-<version>-<arch>-<ts>.tar.gz`，
-  包内 `instances/<name>/` 已按实例生成好 `conf/` 与 `instance.env`（端口、instance_id、bus_id、日志/pid 彼此独立）。
-  程序目录默认 `/opt/techhaven`，**只有日志**单独放在 `/data/apps/instances/<name>/logs`
+  包内 `<name>/`（实例目录直接位于部署根目录）已按实例生成好 `conf/` 与 `instance.env`（端口、instance_id、bus_id、日志/pid
+  彼此独立）。
+  程序目录默认 `/opt/techhaven`，**只有日志**单独放在 `/data/apps/<name>/logs`
   （可用 `--deploy-path` / `--log-root` 调整）；
   另含 `clusterctl.sh`、`render-instance.sh`、Nginx 示例与多实例说明；`make dist` 现在直接产出集群包。
 - `Build & Package` 去掉触发时的打包输入参数，统一读仓库 Variables（`PKG_ENV` / `CLUSTER_INSTANCES` /
@@ -143,6 +144,9 @@ All notable changes to this project will be documented in this file.
 - 多实例配置补充 `server.process_name`：每个实例进程标题为 `techhaven-<实例名>: master process` /
   `techhaven-<实例名>: worker process`，`ps -ef | grep techhaven` 即可区分实例；单实例默认 `techhaven`
   （`switch-env.sh` 兜底，可用 `PROCESS_NAME` 覆盖）。
+- 集群包实例默认按 `server_1`、`server_2`… 命名，实例目录直接放在部署根目录（原为 `instances/a`、`instances/b`…）；
+  `--names` 仍可自定义，日志统一为 `/data/apps/<name>/logs`。升级已有部署时目录结构变化，
+  需要重新渲染配置或继续用 `--names a,b,c` 并手动迁移到根目录。
 - 配置模板整理：`system.yml.tpl` 删除已废弃的 rpc server 项（业务只作为 hub 客户端）、`fox_thread.redis.name` 与
   `redis.desc` 等未读取项；接入端口改为 `HTTP_PORT` / `WS_PORT`，MySQL 显式 `pool`；`TechHaven.yml.tpl` 补齐
   `server.drain_timeout_ms` / `housekeeping_interval_ms` / `worker_ready_timeout_ms` / `worker_restart_interval_ms`。

@@ -43,7 +43,7 @@ cp bin/conf/prod.env.example bin/conf/prod.env   # 填写真实值后
 > 客户端，不再监听 rpc 端口，配置里也没有 `type: rpc` 的 server 项。
 
 > **多实例部署**：`make cluster ENV=prod INSTANCES=3` 生成 `techhaven-cluster-*.tar.gz`，包内
-> `instances/a|b|c/` 的配置已渲染好（端口、`instance_id`、日志与 pid 彼此独立），部署端直接
+> `server_1|server_2|server_3/` 的配置已渲染好（端口、`instance_id`、日志与 pid 彼此独立），部署端直接
 > `scripts/clusterctl.sh start all` 即可；细节见 [`docs/multi-instance.md`](docs/multi-instance.md)。
 
 ## 3. 新增一个配置项

@@ -12,7 +12,7 @@
 #   ./scripts/clusterctl.sh rolling-restart all
 #
 # 说明:
-#   - 每个实例目录结构: instances/<name>/{conf/,logs/,server.pid,instance.env}
+#   - 每个实例目录结构: <name>/{conf/,server.pid,instance.env}（直接位于部署根目录）
 #   - 所有命令都带同一个 -c，保证 pid 文件与配置对应
 #   - 健康检查: GET /api/v1/site/status，要求 errno=0；无 curl 时退化为 TCP 探测
 #
@@ -25,7 +25,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(pwd)" && pwd)"
-INSTANCES_DIR="$ROOT/instances"
 SERVER="${SERVER_BIN:-$ROOT/server}"
 
 # libchen.so 与 server 同包，位于 <root>/lib；-d 守护进程会继承这里的环境变量
@@ -40,15 +39,19 @@ die() { echo "[cluster][ERROR] $*" >&2; exit 1; }
 
 [ -x "$SERVER" ] || die "找不到可执行文件: $SERVER"
 [ -f "$ROOT/lib/libchen.so" ] || die "找不到共享库: $ROOT/lib/libchen.so"
-[ -d "$INSTANCES_DIR" ] || die "找不到实例目录: $INSTANCES_DIR（先执行 render-instance.sh）"
 
+# 实例目录直接位于部署根目录，用 instance.env 识别，避免把 conf/module/lib 等当成实例
 list_instances() {
-    find "$INSTANCES_DIR" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
+    local dir
+    for dir in "$ROOT"/*/; do
+        [ -f "$dir/instance.env" ] || continue
+        basename "$dir"
+    done | sort
 }
 
 instance_dir() {
     local name="$1"
-    local dir="$INSTANCES_DIR/$name"
+    local dir="$ROOT/$name"
     [ -d "$dir" ] || die "实例不存在: $name"
     [ -f "$dir/conf/system.yml" ] || die "实例 $name 缺少配置: $dir/conf/system.yml"
     printf '%s' "$dir"

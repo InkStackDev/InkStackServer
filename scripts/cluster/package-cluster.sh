@@ -8,7 +8,7 @@
 #   ENV                      使用 bin/conf/<ENV>.env 渲染，默认 prod
 #
 # 选项:
-#   --instances N            实例数量（默认 1），自动命名 a、b、c…
+#   --instances N            实例数量（默认 1），自动命名 server_1、server_2…
 #   --names a,b,c            自定义实例名（优先于 --instances）
 #   --deploy-path PATH       部署根目录（程序/配置，默认 /opt/techhaven）
 #   --log-root PATH          日志根目录（默认 /data/apps，仅日志单独存放）
@@ -20,7 +20,7 @@
 #
 # 示例:
 #   ./scripts/cluster/package-cluster.sh prod --instances 3
-#   产物内含 instances/a、instances/b、instances/c；程序在 /opt/techhaven，日志在 /data/apps/instances/<name>/logs
+#   产物内含 server_1、server_2、server_3（实例目录直接位于部署根目录）；日志在 /data/apps/<name>/logs
 #
 # 前置:
 #   - 已执行 make build（bin/server、bin/module/*.so）
@@ -110,16 +110,16 @@ else
         ''|*[!0-9]*) die "--instances 必须是正整数" ;;
     esac
     [ "$count" -ge 1 ] || die "--instances 至少为 1"
-    [ "$count" -le 26 ] || die "--instances 最多 26（a..z），更多请用 --names"
-    letters="abcdefghijklmnopqrstuvwxyz"
     for i in $(seq 1 "$count"); do
-        instance_names+=("${letters:$((i - 1)):1}")
+        instance_names+=("server_$i")
     done
 fi
 
 for n in "${instance_names[@]}"; do
     case "$n" in
         ''|*[!A-Za-z0-9_-]*) die "非法实例名: '$n'（只允许字母/数字/_/-）" ;;
+        conf|module|lib|scripts|nginx|docs|locale|share|server|errors.json|VERSION)
+            die "实例名 '$n' 与部署根目录的既有文件/目录冲突" ;;
     esac
 done
 
@@ -164,12 +164,12 @@ PKG_BASENAME="techhaven-cluster-${VERSION}-${ARCH}-${TS}"
 PKG_PATH="$ROOT_DIR/${PKG_BASENAME}.tar.gz"
 STAGE_DIR="$ROOT_DIR/dist-cluster"
 
-log "实例: ${instance_names[*]}  程序目录: $DEPLOY_PATH  日志目录: $LOG_ROOT/instances/<name>/logs  数据目录: $DATA_PATH"
+log "实例: ${instance_names[*]}  程序目录: $DEPLOY_PATH  日志目录: $LOG_ROOT/<name>/logs  数据目录: $DATA_PATH"
 log "打包版本: $VERSION ($ARCH, env=$ENV_NAME)"
 
 # ---- 组装目录 ----
 rm -rf "$STAGE_DIR"
-mkdir -p "$STAGE_DIR"/{conf,module,lib,scripts,nginx,docs,instances}
+mkdir -p "$STAGE_DIR"/{conf,module,lib,scripts,nginx,docs}
 
 cp -p "$ROOT_DIR/bin/server" "$STAGE_DIR/server"
 chmod +x "$STAGE_DIR/server"
@@ -244,7 +244,7 @@ else
 fi
 
 log "打包完成"
-echo "    实例    : ${instance_names[*]}（配置已生成到 instances/<name>/conf）"
+echo "    实例    : ${instance_names[*]}（配置已生成到 <name>/conf）"
 echo "    产物目录: $STAGE_DIR"
 echo "    压缩包  : $PKG_PATH"
 echo "    校验和  : $PKG_PATH.sha256"

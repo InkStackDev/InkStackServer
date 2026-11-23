@@ -81,7 +81,7 @@ server:
   data_path: ${DATA_PATH}
   # pid 文件落在 work_path 下，多实例各自独立
   pid_file: ${PID_FILE}
-  # 进程标题前缀（ps/top 可读）；多实例建议 techhaven-a / techhaven-b
+  # 进程标题前缀（ps/top 可读）；多实例建议 techhaven-server_1 / techhaven-server_2
   process_name: ${PROCESS_NAME}
   # 部署实例编号（日志 / 指标 / hub 总线用）；与 rpc.bus_id 第 4 段保持一致
   instance_id: ${INSTANCE_ID}
