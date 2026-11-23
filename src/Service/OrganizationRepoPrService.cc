@@ -132,7 +132,7 @@ OrganizationRepoPrService::DeleteStatus OrganizationRepoPrService::Remove(const 
         return DeleteStatus::DB_ERROR;
     }
 
-    if (OrganizationRepoPrRepository::DeleteById(pr_id, db)) {
+    if (!OrganizationRepoPrRepository::DeleteById(pr_id, db)) {
         return DeleteStatus::DB_ERROR;
     }
     OrganizationRepoPrRepository::Evict(pr_id);

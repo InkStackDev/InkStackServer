@@ -621,7 +621,7 @@ UserService::Confirm2faResult UserService::ConfirmEnable2FA(int64_t uid,
         rc->setUserId(uid);
         rc->setCodeHash(hash);
         rc->setUsed(0);
-        if (UserRecoveryCodeRepository::Insert(rc, db)) {
+        if (!UserRecoveryCodeRepository::Insert(rc, db)) {
             ERROR(logger) << "ConfirmEnable2FA insert recovery code failed, uid=" << uid;
             return Confirm2faResult::DbError;
         }
@@ -717,7 +717,7 @@ UserService::ConsumeRecoveryResult UserService::ConsumeRecoveryCode(int64_t uid,
         return ConsumeRecoveryResult::DbError;
     }
     matched->setUsed(1);
-    if (UserRecoveryCodeRepository::Update(matched, db)) {
+    if (!UserRecoveryCodeRepository::Update(matched, db)) {
         ERROR(logger) << "ConsumeRecoveryCode update failed, uid=" << uid;
         return ConsumeRecoveryResult::DbError;
     }
