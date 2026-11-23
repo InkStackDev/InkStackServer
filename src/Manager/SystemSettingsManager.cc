@@ -1,5 +1,6 @@
 #include "SystemSettingsManager.hpp"
 
+#include <ctime>
 #include <memory>
 
 #include <Chen/DB/Redis.hpp>
@@ -99,6 +100,13 @@ bool SystemSettingsManager::update(DB::SystemSettingsInfo::ptr info)
         return false;
     }
     info->setId(1);
+    // 缓存对象可能来自“默认行插入”路径，created_at 为 0；统一兜底为当前时间
+    if (info->getCreatedAt() <= 0) {
+        info->setCreatedAt(time(0));
+    }
+    if (info->getUpdatedAt() <= 0) {
+        info->setUpdatedAt(time(0));
+    }
     if (SystemSettingsRepository::InsertOrUpdate(info, db)) {
         ERROR(logger) << "SystemSettingsManager update fail, errno=" << db->getErrno() << " errstr=" << db->getErrStr();
         return false;

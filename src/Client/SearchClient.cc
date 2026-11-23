@@ -1,72 +1,26 @@
 #include "SearchClient.hpp"
 
 #include "../Config/SearchConfig.hpp"
+#include "HubClient.hpp"
 
 #include <Chen/Log/Log.hpp>
-#include <Chen/Socket/Address.hpp>
-#include <Chen/Util/TimeUtil.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
 void SearchClient::Close()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (client_) {
-        client_->close();
-        client_.reset();
-    }
-    last_connect_ms_.store(0);
-}
-
-void SearchClient::Invalidate()
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (client_) {
-        client_->close();
-        client_.reset();
-    }
-}
-
-chen::rpc::RpcClient::ptr SearchClient::GetClient()
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    return client_;
+    // 共享连接由 BlogModule 持有并在 onUnload 中关闭，这里不能关
 }
 
 bool SearchClient::EnsureConnected()
 {
-    const SearchConf conf = GetSearchConf();
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (client_ && client_->isConnected()) {
-        return true;
-    }
+    auto client = HubClient::Get();
+    return client && client->isConnected();
+}
 
-    if (client_) {
-        client_->close();
-        client_.reset();
-    }
-
-    uint64_t now_ms = chen::TimeUtil::GetCurrentMs();
-    uint64_t reconnect_interval = conf.reconnect_interval_ms;
-    if (reconnect_interval > 0 && now_ms < last_connect_ms_.load() + reconnect_interval) {
-        return false;
-    }
-    last_connect_ms_.store(now_ms);
-
-    auto addr = chen::Address::LookupAny(conf.hub_address);
-    if (!addr) {
-        ERROR(logger) << "invalid search hub address: " << conf.hub_address;
-        return false;
-    }
-
-    auto client = std::make_shared<chen::rpc::RpcClient>();
-    if (!client->connect(addr, conf.connect_timeout_ms)) {
-        DEBUG(logger) << "connect search hub failed: " << conf.hub_address;
-        return false;
-    }
-    client_ = client;
-    INFO(logger) << "connected search hub: " << conf.hub_address;
-    return true;
+chen::rpc::RpcClient::ptr SearchClient::GetClient()
+{
+    return HubClient::Get();
 }
 
 bool SearchClient::CheckStats(tagSearchStats& stats)
@@ -82,7 +36,6 @@ bool SearchClient::CheckStats(tagSearchStats& stats)
         return stats.Code == SEARCH_OK;
     } catch (const std::exception& e) {
         WARN(logger) << "search stats failed: " << e.what();
-        Invalidate();
         return false;
     }
 }
@@ -104,7 +57,6 @@ bool SearchClient::Query(const tagSearchQuery& query, tagSearchResult& result)
         return true;
     } catch (const std::exception& e) {
         WARN(logger) << "search query failed: " << e.what();
-        Invalidate();
         return false;
     }
 }
@@ -125,7 +77,6 @@ int32_t SearchClient::Upsert(const tagSearchDoc& doc)
         return rt;
     } catch (const std::exception& e) {
         WARN(logger) << "upsert search doc failed, article_id=" << doc.ArticleId << ": " << e.what();
-        Invalidate();
         return -1;
     }
 }
@@ -146,7 +97,6 @@ int32_t SearchClient::Remove(uint64_t article_id, int64_t update_time)
         return rt;
     } catch (const std::exception& e) {
         WARN(logger) << "remove search article failed, article_id=" << article_id << ": " << e.what();
-        Invalidate();
         return -1;
     }
 }
@@ -163,7 +113,6 @@ int32_t SearchClient::RebuildBegin(uint64_t snapshot_id, int64_t started_at)
             static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_BEGIN), snapshot_id, started_at);
     } catch (const std::exception& e) {
         WARN(logger) << "search rebuild begin failed: " << e.what();
-        Invalidate();
         return -1;
     }
 }
@@ -180,7 +129,6 @@ int32_t SearchClient::RebuildDocs(uint64_t snapshot_id, const std::vector<tagSea
             static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_DOCS), snapshot_id, docs);
     } catch (const std::exception& e) {
         WARN(logger) << "search rebuild docs failed: " << e.what();
-        Invalidate();
         return -1;
     }
 }
@@ -197,7 +145,6 @@ int32_t SearchClient::RebuildCommit(uint64_t snapshot_id, int64_t finished_at)
             static_cast<uint32_t>(SS_CMD_SEARCH_REBUILD_COMMIT), snapshot_id, finished_at);
     } catch (const std::exception& e) {
         WARN(logger) << "search rebuild commit failed: " << e.what();
-        Invalidate();
         return -1;
     }
 }

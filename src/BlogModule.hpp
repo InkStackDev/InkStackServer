@@ -7,11 +7,7 @@
  */
 #pragma once
 
-#include <atomic>
-#include <cstdint>
-
 #include <Chen/Module/Module.hpp>
-#include <Chen/Rpc/RpcClient.hpp>
 
 class BlogModule : public chen::Module {
 public:
@@ -66,10 +62,4 @@ public:
      */
     bool onDeactivate() override;
 
-private:
-    /// 向 hub 注册本实例（peer_id 被旧 worker 占用时按间隔重试）
-    void SyncHubRegistration();
-    chen::rpc::RpcClient::ptr client_;
-    std::atomic<bool> hub_registered_{false};
-    uint64_t hub_register_attempt_ms_ = 0;
 };

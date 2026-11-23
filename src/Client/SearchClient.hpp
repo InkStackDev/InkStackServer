@@ -1,25 +1,30 @@
 /**
  * @file SearchClient.hpp
- * @brief 搜索服务 RPC 客户端（连接、查询、索引更新）
+ * @brief 搜索服务 RPC 调用（使用进程内共享的 hub 连接）
  * @author Christins
  * @date 2026-11-22
  * @copyright Apache 2.0
  */
 #pragma once
 
-#include <atomic>
 #include <cstdint>
-#include <mutex>
 #include <vector>
 
 #include <Chen/Rpc/RpcClient.hpp>
 
 #include "protocol_ss_search.h"
 
+/**
+ * @brief 搜索服务 RPC 调用
+ * @details 不再自行建立连接：统一使用 HubClient 中由 BlogModule 维护的那条
+ *          RpcClient（同一进程只保留一个 hub 连接）。
+ */
 class SearchClient {
 public:
+    /// 共享 hub 连接是否可用
     bool EnsureConnected();
 
+    /// 兼容旧接口：共享连接由 BlogModule 负责关闭，这里不做任何事
     void Close();
 
     bool CheckStats(tagSearchStats& stats);
@@ -38,10 +43,4 @@ public:
 
 private:
     chen::rpc::RpcClient::ptr GetClient();
-
-    void Invalidate();
-
-    std::mutex mutex_;
-    chen::rpc::RpcClient::ptr client_;
-    std::atomic<uint64_t> last_connect_ms_{0};
 };

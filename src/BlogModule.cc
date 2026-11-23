@@ -1,7 +1,7 @@
 #include "BlogModule.hpp"
 
+#include "./Client/HubClient.hpp"
 #include "./Config/AppConfig.hpp"
-#include "./Config/RpcConfig.hpp"
 #include "./I18n/I18n.hpp"
 #include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
@@ -67,6 +67,7 @@ bool BlogModule::onUnload()
 {
     JobRunner::StopAll();
     ArticleCounterService::FlushDirty();
+    HubClient::Shutdown();
     SearchSyncMgr::GetInstance()->stop();
     MessageRouter::Shutdown();
 
@@ -99,50 +100,7 @@ void BlogModule::onTick()
         chen::http::SessionDataMgr::GetInstance()->check(3600);
     }
 
-    if (!client_->isConnected()) {
-        std::string hub_ip = GetRpcConf().getHubIP();
-        uint16_t hub_port = GetRpcConf().getHubPort();
-        chen::Address::ptr address = chen::IPv4Address::Create(hub_ip.c_str(), hub_port);
-        ASSERT_RET(address);
-
-        uint64_t conn_timeout = GetRpcConf().connect_timeout_ms;
-        if (!client_->connect(address, conn_timeout)) {
-            ERROR(LOG_ROOT()) << "Failed to connect to hub server";
-            return;
-        }
-        hub_registered_.store(false);
-        // 重连后重新注册本地 handler（registerMethod 幂等）
-        BlogMsgFromBotInit(client_);
-    }
-
-    SyncHubRegistration();
-}
-
-void BlogModule::SyncHubRegistration()
-{
-    if (!client_ || !client_->isConnected()) {
-        hub_registered_.store(false);
-        return;
-    }
-    if (hub_registered_.load()) {
-        return;
-    }
-
-    uint64_t now = chen::TimeUtil::GetCurrentMs();
-    if (hub_register_attempt_ms_ != 0 && now < hub_register_attempt_ms_ + 5000) {
-        return;
-    }
-    hub_register_attempt_ms_ = now;
-
-    const RpcConf rpc_conf = GetRpcConf();
-    if (client_->registerService(
-            rpc_conf.bus_id.peerId(), rpc_conf.bus_id.funcId(), rpc_conf.bus_id.instance, std::vector<uint32_t>{})) {
-        hub_registered_.store(true);
-        INFO(LOG_ROOT()) << "rpc hub registered, bus_id=" << rpc_conf.bus_id.toString();
-    } else {
-        WARN(LOG_ROOT()) << "rpc registerService pending (peer_id occupied by old worker?), bus_id="
-                         << rpc_conf.bus_id.toString();
-    }
+    HubClient::Tick();
 }
 
 uint64_t BlogModule::getTickIntervalMs()
@@ -191,29 +149,13 @@ bool BlogModule::onServerReady()
     Init(getName(), getVersion(), http_servers, ws_servers);
     PublishSnapshot();
 
-    client_ = std::make_shared<chen::rpc::RpcClient>();
-    ASSERT_RET(client_, false);
-
-    uint64_t hb_interval_ms = GetRpcConf().heartbeat_interval_ms;
-    client_->setHeartbeatInterval(hb_interval_ms);
-
-    std::string hub_ip = GetRpcConf().getHubIP();
-    uint16_t hub_port = GetRpcConf().getHubPort();
-    chen::Address::ptr address = chen::IPv4Address::Create(hub_ip.c_str(), hub_port);
-    ASSERT_RET(address, false);
-
-    uint64_t conn_timeout = GetRpcConf().connect_timeout_ms;
-    if (!client_->connect(address, conn_timeout)) {
-        ERROR(LOG_ROOT()) << "Failed to connect to hub server";
-        return false;
-    }
-
-    SyncHubRegistration();
-
-    if (!BlogMsgFromBotInit(client_)) {
-        ERROR(LOG_ROOT()) << "BlogMsgFromBotInit failed";
-        return false;
-    }
+    // 全进程只维护一条 hub 连接；重连成功后重新注册本地 handler
+    HubClient::SetConnectedCallback([](const chen::rpc::RpcClient::ptr& client) {
+        if (!BlogMsgFromBotInit(client)) {
+            ERROR(LOG_ROOT()) << "BlogMsgFromBotInit failed";
+        }
+    });
+    HubClient::Init();
 
     return true;
 }
