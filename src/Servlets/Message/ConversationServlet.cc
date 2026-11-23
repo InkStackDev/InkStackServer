@@ -1,0 +1,91 @@
+#include "ConversationServlet.hpp"
+
+#include <Chen/Http/Http.hpp>
+
+#include "MessageJson.hpp"
+#include "../../Service/UserQueryService.hpp"
+#include "../../Service/ConversationService.hpp"
+#include "../../Util/Util.hpp"
+
+ConversationServlet::ConversationServlet()
+    : BlogLoginedServlet("ConversationServlet")
+{
+}
+
+int32_t ConversationServlet::handle(
+    chen::http::HttpRequest::ptr request,
+    chen::http::HttpResponse::ptr response,
+    chen::http::HttpSession::ptr session,
+    Result::ptr result)
+{
+    do {
+        Viewer viewer = getViewer(request);
+        if (!viewer.valid()) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
+        if (CheckChatPermission(result, viewer) != SUCCESS) {
+            break;
+        }
+        int64_t uid = viewer.user_id;
+
+        if (request->getMethod() == chen::http::HttpMethod::GET) {
+            // 会话列表
+            std::vector<DB::ConversationInfo::ptr> convs;
+            ConversationService::ListConversations(convs, uid);
+
+            Json::Value arr(Json::arrayValue);
+            for (auto& c : convs) {
+                Json::Value item;
+                BuildConversationJson(item, c, uid);
+                arr.append(item);
+            }
+
+            result->setErrno(SUCCESS);
+            result->set("list", arr);
+            break;
+        }
+
+        if (request->getMethod() == chen::http::HttpMethod::POST) {
+            // 创建/获取会话
+            std::string peer_str = request->getParam("peer_id");
+            if (peer_str.empty()) {
+                result->setErrno(PARAM_MISSING, "param peer_id is required");
+                break;
+            }
+            int64_t peer_id = chen::TypeUtil::Atoi(peer_str);
+            if (!peer_id) {
+                result->setErrno(PARAM_INVALID, "invalid peer_id");
+                break;
+            }
+            if (peer_id == uid) {
+                result->setErrno(MESSAGE_CANNOT_SELF);
+                break;
+            }
+
+            UserQueryService::Brief peer;
+            if (!UserQueryService::GetUserBrief(peer_id, peer)) {
+                result->setErrno(MESSAGE_PEER_NOT_FOUND);
+                break;
+            }
+
+            auto conv = ConversationService::GetOrCreate(uid, peer_id);
+            if (!conv) {
+                result->setErrno(MESSAGE_CONVERSATION_NOT_FOUND);
+                break;
+            }
+
+            Json::Value data;
+            BuildConversationJson(data, conv, uid);
+            result->set("data", data);
+
+            result->setErrno(SUCCESS);
+            break;
+        }
+
+        result->setErrno(INVALID_METHOD);
+    } while (0);
+
+    response->setBody(result->toJsonString());
+    return 0;
+}

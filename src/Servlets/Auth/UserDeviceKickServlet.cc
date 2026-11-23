@@ -1,0 +1,46 @@
+#include "UserDeviceKickServlet.hpp"
+
+#include "../../Auth/SessionStore.hpp"
+#include "../../Message/MessageRouter.hpp"
+#include "../../Util/Util.hpp"
+
+#include <Chen/Util/JsonUtil.hpp>
+
+#include <json/json.h>
+
+UserDeviceKickServlet::UserDeviceKickServlet()
+    : BlogLoginedServlet("UserDeviceKickServlet")
+{
+}
+
+int32_t UserDeviceKickServlet::handle(
+    chen::http::HttpRequest::ptr request,
+    chen::http::HttpResponse::ptr response,
+    chen::http::HttpSession::ptr session,
+    Result::ptr result)
+{
+    do {
+        int64_t uid = getUserId(request);
+        if (!uid) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
+
+        DEFINE_AND_CHECK_STRING(result, device_id, "device_id");
+
+        // device_id 是 SessionStore::HashId(SESSIONID)
+        if (!SessionStore::DestroyForUser(uid, device_id)) {
+            result->setErrno(DEVICE_NOT_FOUND);
+            break;
+        }
+
+        Json::Value msg;
+        msg["channel"] = "system";
+        msg["type"] = "device_kicked";
+        MessageRouter::Get()->CloseDevice(device_id, chen::JsonUtil::ToString(msg));
+
+        result->setErrno(SUCCESS);
+    } while (0);
+    response->setBody(result->toJsonString());
+    return 0;
+}

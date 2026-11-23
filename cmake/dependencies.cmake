@@ -10,6 +10,7 @@ else()
 endif()
 
 include_directories(${CHEN_SDK_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/compat)
 include_directories(${PROJECT_SOURCE_DIR}/dbproxy/data)
 
 # 三方依赖（由 deps.py sync / thirdparty 下载到 deps/：头文件 + 静态库）

@@ -1,16 +1,16 @@
 name: Build & Package
 
 # 触发：
-#   - 手动 workflow_dispatch（可选 dev/prod，出 Actions artifact）
+#   - 手动 workflow_dispatch（直接出 Actions artifact）
 #   - 打 tag v* → 额外发布到 GitHub Release
+#
+# 打包参数全部取自仓库 Variables，无需在触发时填写：
+#   PKG_ENV（默认 prod）/ CLUSTER_INSTANCES / DEPLOY_PATH / CLUSTER_LOG_ROOT
+#
+# 产物只有"集群包"一种形态：techhaven-cluster-<tag>-<arch>.tar.gz
+#   CLUSTER_INSTANCES=1 即单实例包
 on:
   workflow_dispatch:
-    inputs:
-      env:
-        description: 打包环境
-        type: choice
-        default: prod
-        options: [prod, dev]
   push:
     branches:
       - master
@@ -22,7 +22,10 @@ permissions:
   contents: write
 
 env:
-  PKG_ENV: ${{ github.event.inputs.env || 'prod' }}
+  PKG_ENV: ${{ vars.PKG_ENV || 'prod' }}
+  PKG_INSTANCES: ${{ vars.CLUSTER_INSTANCES || '3' }}
+  PKG_DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/techhaven' }}
+  PKG_LOG_ROOT: ${{ vars.CLUSTER_LOG_ROOT || '/data/apps' }}
 
 jobs:
   build:
@@ -106,7 +109,12 @@ jobs:
         if: env.PKG_ENV == 'prod'
         env:
           WORK_PATH: ${{ vars.WORK_PATH }}
+          DATA_PATH: ${{ vars.DATA_PATH || '/data/apps/data' }}
+          LOG_DIR: ${{ vars.LOG_DIR || '/data/apps/logs' }}
+          PROCESS_NAME: ${{ vars.PROCESS_NAME || 'techhaven' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+          HTTP_PORT: ${{ vars.HTTP_PORT || '8090' }}
+          WS_PORT: ${{ vars.WS_PORT || '8091' }}
           MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
           MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
@@ -114,6 +122,10 @@ jobs:
           MYSQL_DBNAME: ${{ secrets.MYSQL_DBNAME }}
           REDIS_HOST: ${{ secrets.REDIS_HOST }}
           REDIS_DBNAME: ${{ secrets.REDIS_DBNAME }}
+          SEARCH_HUB_ADDRESS: ${{ vars.SEARCH_HUB_ADDRESS || '127.0.0.1:9010' }}
+          INSTANCE_ID: ${{ vars.INSTANCE_ID || '1' }}
+          RPC_HUB_ADDRESS: ${{ vars.RPC_HUB_ADDRESS || '127.0.0.1:9010' }}
+          RPC_BUS_ID: ${{ vars.RPC_BUS_ID || '1.1.2.1' }}
           ADMIN_PASSWD: ${{ secrets.ADMIN_PASSWD }}
           GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
@@ -126,40 +138,58 @@ jobs:
           WEBAUTHN_USER_HANDLE_SECRET: ${{ secrets.WEBAUTHN_USER_HANDLE_SECRET }}
         run: |
           {
-            echo "WORK_PATH=${WORK_PATH:-/home/path/to/apps}"
-            echo "LOG_LEVEL=${LOG_LEVEL:-info}"
-            echo "MYSQL_HOST=${MYSQL_HOST:-change.me}"
-            echo "MYSQL_PORT=${MYSQL_PORT:-3306}"
-            echo "MYSQL_USER=${MYSQL_USER:-change.me}"
-            echo "MYSQL_PASSWD=${MYSQL_PASSWD:-change.me}"
-            echo "MYSQL_DBNAME=${MYSQL_DBNAME:-techhaven}"
-            echo "REDIS_HOST=${REDIS_HOST:-127.0.0.1:6379}"
-            echo "REDIS_DBNAME=${REDIS_DBNAME:-blog}"
-            echo "ADMIN_PASSWD=${ADMIN_PASSWD:-}"
-            echo "GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}"
-            echo "GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}"
-            echo "GITHUB_CALLBACK_URL=${GITHUB_CALLBACK_URL}"
-            echo "FRONTEND_BASE=${FRONTEND_BASE}"
-            echo "AUTH_COOKIE_SECURE=${AUTH_COOKIE_SECURE:-true}"
-            echo "WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-change.me}"
-            echo "WEBAUTHN_RP_NAME=${WEBAUTHN_RP_NAME:-InkStack}"
-            echo "WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://change.me}"
-            echo "WEBAUTHN_USER_HANDLE_SECRET=${WEBAUTHN_USER_HANDLE_SECRET:-}"
+            printf 'WORK_PATH=%q\n' "${WORK_PATH:-/opt/techhaven}"
+            printf 'DATA_PATH=%q\n' "${DATA_PATH:-/data/apps/data}"
+            printf 'LOG_DIR=%q\n' "${LOG_DIR:-/data/apps/logs}"
+            printf 'PROCESS_NAME=%q\n' "${PROCESS_NAME:-techhaven}"
+            printf 'LOG_LEVEL=%q\n' "${LOG_LEVEL:-info}"
+            printf 'HTTP_PORT=%q\n' "${HTTP_PORT:-8090}"
+            printf 'WS_PORT=%q\n' "${WS_PORT:-8091}"
+            printf 'MYSQL_HOST=%q\n' "${MYSQL_HOST:-change.me}"
+            printf 'MYSQL_PORT=%q\n' "${MYSQL_PORT:-3306}"
+            printf 'MYSQL_USER=%q\n' "${MYSQL_USER:-change.me}"
+            printf 'MYSQL_PASSWD=%q\n' "${MYSQL_PASSWD:-change.me}"
+            printf 'MYSQL_DBNAME=%q\n' "${MYSQL_DBNAME:-techhaven}"
+            printf 'REDIS_HOST=%q\n' "${REDIS_HOST:-127.0.0.1:6379}"
+            printf 'REDIS_DBNAME=%q\n' "${REDIS_DBNAME:-blog}"
+            printf 'SEARCH_HUB_ADDRESS=%q\n' "${SEARCH_HUB_ADDRESS:-127.0.0.1:9010}"
+            printf 'INSTANCE_ID=%q\n' "${INSTANCE_ID:-1}"
+            printf 'RPC_HUB_ADDRESS=%q\n' "${RPC_HUB_ADDRESS:-127.0.0.1:9010}"
+            printf 'RPC_BUS_ID=%q\n' "${RPC_BUS_ID:-1.1.2.1}"
+            printf 'ADMIN_PASSWD=%q\n' "${ADMIN_PASSWD:-}"
+            printf 'GITHUB_CLIENT_ID=%q\n' "${GITHUB_CLIENT_ID}"
+            printf 'GITHUB_CLIENT_SECRET=%q\n' "${GITHUB_CLIENT_SECRET}"
+            printf 'GITHUB_CALLBACK_URL=%q\n' "${GITHUB_CALLBACK_URL}"
+            printf 'FRONTEND_BASE=%q\n' "${FRONTEND_BASE}"
+            printf 'AUTH_COOKIE_SECURE=%q\n' "${AUTH_COOKIE_SECURE:-true}"
+            printf 'WEBAUTHN_RP_ID=%q\n' "${WEBAUTHN_RP_ID:-change.me}"
+            printf 'WEBAUTHN_RP_NAME=%q\n' "${WEBAUTHN_RP_NAME:-InkStack}"
+            printf 'WEBAUTHN_ORIGIN=%q\n' "${WEBAUTHN_ORIGIN:-https://change.me}"
+            printf 'WEBAUTHN_USER_HANDLE_SECRET=%q\n' "${WEBAUTHN_USER_HANDLE_SECRET:-}"
           } > bin/conf/prod.env
 
-      - name: Package
-        run: ./collect.sh "${PKG_ENV}"
+      - name: Package cluster
+        run: |
+          ./scripts/cluster/package-cluster.sh "${PKG_ENV}" \
+            --instances "${PKG_INSTANCES}" \
+            --deploy-path "${PKG_DEPLOY_PATH}" \
+            --log-root "${PKG_LOG_ROOT}"
 
-      - name: Rename package (tag + arch)
+      - name: Rename cluster package (tag + arch)
         run: |
           tag="${{ github.ref_type == 'tag' && github.ref_name || 'latest' }}"
-          mv techhaven-server-*.tar.gz "techhaven-server-${tag}-${{ matrix.arch }}.tar.gz"
+          mv techhaven-cluster-*.tar.gz "techhaven-cluster-${tag}-${{ matrix.arch }}.tar.gz"
+          sha256sum "techhaven-cluster-${tag}-${{ matrix.arch }}.tar.gz" \
+            > "techhaven-cluster-${tag}-${{ matrix.arch }}.tar.gz.sha256"
 
-      - name: Upload package
+      - name: Upload cluster package
         uses: actions/upload-artifact@v4
         with:
-          name: techhaven-server-${{ matrix.arch }}
-          path: techhaven-server-*.tar.gz
+          name: techhaven-cluster-${{ matrix.arch }}
+          path: |
+            techhaven-cluster-*.tar.gz
+            techhaven-cluster-*.tar.gz.sha256
+          retention-days: 7
           if-no-files-found: error
 
   release:
@@ -209,5 +239,5 @@ jobs:
               --notes-file /tmp/release_body.md
           fi
 
-          gh release upload "${GITHUB_REF_NAME}" artifacts/*.tar.gz \
+          gh release upload "${GITHUB_REF_NAME}" artifacts/*.tar.gz artifacts/*.sha256 \
             --repo "${GITHUB_REPOSITORY}" --clobber

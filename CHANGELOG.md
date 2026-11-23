@@ -6,10 +6,125 @@ All notable changes to this project will be documented in this file.
 
 ### 新增
 
+- 新增 `Viewer` / `OrgScope` / `AccessScopeResolver` / `AccessPolicy`：入口只解析身份与粗粒度路由权限，组织数据范围统一由
+  Service 解析、QueryRepository 在 SQL 中应用；空范围按无权限处理，不再退化成全量。
+- 新增 `RdStatsQueryRepository` / `RdAnalyticsService`：研发趋势、概览与 PR 分布统计从 Servlet 迁移到 Service +
+  QueryRepository，移除入口层报表 SQL、成员关系查询与内存分页；`PrStatsQueryRepository` 改为显式接收 `OrgScope`。
+- 新增 `RdListQueryRepository`：任务/需求/缺陷列表改为 SQL 数据范围 + 过滤 + 分页；入口不再按组织循环取全量再内存过滤，
+  任务列表同时保留“普通成员只看自己创建/负责的任务”的规则。
+- RD 任务/需求/缺陷的保存与批量删除改为 Service 接收 `Viewer`：组织范围解析、创建/编辑/删除权限判断统一在
+  `TaskService` / `RequirementService` / `BugService` 内完成，Servlet 不再查询成员关系或传 `org_role` /
+  `is_platform_admin`。平台管理员创建/编辑 RD 项时不再要求目标组织成员关系，与列表/详情/删除保持一致。
+- RD 组织列表、组织成员列表、平台准入检查改为 Service + `Viewer` / `OrgScope`：成员关系查询从入口移除，
+  `AccessPolicy::CanAccessPlatform` 统一平台准入判断。
+- 组织创建/删除、申请审核、加入审核、踢人、角色切换改为 Service 接收 `Viewer`：管理员校验、成员身份、
+  `DEV_LEAD`/`ORG_ADMIN` 管理权限与角色切换范围统一在 `OrganizationService` 内完成，入口不再查询操作者成员关系。
+- 组织详情、成员分页、组织作业列表改为 Service 读模型：`GetDetail` / `ListMemberPage` / `ListAssignments`，
+  入口不再直接调用 `OrganizationUserRelRepository` / `AssignmentRepository`；待审核成员列表要求管理权限。
+- 组织仓库与 PR 入口改为 Service 权限模型：仓库增删/Token/同步/列表走 `OrganizationRepoService` 的 `Viewer` +
+  `AccessPolicy`，PR 列表/删除/同步复用 `CheckOrgAccess` / `CheckRepoAccess`；入口不再查询操作者成员关系，
+  已退出/已拒绝关系不再能管理仓库或 PR。
+- 新增 `src/Client/` 出站适配层与 `GitHubClient`：GitHub 仓库元数据、PR 列表/详情/评审统一在 Client 内完成
+  超时、重试、退避、限流识别、JSON → DTO 和错误分类；`OrganizationRepoService` / `OrganizationRepoPrService`
+  不再直接使用 `HttpConnection` 和厂商 JSON。新增 `github` 配置节（默认值兜底）。
+- GitHub OAuth 登录改为 `GitHubClient::ExchangeOAuthCode` / `GetOAuthUser` / `GetPrimaryEmail`：
+  `UserOAuthGithubCallbackServlet` 不再直接发 HTTP、解析厂商 JSON 或打印响应 body；state 校验与本地用户绑定逻辑留在入口/Service。
+- 新增 `LlmClient` / `ArticleAIService`：文章 AI 总结的请求构建、流式解析、首 token 前重试与错误分类下沉到 Client/Service，
+  `SSEStreamParser` 改为通用回调；`ArticleAISummaryServlet` 只负责 SSE 会话、参数和结果事件。`ai` 配置增加
+  `timeout_ms` / `max_attempts`。
+- 新增 `SearchClient`，把 SearchServer 的 RPC 连接、超时、stats、query、upsert/remove、快照 RPC 从
+  `SearchSync` 拆出；`SearchSync` 只保留 Redis outbox、批量调度、快照组装和失败重试。
+- 新增 `MailClient`：SMTP 连接、发送、耗时日志与错误分类从 `EventUserSendCode` 移入 Client；
+  Event 只负责校验邮件数据和触发发送。
+- 新增 `ArticleSearchService`：公共搜索的“只查已发布文章”、搜索调用、文章/作者数据组装从
+  `ArticleSearchServlet` 移入 Service，入口只负责参数与响应。
+- 新增 `RdListService` / `RdAccessService` / `RdTicketService` 与 RD 详情 Service：`src/Servlets/Rd/` 已不再
+  出现 `GetDB()`、Repository 或 `AccessScopeResolver` 直接调用；列表、详情、准入检查和“我的单据”均由 Service
+  完成连接获取与数据范围解析。
+- 新增 `AdminCommentService` / `AdminArticleService` / `AdminAssignmentService` / `AdminUserService`：
+  `src/Servlets/Admin/` 已不再出现 `GetDB()`；管理端统一继承 `BlogAdminServlet`，评论/文章/作业/用户/组织
+  列表与统计由 Service 完成 DB 访问。
+- 新增 `UserQueryService` / `UserStatsService` 与 `UserAIConfigService::Get`：`src/Servlets/User/` 已不再出现
+  `GetDB()`；用户资料、关注/粉丝/互关、用户组织/作业、统计、成就、AI 配置均通过 Service 获取数据。
+- 新增 `ArticleQueryService` / `CommentQueryService`：`src/Servlets/Article/` 已不再出现 `GetDB()`；
+  文章列表/详情/点赞、评论树/回复、评论创建/修改/点赞的 DB 访问与数据组装均下沉到 Service。
+- 新增 `DashboardService` / `DatabaseAdminService` / `RecordService` / `ResourceService` / `CategoryQueryService` /
+  `LabelService::List` / `NotificationService` 查询方法 / `AssignmentService` 读模型：`src/Servlets/`
+  全目录已不再出现 `GetDB()`；备份/导出、仪表盘、通知、私信、作业、分类、标签、资源、认证等入口均通过 Service
+  获取数据库连接。
+- 新增统一 WebSocket 消息路由 `MessageRouter`：统一走 Redis 收件箱跨 worker 投递消息、在线人数以及踢设备/撤销会话指令，连接所在
+  worker 直接投递作为快路径，长连接本身不经过 RPC。
+- 新增后台任务执行器 `JobRunner` 与 Redis 租约 `RedisLease`：文章定时发布/计数刷盘、组织仓库与 PR 同步改为定时任务，多
+  worker 下同一任务只跑一份。
+- 搜索全量重建和单条 PR 同步增加 Redis 租约，避免多 worker 重复执行。
+- 新增 `UserRepository` / `UserService` / `EntityCache` 样板：Repository 只做单表读写并显式接收 `conn`，Service 负责业务校验、事务和
+  commit 后缓存失效；用户注册/创建、GitHub OAuth 用户创建、个人资料修改、2FA 启用/关闭/恢复码登录、密码设置、软删除/恢复、管理端资料更新已迁移到该路径。
+- 新增 `ArticleRepository` / `ArticleService` 样板，文章对象缓存收敛到 `EntityCache`
+  ，文章创建、更新、删除、状态切换、审核、发布已迁移（文章 + 分类/标签关系、事务、缓存、搜索同步、定时发布/日历清理、审核/状态事件统一在
+  Service 内完成）。
+- 新增 `ArticleScheduleService`，定时发布、发布日历缓存从 `ArticleManager` 拆出。
+- 新增 `ArticleCounterService`，浏览/点赞/收藏计数、内存脏集合与刷盘从 `ArticleManager` 拆出。
+- 新增 `ArticleQueryRepository`，文章列表/审核列表/后台分页/标签与分类分页/统计/上一篇下一篇查询从 `ArticleManager` 拆出。
+- 新增 `CommentRepository` / `CommentService` 样板，评论对象缓存收敛到 `EntityCache`，评论创建/删除已迁移。
+- 新增 `CommentQueryRepository` / `CommentPraiseRepository`：评论列表、回复、计数、后台分页与统计查询，以及评论点赞关联读写从
+  `CommentManager` / `CommentPraiseRelManager` 拆出；评论修改、批量审核/删除、点赞切换迁移到 `CommentService`，写操作后失效
+  对应的文章列表/计数与全局统计缓存。
+- 新增 `NotificationRepository` / `NotificationQueryRepository` / `NotificationService`：通知读写、列表/计数/未读数查询、已读标记、
+  广播关闭与过期清理从 `NotificationManager` 拆出；用户级缓存改为版本号失效，批量已读补上归属校验。
+- 新增 `ConversationRepository` / `ConversationMessageRepository` / `ConversationService`：私信会话与消息读写从
+  `MessageManager`
+  拆出，发消息改为单事务更新消息与会话未读数，会话创建依赖唯一索引 + 回查避免跨 worker 重复插入。
+- 新增 `AssignmentRepository` / `AssignmentRelRepository` / `AssignmentQueryRepository` / `AssignmentService`：作业创建/更新、
+  组织布置、批量删除从 Servlet 与 `Assignment*Manager` 拆出；批量删除不再全表扫后再过滤，改为按 ID 读取并在事务内软删除。
+- 新增 `OrganizationRepository` / `OrganizationUserRelRepository` / `OrganizationApplyRepository` /
+  `OrganizationService`：
+  组织创建/更新、批量删除、加入/审核/踢人/角色调整、组织申请与审核从 Servlet 与 `Organization*Manager` 拆出；组织创建与
+  申请人成员关系、申请通过后的组织 + 关系 + 申请状态更新改为单事务提交。
+- 新增 `TaskRepository` / `BugRepository` / `RequirementRepository` 与对应 Service：任务/缺陷/需求的保存与批量删除从
+  `Rd*Servlet` 拆出，删除改为按 ID 过滤 + 事务软删除，权限判断保留在 Service 入参中。
+- 新增 `CategoryRepository` / `LabelRepository` / `ArticleRelRepository` 与 `CategoryService` / `LabelService` /
+  `ArticleCategoryService`：分类/标签的创建、级联删除、文章分类关联更新从 Servlet 与 Manager 拆出；分类删除改为在 Service
+  内递归子分类并事务提交，文章分类更新修复了响应里误返回关联记录 ID 的问题。`ArticleService` 与搜索快照的分类/标签关联查询
+  也改为走 `ArticleRelRepository`。
+- 新增 `BadgeRepository` / `FaqRepository` / `FeedbackRepository` / `BackupRecordRepository` / `ExportRecordRepository`
+  与
+  `FaqService` / `FeedbackService`：徽章、常见问题、反馈、备份/导出记录读写从 Manager 与 Servlet 拆出；FAQ 转换、反馈提交、
+  过期记录物理清理改为走 Repository / Service。
+- 新增 `OrganizationRepoRepository` / `OrganizationRepoService`：组织仓库的增删、Token 更新、GitHub 元数据同步从
+  `OrganizationRepoManager` 与 Servlet 拆出；PR 同步相关的仓库状态回写与 `github_full_name` 反查也改为走该 Repository。
+- 新增 `OrganizationRepoPrRepository`：PR 单表读写、按仓库/组织/用户分页与对象缓存从 `OrganizationRepoPrManager` 拆出；
+  PR webhook 写入、后台同步、删除与单条 PR 同步的持久化统一走 Repository。
+- 新增 `PasskeyRepository` / `ResourceRepository` / `UserAIConfigRepository` 与 `UserAIConfigService`：Passkey 凭据、资源元数据、
+  用户 AI 配置的读写从 Manager 拆出，AI 配置保存仍保留“按 user_id 回查主键后刷新缓存”的行为。
+- 新增 `OrganizationRepoPrService`：PR 全量/单条同步、GitHub 状态机、限流与重试、仓库 PR 同步状态回写从
+  `OrganizationRepoPrManager` 拆出，Manager 只保留查询/缓存 facade。
+- 新增 `ArticlePraiseRelRepository` / `UserFollowRelRepository` 与对应 Service：文章点赞、用户关注的对象缓存与读写从
+  Manager
+  拆出，Manager 中最后两处手写 Redis 缓存与 `ParseRow` 移除。
+- 新增 `PrStatsQueryRepository`：PR 按天聚合、评审通过率、时间范围内创建数等报表查询从 `RdTrendServlet` /
+  `RdPrDistributionServlet` 拆出，报表 SQL 与业务读写彻底分离。
+- 清理 Servlet 中最后的直接 DAO 调用（评论/文章计数、用户详情、登录密码哈希升级）。
 - 新增统一 WebSocket 入口 `/ws/v1/session`，一个设备一条长连接，复用通知、在线人数、私信和系统消息通道。
 - 新增 `channel` 下行字段（`system` / `notification` / `presence` / `chat`），客户端按通道分发。
 - 新增 `WSConnectionManager`：按 `device_id` 管理连接、按用户索引、在线人数去重、连接级发送串行化。
 - 新增 `blog_ws_online_devices` 指标，统计 WebSocket 连接数。
+- 新增 RPC Hub 客户端配置（`rpc.enabled` / `hub_address` / `bus_id` / 超时），并集中到 `src/Config/RpcConfig.hpp`；
+  `bus_id` 为 `<zone>.<group>.<service>.<instance>` 四段位，用于推导 hub 侧的 `peer_id` 与 `func_id`。
+  本轮只落配置与解析，连接/注册逻辑后续实现。
+- 新增多实例部署打包：`make cluster ENV=prod INSTANCES=3` →
+  `scripts/cluster/package-cluster.sh` 产出 `techhaven-cluster-<version>-<arch>-<ts>.tar.gz`，
+  包内 `<name>/`（实例目录直接位于部署根目录）已按实例生成好 `conf/` 与 `instance.env`（端口、instance_id、bus_id、日志/pid
+  彼此独立）。
+  程序目录默认 `/opt/techhaven`，**只有日志**单独放在 `/data/apps/<name>/logs`
+  （可用 `--deploy-path` / `--log-root` 调整）；
+  另含 `clusterctl.sh`、`render-instance.sh`、Nginx 示例与多实例说明；`make dist` 现在直接产出集群包。
+- `Build & Package` 去掉触发时的打包输入参数，统一读仓库 Variables（`PKG_ENV` / `CLUSTER_INSTANCES` /
+  `DEPLOY_PATH` / `CLUSTER_LOG_ROOT`）；`Deploy` 只保留 `mode` 输入。
+- CI 只发行集群包：`Build & Package` 产出 `techhaven-cluster-<tag>-<arch>.tar.gz`（含 `.sha256`），
+  支持 `instances` / `deploy_path` / `log_root` 输入；`Deploy` 改为集群部署（`cold` 全量 / `hot` 只换
+  `module`、`errors.json`、`locale`、`scripts` 后滚动重启 / `stop`），不再下载单实例包。
+- `Deploy` 新增 `module` 模式：只替换 `module/*.so`（旧文件保留为 `*.so.prev`），不重启实例，
+  由运维自行 `clusterctl.sh reload <name>` 做灰度；确认后再全量滚动重启。
 
 ### 变更
 
@@ -20,10 +135,57 @@ All notable changes to this project will be documented in this file.
 - 普通用户可连接统一网关接收通知与在线人数，但私信帧返回 `ACCESS_DENIED`。
 - 登出、踢设备、撤销单会话、撤销全部会话、重新签发会话时联动关闭对应 WebSocket。
 - `blog_online_users` 改为按 `uid` 去重的在线用户数。
+- 业务侧配置统一收敛到 `src/Config/`（`AppConfig` / `AuthConfig` / `SearchConfig` / `AIConfig`），各模块不再各自声明
+  `Config::Lookup`；新增配置项需在该目录登记并更新 key 对照表。
+- 多实例部署适配：`RedisLease` 改为 **fail-closed**（Redis 不可用时跳过本轮任务，日志每 60s 节流），
+  `JobRunner::Job` 新增 `use_lease`，默认租约任务与“每实例各自执行”的任务分离。
+- 文章浏览/点赞/收藏计数改为**进程内增量 + `views = views + ?` 增量写库**，刷盘任务不再占用租约，避免多实例
+  用绝对值互相覆盖；刷盘成功后 `Evict` 对象缓存，让缓存重新对齐 DB 真值。新增 `docs/multi-instance.md`。
+- 多实例配置补充 `server.process_name`：每个实例进程标题为 `techhaven-<实例名>: master process` /
+  `techhaven-<实例名>: worker process`，`ps -ef | grep techhaven` 即可区分实例；单实例默认 `techhaven`
+  （`switch-env.sh` 兜底，可用 `PROCESS_NAME` 覆盖）。
+- 集群包实例默认按 `server_1`、`server_2`… 命名，实例目录直接放在部署根目录（原为 `instances/a`、`instances/b`…）；
+  `--names` 仍可自定义，日志统一为 `/data/apps/<name>/logs`。升级已有部署时目录结构变化，
+  需要重新渲染配置或继续用 `--names a,b,c` 并手动迁移到根目录。
+- 配置模板整理：`system.yml.tpl` 删除已废弃的 rpc server 项（业务只作为 hub 客户端）、`fox_thread.redis.name` 与
+  `redis.desc` 等未读取项；接入端口改为 `HTTP_PORT` / `WS_PORT`，MySQL 显式 `pool`；`TechHaven.yml.tpl` 补齐
+  `server.drain_timeout_ms` / `housekeeping_interval_ms` / `worker_ready_timeout_ms` / `worker_restart_interval_ms`。
+
+### 修复
+
+- 修复验证码邮件始终按隐式 TLS 连接 SMTP 服务的问题：改为按 `smtp_encryption` 选择连接方式，不再写死 SSL；对当前 SDK 不支持的
+  STARTTLS（587 + `tls`）直接返回 `9019 SMTP_ENCRYPTION_UNSUPPORTED`，不再静默失败。
+- 修复异步发信事件在 `SmtpClient::send` 返回空指针时解引用导致 worker SIGSEGV 的问题，并补充连接/发信耗时与失败原因日志。
+- 修复访问日志 `GetRemoteIP` 未判空 `session` 可能导致空指针崩溃的问题。
+- 崩溃日志现在记录崩溃时间、线程 ID、`si_code`、出错 PC/SP/FP、模块基址与 PC 偏移、栈内容，可在帧丢失时仍用 `addr2line` 定位。
+- 系统设置的写路径（保存设置、上传站点图片）改为先复制再整体替换，避免与 `/api/v1/site/settings` 等读请求并发改写同一个
+  `std::string`。
+- 系统设置跨 worker 生效：本地快照按 Redis 版本号最多 1 秒校验一次，任一 worker 保存设置后其他 worker 自动重载。
+- 修复 `server.work_path` / `server.data_path` 使用单参 `Config::Lookup`（只查不注册）时，依赖跨编译单元静态初始化顺序、
+  顺序不利会拿到空指针并崩溃的隐患；现在统一由 `src/Config/AppConfig.cc` 带默认值注册。
+- 修复模块重写后丢失的启动初始化：`onLoad` 恢复 `FoxThreadMgr::init/start` + `RedisMgr::init`、`I18n::Init`、
+  `ErrorCodeMgr::load`，`onServerReady` 恢复 `Init(...)` 服务指标注册，`onTick` 恢复 `SampleRates()` 与
+  `SessionDataMgr::check()`，`onUnload` 补 `RedisMgr::freeAll()`。
+- 访问日志改用独立的 `access` logger（之前写到 root.log）。
+- 运行指标改为集群聚合：每个实例每 5s 把 `Registry::RenderJson()` 快照写入 Redis
+  `metrics:inst:<instance>:<pid>`（TTL 30s，`metrics:instances` zset 维护存活列表），
+  `/api/v1/admin/metrics` 汇总所有存活实例：counter/gauge/histogram 求和、`blog_info` 取实例编号最小的一份、
+  在线用户/系统内存取最大、运行时长取最小。响应结构保持 `{metrics:[...]}`，另带 `instanceCount`。
+- 日志文件开启按天轮换：`time_rotate: day` + `retention_days: 14`，文件名形如
+  `root_2026-11-23.log` / `access_2026-11-23.log`，避免单文件无限增长。
+- 修复 `BlogLoginedServlet::handlePre` 会话判断写反导致**带 session cookie 的请求全部返回
+  `1101 NOT_LOGIN`**（前端表现为“登录后立刻过期/请求被取消”）的问题。
+- 打包脚本（`collect.sh` / `package-cluster.sh`）在 `locale/*.mo` 缺失时自动尝试 `ninja i18n` /
+  `scripts/i18n.py build`，仍失败则提示先安装 gettext 并执行 `make i18n`。
+- 恢复首次部署的超级管理员引导 `UserService::EnsureSuperAdmin()`：按 `admin` 配置创建，账号/邮箱已存在则跳过，
+  `ADMIN_PASSWD` 留空则跳过；多实例并发引导依赖 `user` 表唯一索引，按“已存在”处理。
 
 ### 移除
 
 - 移除旧 WebSocket 端点、旧通知/在线状态/私信连接表及相关管理方法。
+- 移除服务端文件上传接口：`/api/v1/file/upload`、`/api/v1/upload/*`、`/api/v1/admin/settings/upload`，
+  以及 `FileUploadServlet`、`ChunkUploadServlet`、`SystemSettingsUploadServlet`；后续文件存储统一走对象存储，
+  站点图标/Logo/Favicon 先通过 `/api/v1/admin/settings` 填写 URL。`chunk_upload` 表不再创建，历史资源元数据保留在 `resource` 表。
 
 ### 升级注意
 

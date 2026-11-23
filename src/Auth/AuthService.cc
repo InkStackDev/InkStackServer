@@ -1,0 +1,274 @@
+#include "AuthService.hpp"
+
+#include <Chen/Config/Config.hpp>
+#include <Chen/Http/SessionData.hpp>
+#include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+
+#include <json/json.h>
+
+#include "../SessionData.hpp"
+#include "../Message/MessageRouter.hpp"
+#include "../Config/AuthConfig.hpp"
+#include "../Manager/SessionManager.hpp"
+#include "../Repository/UserRepository.hpp"
+#include "../Util/Util.hpp"
+#include "SessionStore.hpp"
+#include "../Domain/UserTypes.hpp"
+
+static chen::Logger::ptr logger = LOG_ROOT();
+
+static std::string NormalizeSameSite()
+{
+    const AuthConf conf = GetAuthConf();
+    std::string value = conf.cookie_same_site;
+    if (value != "Lax" && value != "Strict" && value != "None") {
+        return "Lax";
+    }
+    return value;
+}
+
+static bool UseSecureCookie()
+{
+    const AuthConf conf = GetAuthConf();
+    return conf.cookie_secure || NormalizeSameSite() == "None";
+}
+
+static void CloseWsForSession(const std::string& session_id, const char* reason)
+{
+    if (session_id.empty()) {
+        return;
+    }
+    std::string device_id = SessionStore::HashId(session_id);
+    if (device_id.empty()) {
+        return;
+    }
+    Json::Value msg;
+    msg["channel"] = "system";
+    msg["type"] = reason;
+    MessageRouter::Get()->CloseDevice(device_id, chen::JsonUtil::ToString(msg));
+}
+
+void AuthService::MirrorSessionData(const std::string& session_id, int64_t uid)
+{
+    if (session_id.empty() || !uid) {
+        return;
+    }
+
+    auto manager = chen::http::SessionDataMgr::GetInstance();
+    auto data = manager->get(session_id);
+    if (!data) {
+        data = std::make_shared<chen::http::SessionData>(false);
+        data->setId(session_id);
+    }
+    data->setData(SessionDataKey::kUserId, uid);
+    data->setData(SessionDataKey::kAnonymous, 0);
+    manager->add(data);
+}
+
+AuthContext AuthService::Resolve(chen::http::HttpRequest::ptr request, chen::http::HttpResponse::ptr response, bool touch)
+{
+    AuthContext ctx;
+    if (!request) {
+        return ctx;
+    }
+
+    std::string session_id = request->getCookie(CookieKey::kSessionKey);
+    if (session_id.empty()) {
+        return ctx;
+    }
+
+    // 匿名会话不参与认证，也不要清除 Cookie（公共接口会用到）。
+    auto sdata = chen::http::SessionDataMgr::GetInstance()->get(session_id);
+    if (sdata && sdata->getData<int64_t>(SessionDataKey::kAnonymous) == 1) {
+        return ctx;
+    }
+    // 内存 SessionData 可能落后于 Redis 中的 SessionStore，需以 SessionStore 为准再判断匿名。
+    SessionInfo info;
+    bool info_loaded = false;
+    if (sdata && sdata->getData<int64_t>(SessionDataKey::kUserId) == 0) {
+        if (!SessionStore::Get(session_id, info)) {
+            CloseWsForSession(session_id, "session_expired");
+            sdata->setData(SessionDataKey::kAnonymous, 1);
+            return ctx;
+        }
+        info_loaded = true;
+    }
+
+    if (!info_loaded && !SessionStore::Get(session_id, info)) {
+        CloseWsForSession(session_id, "session_expired");
+        chen::http::SessionDataMgr::GetInstance()->del(session_id);
+        if (response) {
+            ClearSessionCookie(response);
+        }
+        return ctx;
+    }
+
+    auto user = UserRepository::Get(info.uid, GetDB());
+    if (!user || user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
+        CloseWsForSession(session_id, "session_revoked");
+        SessionStore::Destroy(session_id);
+        chen::http::SessionDataMgr::GetInstance()->del(session_id);
+        if (response) {
+            ClearSessionCookie(response);
+        }
+        return ctx;
+    }
+
+    const AuthConf conf = GetAuthConf();
+
+    int64_t now = chen::TimeUtil::GetCurrentSec();
+    if (touch && now - info.last_seen >= 60) {
+        if (!SessionStore::Touch(session_id, info, GetSessionTTL(), conf.session_absolute_ttl)) {
+            CloseWsForSession(session_id, "session_expired");
+            chen::http::SessionDataMgr::GetInstance()->del(session_id);
+            if (response) {
+                ClearSessionCookie(response);
+            }
+            return ctx;
+        }
+    }
+
+    MirrorSessionData(session_id, info.uid);
+    ctx.uid = info.uid;
+    ctx.session_id = session_id;
+    ctx.user = user;
+    return ctx;
+}
+
+int32_t AuthService::IssueSession(
+    chen::http::HttpRequest::ptr request,
+    chen::http::HttpResponse::ptr response,
+    chen::http::HttpSession::ptr session,
+    DB::UserInfo::ptr user,
+    const IssueOptions& options)
+{
+    if (!request || !response || !user) {
+        return INTERNAL_ERROR;
+    }
+    if (user->getState() != UserState::ACTIVE || user->getIsDeleted()) {
+        return ACCOUNT_INVALID;
+    }
+
+    const AuthConf conf = GetAuthConf();
+
+    int64_t idle_ttl = GetSessionTTL();
+    int64_t absolute_ttl = conf.session_absolute_ttl;
+
+    std::string ip;
+    if (session) {
+        ip = GetRemoteIP(request, session);
+    } else {
+        ip = request->getHeader("X-Real-IP");
+    }
+    std::string user_agent = request->getHeader("User-Agent");
+    std::string old_session_id = request->getCookie(CookieKey::kSessionKey);
+
+    std::string session_id = SessionStore::Create(user->getId(), ip, user_agent, idle_ttl, absolute_ttl);
+    if (session_id.empty()) {
+        return REDIS_OPERATION_FAILED;
+    }
+
+    if (!old_session_id.empty() && old_session_id != session_id) {
+        CloseWsForSession(old_session_id, "session_refreshed");
+        SessionStore::Destroy(old_session_id);
+        chen::http::SessionDataMgr::GetInstance()->del(old_session_id);
+    }
+
+    MirrorSessionData(session_id, user->getId());
+    int64_t cookie_max_age = absolute_ttl > 0 ? absolute_ttl : 0;
+    SetSessionCookie(response, session_id, cookie_max_age);
+    request->setCookie(CookieKey::kSessionKey, session_id);
+
+    if (options.update_login_time) {
+        user->setLoginTime(chen::TimeUtil::GetCurrentSec());
+        auto db = GetDB();
+        if (db && UserRepository::Update(user, db)) {
+            UserRepository::Put(user);
+        } else {
+            WARN(logger) << "update login time failed user=" << user->getId();
+        }
+    }
+
+    INFO(logger) << "session issued user=" << user->getId() << " sid=" << SessionStore::HashId(session_id).substr(0, 12) << " ip=" << ip;
+    return 0;
+}
+
+void AuthService::RevokeSession(chen::http::HttpRequest::ptr request, chen::http::HttpResponse::ptr response, const AuthContext& ctx)
+{
+    std::string session_id = ctx.session_id;
+    if (session_id.empty() && request) {
+        session_id = request->getCookie(CookieKey::kSessionKey);
+    }
+
+    if (!session_id.empty()) {
+        CloseWsForSession(session_id, "session_revoked");
+        SessionStore::Destroy(session_id);
+        chen::http::SessionDataMgr::GetInstance()->del(session_id);
+    }
+
+    ClearSessionCookie(response);
+}
+
+void AuthService::RevokeAllSessions(int64_t uid)
+{
+    if (!uid) {
+        return;
+    }
+
+    SessionStore::DestroyAll(uid);
+    Json::Value msg;
+    msg["channel"] = "system";
+    msg["type"] = "session_revoked";
+    MessageRouter::Get()->CloseUser(uid, chen::JsonUtil::ToString(msg));
+    INFO(logger) << "revoked all sessions uid=" << uid;
+}
+
+bool AuthService::ResolveWs(chen::http::HttpRequest::ptr request, int64_t& uid, DB::UserInfo::ptr& user)
+{
+    if (!request) {
+        return false;
+    }
+
+    AuthContext ctx = Resolve(request, nullptr, true);
+    if (!ctx.valid()) {
+        return false;
+    }
+
+    uid = ctx.uid;
+    user = ctx.user;
+    return true;
+}
+
+void AuthService::SetSessionCookie(chen::http::HttpResponse::ptr response, const std::string& session_id, int64_t max_age)
+{
+    if (!response) {
+        return;
+    }
+
+    // SDK 的 setCookie 不支持 HttpOnly/SameSite，这里直接写入 Set-Cookie。
+    std::string cookie =
+        CookieKey::kSessionKey + "=" + session_id + "; Path=/; HttpOnly; SameSite=" + NormalizeSameSite();
+    if (UseSecureCookie()) {
+        cookie += "; Secure";
+    }
+    if (max_age > 0) {
+        cookie += "; Max-Age=" + std::to_string(max_age);
+    }
+    response->setHeader("Set-Cookie", cookie);
+}
+
+void AuthService::ClearSessionCookie(chen::http::HttpResponse::ptr response)
+{
+    if (!response) {
+        return;
+    }
+
+    std::string cookie =
+        CookieKey::kSessionKey + "=; Path=/; HttpOnly; SameSite=" + NormalizeSameSite() + "; Max-Age=0";
+    if (UseSecureCookie()) {
+        cookie += "; Secure";
+    }
+    response->setHeader("Set-Cookie", cookie);
+}

@@ -10,6 +10,7 @@ bin/conf/*.yml
 *.log
 /backups
 /dist
+/dist-cluster
 *.tar.gz
 /thirdpart
 /uploads

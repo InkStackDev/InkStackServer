@@ -1,4 +1,4 @@
-<table name="task" namespace="blog.data" desc="任务表">
+<table name="task" namespace="DB" desc="任务表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="任务ID"/>
         <column name="org_id" type="int64" desc="组织ID"/>

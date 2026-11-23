@@ -1,0 +1,91 @@
+#include "BackupCreateServlet.hpp"
+
+#include <Chen/Config/Config.hpp>
+#include <Chen/Log/Log.hpp>
+
+#include "../../Event/EventDefine.hpp"
+#include "../../Util/Util.hpp"
+
+#include <sys/stat.h>
+
+#include "../../Config/AppConfig.hpp"
+#include "../../Service/RecordService.hpp"
+#include "../../Service/UserQueryService.hpp"
+#include "../../Domain/UserTypes.hpp"
+
+static chen::Logger::ptr logger = LOG_ROOT();
+
+BackupCreateServlet::BackupCreateServlet()
+    : BlogAdminServlet("BackupCreateServlet")
+{
+}
+
+int32_t BackupCreateServlet::handle(
+    chen::http::HttpRequest::ptr request,
+    chen::http::HttpResponse::ptr response,
+    chen::http::HttpSession::ptr session,
+    Result::ptr result)
+{
+    do {
+        int64_t uid = getUserId(request);
+
+        std::string type;
+        if (!request->checkGetParamAs("type", type) || type.empty()) {
+            result->setErrno(PARAM_MISSING, "param type is required");
+            break;
+        }
+        if (type != "full" && type != "incremental") {
+            result->setErrno(PARAM_INVALID, "type must be full or incremental");
+            break;
+        }
+
+        std::string timestamp = std::to_string(time(0));
+        std::string name = "backup_" + type + "_" + timestamp;
+
+        auto info = BackupRecordService::Create(uid, type, name, "");
+        if (!info) {
+            result->setErrno(DB_OPERATION_FAILED, "create backup failed");
+            break;
+        }
+
+        std::string storage_path = GetServerDataPath();
+        if (storage_path.empty()) {
+            ERROR(logger) << "storage_path is empty";
+            result->setErrno(INTERNAL_ERROR);
+            break;
+        }
+
+        int64_t backup_id = info->getId();
+        auto mysql_dbs = GetMysqlDbs();
+
+        // Trigger async backup via event bus
+        {
+            EventDatabaseBackupData data = {};
+            data.backup_id = backup_id;
+            data.type = type;
+            data.name = name;
+            data.mysql_dbs = mysql_dbs;
+            data.work_path = storage_path;
+            chen::EventBusMgr::GetInstance()->emitAsync(EVENT_TYPE_DATABASE_BACKUP, std::move(data));
+        }
+
+        Json::Value item;
+        item["id"] = info->getId();
+        item["name"] = info->getName();
+        item["type"] = info->getType();
+        item["size"] = info->getSize();
+        item["file_count"] = info->getFileCount();
+        item["status"] = info->getStatus();
+        item["created_at"] = info->getCreateTime();
+        UserQueryService::Brief creator;
+        if (UserQueryService::GetUserBrief(info->getCreatedBy(), creator)) {
+            item["created_by"] = creator.name;
+        }
+        item["description"] = info->getDescription();
+
+        result->set("data", item);
+        result->setErrno(SUCCESS);
+    } while (0);
+    response->setBody(result->toJsonString());
+    return 0;
+}

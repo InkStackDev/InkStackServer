@@ -1,0 +1,34 @@
+/**
+ * @file ClaudeProvider.hpp
+ * @brief Claude / Anthropic 协议适配器
+ * @author Christins
+ * @date 2026-06-10
+ * @copyright Apache 2.0
+ */
+#pragma once
+
+#include "AIProvider.hpp"
+
+class ClaudeProvider : public AIProvider {
+public:
+    typedef std::shared_ptr<ClaudeProvider> ptr;
+
+    std::string buildRequest(
+        const std::string& model,
+        int32_t max_tokens,
+        const std::string& system_prompt,
+        const std::string& prompt,
+        bool stream = true) override;
+
+    std::string endpointSuffix() const override;
+
+    std::string extractContent(const Json::Value& parsed) override;
+
+    std::string extractNonStreamingContent(const Json::Value& parsed) override;
+
+    bool isTerminal(const Json::Value& parsed) override;
+
+    std::string getError(const Json::Value& parsed) override;
+
+    void authHeaders(const std::string& api_key, std::map<std::string, std::string>& out_headers) override;
+};

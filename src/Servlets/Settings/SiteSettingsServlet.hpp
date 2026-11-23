@@ -1,0 +1,18 @@
+#pragma once
+
+#include "../BlogServlet.hpp"
+
+#include "../../SessionData.hpp"
+
+class SiteSettingsServlet : public BlogServlet {
+public:
+    typedef std::shared_ptr<SiteSettingsServlet> ptr;
+    SiteSettingsServlet();
+
+protected:
+    int32_t handle(
+        chen::http::HttpRequest::ptr request,
+        chen::http::HttpResponse::ptr response,
+        chen::http::HttpSession::ptr session,
+        Result::ptr result) override;
+};

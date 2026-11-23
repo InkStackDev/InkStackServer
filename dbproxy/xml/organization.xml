@@ -1,4 +1,4 @@
-<table name="organization" namespace="blog.data" desc="组织表">
+<table name="organization" namespace="DB" desc="组织表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="组织ID"/>
         <column name="name" type="string" length="100" desc="组织名称"/>

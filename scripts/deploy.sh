@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# deploy.sh — 在部署服务器上执行 冷启动 / 热启动 / 停服
+# deploy.sh — 在部署服务器上执行 冷启动 / 热启动 / 停服（旧版单实例）
+#
+# 注意: 集群包请用 <部署目录>/scripts/clusterctl.sh（CI 的 Deploy workflow 已改用集群方式）。
 #
 # 用法:
 #   DEPLOY_PATH=/home/web/apps/server CONFIG_DIR=/home/web/apps/conf \

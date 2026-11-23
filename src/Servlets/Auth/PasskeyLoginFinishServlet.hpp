@@ -1,0 +1,25 @@
+/**
+ * @file PasskeyLoginFinishServlet.hpp
+ * @brief Passkey 登录第二步 — 校验断言并签发会话
+ * @author Christins
+ * @date 2026-10-23
+ * @copyright Apache 2.0
+ */
+#pragma once
+
+#include "../BlogServlet.hpp"
+
+#include "../../SessionData.hpp"
+
+class PasskeyLoginFinishServlet : public BlogServlet {
+public:
+    typedef std::shared_ptr<PasskeyLoginFinishServlet> ptr;
+    PasskeyLoginFinishServlet();
+
+protected:
+    int32_t handle(
+        chen::http::HttpRequest::ptr request,
+        chen::http::HttpResponse::ptr response,
+        chen::http::HttpSession::ptr session,
+        Result::ptr result) override;
+};

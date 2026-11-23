@@ -1,13 +1,16 @@
 name: Deploy
 
-# 手动触发（可选择分支或 tag 运行），三种模式：
-#   cold : 停服 → 清空运行目录 → 解压产物 → 用 CONFIG_DIR 覆盖 conf/ → ./server -d 冷启动
-#   hot  : 解压产物 → 拷贝 module/*.so 到运行目录 → ./server -s reload 热启动
-#   stop : 进入运行目录执行 ./server -s stop 停服
+# 手动触发：部署集群包（唯一的发行形态，instances=1 即单实例）
 #
-# 产物来源按所选 ref 自动判定：
-#   - tag  : 取该 tag 的 GitHub Release 资产 *amd64*.tar.gz
-#   - 分支 : 取该分支最近一次成功的 "Build & Package" 的 Actions artifact techhaven-server-amd64
+#   cold   : 停止现有实例 → 解压完整包到 DEPLOY_PATH → 启动全部实例（首次部署 / 全量覆盖）
+#   hot    : 只替换 module/*.so、errors.json、locale/、scripts/ → rolling-restart all
+#   module : 只替换 module/*.so（旧文件备份为 *.so.prev），不重启任何实例；
+#            由用户自己上服务器 reload 指定实例，适合灰度验证
+#   stop   : clusterctl stop all
+#
+# 产物来源（amd64）：
+#   - tag  : 该 tag GitHub Release 的 techhaven-cluster-*amd64*.tar.gz
+#   - 分支 : 该分支最近一次成功的 "Build & Package" artifact techhaven-cluster-amd64
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +19,7 @@ on:
         type: choice
         required: true
         default: cold
-        options: [cold, hot, stop]
+        options: [ cold, hot, module, stop ]
 
 permissions:
   contents: read
@@ -30,12 +33,13 @@ jobs:
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve + download amd64 package
+      - name: Resolve + download cluster package
         if: inputs.mode != 'stop'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -46,7 +50,7 @@ jobs:
             echo "==> 产物来源: Release ${GITHUB_REF_NAME}"
             gh release download "${GITHUB_REF_NAME}" \
               --repo "${GITHUB_REPOSITORY}" \
-              --pattern '*amd64*.tar.gz' --dir pkg --clobber
+              --pattern 'techhaven-cluster-*amd64*.tar.gz' --dir pkg --clobber
           else
             echo "==> 产物来源: 分支 ${GITHUB_REF_NAME} 最近一次成功的 Build & Package"
             run_id="$(gh run list --repo "${GITHUB_REPOSITORY}" \
@@ -57,9 +61,11 @@ jobs:
               exit 1
             fi
             gh run download "${run_id}" --repo "${GITHUB_REPOSITORY}" \
-              -n techhaven-server-amd64 -D pkg
+              -n techhaven-cluster-amd64 -D pkg
           fi
           ls -l pkg
+          pkg="$(find pkg -name '*amd64*.tar.gz' | head -1)"
+          test -n "${pkg}" || { echo "错误: 未找到集群包" >&2; exit 1; }
 
       - name: Setup SSH key
         run: |
@@ -68,21 +74,134 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Upload deploy script (+ package) to server
+      - name: Upload package
+        if: inputs.mode != 'stop'
+        timeout-minutes: 20
         run: |
-          SCP_OPTS=(-P "${SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new)
-          scp "${SCP_OPTS[@]}" scripts/deploy.sh "${SSH_USER}@${SSH_HOST}:/tmp/techhaven-deploy.sh"
-          if [ "${{ inputs.mode }}" != "stop" ]; then
-            pkg="$(find pkg -name '*amd64*.tar.gz' | head -1)"
-            test -n "${pkg}"
-            scp "${SCP_OPTS[@]}" "${pkg}" "${SSH_USER}@${SSH_HOST}:/tmp/techhaven-pkg.tar.gz"
+          set -euo pipefail
+          pkg="$(find pkg -name '*amd64*.tar.gz' | head -1)"
+          test -n "${pkg}"
+          size=$(stat -c%s "${pkg}")
+          echo "==> 开始上传 $(basename "${pkg}") ($(numfmt --to=iec "${size}")) -> ${SSH_HOST}"
+
+          SSH_BASE=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519
+            -o StrictHostKeyChecking=accept-new
+            -o ConnectTimeout=10
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=4)
+
+          REMOTE_TMP=/tmp/techhaven-cluster.tar.gz.part
+          REMOTE_DST=/tmp/techhaven-cluster.tar.gz
+
+          if ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" 'command -v rsync >/dev/null 2>&1'; then
+            echo "==> 使用 rsync（带进度、支持续传）"
+            rsync -az --partial --progress --info=progress2 --timeout=60 \
+              -e "ssh -p ${SSH_PORT} -i ${HOME}/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=4" \
+              "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}"
+          else
+            echo "==> 远端没有 rsync，使用 scp + 轮询进度"
+            scp -C "${SSH_BASE[@]}" "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}" &
+            up_pid=$!
+            while kill -0 "${up_pid}" 2>/dev/null; do
+              sleep 5
+              cur=$(ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" \
+                "stat -c%s ${REMOTE_TMP} 2>/dev/null || echo 0" 2>/dev/null || echo 0)
+              cur=${cur//[!0-9]/}
+              [ -z "${cur}" ] && cur=0
+              if [ "${size}" -gt 0 ]; then
+                echo "  上传进度: $(( cur * 100 / size ))% ($(numfmt --to=iec "${cur}") / $(numfmt --to=iec "${size}"))"
+              fi
+            done
+            wait "${up_pid}"
           fi
 
+          ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" "mv -f ${REMOTE_TMP} ${REMOTE_DST}"
+          echo "==> 上传完成: ${REMOTE_DST}"
+
       - name: Run deploy on server
-        env:
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-          CONFIG_DIR: ${{ vars.CONFIG_DIR }}
         run: |
-          SSH_OPTS=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new)
+          SSH_OPTS=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519
+            -o StrictHostKeyChecking=accept-new
+            -o ConnectTimeout=10
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          MODE='${{ inputs.mode }}'
+          DP="${DEPLOY_PATH}"
           ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" \
-            "DEPLOY_PATH='${DEPLOY_PATH}' CONFIG_DIR='${CONFIG_DIR}' bash /tmp/techhaven-deploy.sh --mode '${{ inputs.mode }}' --artifact /tmp/techhaven-pkg.tar.gz; rc=\$?; rm -f /tmp/techhaven-deploy.sh /tmp/techhaven-pkg.tar.gz; exit \$rc"
+            "MODE='${MODE}' DEPLOY_PATH='${DP}' bash -s" <<'REMOTE'
+            set -euo pipefail
+            : "${DEPLOY_PATH:?DEPLOY_PATH 未配置（vars.DEPLOY_PATH）}"
+
+            case "$MODE" in
+              cold)
+                if [ -x "$DEPLOY_PATH/scripts/clusterctl.sh" ]; then
+                  ( cd "$DEPLOY_PATH" && ./scripts/clusterctl.sh stop all ) || true
+                fi
+                mkdir -p "$DEPLOY_PATH"
+                tar xzf /tmp/techhaven-cluster.tar.gz -C "$DEPLOY_PATH"
+                chmod +x "$DEPLOY_PATH/server" "$DEPLOY_PATH"/scripts/*.sh
+                cd "$DEPLOY_PATH"
+                ./scripts/clusterctl.sh start all
+                ./scripts/clusterctl.sh health all
+                ;;
+              hot)
+                tmp="$(mktemp -d)"
+                trap 'rm -rf "$tmp"' EXIT
+                tar xzf /tmp/techhaven-cluster.tar.gz -C "$tmp"
+                mkdir -p "$DEPLOY_PATH/module" "$DEPLOY_PATH/scripts"
+                for so in "$tmp"/module/*.so; do
+                  [ -f "$so" ] || continue
+                  base="$(basename "$so")"
+                  cp -f "$so" "$DEPLOY_PATH/module/$base.new"
+                  mv -f "$DEPLOY_PATH/module/$base.new" "$DEPLOY_PATH/module/$base"
+                done
+                cp -f "$tmp/errors.json" "$DEPLOY_PATH/errors.json.new"
+                mv -f "$DEPLOY_PATH/errors.json.new" "$DEPLOY_PATH/errors.json"
+                if [ -d "$tmp/locale" ]; then
+                  mkdir -p "$DEPLOY_PATH/locale"
+                  rsync -a --delete "$tmp/locale/" "$DEPLOY_PATH/locale/"
+                fi
+                cp -f "$tmp"/scripts/*.sh "$DEPLOY_PATH/scripts/"
+                chmod +x "$DEPLOY_PATH/scripts/"*.sh
+                cd "$DEPLOY_PATH"
+                ./scripts/clusterctl.sh rolling-restart all
+                ./scripts/clusterctl.sh health all
+                ;;
+              module)
+                tmp="$(mktemp -d)"
+                trap 'rm -rf "$tmp"' EXIT
+                tar xzf /tmp/techhaven-cluster.tar.gz -C "$tmp"
+                mkdir -p "$DEPLOY_PATH/module"
+                for so in "$tmp"/module/*.so; do
+                  [ -f "$so" ] || continue
+                  base="$(basename "$so")"
+                  if [ -f "$DEPLOY_PATH/module/$base" ]; then
+                    cp -f "$DEPLOY_PATH/module/$base" "$DEPLOY_PATH/module/$base.prev"
+                  fi
+                  cp -f "$so" "$DEPLOY_PATH/module/$base.new"
+                  mv -f "$DEPLOY_PATH/module/$base.new" "$DEPLOY_PATH/module/$base"
+                  echo "==> 已替换 module/$base（旧文件备份为 $base.prev）"
+                done
+                rm -rf "$tmp"
+                trap - EXIT
+                echo "==> 模块已替换，未重启任何实例"
+                echo "    灰度单个实例:"
+                echo "      cd $DEPLOY_PATH && ./scripts/clusterctl.sh reload <name>"
+                echo "      cd $DEPLOY_PATH && ./scripts/clusterctl.sh health <name>"
+                echo "    全量:"
+                echo "      cd $DEPLOY_PATH && ./scripts/clusterctl.sh rolling-restart all"
+                echo "    回滚:"
+                echo "      cd $DEPLOY_PATH/module"
+                echo '      for f in *.so.prev; do mv "$f" "${f%.prev}"; done'
+                echo "      cd $DEPLOY_PATH && ./scripts/clusterctl.sh rolling-restart all"
+                ;;
+              stop)
+                cd "$DEPLOY_PATH"
+                ./scripts/clusterctl.sh stop all
+                ;;
+              *)
+                echo "未知模式: $MODE" >&2
+                exit 2
+                ;;
+            esac
+            rm -f /tmp/techhaven-cluster.tar.gz
+          REMOTE

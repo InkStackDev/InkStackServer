@@ -11,17 +11,17 @@
 
 ### 现状
 
-`src/blog_module.cc` 的 `SyncAllReposFromGitHub()` 每 30 分钟调度一次 PR 同步，
+`../src/BlogModule.cc` 的 `SyncAllReposFromGitHub()` 每 30 分钟调度一次 PR 同步，
 原实现分页拉取全部 PR（`per_page=50`，最多 10 页，跟随 `Link` 头翻页）。
 
 ### 改动
 
-- `src/manager/organization_repo_pr_manager.h`
+- `src/Manager/OrganizationRepoPrManager.hpp`
   - `SyncFromGitHub` 新增参数 `int max_prs = 0`（`0` 表示全量）。
-- `src/manager/organization_repo_pr_manager.cc`
+- `src/Manager/OrganizationRepoPrManager.cc`
   - `per_page` 改为 `max_prs > 0 ? max_prs : 50`。
   - 当 `max_prs > 0` 时只取第一页，不再翻页。
-- `src/blog_module.cc`
+- `../src/BlogModule.cc`
   - 定时同步调用改为 `SyncFromGitHub(id, url, token, 20)`。
 
 手动全量同步接口 `/api/v1/organization/repos/prs/sync` 保持全量行为不变。
@@ -49,11 +49,11 @@ merged_at = '1970-01-01 08:00:00'   -- epoch 0，超出 TIMESTAMP 范围
 
 ### 修复（代码层）
 
-在 `src/manager/organization_repo_pr_manager.cc`：
+在 `src/Manager/OrganizationRepoPrManager.cc`：
 
-1. 新增哨兵函数 `emptyTimestamp()`，返回全库统一的空时间默认值
+1. 空时间哨兵处理：GitHub 无对应时间时写入安全默认值
    `'1980-01-01 00:00:00'`（与所有 TIMESTAMP 列的 DB 默认值一致）。
-2. 同步路径 `syncPage`：`closed_at` / `merged_at` 为 0 时写入哨兵。
+2. 同步路径 `SyncPage`：`closed_at` / `merged_at` 为 0 时写入哨兵。
 3. Webhook 路径 `HandlePRWebhook`：同样处理（`opened` 事件的空时间也会触发同样失败）。
 
 `create_time` 已有 `if (si.created_at)` / `if (created_at)` 守卫，不受影响。
@@ -79,11 +79,11 @@ sql_mode = "ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_B
 
 ## 修改文件清单
 
-| 文件 | 改动 |
-|------|------|
-| `src/blog_module.cc` | 定时同步传 `max_prs = 20` |
-| `src/manager/organization_repo_pr_manager.h` | `SyncFromGitHub` 新增 `max_prs` 参数 |
-| `src/manager/organization_repo_pr_manager.cc` | `per_page` 逻辑 + 单页截断 + `emptyTimestamp()` 哨兵 + 同步/webhook 空时间处理 |
+| 文件                                        | 改动                                                              |
+|---------------------------------------------|-------------------------------------------------------------------|
+| `../src/BlogModule.cc`                      | 定时同步传 `max_prs = 20`                                         |
+| `src/Manager/OrganizationRepoPrManager.hpp` | `SyncFromGitHub` 新增 `max_prs` 参数                              |
+| `src/Manager/OrganizationRepoPrManager.cc`  | `per_page` 逻辑 + 单页截断 + 空时间哨兵 + 同步/webhook 空时间处理 |
 
 ## 部署注意
 

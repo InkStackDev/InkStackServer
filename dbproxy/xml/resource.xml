@@ -1,4 +1,4 @@
-<table name="resource" namespace="blog.data" desc="文件资源元数据表">
+<table name="resource" namespace="DB" desc="文件资源元数据表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键ID"/>
         <column name="name" type="string" length="256" desc="原始文件名"/>

@@ -1,0 +1,18 @@
+#pragma once
+
+#include "../BlogAdminServlet.hpp"
+
+#include "../../SessionData.hpp"
+
+class UserAdminResetPasswdServlet : public BlogAdminServlet {
+public:
+    typedef std::shared_ptr<UserAdminResetPasswdServlet> ptr;
+    UserAdminResetPasswdServlet();
+
+protected:
+    int32_t handle(
+        chen::http::HttpRequest::ptr request,
+        chen::http::HttpResponse::ptr response,
+        chen::http::HttpSession::ptr session,
+        Result::ptr result) override;
+};

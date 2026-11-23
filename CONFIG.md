@@ -17,8 +17,8 @@
 
 > `bin/conf/` 下只有 `.yml` 会被框架加载；`.tpl` / `.env` / `.md` 不会被加载。
 
-> **超级管理员引导**：仅当库中不存在 `admin.email` 对应的账号时才会创建管理员，初始密码取
-> `<ENV>.env` 中的 `ADMIN_PASSWD`（无默认密码）。已存在的管理员密码不会被启动流程覆盖。
+> **超级管理员引导**：库中不存在 `admin.email` / `admin.account` 对应账号时才会创建管理员，初始密码取
+> `<ENV>.env` 中的 `ADMIN_PASSWD`（无默认密码；留空则跳过引导）。已存在的管理员不会被覆盖。
 
 ## 2. 切换环境
 
@@ -38,6 +38,13 @@ cp bin/conf/prod.env.example bin/conf/prod.env   # 填写真实值后
 - 渲染后校验是否残留未替换的 `${...}`，存在则报错并提示缺哪个变量。
 - **只切换配置，不重启服务**。运行中的 worker 通过 inotify 监听 `conf/`，文件变更后会重新加载配置并触发 `ConfigVar`
   listener；如需同时替换模块 `.so`，发送 `SIGHUP` 让 master fork 新 worker（旧 worker drain 后退出）。
+
+> **接入端口**：HTTP / WebSocket 端口由 `HTTP_PORT` / `WS_PORT` 控制（默认 8090 / 8091）。业务只作为 RPC Hub
+> 客户端，不再监听 rpc 端口，配置里也没有 `type: rpc` 的 server 项。
+
+> **多实例部署**：`make cluster ENV=prod INSTANCES=3` 生成 `techhaven-cluster-*.tar.gz`，包内
+> `server_1|server_2|server_3/` 的配置已渲染好（端口、`instance_id`、日志与 pid 彼此独立），部署端直接
+> `scripts/clusterctl.sh start all` 即可；细节见 [`docs/multi-instance.md`](docs/multi-instance.md)。
 
 ## 3. 新增一个配置项
 
@@ -78,18 +85,32 @@ UPLOAD_DIR=/data/techhaven/uploads
 
 ## 4. 在 C++ 代码中读取
 
-用 `chen::Config::Lookup` 声明配置项，key 用 `.` 对应 YAML 层级（`upload.dir` ↔ `upload: dir:`），并提供默认值。
+业务代码统一通过 `src/Config/` 提供的方法读取配置，不要在业务文件里各自写 `chen::Config::Lookup`：
 
 ```cpp
-#include <chen/config/config.h>
+#include "../Config/AppConfig.hpp"
 
-// 声明（一般放在源文件顶部，作为 static 全局变量，前缀 g_）
+std::string dir = GetServerWorkPath() + "/uploads";
+std::string pool = GetRedisPoolName();
+auto search = GetSearchConf();
+```
+
+可用方法与 key 对照表见 [`src/Config/README.md`](src/Config/README.md)。
+
+确实需要新增配置项时，在 `src/Config/` 对应文件里声明：
+
+```cpp
+// .cc：必须放在文件级 static 上，在模块 dlopen 时完成注册
 static chen::ConfigVar<std::string>::ptr g_upload_dir =
     chen::Config::Lookup("upload.dir", std::string("uploads"), "上传目录");
 
-// 使用
-std::string dir = g_upload_dir->getValue();
+// .hpp
+std::string GetUploadDir();
 ```
+
+key 用 `.` 对应 YAML 层级（`upload.dir` ↔ `upload: dir:`），并提供默认值。 **不要在函数内用 `static` 做懒注册**：框架在
+`dlopen` 之后会立刻重新加载配置，
+晚于这个时点注册的 key 只会拿到默认值。
 
 ### 4.1 支持的配置类型
 
@@ -103,7 +124,8 @@ std::string dir = g_upload_dir->getValue();
 | `std::set<T>` / `std::unordered_set<T>` | 集合 |
 | `std::map<std::string, T>` | 键值表（对应 YAML 嵌套映射） |
 
-> 参考现有用法：`src/blog_module.cc` 中的 `mysql.dbs`、`src/index.cc` 中的 `search.jieba_dict_path`、`src/manager/user_manager.cc` 中的 `admin.account`。
+> 参考现有用法：`src/Config/AppConfig.cc` 中的 `mysql.dbs`、`src/Config/SearchConfig.cc` 中的 `search` 结构体、
+> `src/Config/AppConfig.cc` 中的 `admin` 结构体。
 
 ### 4.2 配置变更监听（热重载）
 
@@ -195,7 +217,92 @@ webauthn:
 > 升级后已有 `prod.env` 需要补充 `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_NAME` / `WEBAUTHN_ORIGIN` /
 > `WEBAUTHN_USER_HANDLE_SECRET`，否则 `switch-env.sh` 会因缺少占位符而失败。
 
-## 8. 注意事项
+## 8. SMTP 邮件发送
+
+SMTP 配置不走 `bin/conf/`，而是在管理后台「系统设置 → 邮件」里填写，保存在 `blog_system_settings` 表。
+
+| 配置项            | 说明                                                                       |
+|-------------------|----------------------------------------------------------------------------|
+| `smtp_host`       | SMTP 服务器地址，如 `smtp.gmail.com`                                       |
+| `smtp_port`       | `465`（SSL）或 `25` / `2525`（明文，通常仅限内网）                         |
+| `smtp_encryption` | `ssl`（隐式 TLS，配合 465）/ `none`（明文）/ `tls`（STARTTLS，当前不支持） |
+| `smtp_username`   | 发信账号；Gmail 需使用应用专用密码                                         |
+| `smtp_password`   | 发信密码或应用专用密码                                                     |
+| `from_email`      | 发件人地址，需与 `smtp_username` 一致，否则会被服务端拒信                  |
+
+> **不要用 587 + `tls`**：`chen::SmtpClient` 只实现了隐式 TLS（465）和明文两种连接方式，没有实现 STARTTLS（587）。
+> 用 587 会在握手阶段报 `SSL routines::wrong version number`；用 `tls` 配置调用发信接口会直接返回
+> `9019 SMTP_ENCRYPTION_UNSUPPORTED`，请把端口改成 `465`、加密方式改成 `ssl`。
+
+## 9. RPC Hub（客户端）
+
+分布式部署时，每个 App 实例都作为客户端**主动连接** RPC Hub 并注册自己；实例之间不互连。
+当前 hub 由 InkStackSearchServer 进程提供（`9010` + `args.relay: "1"`），App 只需配置 hub 地址与自身身份。
+
+```yaml
+server:
+  instance_id: ${INSTANCE_ID}
+
+rpc:
+  enabled: true
+  hub_address: ${RPC_HUB_ADDRESS}
+  bus_id: ${RPC_BUS_ID}
+  timeout_ms: 3000
+  connect_timeout_ms: 1000
+  reconnect_interval_ms: 5000
+  heartbeat_interval_ms: 30000
+```
+
+| 配置                        | 说明                                                         |
+|-----------------------------|--------------------------------------------------------------|
+| `rpc.enabled`               | 是否启用 hub 客户端                                          |
+| `rpc.hub_address`           | hub 地址（默认与 `SEARCH_HUB_ADDRESS` 相同）；留空视为未配置 |
+| `rpc.bus_id`                | 总线身份，`<zone>.<group>.<service>.<instance>`，每段 1..255 |
+| `rpc.timeout_ms`            | 经 hub 转发的请求级超时                                      |
+| `rpc.connect_timeout_ms`    | 连接 hub 超时                                                |
+| `rpc.reconnect_interval_ms` | 断线重连间隔                                                 |
+| `rpc.heartbeat_interval_ms` | 心跳间隔（SDK 默认连续 3 次无响应断开）                      |
+
+`bus_id` 的映射规则（代码见 `src/Config/RpcConfig.hpp`）：
+
+- `peer_id = zone<<24 | group<<16 | service<<8 | instance`，按 hub **全局唯一**
+- `func_id = group<<8 | service`，同一服务的所有实例共享，供 `GROUPID` / `BROADCAST` 路由
+- `instance_id` 取第 4 段，与 `server.instance_id` 保持一致
+- `service` 段约定：`1` = Search，`2` = App，`3` = Bot
+
+> **多实例部署**：每起一个实例都必须让 `bus_id` 的第 4 段（以及 `INSTANCE_ID`）唯一，否则 hub 会拒绝重复注册。
+> **多 worker / 多实例 WebSocket**：消息投递、在线人数、踢设备/撤销会话统一经 Redis 收件箱跨 worker 转发，
+> 无需额外开关；请确保 `server.instance_id` 在多实例间唯一。后台任务（文章发布、计数刷盘、PR 同步、搜索快照）
+> 通过 Redis 租约保证同一时刻只跑一份。
+> **独立 hub**：以后把 hub 拆成独立进程时，只需要改 `RPC_HUB_ADDRESS`，App 侧不用改代码。
+
+> 当前只落了配置与解析（`GetRpcConf()`），连接/注册（`RpcHubMgr`、`registerService`）尚未实现，因此这一节暂不影响运行行为。
+
+> 升级后已有 `prod.env` 需要补充 `INSTANCE_ID` / `RPC_HUB_ADDRESS` / `RPC_BUS_ID`，否则 `switch-env.sh` 会因缺少占位符而失败。
+
+## 10. GitHub API 客户端
+
+组织仓库/PR 同步统一走 `src/Client/GitHubClient`，配置位于 `TechHaven.yml.tpl` 的 `github` 节：
+
+```yaml
+github:
+  api_base: https://api.github.com
+  oauth_base: https://github.com
+  timeout_ms: 15000
+  detail_timeout_ms: 15000
+  max_attempts: 3
+  backoff_ms: 300
+  user_agent: InkStackServer/1.0
+  per_page: 50
+```
+
+- `api_base` / `oauth_base`：GitHub API 与 OAuth 域名。
+- `timeout_ms` / `detail_timeout_ms`：普通请求与 PR 详情请求超时。
+- `max_attempts` / `backoff_ms`：连接失败、超时、5xx、429 的重试次数与线性退避基数。
+- `per_page`：PR 列表每页条数，上限 100。
+- 未配置时全部使用默认值；Token 仍按仓库存在数据库中。
+
+## 11. 注意事项
 
 1. **占位符命名**：统一用大写 snake_case（如 `MYSQL_HOST`、`UPLOAD_DIR`），并在 `dev.env` 与 `prod.env.example` 中保持一致。
 2. **密钥不入库**：生产密码、密钥只写在 `bin/conf/prod.env`（已被 `.gitignore` 忽略），不要写进 `prod.env.example` 或提交。

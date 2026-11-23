@@ -172,9 +172,21 @@ def sdk_dir(version):
     return ROOT / f"{SDK_DIR_PREFIX}{version}"
 
 
+def _has_subdir_ci(path, name):
+    """目录名大小写不敏感匹配（rc5 的 include/Chen 与 rc4 的 include/chen 都要兼容）"""
+    path = Path(path)
+    if not path.is_dir():
+        return False
+    target = name.lower()
+    try:
+        return any(p.is_dir() and p.name.lower() == target for p in path.iterdir())
+    except OSError:
+        return False
+
+
 def valid_sdk(path):
     path = Path(path)
-    return (path / "lib" / "libchen.so").is_file() and (path / "include" / "chen").is_dir()
+    return (path / "lib" / "libchen.so").is_file() and _has_subdir_ci(path / "include", "chen")
 
 
 def parse_version_dir(path):

@@ -1,4 +1,4 @@
-<table name="article" namespace="blog.data" desc="博客文章">
+<table name="article" namespace="DB" desc="博客文章">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="文章id"/>
         <column name="user_id" type="int64" desc="用户id"/>

@@ -1,4 +1,4 @@
-<table name="assignment" namespace="blog.data" desc="作业">
+<table name="assignment" namespace="DB" desc="作业">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="作业id"/>
         <column name="name" type="string" length="256" desc="作业名称"/>

@@ -1,0 +1,36 @@
+#include "UserUnfollowServlet.hpp"
+
+#include "../../Util/Util.hpp"
+#include "../../Service/UserFollowRelService.hpp"
+
+UserUnfollowServlet::UserUnfollowServlet()
+    : BlogLoginedServlet("UserUnfollowServlet")
+{
+}
+
+int32_t UserUnfollowServlet::handle(
+    chen::http::HttpRequest::ptr request,
+    chen::http::HttpResponse::ptr response,
+    chen::http::HttpSession::ptr session,
+    Result::ptr result)
+{
+    do {
+        int64_t uid = getUserId(request);
+        if (!uid) {
+            result->setErrno(NOT_LOGIN);
+            break;
+        }
+
+        DEFINE_AND_CHECK_TYPE(result, int64_t, following_id, "following_id");
+
+        if (!UserFollowRelService::Unfollow(uid, following_id)) {
+            result->setErrno(USER_NOT_FOLLOWING);
+            break;
+        }
+
+        result->setErrno(SUCCESS);
+    } while (0);
+
+    response->setBody(result->toJsonString());
+    return 0;
+}

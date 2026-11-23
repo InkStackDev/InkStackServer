@@ -1,4 +1,4 @@
-<table name="backup_record" namespace="blog.data" desc="备份记录表">
+<table name="backup_record" namespace="DB" desc="备份记录表">
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键id"/>
         <column name="name" type="string" length="255" desc="备份名称"/>

@@ -35,8 +35,8 @@ are going to use (§0.2).**
 
 1. `chen-sdk-*/docs/framework-first.md` — 框架优先：能力对照表、分领域规则、反模式自查、Review 清单
 2. `chen-sdk-*/AGENTS.md` — SDK 硬性要求
-3. `chen-sdk-*/include/chen/<module>/README.md` — 用到的模块 API（log / config / util / http / rpc / db / orm ...）
-4. `chen-sdk-*/include/chen/` 下的公开头文件（以此为准，不要凭记忆猜 API）
+3. `chen-sdk-*/include/Chen/<Module>/README.md` — 用到的模块 API（Log / Config / Util / Http / Rpc / DB / Orm ...）
+4. `chen-sdk-*/include/Chen/` 下的公开头文件（以此为准，不要凭记忆猜 API）
 
 硬性要求（与 SDK 文档冲突时取更严格的一方）：
 
@@ -46,7 +46,7 @@ are going to use (§0.2).**
 - 禁止在业务代码出现：`printf` / `std::cout`、`std::thread` / `pthread_create`、`std::this_thread::sleep_for`、
   `std::filesystem` / `fopen`、`rand()`、裸 `hiredis` / `mysql_real_connect`、字符串拼 SQL、`node.as<bool>()`、自建连接池 /
   自建 LRU。
-- 只 include `<chen/...>` 并链接 `lib/libchen.so`；yaml-cpp / tinyxml2 / jsoncpp / hiredis-vip / protobuf 已静态进
+- 只 include `<Chen/...>` 并链接 `lib/libchen.so`；yaml-cpp / tinyxml2 / jsoncpp / hiredis-vip / protobuf 已静态进
   `libchen.so`，不要再链接或新增第三方依赖。
 - 不要复制 SDK 框架源码进业务目录（升级 SDK 会失配）；框架确实缺能力时，先按 `framework-first.md` 的流程确认，再决定是否补框架。
 - 模块在 `onUnload` 里注销 `registerMethod` / servlet / EventBus 回调。
@@ -131,7 +131,7 @@ result->setErrno(errcode::ACCESS_DENIED, "custom msg");  // custom message
 
 ### Route registration:
 ```cpp
-// In blog_module.cc → registerServlets()
+// In BlogModule.cc → registerServlets()
 dp->addServlet("/api/v1/xxx/yyy", XX(XxxServlet));
 ```
 
@@ -210,24 +210,29 @@ master fork 新 worker
 When adding a new feature:
 
 1. **XML table** (`dbproxy/xml/`) — define table schema, then `make orm`
-2. **Manager** (`src/manager/`) — singleton + LRU cache + CRUD methods + null checks
-3. **Servlet** (`src/servlets/<domain>/`) — follow handler pattern above
-4. **Includes** — update `src/include/tables.h`, `managers.h`, `servlets.h`
-5. **Registration** — `blog_module.cc`: table create, migrate, servlet route
-6. **Error codes** — `src/error_codes.h` + `errors.json`
+2. **Manager** (`src/Manager/`) — singleton + LRU cache + CRUD methods + null checks
+3. **Servlet** (`src/Servlets/<Domain>/`) — follow handler pattern above
+4. **Includes** — update `src/Include/Managers.hpp`, `src/Servlets/Servlets.hpp`
+5. **Registration** — `BlogModule.cc`: table create, migrate, servlet route
+6. **Error codes** — `src/ErrorCodes.hpp` + `errors.json`
 
 ## 6. Code Style Quick Reference
 
-| Element | Convention |
-|---------|-----------|
-| Classes | `PascalCase` |
-| Member variables | `m_snake_case` |
-| Local variables | `snake_case` |
-| Member functions | `camelCase` |
-| Static functions | `PascalCase` |
-| Macros | `UPPER_SNAKE_CASE` |
-| Brace (class/namespace) | same line |
-| Brace (function) | new line |
-| Brace (if/for/while) | same line, never omit |
-| Null pointer | `nullptr` (never `NULL` or `0`) |
-| Indent | 4 spaces (no tabs) |
+| Element                                    | Convention                                                    |
+|--------------------------------------------|---------------------------------------------------------------|
+| Files (headers / sources)                  | `PascalCase.hpp` / `PascalCase.cc`                            |
+| Directories (modules)                      | `PascalCase` (`Manager`, `Servlets/Article`, `Auth/WebAuthn`) |
+| Namespaces                                 | none (except `chen` specializations / anonymous namespaces)   |
+| Classes                                    | `PascalCase`                                                  |
+| Member variables (class private/protected) | `snake_case_`                                                 |
+| Member variables (struct public)           | `snake_case`                                                  |
+| Static members / constants                 | `kPascalCase`                                                 |
+| Local variables / parameters               | `snake_case`                                                  |
+| Member functions                           | `camelCase`                                                   |
+| Static functions / global functions        | `PascalCase`                                                  |
+| Macros                                     | `UPPER_SNAKE_CASE`                                            |
+| Brace (class/namespace)                    | same line                                                     |
+| Brace (function)                           | new line                                                      |
+| Brace (if/for/while)                       | same line, never omit                                         |
+| Null pointer                               | `nullptr` (never `NULL` or `0`)                               |
+| Indent                                     | 4 spaces (no tabs)                                            |
