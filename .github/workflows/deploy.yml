@@ -82,7 +82,6 @@ jobs:
           pkg="$(find pkg -name '*amd64*.tar.gz' | head -1)"
           test -n "${pkg}"
           size=$(stat -c%s "${pkg}")
-          echo "==> 开始上传 $(basename "${pkg}") ($(numfmt --to=iec "${size}")) -> ${SSH_HOST}"
 
           SSH_BASE=(-p "${SSH_PORT}" -i ~/.ssh/id_ed25519
             -o StrictHostKeyChecking=accept-new
@@ -93,30 +92,97 @@ jobs:
           REMOTE_TMP=/tmp/techhaven-cluster.tar.gz.part
           REMOTE_DST=/tmp/techhaven-cluster.tar.gz
 
+          fmt_bytes() {
+            numfmt --to=iec-i --suffix=B --format='%.1f' "$1"
+          }
+
+          remote_size() {
+            ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" \
+              "stat -c%s '${REMOTE_TMP}' 2>/dev/null" 2>/dev/null || true
+          }
+
+          format_progress() {
+            awk -v cur="$1" -v total="$2" -v initial="$3" -v elapsed="$4" '
+              function human(n) {
+                split("B KiB MiB GiB TiB", unit, " ");
+                i = 1;
+                while (n >= 1024 && i < 5) { n /= 1024; i++ }
+                return sprintf("%.1f %s", n, unit[i]);
+              }
+              function eta(seconds) {
+                if (seconds < 0 || seconds != seconds) return "--:--";
+                if (seconds >= 3600) {
+                  return sprintf("%d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60);
+                }
+                return sprintf("%02d:%02d", seconds / 60, seconds % 60);
+              }
+              BEGIN {
+                pct = total > 0 ? int(cur * 100 / total) : 0;
+                if (pct > 100) pct = 100;
+                speed = elapsed > 0 ? (cur - initial) / elapsed : 0;
+                if (speed < 0) speed = 0;
+                remain = speed > 0 ? (total - cur) / speed : -1;
+                printf("  上传进度 %3d%%  %s/%s  %s/s  ETA %s\n",
+                       pct, human(cur), human(total), human(speed), eta(remain));
+              }'
+          }
+
+          echo "==> 开始上传 $(basename "${pkg}") ($(fmt_bytes "${size}"))"
+
+          start_size=0
           if ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" 'command -v rsync >/dev/null 2>&1'; then
-            echo "==> 使用 rsync（带进度、支持续传）"
-            rsync -az --partial --progress --info=progress2 --timeout=60 \
-              -e "ssh -p ${SSH_PORT} -i ${HOME}/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=4" \
-              "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}"
+            echo "==> 使用 rsync（支持续传）"
+            existing="$(remote_size)"
+            existing="${existing//[!0-9]/}"
+            [ -n "${existing}" ] && start_size="${existing}"
+            RSYNC_SSH="ssh -p ${SSH_PORT} -i ${HOME}/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+            rsync -a --partial --timeout=60 -e "${RSYNC_SSH}" \
+              "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}" &
           else
             echo "==> 远端没有 rsync，使用 scp + 轮询进度"
-            scp -C "${SSH_BASE[@]}" "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}" &
-            up_pid=$!
-            while kill -0 "${up_pid}" 2>/dev/null; do
-              sleep 5
-              cur=$(ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" \
-                "stat -c%s ${REMOTE_TMP} 2>/dev/null || echo 0" 2>/dev/null || echo 0)
-              cur=${cur//[!0-9]/}
-              [ -z "${cur}" ] && cur=0
-              if [ "${size}" -gt 0 ]; then
-                echo "  上传进度: $(( cur * 100 / size ))% ($(numfmt --to=iec "${cur}") / $(numfmt --to=iec "${size}"))"
-              fi
-            done
-            wait "${up_pid}"
+            scp "${SSH_BASE[@]}" "${pkg}" "${SSH_USER}@${SSH_HOST}:${REMOTE_TMP}" &
+          fi
+          up_pid=$!
+
+          start_ts=$(date +%s)
+          last_report=-1
+          last_report_ts=${start_ts}
+
+          while kill -0 "${up_pid}" 2>/dev/null; do
+            sleep 5
+            cur="$(remote_size)"
+            cur="${cur//[!0-9]/}"
+            [ -z "${cur}" ] && continue
+            [ "${cur}" -gt "${size}" ] && cur="${size}"
+            now=$(date +%s)
+            elapsed=$((now - start_ts))
+            [ "${elapsed}" -le 0 ] && elapsed=1
+            pct=0
+            [ "${size}" -gt 0 ] && pct=$((cur * 100 / size))
+            if [ "${pct}" -ge $((last_report + 5)) ] || [ $((now - last_report_ts)) -ge 10 ]; then
+              format_progress "${cur}" "${size}" "${start_size}" "${elapsed}"
+              last_report="${pct}"
+              last_report_ts="${now}"
+            fi
+          done
+
+          rc=0
+          wait "${up_pid}" || rc=$?
+          if [ "${rc}" -ne 0 ]; then
+            echo "==> 上传失败（已传 $(fmt_bytes "${cur:-0}") / $(fmt_bytes "${size}")）"
+            exit "${rc}"
           fi
 
+          end_ts=$(date +%s)
+          elapsed=$((end_ts - start_ts))
+          [ "${elapsed}" -le 0 ] && elapsed=1
+          uploaded=$((size - start_size))
+          [ "${uploaded}" -lt 0 ] && uploaded=0
+          avg_speed=$((uploaded / elapsed))
+          echo "==> 上传完成 $(fmt_bytes "${size}")，用时 ${elapsed}s（$(fmt_bytes "${avg_speed}")/s）"
+
           ssh "${SSH_BASE[@]}" "${SSH_USER}@${SSH_HOST}" "mv -f ${REMOTE_TMP} ${REMOTE_DST}"
-          echo "==> 上传完成: ${REMOTE_DST}"
+          echo "==> 已写入: ${REMOTE_DST}"
 
       - name: Run deploy on server
         run: |
