@@ -42,11 +42,12 @@
 
 | `type` | 字段                                   | 说明                                             |
 |--------|----------------------------------------|--------------------------------------------------|
-| `ping` | -                                      | 心跳，服务端回复 `pong`                          |
 | `send` | `conversation_id`、`text`、`client_id` | 发送私信；`client_id` 由客户端生成，用于匹配 ACK |
 | `read` | `conversation_id`                      | 标记会话已读，并向对端推送已读回执               |
 
 `send` / `read` 仅对非普通用户开放，且会再次校验会话参与者身份。
+
+> 心跳不走 JSON：客户端直接发送纯文本 `ping`，服务端回复纯文本 `pong`。
 
 ### 下行帧
 
@@ -55,7 +56,6 @@
 | `type`              | 说明                                                    |
 |---------------------|---------------------------------------------------------|
 | `connected`         | 握手成功，附带 `uid`、`device_id`、`online_users`       |
-| `pong`              | 心跳回复                                                |
 | `error`             | 通用错误，附带 `errno`、`errstr`                        |
 | `replaced`          | 当前设备被新连接顶掉，`reason` 为 `connected_elsewhere` |
 | `session_expired`   | 会话过期或被删除                                        |
@@ -227,5 +227,6 @@ ws.onmessage = (event) => {
 };
 ```
 
-心跳由客户端定时发送 `{"type":"ping"}`，服务端回复 `{"channel":"system","type":"pong"}`。
-服务端也会每 30s 发送 WebSocket PING 控制帧，浏览器自动回 PONG，用于保活和清理半死连接。
+心跳由客户端每 5 秒发送纯文本 `ping`，服务端回复纯文本 `pong`（4 字节）。
+服务端不主动发送控制帧 PING。
+客户端发出 ping 后 3 秒内未收到 pong 会主动关闭连接并走重连逻辑。

@@ -149,7 +149,7 @@ WSConnectionManager::RemoveResult WSConnectionManager::removeConnection(chen::ht
         MessageRouter::Get()->BroadcastPresence();
     }
 
-    INFO(logger) << "WS disconnected: user_id=" << result.user_id;
+    INFO(logger) << "WS disconnected: user_id=" << result.user_id << " device=" << result.device_id.substr(0, 12);
     return result;
 }
 
@@ -438,44 +438,6 @@ int32_t WSConnectionManager::closeAllConnections(const std::string& notify_messa
 
     INFO(logger) << "WS close all connections: " << conns.size();
     return static_cast<int32_t>(conns.size());
-}
-
-int32_t WSConnectionManager::pingAll()
-{
-    std::vector<Connection::ptr> conns;
-    {
-        std::shared_lock lock(mutex_);
-        conns.reserve(devices_.size());
-        for (const auto& item : devices_) {
-            if (item.second) {
-                conns.push_back(item.second);
-            }
-        }
-    }
-
-    std::vector<chen::http::WSSession::ptr> failed;
-    for (const auto& conn : conns) {
-        if (!conn || !conn->session) {
-            continue;
-        }
-        // 正在发送的连接本轮先跳过，避免 ping 卡住模块 tick
-        std::unique_lock lock(conn->send_mutex, std::try_to_lock);
-        if (!lock.owns_lock()) {
-            continue;
-        }
-        if (!conn->session->isConnected() || conn->session->ping() < 0) {
-            conn->session->close();
-            failed.push_back(conn->session);
-        }
-    }
-
-    for (const auto& session : failed) {
-        removeConnection(session);
-    }
-    if (!failed.empty()) {
-        WARN(logger) << "WS ping failed, removed connections: " << failed.size();
-    }
-    return failed.size();
 }
 
 void WSConnectionManager::CloseConnection(const Connection::ptr& conn, const std::string& notify_message)

@@ -112,11 +112,6 @@ void BlogModule::onTick()
         chen::http::SessionDataMgr::GetInstance()->check(3600);
     }
 
-    // 30s 给所有 WS 连接发 PING，保活并清理半死连接
-    if (tick % 300 == 0) {
-        WSMgr::GetInstance()->pingAll();
-    }
-
     HubClient::Tick();
 }
 
