@@ -45,7 +45,7 @@ int32_t RdBugDetailServlet::handle(
 
         Json::Value data;
         BuildBugJson(data, info);
-        result->set("data", data);
+        result->setData(data);
     } while (0);
 
     response->setBody(result->toJsonString());

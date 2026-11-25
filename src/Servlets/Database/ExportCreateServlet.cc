@@ -53,7 +53,7 @@ int32_t ExportCreateServlet::handle(
         item["created_at"] = info->getCreateTime();
         item["created_by"] = info->getCreatedBy();
 
-        result->set("data", item);
+        result->setData(item);
         result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());

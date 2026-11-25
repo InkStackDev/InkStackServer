@@ -37,7 +37,7 @@ int32_t FaqsServlet::handle(
             v["a"] = i->getA();
             data.append(v);
         }
-        result->set("data", data);
+        result->setData(data);
     } while (0);
     DEBUG(logger) << "FaqsServlet handle result: " << result->toJsonString();
     response->setBody(result->toJsonString());
