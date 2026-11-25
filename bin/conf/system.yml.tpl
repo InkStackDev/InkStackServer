@@ -28,7 +28,7 @@ servers:
   # WebSocket 网关（/ws/v1/session）
   - address: ["0.0.0.0:${WS_PORT}"]
     keepalive: 1
-    timeout: 120000
+    timeout: 300000
     name: chen-ws/1.0.0
     accept_worker: accept
     io_worker: io

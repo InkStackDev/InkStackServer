@@ -228,3 +228,4 @@ ws.onmessage = (event) => {
 ```
 
 心跳由客户端定时发送 `{"type":"ping"}`，服务端回复 `{"channel":"system","type":"pong"}`。
+服务端也会每 30s 发送 WebSocket PING 控制帧，浏览器自动回 PONG，用于保活和清理半死连接。

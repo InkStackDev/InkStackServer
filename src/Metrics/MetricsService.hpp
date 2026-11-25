@@ -43,7 +43,7 @@ void Init(
 
 /**
  * @brief 把本进程指标快照写入 Redis（多实例聚合用）
- * @details key 为 metrics:inst:<instance_id>:<pid>，TTL 30s；同时写入 metrics:instances zset。
+ * @details key 为 metrics:inst:<instance_id>:<pid>，TTL 60s；同时写入 metrics:instances zset。
  */
 void PublishSnapshot();
 
@@ -52,9 +52,22 @@ void PublishSnapshot();
  * @details 以本进程 registry 为基准，合并 Redis 中其它实例的快照：
  *          counter / gauge / histogram 默认求和；blog_info 取实例编号最小的一份；
  *          blog_online_users 取最大；系统内存取最大；运行时长取最小。
- * @param[out] out 与 Registry::RenderJson 相同结构：{ "metrics": [ ... ] }
+ *          Redis 不可用或部分快照读取失败时仍返回本进程数据，并置 `degraded=true`。
+ * @param[out] out { "metrics": [ ... ], "instanceCount": N, "degraded": bool }
  */
 bool CollectClusterMetrics(Json::Value& out);
+
+/**
+ * @brief 记录一次 WebSocket 握手结果
+ * @param ok true 表示成功；false 表示失败
+ * @param reason 失败原因（no_cookie / not_logged_in / invalid_session / internal）
+ */
+void RecordWsConnect(bool ok, const std::string& reason);
+
+/**
+ * @brief 记录一次 WebSocket 断开
+ */
+void RecordWsDisconnect();
 
 /**
  * @brief 获取指定路由的指标，首次调用时完成注册

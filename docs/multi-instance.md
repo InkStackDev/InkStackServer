@@ -168,15 +168,15 @@ UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites
 ## 4. 观测
 
 - 每个实例每 5s 把本进程 `Registry::RenderJson()` 快照写入 Redis：
-  `metrics:inst:<instance_id>:<pid>`（TTL 30s），并用 zset `metrics:instances` 维护存活列表。
+  `metrics:inst:<instance_id>:<pid>`（TTL 60s），并用 zset `metrics:instances` 维护存活列表。
 - `/api/v1/admin/metrics` 汇总所有存活实例：counter / gauge / histogram 求和；`blog_info` 取实例编号最小的一份
   （PID 稳定）；`blog_online_users`、系统内存取最大；运行时长取最小。响应结构仍是 `{ "metrics": [...] }`，
-  额外带 `instanceCount`。
-- Redis 不可用时退化为只返回当前实例的指标。
+  额外带 `instanceCount` 与 `degraded`。
+- Redis 不可用时退化为只返回当前实例的指标，并置 `degraded=true`；前端会提示指标聚合不完整。
 - Prometheus 侧仍按实例抓取；`blog_info` 的 `pid` 标签可用于区分实例。
 - 跨实例在线人数来自 Redis `ws:online:users`，`blog_online_users` 在任意实例上都一致。
 - 实例被 `kill -9` 后，其 presence 由其他实例通过 `zscore` 心跳判断并清理，约一个心跳周期内恢复；
-  指标快照最多 30s 后从聚合中消失。
+  指标快照最多 60s 后从聚合中消失。
 
 ## 5. 上线验证清单
 
