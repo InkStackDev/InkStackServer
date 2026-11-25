@@ -1,16 +1,23 @@
 #include "JobRunner.hpp"
 
+#include <unistd.h>
+
 #include <atomic>
 #include <exception>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include <Chen/DB/Redis.hpp>
 #include <Chen/IOManager/IOManager.hpp>
 #include <Chen/Log/Log.hpp>
 #include <Chen/Timer/Timer.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+#include <Chen/Util/TypeUtil.hpp>
 
+#include "../Config/AppConfig.hpp"
 #include "RedisLease.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -19,6 +26,7 @@ struct JobRunner::State {
     Job job;
     std::atomic<bool> running{false};
     chen::Timer::ptr timer;
+    int64_t last_skip_log_sec = 0;
 };
 
 namespace {
@@ -122,17 +130,58 @@ void JobRunner::Run(const std::shared_ptr<State>& state)
     if (state->job.use_lease) {
         lease = std::make_unique<RedisLease>("job:" + state->job.name, state->job.lease_ttl_sec);
         if (!lease->TryAcquire()) {
+            DEBUG(logger) << "job lease busy, skip: " << state->job.name << ", instance=" << GetServerInstanceId();
             state->running.store(false);
             return;
         }
     }
 
+    const auto& job = state->job;
+    const int64_t window_sec = job.dedup_interval_ms / 1000;
+    if (window_sec > 0) {
+        int64_t now = chen::TimeUtil::GetCurrentSec();
+        auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get job:last:%s", job.name.c_str());
+        if (rpy && rpy->type == REDIS_REPLY_STRING && rpy->str) {
+            int64_t last = chen::TypeUtil::Atoi(std::string(rpy->str, rpy->len));
+            if (last > 0 && now - last < window_sec) {
+                // 每个实例最多每小时打一条，方便确认“本轮由别的实例执行了”
+                if (now - state->last_skip_log_sec >= 3600) {
+                    state->last_skip_log_sec = now;
+                    INFO(logger) << "job not due, skip: " << job.name << ", instance=" << GetServerInstanceId()
+                                 << ", last=" << last << ", next_in=" << (window_sec - (now - last)) << "s";
+                }
+                state->running.store(false);
+                return;
+            }
+        }
+    }
+
+    const bool log_run = window_sec > 0;
+    if (log_run) {
+        INFO(logger) << "job start: " << job.name << ", instance=" << GetServerInstanceId() << ", pid=" << ::getpid();
+    }
+
+    bool ok = true;
+    int64_t begin_ms = chen::TimeUtil::GetCurrentMs();
     try {
-        state->job.run();
+        job.run();
     } catch (const std::exception& e) {
-        ERROR(logger) << "job failed: " << state->job.name << ", what=" << e.what();
+        ok = false;
+        ERROR(logger) << "job failed: " << job.name << ", what=" << e.what();
     } catch (...) {
-        ERROR(logger) << "job failed: " << state->job.name << ", unknown error";
+        ok = false;
+        ERROR(logger) << "job failed: " << job.name << ", unknown error";
+    }
+
+    if (window_sec > 0 && ok) {
+        int64_t finish = chen::TimeUtil::GetCurrentSec();
+        int ttl_sec = window_sec * 2;
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "set job:last:%s %lld ex %d", job.name.c_str(), finish, ttl_sec);
+    }
+
+    if (log_run) {
+        int64_t elapsed_ms = chen::TimeUtil::GetCurrentMs() - begin_ms;
+        INFO(logger) << "job finished: " << job.name << ", elapsed=" << elapsed_ms << "ms" << (ok ? "" : ", failed");
     }
     state->running.store(false);
 }

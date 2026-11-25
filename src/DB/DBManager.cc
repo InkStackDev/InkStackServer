@@ -5,6 +5,7 @@
 
 #include <ranges>
 
+#include "../Config/AppConfig.hpp"
 #include "DB/ArticleCategoryRelInfo.hpp"
 #include "DB/ArticleInfo.hpp"
 #include "DB/ArticleLabelRelInfo.hpp"
@@ -42,7 +43,6 @@
 #include "DB/UserOauthInfo.hpp"
 #include "DB/UserPasskeyInfo.hpp"
 #include "DB/UserRecoveryCodeInfo.hpp"
-#include "../Config/AppConfig.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -58,8 +58,8 @@ bool DBManager::CreateAllTables()
 
 #define XX(class_name, table_name)                                                                                     \
     if (DB::class_name::CreateTableMySQL(mysql)) {                                                                     \
-        ERROR(logger) << "create " table_name " table failed"; \
-        return false;                                          \
+        ERROR(logger) << "create " table_name " table failed";                                                         \
+        return false;                                                                                                  \
     }
         XX(EmailVerificationInfoDao, "email_verification")
         XX(UserInfoDao, "user")
@@ -117,8 +117,8 @@ bool DBManager::MigrateAllTables()
         }
 #define XX(clazz)                                                                                                      \
     if (DB::clazz::MigrateTableMySQL(mysql) != 0) {                                                                    \
-        ERROR(logger) << "migrate table mysql failed"; \
-        return false;                                  \
+        ERROR(logger) << "migrate table mysql failed";                                                                 \
+        return false;                                                                                                  \
     }
         XX(EmailVerificationInfoDao)
         XX(UserInfoDao)
@@ -148,6 +148,7 @@ bool DBManager::MigrateAllTables()
         XX(RequirementInfoDao)
         XX(BugInfoDao)
         XX(TaskInfoDao)
+        XX(SystemSettingsInfoDao)
         XX(BadgeInfoDao)
         XX(HelpFaqsInfoDao)
         XX(UserFeedbackInfoDao)

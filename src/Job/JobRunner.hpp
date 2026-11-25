@@ -18,13 +18,15 @@
  *          同一时刻只有一个 worker 执行，避免多 worker / 多实例重复跑。
  *          需要“每个实例各跑一份”的任务（如刷各自的计数增量）把 `use_lease`
  *          设为 false。任务必须幂等、可重入，且不会长期阻塞事件循环。
+ *          低频全局任务可设置 `dedup_interval_ms`：租约只防并发，去重窗口
+ *          通过 Redis 持久化，保证跨实例、跨重启每个窗口最多成功执行一次。
  */
 class JobRunner {
 public:
     struct Job {
         /// 任务名，同时作为租约 key 和日志标识
         std::string name;
-        /// 触发间隔（毫秒）
+        /// 触发间隔（毫秒）。设置 dedup_interval_ms 后表示“检查间隔”
         uint64_t interval_ms = 0;
         /// 租约有效期（秒），必须大于任务最长执行时间
         int lease_ttl_sec = 60;
@@ -32,6 +34,10 @@ public:
         bool run_immediately = false;
         /// 是否用 Redis 租约保证全局只跑一份；false 表示每个 worker 各自执行
         bool use_lease = true;
+        /// 全局去重窗口（毫秒）。>0 时用 Redis 记录上次成功时间，
+        /// 跨实例、跨重启每个窗口最多成功执行一次；0 表示只靠 lease 防并发。
+        /// 设置后 `interval_ms` 应改为较短的检查间隔，避免重启导致任务饿死。
+        uint64_t dedup_interval_ms = 0;
         /// 任务体
         std::function<void()> run;
     };
