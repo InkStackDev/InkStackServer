@@ -46,6 +46,10 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
+        if (rt == OrganizationService::MemberResult::OwnerProtected) {
+            result->setErrno(ORG_OWNER_ROLE_PROTECTED);
+            break;
+        }
         if (rt == OrganizationService::MemberResult::RelNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;

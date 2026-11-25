@@ -172,6 +172,24 @@
     { "errno": 5023,  "key": "GITHUB_RATE_LIMITED",         "zh": "GitHub API 触发限流，请稍后再试", "en": "GitHub API rate limit exceeded, please try again later" },
     { "errno": 5024,  "key": "GITHUB_API_FAILED",           "zh": "GitHub API 请求失败",       "en": "GitHub API request failed" },
     { "errno": 5025,  "key": "ORG_PR_SYNC_IN_PROGRESS",     "zh": "该 PR 正在同步中，请稍后",   "en": "PR sync already in progress, please wait" },
+    {
+      "errno": 5026,
+      "key": "ORG_OWNER_CANNOT_LEAVE",
+      "zh": "组织所有者不能直接退出，请先转让所有权或删除组织",
+      "en": "Organization owner cannot leave. Transfer ownership or delete the organization first"
+    },
+    {
+      "errno": 5027,
+      "key": "ORG_OWNER_CANNOT_BE_KICKED",
+      "zh": "不能移除组织所有者",
+      "en": "The organization owner cannot be removed"
+    },
+    {
+      "errno": 5028,
+      "key": "ORG_OWNER_ROLE_PROTECTED",
+      "zh": "不能修改组织所有者的角色",
+      "en": "The organization owner's role cannot be changed"
+    },
 
     { "errno": 6001,  "key": "ASSIGNMENT_NOT_FOUND",        "zh": "作业不存在",               "en": "Assignment not found" },
     { "errno": 6002,  "key": "ASSIGNMENT_INVALID_ID",       "zh": "作业ID无效",              "en": "Invalid assignment ID" },

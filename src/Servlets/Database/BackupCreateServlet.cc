@@ -83,7 +83,7 @@ int32_t BackupCreateServlet::handle(
         }
         item["description"] = info->getDescription();
 
-        result->set("data", item);
+        result->setData(item);
         result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());

@@ -11,6 +11,7 @@
 
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Fiber/Fiber.hpp>
+#include <Chen/Log/Log.hpp>
 #include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
@@ -20,6 +21,8 @@
 #include "../Message/MessageRouter.hpp"
 #include "../Manager/WSConnectionManager.hpp"
 #include "../Util/Util.hpp"
+
+static chen::Logger::ptr logger = LOG_ROOT();
 
 /**
  * @brief 路由指标运行态
@@ -39,6 +42,10 @@ std::vector<chen::http::HttpServer::ptr> s_http_servers;
 std::vector<chen::http::WSServer::ptr> s_ws_servers;
 uint64_t s_start_ms = 0;
 bool s_inited = false;
+std::atomic<int64_t> s_last_publish_sec{0};
+chen::metrics::Counter* s_ws_connect_total = nullptr;
+chen::metrics::Counter* s_ws_disconnect_total = nullptr;
+std::map<std::string, chen::metrics::Counter*> s_ws_connect_fail;
 
 void Init(
     const std::string& name,
@@ -126,6 +133,22 @@ void Init(
         }
         return manager->connectionCount();
     });
+
+    registry->getGaugeFunc(
+        "blog_metrics_snapshot_age_seconds", "Seconds since last metrics snapshot publish", {}, []() -> int64_t {
+            int64_t last = s_last_publish_sec.load(std::memory_order_relaxed);
+            if (last <= 0) {
+                return -1;
+            }
+            return static_cast<int64_t>(chen::TimeUtil::GetCurrentSec()) - last;
+        });
+
+    s_ws_connect_total = registry->getCounter("blog_ws_connect_total", "WebSocket handshake attempts", {});
+    s_ws_disconnect_total = registry->getCounter("blog_ws_disconnect_total", "WebSocket disconnects", {});
+    for (const char* reason : {"no_cookie", "not_logged_in", "invalid_session", "internal"}) {
+        s_ws_connect_fail[reason] =
+            registry->getCounter("blog_ws_connect_fail_total", "WebSocket handshake failures", {{"reason", reason}});
+    }
 }
 
 RouteMetrics GetRouteMetrics(const std::string& route)
@@ -217,10 +240,12 @@ void SampleRates()
 
 namespace {
 
-/// 快照 TTL：实例异常退出后最多 30s 从聚合里消失
-constexpr int kSnapshotTtlSec = 30;
+/// 快照 TTL：实例异常退出后最多 60s 从聚合里消失
+constexpr int kSnapshotTtlSec = 60;
 const char* kSnapshotIndexKey = "metrics:instances";
 const char* kSnapshotPrefix = "metrics:inst:";
+
+std::atomic<int64_t> s_last_degraded_warn_sec{0};
 
 std::string SnapshotKey()
 {
@@ -254,7 +279,8 @@ MergeMode ModeFor(const std::string& name)
     if (name == "blog_info") {
         return MergeMode::First;
     }
-    if (name == "blog_online_users" || name.rfind("blog_system_memory_", 0) == 0) {
+    if (name == "blog_online_users" || name.rfind("blog_system_memory_", 0) == 0
+        || name == "blog_metrics_snapshot_age_seconds") {
         return MergeMode::Max;
     }
     if (name == "blog_process_uptime_seconds") {
@@ -331,7 +357,10 @@ void PublishSnapshot()
     const std::string cleanup_before = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec * 2);
 
     using RedisArgs = std::vector<std::string>;
-    chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"setex", key, ttl, registry->RenderJson()});
+    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"setex", key, ttl, registry->RenderJson()});
+    if (rpy) {
+        s_last_publish_sec.store(chen::TimeUtil::GetCurrentSec(), std::memory_order_relaxed);
+    }
     chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"zadd", kSnapshotIndexKey, now, key});
     chen::RedisUtil::Cmd(
         GetRedisPoolName(), RedisArgs{"zremrangebyscore", kSnapshotIndexKey, "-inf", cleanup_before});
@@ -356,10 +385,20 @@ bool CollectClusterMetrics(Json::Value& out)
     }
     snapshots.push_back({SnapshotKey(), std::move(own)});
 
+    bool degraded = false;
     const std::string min_score = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec);
     using RedisArgs = std::vector<std::string>;
     auto index = chen::RedisUtil::Cmd(
         GetRedisPoolName(), RedisArgs{"zrangebyscore", kSnapshotIndexKey, min_score, "+inf"});
+    if (!index || index->type != REDIS_REPLY_ARRAY) {
+        degraded = true;
+        int64_t now = chen::TimeUtil::GetCurrentSec();
+        int64_t last_warn = s_last_degraded_warn_sec.load(std::memory_order_relaxed);
+        if (now - last_warn >= 60) {
+            s_last_degraded_warn_sec.store(now, std::memory_order_relaxed);
+            WARN(logger) << "metrics aggregation degraded: redis snapshot index unavailable";
+        }
+    }
     if (index && index->type == REDIS_REPLY_ARRAY) {
         const std::string own_key = SnapshotKey();
         for (size_t i = 0; i < index->elements; ++i) {
@@ -404,6 +443,32 @@ bool CollectClusterMetrics(Json::Value& out)
     }
     out = Json::Value(Json::objectValue);
     out["metrics"] = std::move(list);
-    out["instanceCount"] = static_cast<Json::UInt64>(snapshots.size());
+    out["instanceCount"] = snapshots.size();
+    out["degraded"] = degraded;
     return true;
+}
+
+void RecordWsConnect(bool ok, const std::string& reason)
+{
+    if (ok) {
+        if (s_ws_connect_total) {
+            s_ws_connect_total->inc();
+        }
+        return;
+    }
+
+    auto it = s_ws_connect_fail.find(reason);
+    if (it == s_ws_connect_fail.end()) {
+        it = s_ws_connect_fail.find("internal");
+    }
+    if (it != s_ws_connect_fail.end() && it->second) {
+        it->second->inc();
+    }
+}
+
+void RecordWsDisconnect()
+{
+    if (s_ws_disconnect_total) {
+        s_ws_disconnect_total->inc();
+    }
 }

@@ -38,6 +38,10 @@ int32_t OrganizationUserKickServlet::handle(
             result->setErrno(ACCESS_DENIED);
             break;
         }
+        if (rt == OrganizationService::MemberResult::OwnerProtected) {
+            result->setErrno(ORG_OWNER_CANNOT_BE_KICKED);
+            break;
+        }
         if (rt == OrganizationService::MemberResult::RelNotFound) {
             result->setErrno(ARTICLE_INVALID_ID);
             break;

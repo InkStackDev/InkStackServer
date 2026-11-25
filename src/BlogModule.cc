@@ -2,6 +2,8 @@
 
 #include "./Client/HubClient.hpp"
 #include "./Config/AppConfig.hpp"
+#include "./DB/DBManager.hpp"
+#include "./Event/Events.hpp"
 #include "./I18n/I18n.hpp"
 #include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
@@ -24,7 +26,6 @@
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Log/Log.hpp>
-#include <Chen/Util/TimeUtil.hpp>
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -33,6 +34,16 @@ BlogModule::BlogModule()
 
 bool BlogModule::onLoad()
 {
+    if (!DBManager::CreateAllTables()) {
+        ERROR(LOG_ROOT()) << "DBManager::CreateAllTables failed";
+        return false;
+    }
+
+    if (!DBManager::MigrateAllTables()) {
+        ERROR(LOG_ROOT()) << "DBManager::MigrateAllTables failed";
+        return false;
+    }
+
     const std::string work_path = GetServerWorkPath();
 
     if (!I18n::Init(work_path + "/locale")) {
@@ -95,9 +106,15 @@ void BlogModule::onTick()
         SampleRates();
         PublishSnapshot();
     }
+
     // 60s 清理一次进程内会话缓存，避免长跑内存只增不减
     if (tick % 600 == 0) {
         chen::http::SessionDataMgr::GetInstance()->check(3600);
+    }
+
+    // 30s 给所有 WS 连接发 PING，保活并清理半死连接
+    if (tick % 300 == 0) {
+        WSMgr::GetInstance()->pingAll();
     }
 
     HubClient::Tick();
@@ -157,6 +174,8 @@ bool BlogModule::onServerReady()
     });
     HubClient::Init();
 
+    EventMsgsInit();
+
     return true;
 }
 
@@ -192,12 +211,13 @@ bool BlogModule::onServerUp()
             },
     });
 
-    // 组织仓库元数据同步（低频，避免启动时集中请求 GitHub）
+    // 组织仓库元数据同步：5 分钟检查一次，跨实例/跨重启全局 12 小时最多成功执行一次
     JobRunner::Register(JobRunner::Job{
         .name = "org:repo_sync",
-        .interval_ms = 60 * 60 * 1000,
+        .interval_ms = 5 * 60 * 1000,
         .lease_ttl_sec = 20 * 60,
-        .run_immediately = false,
+        .run_immediately = true,
+        .dedup_interval_ms = 12 * 60 * 60 * 1000,
         .run =
             []() {
                 OrganizationRepoService::SyncAll();
@@ -205,11 +225,13 @@ bool BlogModule::onServerUp()
     });
 
     // 组织 PR 同步（webhook 之外的低频兜底，注意 GitHub API 限流）
+    // 1 分钟检查一次，跨实例/跨重启全局 15 分钟最多成功执行一次
     JobRunner::Register(JobRunner::Job{
         .name = "org:pr_sync",
-        .interval_ms = 15 * 60 * 1000,
+        .interval_ms = 60 * 1000,
         .lease_ttl_sec = 10 * 60,
-        .run_immediately = false,
+        .run_immediately = true,
+        .dedup_interval_ms = 90 * 60 * 1000,
         .run =
             []() {
                 OrganizationRepoPrService::SyncAll();

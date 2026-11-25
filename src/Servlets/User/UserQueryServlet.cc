@@ -32,7 +32,7 @@ int32_t UserQueryServlet::handle(
             v["name"] = user.name;
             data.append(v);
         }
-        result->set("data", data);
+        result->setData(data);
     } while (0);
 
     response->setBody(result->toJsonString());

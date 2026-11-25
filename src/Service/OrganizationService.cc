@@ -125,6 +125,8 @@ OrganizationService::Result OrganizationService::GetDetail(const Viewer& viewer,
     out.description = org->getDescription();
     out.type = org->getType();
     out.status = org->getStatus();
+    out.owner_id = org->getOwnerId();
+    out.is_owner = viewer.user_id == org->getOwnerId();
 
     auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, viewer.user_id, db);
     if (rel) {
@@ -508,7 +510,12 @@ OrganizationService::Result OrganizationService::CreateOrUpdate(const Viewer& vi
     }
     info->setType(input.type);
     info->setStatus(input.status);
-    info->setOwnerId(input.owner_id);
+    // 只有新建/恢复组织时才允许写入 owner；编辑已有组织不能改变所有者
+    if (input.owner_id > 0 && created) {
+        info->setOwnerId(input.owner_id);
+    } else if (info->getOwnerId() <= 0) {
+        info->setOwnerId(viewer.user_id);
+    }
     info->setDescription(input.description);
     info->setIsDeleted(0);
     info->setUpdateTime(now);
@@ -562,7 +569,7 @@ OrganizationService::DeleteResult OrganizationService::DeleteMany(const Viewer& 
     std::vector<DB::OrganizationInfo::ptr>& orgs,
     std::vector<DB::OrganizationUserRelInfo::ptr>& rels)
 {
-    if (!AccessPolicy::CanAdminOrganization(viewer)) {
+    if (!viewer.valid()) {
         return DeleteResult::AccessDenied;
     }
     if (ids.empty()) {
@@ -573,10 +580,14 @@ OrganizationService::DeleteResult OrganizationService::DeleteMany(const Viewer& 
         return DeleteResult::DbError;
     }
 
+    const bool platform_admin = AccessPolicy::CanAdminOrganization(viewer);
     for (auto id : ids) {
         auto org = OrganizationRepository::Get(id, db);
         if (!org || org->getIsDeleted()) {
             continue;
+        }
+        if (!platform_admin && org->getOwnerId() != viewer.user_id) {
+            return DeleteResult::AccessDenied;
         }
         orgs.push_back(org);
         OrganizationUserRelRepository::ListByOrg(rels, id, true, db);
@@ -621,6 +632,83 @@ OrganizationService::DeleteResult OrganizationService::DeleteMany(const Viewer& 
     }
     OrganizationQueryRepository::InvalidateStats();
     return DeleteResult::Ok;
+}
+
+OrganizationService::LeaveResult OrganizationService::Leave(const Viewer& viewer, int64_t org_id)
+{
+    if (!viewer.valid()) {
+        return LeaveResult::NotMember;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return LeaveResult::DbError;
+    }
+
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org || org->getIsDeleted()) {
+        return LeaveResult::OrgNotFound;
+    }
+    if (org->getOwnerId() == viewer.user_id) {
+        return LeaveResult::OwnerCannotLeave;
+    }
+
+    auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, viewer.user_id, db);
+    if (!rel || rel->getIsDeleted()) {
+        return LeaveResult::NotMember;
+    }
+    if (rel->getStatus() != kMemberPending && rel->getStatus() != kMemberApproved) {
+        return LeaveResult::NotMember;
+    }
+
+    rel->setStatus(kMemberExited);
+    rel->setUpdateTime(chen::TimeUtil::GetCurrentSec());
+    if (!OrganizationUserRelRepository::InsertOrUpdate(rel, db)) {
+        ERROR(logger) << "Leave upsert failed, org=" << org_id << " uid=" << viewer.user_id;
+        return LeaveResult::DbError;
+    }
+    OrganizationUserRelRepository::Put(rel);
+    return LeaveResult::Ok;
+}
+
+OrganizationService::StatusResult OrganizationService::SetStatus(const Viewer& viewer,
+    int64_t org_id,
+    int32_t status,
+    DB::OrganizationInfo::ptr& out)
+{
+    out.reset();
+    if (!viewer.valid()) {
+        return StatusResult::AccessDenied;
+    }
+    if (status != kOrgInactive && status != kOrgActive) {
+        return StatusResult::InvalidStatus;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return StatusResult::DbError;
+    }
+
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org || org->getIsDeleted()) {
+        return StatusResult::NotFound;
+    }
+    if (!viewer.is_platform_admin && org->getOwnerId() != viewer.user_id) {
+        return StatusResult::AccessDenied;
+    }
+    if (org->getStatus() == status) {
+        out = org;
+        return StatusResult::Ok;
+    }
+
+    org->setStatus(status);
+    org->setUpdateTime(chen::TimeUtil::GetCurrentSec());
+    if (!OrganizationRepository::Update(org, db)) {
+        ERROR(logger) << "SetStatus update failed, org=" << org_id << " status=" << status;
+        return StatusResult::DbError;
+    }
+    OrganizationRepository::Put(org);
+    OrganizationQueryRepository::InvalidateStats();
+    out = org;
+    return StatusResult::Ok;
 }
 
 OrganizationService::Result OrganizationService::SubmitApply(int64_t uid,
@@ -855,6 +943,14 @@ OrganizationService::MemberResult OrganizationService::Kick(const Viewer& viewer
         return MemberResult::AccessDenied;
     }
 
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org || org->getIsDeleted()) {
+        return MemberResult::RelNotFound;
+    }
+    if (org->getOwnerId() == uid) {
+        return MemberResult::OwnerProtected;
+    }
+
     auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, uid, db);
     if (!rel || rel->getIsDeleted()) {
         return MemberResult::RelNotFound;
@@ -894,6 +990,14 @@ OrganizationService::MemberResult OrganizationService::SwitchRole(const Viewer& 
     }
     if (!AccessPolicy::CanSwitchOrgRole(viewer, scope, org_id, role)) {
         return MemberResult::AccessDenied;
+    }
+
+    auto org = OrganizationRepository::Get(org_id, db);
+    if (!org || org->getIsDeleted()) {
+        return MemberResult::RelNotFound;
+    }
+    if (org->getOwnerId() == uid && role != OrgRole::ORG_ADMIN) {
+        return MemberResult::OwnerProtected;
     }
 
     auto rel = OrganizationUserRelRepository::Get(rel_id, db);

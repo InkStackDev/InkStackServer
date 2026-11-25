@@ -1,11 +1,13 @@
 #include "WsGatewayServlet.hpp"
 
-#include "../../ErrorCodes.hpp"
-#include "../../Message/MessageRouter.hpp"
-#include "../../SessionData.hpp"
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/SessionStore.hpp"
+#include "../../ErrorCodes.hpp"
 #include "../../Manager/WSConnectionManager.hpp"
+#include "../../Message/MessageRouter.hpp"
+#include "../../Metrics/MetricsService.hpp"
+#include "../../SessionData.hpp"
+#include "../../Util/Util.hpp"
 #include "ChatHandler.hpp"
 
 #include <Chen/Log/Log.hpp>
@@ -49,9 +51,11 @@ int32_t WSGatewayServlet::onConnect(chen::http::HttpRequest::ptr header, chen::h
         return -1;
     }
 
+    const std::string remote_ip = GetRemoteIP(header, session);
     std::string session_id = header->getCookie(CookieKey::kSessionKey);
     if (session_id.empty()) {
-        INFO(logger) << "[WS] onConnect FAIL: no session cookie";
+        RecordWsConnect(false, "no_cookie");
+        INFO(logger) << "[WS] onConnect FAIL: no session cookie, ip=" << remote_ip;
         SendError(session, NOT_LOGIN, "Please login first");
         return -1;
     }
@@ -59,19 +63,22 @@ int32_t WSGatewayServlet::onConnect(chen::http::HttpRequest::ptr header, chen::h
     int64_t uid = 0;
     DB::UserInfo::ptr user;
     if (!AuthService::ResolveWs(header, uid, user) || !user) {
-        INFO(logger) << "[WS] onConnect FAIL: not logged in";
+        RecordWsConnect(false, "not_logged_in");
+        INFO(logger) << "[WS] onConnect FAIL: not logged in, ip=" << remote_ip;
         SendError(session, NOT_LOGIN, "Please login first");
         return -1;
     }
 
     std::string device_id = SessionStore::HashId(session_id);
     if (device_id.empty()) {
-        ERROR(logger) << "[WS] onConnect FAIL: empty device id uid=" << uid;
+        RecordWsConnect(false, "invalid_session");
+        ERROR(logger) << "[WS] onConnect FAIL: empty device id uid=" << uid << ", ip=" << remote_ip;
         SendError(session, INTERNAL_ERROR, "Invalid session");
         return -1;
     }
 
     auto result = WSMgr::GetInstance()->addConnection(uid, device_id, session, false);
+    RecordWsConnect(true, "");
     if (result.replaced_session && result.replaced_session != session) {
         Json::Value replaced;
         replaced["channel"] = "system";
@@ -107,6 +114,7 @@ int32_t WSGatewayServlet::onClose(chen::http::HttpRequest::ptr, chen::http::WSSe
 
     auto result = WSMgr::GetInstance()->removeConnection(session);
     if (result.removed) {
+        RecordWsDisconnect();
         INFO(logger) << "[WS] onClose: uid=" << result.user_id;
     }
     return 0;

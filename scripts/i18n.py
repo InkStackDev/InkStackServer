@@ -368,13 +368,25 @@ def check(project_dir):
                 f"{path.name} is missing {len(missing)} entries: {preview(missing)}"
             )
         empty = [msgid for msgid in pot_entries if not catalog.get(msgid)]
-        if empty:
+        # errors.json 中的错误码必须有翻译；源码里的临时/内部提示允许先留空，
+        # gettext 运行时会回退到 msgid，不再阻塞整个编译流程。
+        required_empty = [msgid for msgid in empty if msgid in expected_keys]
+        if required_empty:
             raise CatalogError(
-                f"{path.name} has {len(empty)} empty translations: {preview(empty)}"
+                f"{path.name} has {len(required_empty)} empty translations: "
+                f"{preview(required_empty)}"
+            )
+        custom_empty = [msgid for msgid in empty if msgid not in expected_keys]
+        if custom_empty:
+            print(
+                f"warning: {path.name} has {len(custom_empty)} untranslated custom "
+                f"messages: {preview(custom_empty)}"
             )
 
         for msgid in pot_entries:
             translated = catalog[msgid]
+            if not translated:
+                continue
             if placeholder_types(msgid) != placeholder_types(translated):
                 raise CatalogError(
                     f"{path.name}: placeholder mismatch for {msgid!r}"

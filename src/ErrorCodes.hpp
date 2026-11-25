@@ -135,6 +135,9 @@ enum OrganizationError {
     GITHUB_RATE_LIMITED = 5023,        // GitHub API 触发限流
     GITHUB_API_FAILED = 5024,          // GitHub API 请求失败
     ORG_PR_SYNC_IN_PROGRESS = 5025,    // 该 PR 正在同步中
+    ORG_OWNER_CANNOT_LEAVE = 5026,     // 组织所有者不能直接退出组织
+    ORG_OWNER_CANNOT_BE_KICKED = 5027, // 不能移除组织所有者
+    ORG_OWNER_ROLE_PROTECTED = 5028,   // 不能修改组织所有者的角色
 };
 
 enum AssignmentError {

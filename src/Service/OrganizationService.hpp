@@ -58,6 +58,23 @@ public:
         InvalidState,
         NotMember,
         AccessDenied,
+        OwnerProtected,
+        DbError
+    };
+
+    enum class LeaveResult {
+        Ok,
+        OrgNotFound,
+        NotMember,
+        OwnerCannotLeave,
+        DbError
+    };
+
+    enum class StatusResult {
+        Ok,
+        NotFound,
+        AccessDenied,
+        InvalidStatus,
         DbError
     };
 
@@ -98,6 +115,8 @@ public:
         std::string description;
         std::string type;
         int32_t status = 0;
+        int64_t owner_id = 0;
+        bool is_owner = false;
         bool has_membership = false;
         int32_t member_status = 0;
         int32_t member_role = 0;
@@ -248,6 +267,16 @@ public:
         const std::vector<int64_t>& ids,
         std::vector<DB::OrganizationInfo::ptr>& orgs,
         std::vector<DB::OrganizationUserRelInfo::ptr>& rels);
+
+    /**
+     * @brief 成员主动退出组织（所有者不能直接退出）
+     */
+    static LeaveResult Leave(const Viewer& viewer, int64_t org_id);
+
+    /**
+     * @brief 组织所有者设置组织状态（0 停用 / 1 启用）
+     */
+    static StatusResult SetStatus(const Viewer& viewer, int64_t org_id, int32_t status, DB::OrganizationInfo::ptr& out);
 
     static Result SubmitApply(int64_t uid,
         const std::string& name,

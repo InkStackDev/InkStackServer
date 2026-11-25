@@ -97,7 +97,7 @@ int32_t ConversationMessageServlet::handle(
 
             Json::Value data;
             BuildMessageJson(data, msg, uid);
-            result->set("data", data);
+            result->setData(data);
 
             result->setErrno(SUCCESS);
 

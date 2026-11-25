@@ -32,7 +32,6 @@ int32_t UserAIConfigServlet::handle(
             auto info = UserAIConfigService::Get(uid);
             if (!info) {
                 result->setErrno(SUCCESS);
-                result->set("data", Json::Value::null);
                 break;
             }
 
