@@ -120,7 +120,9 @@ HTTP_PORT="${ARG_HTTP_PORT:-$((8090 + BASE))}"
 WS_PORT="${ARG_WS_PORT:-$((8091 + BASE))}"
 DATA_PATH="${ARG_DATA_PATH:-${DATA_PATH:-$DEPLOY_PATH/share/data}}"
 BUS_ID="${ARG_BUS_ID:-1.1.2.$ARG_INSTANCE_ID}"
-PROCESS_NAME="${ARG_PROCESS_NAME:-techhaven-$NAME}"
+# PROCESS_NAME 作为前缀，后面追加实例名，保证多实例进程标题唯一；
+# 未配置时保持原来的 techhaven-<name> 默认值。
+PROCESS_NAME="${ARG_PROCESS_NAME:-${PROCESS_NAME:-techhaven}-$NAME}"
 
 INSTANCE_DIR="$DEPLOY_PATH/$NAME"
 CONF_DIR="$ROOT/$NAME/conf"
