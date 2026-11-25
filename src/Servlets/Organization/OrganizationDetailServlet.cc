@@ -48,6 +48,8 @@ int32_t OrganizationDetailServlet::handle(
         result->set("description", detail.description);
         result->set("type", detail.type);
         result->set("status", detail.status);
+        result->set("owner_id", detail.owner_id);
+        result->set("is_owner", detail.is_owner);
     } while (0);
 
     response->setBody(result->toJsonString());

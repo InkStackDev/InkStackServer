@@ -151,6 +151,8 @@ bool BlogMsgHttpInit(chen::http::HttpServer::ptr server)
     dp->addServlet("/api/v1/organization/detail", std::make_shared<OrganizationDetailServlet>());
     dp->addServlet("/api/v1/organization/join", std::make_shared<OrganizationJoinServlet>());
     dp->addServlet("/api/v1/organization/join_check", std::make_shared<OrganizationJoinCheckServlet>());
+    dp->addServlet("/api/v1/organization/leave", std::make_shared<OrganizationLeaveServlet>());
+    dp->addServlet("/api/v1/organization/set_status", std::make_shared<OrganizationSetStatusServlet>());
     dp->addServlet("/api/v1/organization/list", std::make_shared<OrganizationListServlet>());
     dp->addServlet("/api/v1/organization/user_list", std::make_shared<OrganizationUserListServlet>());
     dp->addServlet("/api/v1/organization/user_switch_role", std::make_shared<OrganizationUserSwitchRoleServlet>());

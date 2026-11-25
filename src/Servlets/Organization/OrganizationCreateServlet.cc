@@ -33,7 +33,8 @@ int32_t OrganizationCreateServlet::handle(
         input.type = type;
         input.description = desc;
         input.status = status;
-        input.owner_id = viewer.user_id;
+        // 新建组织时由平台管理员成为 owner；编辑已有组织时不能改变 owner_id
+        input.owner_id = oid != 0 ? 0 : viewer.user_id;
 
         DB::OrganizationInfo::ptr info;
         bool created = false;
