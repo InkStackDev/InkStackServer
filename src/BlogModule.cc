@@ -231,7 +231,7 @@ bool BlogModule::onServerUp()
         .interval_ms = 60 * 1000,
         .lease_ttl_sec = 10 * 60,
         .run_immediately = true,
-        .dedup_interval_ms = 15 * 60 * 1000,
+        .dedup_interval_ms = 90 * 60 * 1000,
         .run =
             []() {
                 OrganizationRepoPrService::SyncAll();
