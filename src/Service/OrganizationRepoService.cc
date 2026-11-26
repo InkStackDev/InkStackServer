@@ -166,19 +166,7 @@ OrganizationRepoService::Result OrganizationRepoService::Update(const Viewer& vi
     if (!viewer.valid()) {
         return Result::AccessDenied;
     }
-    if (input.id <= 0) {
-        return Result::InvalidParam;
-    }
-    if (input.name && !ValidRepoName(*input.name)) {
-        return Result::InvalidParam;
-    }
-    if (input.url && !ValidRepoUrl(*input.url)) {
-        return Result::InvalidParam;
-    }
-    if (input.language && !ValidRepoLanguage(*input.language)) {
-        return Result::InvalidParam;
-    }
-    if (input.description && !ValidRepoDescription(*input.description)) {
+    if (input.id <= 0 || !ValidRepoUrl(input.url)) {
         return Result::InvalidParam;
     }
     auto db = GetDB();
@@ -200,28 +188,15 @@ OrganizationRepoService::Result OrganizationRepoService::Update(const Viewer& vi
         return Result::AccessDenied;
     }
 
-    if (input.name && *input.name != info->getName()) {
-        auto existing = OrganizationRepoRepository::GetByOrgAndName(info->getOrgId(), *input.name, db);
-        if (existing && existing->getId() != info->getId()) {
-            return Result::NameExists;
-        }
-        info->setName(*input.name);
-    }
-    if (input.description) {
-        info->setDescription(*input.description);
-    }
-    if (input.language) {
-        info->setLanguage(*input.language);
-    }
-    if (input.sort_order) {
-        info->setSortOrder(*input.sort_order);
-    }
-    if (input.url && *input.url != info->getUrl()) {
-        info->setUrl(*input.url);
-        info->setGithubFullName(ExtractGithubRepo(*input.url));
+    if (input.url != info->getUrl()) {
+        info->setUrl(input.url);
+        info->setGithubFullName(ExtractGithubRepo(input.url));
         info->setSyncStatus("idle");
         info->setPrSyncStatus("idle");
         info->setPrSyncedAt(0);
+    }
+    if (input.token) {
+        info->setToken(*input.token);
     }
     info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
 
@@ -263,44 +238,6 @@ OrganizationRepoService::Result OrganizationRepoService::Remove(const Viewer& vi
     }
     OrganizationRepoRepository::Evict(id);
     OrganizationRepoRepository::InvalidateOrgCount(info->getOrgId());
-    return Result::Ok;
-}
-
-OrganizationRepoService::Result OrganizationRepoService::UpdateToken(const Viewer& viewer,
-    int64_t id,
-    const std::string& token,
-    DB::OrganizationReposInfo::ptr& out)
-{
-    out.reset();
-    if (!viewer.valid()) {
-        return Result::AccessDenied;
-    }
-    auto db = GetDB();
-    if (!db) {
-        return Result::DbError;
-    }
-    auto info = OrganizationRepoRepository::Get(id, db);
-    if (!info) {
-        return Result::NotFound;
-    }
-    OrgScope scope;
-    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-        return Result::DbError;
-    }
-    if (!viewer.is_platform_admin && !scope.allows(info->getOrgId(), OrgRole::MEMBER)) {
-        return Result::NotMember;
-    }
-    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, info->getOrgId())) {
-        return Result::AccessDenied;
-    }
-    info->setToken(token);
-    info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
-    if (!OrganizationRepoRepository::Update(info, db)) {
-        ERROR(logger) << "OrganizationRepoService::UpdateToken failed, id=" << id;
-        return Result::DbError;
-    }
-    OrganizationRepoRepository::Put(info);
-    out = info;
     return Result::Ok;
 }
 

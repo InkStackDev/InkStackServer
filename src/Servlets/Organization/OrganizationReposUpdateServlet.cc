@@ -22,62 +22,19 @@ int32_t OrganizationReposUpdateServlet::handle(chen::http::HttpRequest::ptr requ
             break;
         }
 
-        OrganizationRepoUpdateInput input;
-        input.id = id;
-
-        std::string value;
-        if (request->hasParam("name", &value)) {
-            if (value.empty()) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            if (value.size() > 128) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            input.name = value;
-        }
-        if (request->hasParam("description", &value)) {
-            if (value.size() > 1024) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            input.description = value;
-        }
-        if (request->hasParam("url", &value)) {
-            if (value.empty()) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            if (value.size() > 512) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            if (value.find("github.com") == std::string::npos) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            input.url = value;
-        }
-        if (request->hasParam("language", &value)) {
-            if (value.size() > 64) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            input.language = value;
-        }
-        if (request->hasParam("sort_order")) {
-            int32_t sort_order = 0;
-            if (!request->checkGetParamAs("sort_order", sort_order)) {
-                result->setErrno(PARAM_INVALID);
-                break;
-            }
-            input.sort_order = sort_order;
-        }
-
-        if (!input.name && !input.description && !input.url && !input.language && !input.sort_order) {
+        DEFINE_AND_CHECK_STRING(result, url, "url");
+        if (url.size() > 512 || url.find("github.com") == std::string::npos) {
             result->setErrno(PARAM_INVALID);
             break;
+        }
+
+        OrganizationRepoUpdateInput input;
+        input.id = id;
+        input.url = url;
+
+        std::string token;
+        if (request->hasParam("token", &token)) {
+            input.token = token;
         }
 
         DB::OrganizationReposInfo::ptr info;

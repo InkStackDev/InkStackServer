@@ -27,11 +27,8 @@ struct OrganizationRepoInput {
 
 struct OrganizationRepoUpdateInput {
     int64_t id = 0;
-    std::optional<std::string> name;
-    std::optional<std::string> description;
-    std::optional<std::string> url;
-    std::optional<std::string> language;
-    std::optional<int32_t> sort_order;
+    std::string url;
+    std::optional<std::string> token;
 };
 
 class OrganizationRepoService {
@@ -54,11 +51,6 @@ public:
         DB::OrganizationReposInfo::ptr& out);
 
     static Result Remove(const Viewer& viewer, int64_t id, int64_t org_id = 0);
-
-    static Result UpdateToken(const Viewer& viewer,
-        int64_t id,
-        const std::string& token,
-        DB::OrganizationReposInfo::ptr& out);
 
     static Result MarkSyncing(const Viewer& viewer, int64_t id, DB::OrganizationReposInfo::ptr& out);
 

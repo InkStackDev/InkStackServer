@@ -157,7 +157,6 @@
 #include "Organization/OrganizationReposListServlet.hpp"
 #include "Organization/OrganizationReposStatsServlet.hpp"
 #include "Organization/OrganizationReposSyncServlet.hpp"
-#include "Organization/OrganizationReposTokenServlet.hpp"
 #include "Organization/OrganizationReposUpdateServlet.hpp"
 #include "Organization/OrganizationSetStatusServlet.hpp"
 #include "Organization/OrganizationStatsServlet.hpp"
