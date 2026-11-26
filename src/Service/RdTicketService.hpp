@@ -30,6 +30,7 @@ public:
         int32_t severity = 0;
         int64_t creator_id = 0;
         std::string creator;
+        std::string creator_avatar;
         int64_t assignee_id = 0;
         std::string assignee;
         std::string assignee_avatar;

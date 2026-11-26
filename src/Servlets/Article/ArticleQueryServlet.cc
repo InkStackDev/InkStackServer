@@ -34,6 +34,7 @@ int32_t ArticleQueryServlet::handle(
             Json::Value item;
             item["id"] = article.id;
             item["author"] = article.author;
+            item["author_avatar"] = article.author_avatar;
             item["title"] = article.title;
             item["summary"] = article.summary;
             item["type"] = article.type;

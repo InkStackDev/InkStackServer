@@ -7,7 +7,8 @@
  */
 #pragma once
 
-#include "../../Repository/OrganizationRepository.hpp"
+#include "../../Service/OrganizationService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 #include "DB/BugInfo.hpp"
 #include "DB/RequirementInfo.hpp"
@@ -21,7 +22,6 @@
 #include <string>
 #include "../../Domain/OrganizationTypes.hpp"
 #include "../../Domain/RdTypes.hpp"
-#include "../../Repository/UserRepository.hpp"
 
 // ============================================================================
 // 分页: page/page_size → offset/size
@@ -277,20 +277,21 @@ inline int32_t OrgRoleToFrontend(int32_t role)
 
 inline std::string GetOrgName(int64_t org_id)
 {
-    auto org = OrganizationRepository::Get(org_id, GetDB());
-    return org ? org->getName() : "";
+    return OrganizationService::GetOrgName(org_id);
 }
 
 inline std::string GetUserName(int64_t user_id)
 {
-    auto user = UserRepository::Get(user_id, GetDB());
-    return user ? user->getName() : "";
+    UserQueryService::Brief user;
+    UserQueryService::GetUserBrief(user_id, user);
+    return user.name;
 }
 
 inline std::string GetUserAvatar(int64_t user_id)
 {
-    auto user = UserRepository::Get(user_id, GetDB());
-    return user ? user->getAvatar() : "";
+    UserQueryService::Brief user;
+    UserQueryService::GetUserBrief(user_id, user);
+    return user.avatar;
 }
 
 // ============================================================================
@@ -305,6 +306,7 @@ inline void BuildRequirementJson(Json::Value& item, DB::RequirementInfo::ptr inf
     item["status"] = RequirementStatusToString(info->getStatus());
     item["creator"] = GetUserName(info->getCreatorId());
     item["creator_id"] = info->getCreatorId();
+    item["creator_avatar"] = GetUserAvatar(info->getCreatorId());
     item["assignee"] = GetUserName(info->getAssigneeId());
     item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
     item["assignee_id"] = info->getAssigneeId();
@@ -328,6 +330,7 @@ inline void BuildBugJson(Json::Value& item, DB::BugInfo::ptr info)
     item["status"] = BugStatusToString(info->getStatus());
     item["creator"] = GetUserName(info->getCreatorId());
     item["creator_id"] = info->getCreatorId();
+    item["creator_avatar"] = GetUserAvatar(info->getCreatorId());
     item["assignee"] = GetUserName(info->getAssigneeId());
     item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
     item["assignee_id"] = info->getAssigneeId();
@@ -350,6 +353,7 @@ inline void BuildTaskJson(Json::Value& item, DB::TaskInfo::ptr info)
     item["priority"] = PriorityToString(info->getPriority());
     item["creator"] = GetUserName(info->getCreatorId());
     item["creator_id"] = info->getCreatorId();
+    item["creator_avatar"] = GetUserAvatar(info->getCreatorId());
     item["assignee"] = GetUserName(info->getAssigneeId());
     item["assignee_avatar"] = GetUserAvatar(info->getAssigneeId());
     item["assignee_id"] = info->getAssigneeId();

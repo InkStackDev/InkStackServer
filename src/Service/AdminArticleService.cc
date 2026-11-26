@@ -36,6 +36,7 @@ bool AdminArticleService::List(uint64_t offset,
         if (user) {
             item.has_author = true;
             item.author = user->getName();
+            item.author_avatar = user->getAvatar();
             item.email = user->getEmail();
             item.author_role = user->getRole();
         }

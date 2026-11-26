@@ -25,6 +25,7 @@ void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, in
     UserQueryService::Brief peer;
     UserQueryService::GetUserBrief(peer_id, peer);
     json["name"] = peer.name;
+    json["avatar"] = peer.avatar;
 
     json["last_time"] = conv->getLastMessageTime();
     json["unread"] = unread;

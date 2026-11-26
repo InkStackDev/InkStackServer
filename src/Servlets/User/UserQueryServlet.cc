@@ -30,6 +30,7 @@ int32_t UserQueryServlet::handle(
             Json::Value v;
             v["id"] = user.id;
             v["name"] = user.name;
+            v["avatar"] = user.avatar;
             data.append(v);
         }
         result->setData(data);

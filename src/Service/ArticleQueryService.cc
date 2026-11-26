@@ -57,6 +57,7 @@ bool FillListItem(ArticleQueryService::ListItem& item,
     item.user_id = article->getUserId();
     auto user = UserRepository::Get(item.user_id, db);
     item.author = user ? user->getName() : "";
+    item.author_avatar = user ? user->getAvatar() : "";
     item.title = article->getTitle();
     item.summary = article->getContent().substr(0, 100);
     item.type = article->getType();

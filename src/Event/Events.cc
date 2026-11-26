@@ -16,6 +16,7 @@
 #include "../Domain/ArticleTypes.hpp"
 #include "../Repository/CommentRepository.hpp"
 #include "../Repository/UserRepository.hpp"
+#include "../Service/UserQueryService.hpp"
 #include "../Domain/UserTypes.hpp"
 #include "../Service/NotificationService.hpp"
 #include "../Message/MessageRouter.hpp"
@@ -36,6 +37,13 @@ static void AddNotificationMessageFields(Json::Value& msg, const DB::Notificatio
     msg["title_id"] = notif->getTitleId();
     msg["content_id"] = notif->getContentId();
     msg["params"] = ParseNotificationParams(notif->getParams());
+
+    int64_t sender_id = notif->getSenderId();
+    msg["sender_id"] = sender_id;
+    UserQueryService::Brief sender;
+    UserQueryService::GetUserBrief(sender_id, sender);
+    msg["sender_name"] = sender.name;
+    msg["sender_avatar"] = sender.avatar;
 }
 
 static void EventUserSendCode(const std::any& d)

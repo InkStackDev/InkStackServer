@@ -39,6 +39,7 @@ int32_t ArticleAdminListsServlet::handle(
             item["user_id"] = atc.user_id;
             if (atc.has_author) {
                 item["author"] = atc.author;
+                item["author_avatar"] = atc.author_avatar;
                 item["email"] = atc.email;
                 item["author_role"] = atc.author_role;
             }

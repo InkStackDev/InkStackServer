@@ -36,6 +36,7 @@ bool CategoryQueryService::List(int64_t requester_uid, bool admin_route, int64_t
         item.user_id = category->getUserId();
         auto owner = UserRepository::Get(item.user_id, db);
         item.author = owner ? owner->getName() : "";
+        item.author_avatar = owner ? owner->getAvatar() : "";
         item.name = category->getName();
         item.url = category->getUrl();
         item.icon = category->getIcon();
@@ -57,5 +58,58 @@ bool CategoryQueryService::List(int64_t requester_uid, bool admin_route, int64_t
         }
         out.push_back(std::move(item));
     }
+    return true;
+}
+
+bool CategoryQueryService::ListAdmin(const Filter& filter,
+    uint64_t offset,
+    uint64_t limit,
+    std::vector<Item>& out,
+    int64_t& total,
+    Stats& stats)
+{
+    out.clear();
+    total = 0;
+    stats = Stats{};
+    auto db = GetDB();
+    if (!db) {
+        return false;
+    }
+
+    CategoryRepository::ListFilter repo_filter;
+    repo_filter.user_id = filter.user_id;
+    repo_filter.status = filter.status;
+    repo_filter.keyword = filter.keyword;
+    repo_filter.sort_by = filter.sort_by;
+    repo_filter.sort_order = filter.sort_order;
+
+    std::vector<CategoryRepository::ListItem> rows;
+    total = CategoryRepository::ListByPages(rows, offset, limit, repo_filter, true, db);
+    for (const auto& row : rows) {
+        Item item;
+        item.id = row.id;
+        item.user_id = row.user_id;
+        auto owner = UserRepository::Get(item.user_id, db);
+        item.author = owner ? owner->getName() : "";
+        item.author_avatar = owner ? owner->getAvatar() : "";
+        item.name = row.name;
+        item.url = row.url;
+        item.icon = row.icon;
+        item.color = row.color;
+        item.description = row.description;
+        item.parent_id = row.parent_id;
+        item.status = row.status;
+        item.create_time = row.create_time;
+        item.update_time = row.update_time;
+        item.article_count = row.article_count;
+        item.view_count = row.view_count;
+        out.push_back(std::move(item));
+    }
+
+    auto repo_stats = CategoryRepository::GetStats(db);
+    stats.total_categories = repo_stats.total;
+    stats.active_categories = repo_stats.active;
+    stats.total_articles = repo_stats.articles;
+    stats.total_views = repo_stats.views;
     return true;
 }

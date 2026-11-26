@@ -49,6 +49,8 @@ int32_t OrganizationDetailServlet::handle(
         result->set("type", detail.type);
         result->set("status", detail.status);
         result->set("owner_id", detail.owner_id);
+        result->set("owner_name", detail.owner_name);
+        result->set("owner_avatar", detail.owner_avatar);
         result->set("is_owner", detail.is_owner);
     } while (0);
 

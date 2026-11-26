@@ -1,6 +1,7 @@
 #include "NotificationListServlet.hpp"
 
 #include "../../Service/NotificationService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
@@ -49,6 +50,14 @@ int32_t NotificationListServlet::handle(
             }
             item["params"] = params;
             item["type"] = n->getType();
+
+            int64_t sender_id = n->getSenderId();
+            item["sender_id"] = sender_id;
+
+            UserQueryService::Brief sender;
+            UserQueryService::GetUserBrief(sender_id, sender);
+            item["sender_name"] = sender.name;
+            item["sender_avatar"] = sender.avatar;
 
             const std::string& item_type = n->getType();
             int64_t target_id = n->getArticleId();

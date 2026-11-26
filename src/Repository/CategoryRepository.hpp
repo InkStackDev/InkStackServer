@@ -17,6 +17,37 @@
 
 class CategoryRepository {
 public:
+    struct ListFilter {
+        int64_t user_id = 0;
+        int32_t status = -1;
+        std::string keyword;
+        std::string sort_by = "name";
+        std::string sort_order = "asc";
+    };
+
+    struct ListItem {
+        int64_t id = 0;
+        int64_t user_id = 0;
+        int64_t parent_id = 0;
+        int32_t status = 0;
+        int64_t create_time = 0;
+        int64_t update_time = 0;
+        int64_t article_count = 0;
+        int64_t view_count = 0;
+        std::string name;
+        std::string url;
+        std::string icon;
+        std::string color;
+        std::string description;
+    };
+
+    struct Stats {
+        int64_t total = 0;
+        int64_t active = 0;
+        int64_t articles = 0;
+        int64_t views = 0;
+    };
+
     static DB::CategoryInfo::ptr Get(int64_t id, chen::IDB::ptr conn);
 
     static DB::CategoryInfo::ptr GetByUserIdName(int64_t user_id, const std::string& name, chen::IDB::ptr conn);
@@ -31,6 +62,15 @@ public:
         int64_t user_id,
         bool is_valid,
         chen::IDB::ptr conn);
+
+    static int64_t ListByPages(std::vector<ListItem>& out,
+        uint64_t offset,
+        uint64_t limit,
+        const ListFilter& filter,
+        bool is_valid,
+        chen::IDB::ptr conn);
+
+    static Stats GetStats(chen::IDB::ptr conn);
 
     static void Put(const DB::CategoryInfo::ptr& info);
 

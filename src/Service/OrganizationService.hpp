@@ -116,6 +116,8 @@ public:
         std::string type;
         int32_t status = 0;
         int64_t owner_id = 0;
+        std::string owner_name;
+        std::string owner_avatar;
         bool is_owner = false;
         bool has_membership = false;
         int32_t member_status = 0;
@@ -129,6 +131,7 @@ public:
         std::string description;
         int32_t status = 0;
         int64_t member_count = 0;
+        int64_t created_at = 0;
     };
 
     struct OrganizationStatsView {
@@ -154,6 +157,7 @@ public:
         int64_t id = 0;
         int64_t user_id = 0;
         std::string user_name;
+        std::string user_avatar;
         std::string org_name;
         std::string org_type;
         std::string org_description;
