@@ -158,7 +158,17 @@ chmod +x "$STAGE_DIR/server"
 for so in "${module_sos[@]}"; do
     cp -p "$so" "$STAGE_DIR/module/"
 done
-cp -p "$CHEN_SDK_LIB" "$STAGE_DIR/lib/libchen.so"
+# 运行库按 SONAME 布局落盘（loader 找 libchen.so.1）：只放一份实体，其余建相对符号链接；
+# SDK zip 里这三个名字其实是三个等大副本，直接整组拷会把 60MB 塞进包里。
+lib_src="$(dirname "$CHEN_SDK_LIB")"
+lib_real="$(ls "$lib_src"/libchen.so.*.* 2>/dev/null | head -1)"
+[ -n "$lib_real" ] || lib_real="$CHEN_SDK_LIB"
+lib_real_name="$(basename "$lib_real")"
+lib_major="${lib_real_name#libchen.so.}"
+lib_major="${lib_major%%.*}"
+cp -pL "$lib_real" "$STAGE_DIR/lib/$lib_real_name"
+ln -sf "$lib_real_name" "$STAGE_DIR/lib/libchen.so.$lib_major"
+ln -sf "libchen.so.$lib_major" "$STAGE_DIR/lib/libchen.so"
 
 cp -R "$ROOT_DIR/config" "$STAGE_DIR/config"
 

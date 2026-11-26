@@ -25,9 +25,5 @@ void ServletRegistrar::addServlet(const std::string& uri,
     if (slt) {
         slt->setRoute(uri);
     }
-    dispatch_->addServlet(uri, method,
-        [servlet](chen::http::HttpRequest::ptr request, chen::http::HttpResponse::ptr response,
-            chen::http::HttpSession::ptr session) {
-            return servlet->handle(request, response, session);
-        });
+    dispatch_->addServlet(uri, method, servlet);
 }

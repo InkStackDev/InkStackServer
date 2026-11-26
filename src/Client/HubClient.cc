@@ -12,6 +12,7 @@
 #include <Chen/Util/TimeUtil.hpp>
 
 #include "../Config/RpcConfig.hpp"
+#include "../Util/FiberMutex.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -21,7 +22,7 @@ namespace {
 constexpr uint64_t kRegisterRetryMs = 5000;
 constexpr uint64_t kDefaultReconnectMs = 5000;
 
-std::mutex g_mutex;
+FiberMutex g_mutex;
 chen::rpc::RpcClient::ptr g_client;
 bool g_registered = false;
 uint64_t g_last_connect_attempt_ms = 0;
@@ -60,7 +61,7 @@ bool ConnectLocked()
 
 void HubClient::SetConnectedCallback(ConnectedCallback cb)
 {
-    std::lock_guard lock(g_mutex);
+    FiberMutex::Lock lock(g_mutex);
     g_connected_cb = std::move(cb);
 }
 
@@ -75,7 +76,7 @@ void HubClient::Init()
     ConnectedCallback cb;
     bool connected_now = false;
     {
-        std::lock_guard lock(g_mutex);
+        FiberMutex::Lock lock(g_mutex);
         g_last_connect_attempt_ms = chen::TimeUtil::GetCurrentMs();
         if (!g_client || !g_client->isConnected()) {
             if (g_client) {
@@ -107,7 +108,7 @@ void HubClient::Tick()
     bool connected_now = false;
 
     {
-        std::lock_guard lock(g_mutex);
+        FiberMutex::Lock lock(g_mutex);
         if (!g_client || !g_client->isConnected()) {
             const RpcConf conf = GetRpcConf();
             uint64_t interval = conf.reconnect_interval_ms > 0 ? conf.reconnect_interval_ms : kDefaultReconnectMs;
@@ -141,7 +142,7 @@ void HubClient::Tick()
         uint32_t instance = 0;
         std::string bus_id;
         {
-            std::lock_guard lock(g_mutex);
+            FiberMutex::Lock lock(g_mutex);
             if (!g_client || !g_client->isConnected()) {
                 g_registered = false;
                 return;
@@ -171,7 +172,7 @@ void HubClient::Tick()
         }
 
         {
-            std::lock_guard lock(g_mutex);
+            FiberMutex::Lock lock(g_mutex);
             if (g_client == client) {
                 g_registered = ok;
             }
@@ -186,7 +187,7 @@ void HubClient::Tick()
 
 void HubClient::Shutdown()
 {
-    std::lock_guard lock(g_mutex);
+    FiberMutex::Lock lock(g_mutex);
     if (g_client) {
         g_client->close();
         g_client.reset();
@@ -196,7 +197,7 @@ void HubClient::Shutdown()
 
 chen::rpc::RpcClient::ptr HubClient::Get()
 {
-    std::lock_guard lock(g_mutex);
+    FiberMutex::Lock lock(g_mutex);
     if (!g_client || !g_client->isConnected()) {
         return nullptr;
     }
@@ -205,6 +206,6 @@ chen::rpc::RpcClient::ptr HubClient::Get()
 
 bool HubClient::IsRegistered()
 {
-    std::lock_guard lock(g_mutex);
+    FiberMutex::Lock lock(g_mutex);
     return g_registered;
 }

@@ -30,7 +30,7 @@ are going to use (§0.2).**
 
 ### 0.2 SDK 文档必读
 
-**写任何业务代码前，必须先读 SDK 自带文档。** SDK 目录形如 `chen-sdk-<version>/`（如 `chen-sdk-1.7.0-rc4/`），由
+**写任何业务代码前，必须先读 SDK 自带文档。** SDK 目录形如 `chen-sdk-<version>/`（如 `chen-sdk-1.7.0-rc6/`），由
 `./deps.py sync` 下载、版本号会变，用通配路径引用：
 
 1. `chen-sdk-*/docs/framework-first.md` — 框架优先：能力对照表、分领域规则、反模式自查、Review 清单

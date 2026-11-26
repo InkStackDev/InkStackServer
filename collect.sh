@@ -92,7 +92,18 @@ chmod +x "$STAGE_DIR/server"
 for so in "${module_sos[@]}"; do
     cp "$so" "$STAGE_DIR/module/"
 done
-cp "$CHEN_SDK_LIB" "$STAGE_DIR/lib/"
+# 运行库要按 SONAME 布局落盘：loader 找的是 libchen.so.1，不是 libchen.so。
+# SDK zip 里三个文件名是三个等大副本（各 20MB），这里只放一份实体，其余建相对符号链接。
+lib_src="$(dirname "$CHEN_SDK_LIB")"
+lib_real="$(ls "$lib_src"/libchen.so.*.* 2>/dev/null | head -1)"
+[ -n "$lib_real" ] || lib_real="$CHEN_SDK_LIB"
+lib_real_name="$(basename "$lib_real")"
+lib_major="${lib_real_name#libchen.so.}"
+lib_major="${lib_major%%.*}"
+cp -pL "$lib_real" "$STAGE_DIR/lib/$lib_real_name"
+ln -sf "$lib_real_name" "$STAGE_DIR/lib/libchen.so.$lib_major"
+ln -sf "libchen.so.$lib_major" "$STAGE_DIR/lib/libchen.so"
+echo "  运行库: $lib_real_name + libchen.so.$lib_major + libchen.so"
 
 # 4. 拷贝错误码
 cp -R "$ROOT_DIR/config" "$STAGE_DIR/config"

@@ -10,6 +10,8 @@
 #include <Chen/Http/WSSession.hpp>
 #include <Chen/Util/Singleton.hpp>
 
+#include "../Util/FiberMutex.hpp"
+
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -183,8 +185,8 @@ private:
         int64_t user_id = 0;
         std::string device_id;
         chen::http::WSSession::ptr session;
-        /// 同一 socket 上的通知/聊天发送串行化
-        std::mutex send_mutex;
+        /// 同一 socket 上的通知/聊天发送串行化（发送会让出协程，必须用协程锁）
+        FiberMutex send_mutex;
     };
 
     /**

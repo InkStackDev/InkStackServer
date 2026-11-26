@@ -16,6 +16,7 @@
 #include "../Config/AppConfig.hpp"
 #include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
+#include "../Util/FiberMutex.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -23,7 +24,7 @@ static chen::Logger::ptr logger = LOG_ROOT();
 /// 浏览去重窗口（秒）
 static const int kViewDedupTTL = 10 * 60;
 
-static std::mutex g_counter_mutex;
+static FiberMutex g_counter_mutex;
 
 namespace {
 
@@ -88,7 +89,7 @@ bool AddViews(uint64_t id, const std::string& cookie_id)
 
 bool ArticleCounterService::IncViews(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return false;
@@ -113,7 +114,7 @@ bool ArticleCounterService::IncViews(uint64_t id, const std::string& cookie_id, 
 
 bool ArticleCounterService::IncPraise(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return false;
@@ -142,7 +143,7 @@ bool ArticleCounterService::IncPraise(uint64_t id, const std::string& cookie_id,
 
 bool ArticleCounterService::IncFavorites(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return false;
@@ -171,7 +172,7 @@ bool ArticleCounterService::IncFavorites(uint64_t id, const std::string& cookie_
 
 bool ArticleCounterService::DecPraise(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return false;
@@ -203,7 +204,7 @@ bool ArticleCounterService::DecPraise(uint64_t id, const std::string& cookie_id,
 
 bool ArticleCounterService::DecFavorites(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return false;
@@ -235,7 +236,7 @@ bool ArticleCounterService::DecFavorites(uint64_t id, const std::string& cookie_
 
 void ArticleCounterService::IncPraiseCount(int64_t id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return;
@@ -247,7 +248,7 @@ void ArticleCounterService::IncPraiseCount(int64_t id)
 
 void ArticleCounterService::DecPraiseCount(int64_t id)
 {
-    std::lock_guard<std::mutex> lock(g_counter_mutex);
+    FiberMutex::Lock lock(g_counter_mutex);
     auto info = ArticleRepository::Get(id, GetDB());
     if (!info) {
         return;

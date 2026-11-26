@@ -446,7 +446,7 @@ void WSConnectionManager::CloseConnection(const Connection::ptr& conn, const std
         return;
     }
 
-    std::lock_guard lock(conn->send_mutex);
+    FiberMutex::Lock lock(conn->send_mutex);
     if (!notify_message.empty() && conn->session->isConnected()) {
         conn->session->sendMessage(notify_message);
     }
@@ -459,7 +459,7 @@ int32_t WSConnectionManager::SendToConnection(const Connection::ptr& conn, const
         return -1;
     }
 
-    std::lock_guard lock(conn->send_mutex);
+    FiberMutex::Lock lock(conn->send_mutex);
     if (!conn->session->isConnected()) {
         return -1;
     }

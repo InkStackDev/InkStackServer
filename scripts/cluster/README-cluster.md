@@ -8,7 +8,7 @@
 ```
 server                      # 业务进程（所有实例共享）
 module/libblog.so
-lib/libchen.so
+lib/libchen.so*             # 实体 libchen.so.1.6.0 + 链接 libchen.so.1、libchen.so
 config/                     # 多语言配置（errors + messages）
 conf/                       # 配置模板 + env 示例（新增实例 / 改配置后重新渲染用）
 scripts/render-instance.sh  # 追加实例或改配置后重新渲染

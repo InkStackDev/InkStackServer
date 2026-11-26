@@ -52,6 +52,9 @@ Web 后台设计，注重性能、可扩展性和易维护性。
    ```
 4. 运行（在仓库根目录，配置位于 `bin/conf/`）：
    ```sh
+   # loader 按 SONAME 找 libchen.so.1，本地运行要把 SDK 的 lib 目录加进搜索路径（部署包里是 ./lib）
+   export LD_LIBRARY_PATH="$(echo "$PWD"/chen-sdk-*/lib):$LD_LIBRARY_PATH"
+
    ./bin/server -s    # 前台运行
    ./bin/server -d    # 守护进程
    ```
@@ -162,7 +165,11 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
 
 ```json
 {
-  "chen-sdk": { "repo": "Chen-Christins/chen", "version": "1.7.0-rc4", "arch": "auto" },
+  "chen-sdk": {
+    "repo": "Chen-Christins/chen",
+    "version": "1.7.0-rc6",
+    "arch": "auto"
+  },
   "thirdparty": { "repo": "Chen-Christins/chen", "tag": "v1.0.0", "asset": "deps-{arch}.zip" }
 }
 ```

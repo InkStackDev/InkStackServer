@@ -20,6 +20,7 @@
 
 #include "../Config/AppConfig.hpp"
 #include "../Manager/WSConnectionManager.hpp"
+#include "../Util/FiberMutex.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -544,7 +545,7 @@ private:
     chen::Timer::ptr heartbeat_timer_;
 };
 
-std::mutex g_router_mutex;
+FiberMutex g_router_mutex;
 MessageRouter::ptr g_router;
 
 void InstallObserver(const MessageRouter::ptr& router)
@@ -562,7 +563,7 @@ void InstallObserver(const MessageRouter::ptr& router)
 
 MessageRouter::ptr MessageRouter::Get()
 {
-    std::lock_guard lock(g_router_mutex);
+    FiberMutex::Lock lock(g_router_mutex);
     if (!g_router) {
         g_router = std::make_shared<RedisMessageRouter>();
         g_router->Start();
@@ -581,7 +582,7 @@ void MessageRouter::Init()
 
 void MessageRouter::Shutdown()
 {
-    std::lock_guard lock(g_router_mutex);
+    FiberMutex::Lock lock(g_router_mutex);
     WSMgr::GetInstance()->setConnectionObserver(nullptr);
     if (g_router) {
         g_router->Stop();
