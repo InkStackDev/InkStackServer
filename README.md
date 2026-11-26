@@ -193,12 +193,13 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
 
 ## 语言与错误码
 
-- 语言解析顺序：`?lang=` → `Accept-Language` → 系统设置 `language` → `zh_CN`。
-- 当前支持 `zh_CN`、`en`。
+- 语言解析顺序：`?lang=` → `Accept-Language` → 系统设置 `language` → `zh-CN`。
+- 当前支持 `zh-CN`、`en-US`。
 - 语言配置：`config/<lang>.json` 是唯一来源，包含 `errors`（按 errno）和 `messages`（消息模板）两部分。
 - 客户端通过 `GET /api/v1/config?lang=zh-CN` 拉取配置，并挂到前端 i18next 的 `backend` 命名空间。
 - 后端只发送消息 ID 和参数，不再硬编码中英文用户消息。
 - 部署包包含 `config/`，热部署同步 `config/` 和模块。
+- HTTP JSON 字段统一使用 `snake_case`；WebAuthn 标准字段（如 `clientDataJSON`）按协议规范保留。
 
 服务启动后可验证：
 

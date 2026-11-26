@@ -8,7 +8,7 @@
 void BuildMessageJson(Json::Value& json, DB::ConversationMessageInfo::ptr msg, int64_t uid)
 {
     json["id"] = msg->getId();
-    json["fromMe"] = (msg->getSenderId() == uid);
+    json["from_me"] = (msg->getSenderId() == uid);
     json["text"] = msg->getContent();
     json["create_time"] = msg->getCreateTime();
 }
@@ -33,7 +33,7 @@ void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, in
     if (conv->getLastMessageId() > 0) {
         Json::Value last;
         last["id"] = conv->getLastMessageId();
-        last["fromMe"] = (conv->getLastSenderId() == uid);
+        last["from_me"] = (conv->getLastSenderId() == uid);
         last["text"] = conv->getLastMessage();
         last["create_time"] = conv->getLastMessageTime();
         arr.append(last);

@@ -135,6 +135,17 @@ result->setErrno(errcode::ACCESS_DENIED, "custom msg");  // custom message
 dp->addServlet("/api/v1/xxx/yyy", XX(XxxServlet));
 ```
 
+### HTTP JSON 字段命名（MANDATORY）:
+
+- 所有 HTTP 请求/响应 JSON 字段统一使用 `snake_case`，包括：
+  - `result->set("field_name", ...)`
+  - `json["field_name"] = ...`
+  - `request->getParam("field_name")` / `getParamAs` / `checkGetParamAs` / `hasParam`
+- 禁止新增 camelCase JSON key，例如 `siteName`、`pageSize`、`fromMe`。
+- 前端在 service 层做 `snake_case -> camelCase` 映射；后端只负责收发 snake_case。
+- 例外：WebAuthn 标准字段（如 `clientDataJSON`、`attestationObject`、`rawId`）按协议规范保留 camelCase。
+- 新增/修改接口时自查：源码中 WebAuthn 之外不应出现 camelCase 的 HTTP JSON key。
+
 ## 3. File Header Comments
 
 New header files (`.h`) require a Doxygen file comment. **Always ask the user which license to use** for the `@copyright` field — do not assume:

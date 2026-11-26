@@ -15,40 +15,40 @@ SystemSettingsServlet::SystemSettingsServlet()
 static void BuildSettingsJson(Json::Value& json, DB::SystemSettingsInfo::ptr info)
 {
     json["id"] = info->getId();
-    json["siteName"] = info->getSiteName();
-    json["siteDescription"] = info->getSiteDescription();
-    json["siteKeywords"] = info->getSiteKeywords();
-    json["siteIcon"] = info->getSiteIcon();
-    json["siteLogo"] = info->getSiteLogo();
+    json["site_name"] = info->getSiteName();
+    json["site_description"] = info->getSiteDescription();
+    json["site_keywords"] = info->getSiteKeywords();
+    json["site_icon"] = info->getSiteIcon();
+    json["site_logo"] = info->getSiteLogo();
     json["favicon"] = info->getFavicon();
-    json["adminEmail"] = info->getAdminEmail();
+    json["admin_email"] = info->getAdminEmail();
     json["timezone"] = info->getTimezone();
     json["language"] = info->getLanguage();
 
-    json["smtpHost"] = info->getSmtpHost();
-    json["smtpPort"] = info->getSmtpPort();
-    json["smtpUsername"] = info->getSmtpUsername();
+    json["smtp_host"] = info->getSmtpHost();
+    json["smtp_port"] = info->getSmtpPort();
+    json["smtp_username"] = info->getSmtpUsername();
     if (!info->getSmtpPassword().empty()) {
-        json["smtpPassword"] = "****";
+        json["smtp_password"] = "****";
     } else {
-        json["smtpPassword"] = "";
+        json["smtp_password"] = "";
     }
-    json["smtpEncryption"] = info->getSmtpEncryption();
-    json["fromEmail"] = info->getFromEmail();
-    json["fromName"] = info->getFromName();
-    json["replyTo"] = info->getReplyTo();
+    json["smtp_encryption"] = info->getSmtpEncryption();
+    json["from_email"] = info->getFromEmail();
+    json["from_name"] = info->getFromName();
+    json["reply_to"] = info->getReplyTo();
 
-    json["enableRegistration"] = info->getEnableRegistration() ? true : false;
-    json["requireEmailVerification"] = info->getRequireEmailVerification() ? true : false;
-    json["allowComments"] = info->getAllowComments() ? true : false;
-    json["moderateComments"] = info->getModerateComments() ? true : false;
-    json["maxFileSize"] = info->getMaxFileSize();
-    json["allowedFileTypes"] = info->getAllowedFileTypes();
-    json["sessionTimeout"] = info->getSessionTimeout();
-    json["maintenanceMode"] = info->getMaintenanceMode() ? true : false;
-    json["backupSchedule"] = info->getBackupSchedule();
-    json["createdAt"] = info->getCreatedAt();
-    json["updatedAt"] = info->getUpdatedAt();
+    json["enable_registration"] = info->getEnableRegistration() ? true : false;
+    json["require_email_verification"] = info->getRequireEmailVerification() ? true : false;
+    json["allow_comments"] = info->getAllowComments() ? true : false;
+    json["moderate_comments"] = info->getModerateComments() ? true : false;
+    json["max_file_size"] = info->getMaxFileSize();
+    json["allowed_file_types"] = info->getAllowedFileTypes();
+    json["session_timeout"] = info->getSessionTimeout();
+    json["maintenance_mode"] = info->getMaintenanceMode() ? true : false;
+    json["backup_schedule"] = info->getBackupSchedule();
+    json["created_at"] = info->getCreatedAt();
+    json["updated_at"] = info->getUpdatedAt();
 }
 
 int32_t SystemSettingsServlet::handle(
@@ -88,23 +88,23 @@ int32_t SystemSettingsServlet::handle(
 
             std::string param;
 
-            param = request->getParam("siteName");
+            param = request->getParam("site_name");
             if (!param.empty()) {
                 info->setSiteName(param);
             }
-            param = request->getParam("siteDescription");
+            param = request->getParam("site_description");
             if (!param.empty()) {
                 info->setSiteDescription(param);
             }
-            param = request->getParam("siteKeywords");
+            param = request->getParam("site_keywords");
             if (!param.empty()) {
                 info->setSiteKeywords(param);
             }
-            param = request->getParam("siteIcon");
+            param = request->getParam("site_icon");
             if (!param.empty()) {
                 info->setSiteIcon(param);
             }
-            param = request->getParam("siteLogo");
+            param = request->getParam("site_logo");
             if (!param.empty()) {
                 info->setSiteLogo(param);
             }
@@ -112,7 +112,7 @@ int32_t SystemSettingsServlet::handle(
             if (!param.empty()) {
                 info->setFavicon(param);
             }
-            param = request->getParam("adminEmail");
+            param = request->getParam("admin_email");
             if (!param.empty()) {
                 info->setAdminEmail(param);
             }
@@ -125,72 +125,72 @@ int32_t SystemSettingsServlet::handle(
                 info->setLanguage(param);
             }
 
-            param = request->getParam("smtpHost");
+            param = request->getParam("smtp_host");
             if (!param.empty()) {
                 info->setSmtpHost(param);
             }
-            int32_t smtpPort = request->getParamAs<int32_t>("smtpPort", 0);
+            int32_t smtpPort = request->getParamAs<int32_t>("smtp_port", 0);
             if (smtpPort > 0) {
                 info->setSmtpPort(smtpPort);
             }
-            param = request->getParam("smtpUsername");
+            param = request->getParam("smtp_username");
             if (!param.empty()) {
                 info->setSmtpUsername(param);
             }
-            param = request->getParam("smtpPassword");
+            param = request->getParam("smtp_password");
             if (!param.empty() && param != "****") {
                 info->setSmtpPassword(param);
             }
-            param = request->getParam("smtpEncryption");
+            param = request->getParam("smtp_encryption");
             if (!param.empty()) {
                 info->setSmtpEncryption(param);
             }
-            param = request->getParam("fromEmail");
+            param = request->getParam("from_email");
             if (!param.empty()) {
                 info->setFromEmail(param);
             }
-            param = request->getParam("fromName");
+            param = request->getParam("from_name");
             if (!param.empty()) {
                 info->setFromName(param);
             }
-            param = request->getParam("replyTo");
+            param = request->getParam("reply_to");
             if (!param.empty()) {
                 info->setReplyTo(param);
             }
 
-            param = request->getParam("enableRegistration");
+            param = request->getParam("enable_registration");
             if (!param.empty()) {
                 info->setEnableRegistration(param == "true" || param == "1" ? 1 : 0);
             }
-            param = request->getParam("requireEmailVerification");
+            param = request->getParam("require_email_verification");
             if (!param.empty()) {
                 info->setRequireEmailVerification(param == "true" || param == "1" ? 1 : 0);
             }
-            param = request->getParam("allowComments");
+            param = request->getParam("allow_comments");
             if (!param.empty()) {
                 info->setAllowComments(param == "true" || param == "1" ? 1 : 0);
             }
-            param = request->getParam("moderateComments");
+            param = request->getParam("moderate_comments");
             if (!param.empty()) {
                 info->setModerateComments(param == "true" || param == "1" ? 1 : 0);
             }
-            int32_t maxFileSize = request->getParamAs<int32_t>("maxFileSize", 0);
+            int32_t maxFileSize = request->getParamAs<int32_t>("max_file_size", 0);
             if (maxFileSize > 0) {
                 info->setMaxFileSize(maxFileSize);
             }
-            param = request->getParam("allowedFileTypes");
+            param = request->getParam("allowed_file_types");
             if (!param.empty()) {
                 info->setAllowedFileTypes(param);
             }
-            int32_t sessionTimeout = request->getParamAs<int32_t>("sessionTimeout", 0);
+            int32_t sessionTimeout = request->getParamAs<int32_t>("session_timeout", 0);
             if (sessionTimeout > 0) {
                 info->setSessionTimeout(sessionTimeout);
             }
-            param = request->getParam("maintenanceMode");
+            param = request->getParam("maintenance_mode");
             if (!param.empty()) {
                 info->setMaintenanceMode(param == "true" || param == "1" ? 1 : 0);
             }
-            param = request->getParam("backupSchedule");
+            param = request->getParam("backup_schedule");
             if (!param.empty()) {
                 info->setBackupSchedule(param);
             }

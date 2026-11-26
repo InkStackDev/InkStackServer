@@ -61,7 +61,7 @@ int32_t FileDownloadServlet::handle(
     bool success = false;
     do {
         DEFINE_AND_CHECK_STRING(result, url, "url");
-        DEFINE_AND_CHECK_STRING(result, fileName, "fileName");
+        DEFINE_AND_CHECK_STRING(result, fileName, "file_name");
 
         // 安全处理文件名
         std::string safe_file_name = SanitizeFileName(fileName);
@@ -177,7 +177,7 @@ int32_t FileDownloadServlet::handle(
         response->setBody(result->toJsonString());
     }
     const std::string& content = response->getBody();
-    INFO(logger) << "File downloaded: " << request->getParam("fileName") << " (Size: " << content.size() << " bytes -- "
-                 << (1.0 * content.size() / 1024) << " kb -- " << (1.0 * content.size() / (1024 * 1024)) << " mb)";
+    INFO(logger) << "File downloaded: " << request->getParam("file_name") << " (Size: " << content.size()
+                 << " bytes -- " << (1.0 * content.size() / 1024) << " kb -- " << (1.0 * content.size() / (1024 * 1024)) << " mb)";
     return 0;
 }

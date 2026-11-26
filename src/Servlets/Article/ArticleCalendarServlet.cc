@@ -43,7 +43,7 @@ int32_t ArticleCalendarServlet::handle(
         for (auto d : days) {
             daysArray.append(d);
         }
-        result->set("articleDays", daysArray);
+        result->set("article_days", daysArray);
         result->setErrno(SUCCESS);
     } while (0);
     response->setBody(result->toJsonString());
