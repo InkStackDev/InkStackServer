@@ -5,6 +5,8 @@
 
 #include <json/json.h>
 
+#include <Chen/Util/JsonUtil.hpp>
+
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")
 {
@@ -39,6 +41,13 @@ int32_t NotificationListServlet::handle(
             item["id"] = n->getId();
             item["title"] = n->getTitle();
             item["content"] = n->getContent();
+            item["title_id"] = n->getTitleId();
+            item["content_id"] = n->getContentId();
+            Json::Value params(Json::objectValue);
+            if (!n->getParams().empty()) {
+                chen::JsonUtil::FromString(params, n->getParams());
+            }
+            item["params"] = params;
             item["type"] = n->getType();
 
             const std::string& item_type = n->getType();

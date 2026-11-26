@@ -1,6 +1,6 @@
 /**
  * @file I18n.hpp
- * @brief 语言解析：从请求参数 / Accept-Language / 系统设置中解析 zh_CN 或 en
+ * @brief 语言解析：从请求参数 / Accept-Language / 系统设置中解析 zh-CN 或 en-US
  * @author Christins
  * @date 2026-10-18
  * @copyright GPL-3.0

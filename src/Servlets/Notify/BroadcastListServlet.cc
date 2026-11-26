@@ -5,6 +5,8 @@
 
 #include <json/json.h>
 
+#include <Chen/Util/JsonUtil.hpp>
+
 BroadcastListServlet::BroadcastListServlet()
     : BlogServlet("BroadcastListServlet")
 {
@@ -38,6 +40,13 @@ int32_t BroadcastListServlet::handle(
             item["id"] = info->getId();
             item["title"] = info->getTitle();
             item["content"] = info->getContent();
+            item["title_id"] = info->getTitleId();
+            item["content_id"] = info->getContentId();
+            Json::Value params(Json::objectValue);
+            if (!info->getParams().empty()) {
+                chen::JsonUtil::FromString(params, info->getParams());
+            }
+            item["params"] = params;
             item["type"] = info->getType();
             item["level"] = info->getLevel();
             item["start_time"] = info->getStartTime();

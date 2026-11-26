@@ -187,7 +187,7 @@
 #include "Rd/RdTrendServlet.hpp"
 
 // 站点信息部分
-#include "Settings/ErrorCodesServlet.hpp"
+#include "Settings/AppConfigServlet.hpp"
 #include "Settings/SiteSettingsServlet.hpp"
 #include "Settings/SiteStatusServlet.hpp"
 #include "Settings/SystemSettingsServlet.hpp"

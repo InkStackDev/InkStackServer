@@ -10,7 +10,7 @@
 
 #include "../Manager/SystemSettingsManager.hpp"
 
-constexpr const char* kDefaultLanguage = "zh_CN";
+constexpr const char* kDefaultLanguage = "zh-CN";
 const std::string kTrimChars = " \t\r\n\v\f";
 
 double ParseQuality(const std::string& value)
@@ -116,10 +116,10 @@ std::string I18n::NormalizeLanguage(std::string_view language)
     std::replace(value.begin(), value.end(), '_', '-');
 
     if (value == "zh" || value.rfind("zh-", 0) == 0) {
-        return "zh_CN";
+        return "zh-CN";
     }
     if (value == "en" || value.rfind("en-", 0) == 0) {
-        return "en";
+        return "en-US";
     }
     return "";
 }

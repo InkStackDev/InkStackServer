@@ -4,7 +4,7 @@
 
 #include "Auth/AuthService.hpp"
 #include "I18n/I18n.hpp"
-#include "Manager/ErrorCodeManager.hpp"
+#include "Manager/MessageConfigManager.hpp"
 #include "Metrics/MetricsService.hpp"
 #include "Util/Util.hpp"
 
@@ -23,7 +23,7 @@ Result::Result(int32_t code, const std::string& m)
 void Result::setErrno(int32_t code)
 {
     code_ = code;
-    message_ = ErrorCodeMgr::GetInstance()->getMessage(code, lang_);
+    message_ = MessageConfigMgr::GetInstance()->getError(lang_, code);
 }
 
 void Result::setErrno(int32_t code, const std::string& custom_msg)

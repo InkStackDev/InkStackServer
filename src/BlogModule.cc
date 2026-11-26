@@ -8,7 +8,7 @@
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
-#include "./Manager/ErrorCodeManager.hpp"
+#include "./Manager/MessageConfigManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
 #include "./Metrics/MetricsService.hpp"
@@ -45,9 +45,9 @@ bool BlogModule::onLoad()
 
     const std::string work_path = GetServerWorkPath();
 
-    const std::string errors_path = work_path + "/errors.json";
-    if (!ErrorCodeMgr::GetInstance()->load(errors_path)) {
-        ERROR(LOG_ROOT()) << "failed to load error codes: " << errors_path;
+    const std::string config_path = work_path + "/config";
+    if (!MessageConfigMgr::GetInstance()->load(config_path)) {
+        ERROR(LOG_ROOT()) << "failed to load message config: " << config_path;
         return false;
     }
 

@@ -121,7 +121,7 @@ bool BlogMsgHttpInit(chen::http::HttpServer::ptr server)
     dp->addServlet("/api/v1/category/admin/create", std::make_shared<CategoryAdminCreateServlet>());
     dp->addServlet("/api/v1/category/admin/delete", std::make_shared<CategoryAdminDeleteServlet>());
     dp->addServlet("/api/v1/category/admin/query", std::make_shared<CategoryAdminQueryServlet>());
-    dp->addServlet("/api/v1/error-codes", std::make_shared<ErrorCodesServlet>());
+    dp->addServlet("/api/v1/config", std::make_shared<AppConfigServlet>());
     dp->addServlet("/api/v1/site/settings", std::make_shared<SiteSettingsServlet>());
     dp->addServlet("/api/v1/site/status", std::make_shared<SiteStatusServlet>());
     dp->addServlet("/api/v1/admin/settings", std::make_shared<SystemSettingsServlet>());

@@ -46,7 +46,7 @@ if [ -z "$CHEN_SDK_LIB" ]; then
     echo "错误: 找不到 chen-sdk-*/lib/libchen.so" >&2
     exit 1
 fi
-check_file "$ROOT_DIR/errors.json"
+check_file "$ROOT_DIR/config"
 
 shopt -s nullglob
 module_sos=("$ROOT_DIR"/bin/module/*.so)
@@ -95,7 +95,7 @@ done
 cp "$CHEN_SDK_LIB" "$STAGE_DIR/lib/"
 
 # 4. 拷贝错误码
-cp "$ROOT_DIR/errors.json" "$STAGE_DIR/errors.json"
+cp -R "$ROOT_DIR/config" "$STAGE_DIR/config"
 
 # 5. 打包
 tar czf "$PKG_NAME" -C "$STAGE_DIR" .

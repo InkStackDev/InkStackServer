@@ -125,7 +125,7 @@ int32_t XxxServlet::handle(request, response, session, result) {
 
 ### Error reporting:
 ```cpp
-result->setErrno(errcode::NOT_LOGIN);                    // fixed message from errors.json
+result->setErrno(errcode::NOT_LOGIN);                    // fixed message from config/<lang>.json errors
 result->setErrno(errcode::ACCESS_DENIED, "custom msg");  // custom message
 ```
 
@@ -214,7 +214,7 @@ When adding a new feature:
 3. **Servlet** (`src/Servlets/<Domain>/`) — follow handler pattern above
 4. **Includes** — update `src/Include/Managers.hpp`, `src/Servlets/Servlets.hpp`
 5. **Registration** — `BlogModule.cc`: table create, migrate, servlet route
-6. **Error codes** — `src/ErrorCodes.hpp` + `errors.json`
+6. **Error codes** — `src/ErrorCodes.hpp` + `config/<lang>.json` 的 `errors`
 
 ## 6. Code Style Quick Reference
 

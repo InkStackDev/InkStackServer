@@ -14,6 +14,9 @@ struct NotificationCodec {
         info->setUserId(CacheJsonInt64(v, "user_id"));
         info->setTitle(CacheJsonString(v, "title"));
         info->setContent(CacheJsonString(v, "content"));
+        info->setTitleId(CacheJsonString(v, "title_id"));
+        info->setContentId(CacheJsonString(v, "content_id"));
+        info->setParams(CacheJsonString(v, "params"));
         info->setType(CacheJsonString(v, "type"));
         info->setSenderId(CacheJsonInt64(v, "sender_id"));
         info->setArticleId(CacheJsonInt64(v, "article_id"));

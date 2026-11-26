@@ -65,15 +65,15 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             if (org_name.empty()) {
                 org_name = std::to_string(org_id);
             }
-            const char* role_name = "Member";
+            const char* role_name = "member";
             if (role == OrgRole::REPORTER) {
-                role_name = "Reporter";
+                role_name = "reporter";
             } else if (role == OrgRole::DEVELOPER) {
-                role_name = "Developer";
+                role_name = "developer";
             } else if (role == OrgRole::DEV_LEAD) {
-                role_name = "Dev Lead";
+                role_name = "dev_lead";
             } else if (role == OrgRole::ORG_ADMIN) {
-                role_name = "Organization Admin";
+                role_name = "org_admin";
             }
 
             EventOrgMemberData data = {};

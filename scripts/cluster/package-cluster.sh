@@ -24,7 +24,7 @@
 #
 # 前置:
 #   - 已执行 make build（bin/server、bin/module/*.so）
-#   - chen-sdk-*/lib/libchen.so、errors.json 存在
+#   - chen-sdk-*/lib/libchen.so、config/ 存在
 #   - bin/conf/<ENV>.env 存在（渲染需要真实连接信息）
 #
 # 产物:
@@ -101,7 +101,7 @@ fi
 for n in "${instance_names[@]}"; do
     case "$n" in
         ''|*[!A-Za-z0-9_-]*) die "非法实例名: '$n'（只允许字母/数字/_/-）" ;;
-        conf|module|lib|scripts|nginx|docs|share|server|errors.json|VERSION)
+        conf|module|lib|scripts|nginx|docs|share|server|config|VERSION)
             die "实例名 '$n' 与部署根目录的既有文件/目录冲突" ;;
     esac
 done
@@ -117,7 +117,7 @@ ENV_FILE="${ARG_ENV_FILE:-$ROOT_DIR/bin/conf/$ENV_NAME.env}"
 
 # ---- 前置检查 ----
 [ -x "$ROOT_DIR/bin/server" ] || die "缺少 bin/server，请先执行 make build"
-[ -f "$ROOT_DIR/errors.json" ] || die "缺少 errors.json"
+[ -d "$ROOT_DIR/config" ] || die "缺少 config 目录"
 if [ ! -f "$ENV_FILE" ]; then
     echo "[package][ERROR] 缺少 env 文件: $ENV_FILE" >&2
     echo "  实例配置需要在打包时写入真实连接信息，请先准备 env：" >&2
@@ -160,7 +160,7 @@ for so in "${module_sos[@]}"; do
 done
 cp -p "$CHEN_SDK_LIB" "$STAGE_DIR/lib/libchen.so"
 
-cp -p "$ROOT_DIR/errors.json" "$STAGE_DIR/errors.json"
+cp -R "$ROOT_DIR/config" "$STAGE_DIR/config"
 
 # 模板 + env 示例（不打包真实 env，避免泄漏密钥）
 for tpl in "$ROOT_DIR"/bin/conf/*.yml.tpl; do

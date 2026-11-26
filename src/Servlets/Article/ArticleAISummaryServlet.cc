@@ -2,10 +2,15 @@
 
 #include "../../Auth/AuthService.hpp"
 #include "../../Domain/UserTypes.hpp"
+#include "../../I18n/I18n.hpp"
+#include "../../Manager/MessageConfigManager.hpp"
 #include "../../Service/ArticleAIService.hpp"
 #include "../../Util/Util.hpp"
 
+#include <json/json.h>
+
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -16,9 +21,18 @@ ArticleAISummaryServlet::ArticleAISummaryServlet()
 
 int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request, chen::http::SSESession::ptr session)
 {
+    const std::string lang = I18n::ResolveLanguage(request);
+    auto send_status = [&](const std::string& type, const std::string& message_id) {
+        Json::Value msg;
+        msg["type"] = type;
+        msg["message_id"] = message_id;
+        msg["message"] = MessageConfigMgr::GetInstance()->render(lang, message_id);
+        session->sendEvent(chen::JsonUtil::ToString(msg));
+    };
+
     AuthContext ctx = AuthService::Resolve(request, nullptr, false);
     if (!ctx.valid() || !ctx.user) {
-        session->sendEvent(R"({"type":"error","message":"not login"})");
+        send_status("error", "ai.summary.error.not_login");
         return -1;
     }
 
@@ -29,7 +43,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
 
     std::string article_id_str = request->getParam("article_id");
     if (article_id_str.empty()) {
-        session->sendEvent(R"({"type":"error","message":"param article_id is required"})");
+        send_status("error", "ai.summary.error.param_required");
         return -1;
     }
 
@@ -37,11 +51,11 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
     try {
         article_id = chen::TypeUtil::Atoi(article_id_str);
     } catch (...) {
-        session->sendEvent(R"({"type":"error","message":"invalid article_id"})");
+        send_status("error", "ai.summary.error.invalid_article_id");
         return -1;
     }
 
-    SendSSEJson(session, "start", "message", "Generating summary...");
+    send_status("start", "ai.summary.start");
 
     auto on_chunk = [session](const std::string& chunk) {
         SendSSEJson(session, "chunk", "content", chunk);
@@ -54,26 +68,26 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
     auto rt = ArticleAIService::Summarize(viewer, article_id, on_chunk, on_error, full_text);
     switch (rt) {
     case ArticleAIService::Result::Ok:
-        SendSSEJson(session, "done", "message", "Summary generated");
+        send_status("done", "ai.summary.done");
         return 0;
     case ArticleAIService::Result::NotLogin:
-        SendSSEJson(session, "error", "message", "not login");
+        send_status("error", "ai.summary.error.not_login");
         break;
     case ArticleAIService::Result::ArticleNotFound:
-        SendSSEJson(session, "error", "message", "article not found");
+        send_status("error", "ai.summary.error.article_not_found");
         break;
     case ArticleAIService::Result::ConfigNotFound:
-        SendSSEJson(session, "error", "message", "AI config not found");
+        send_status("error", "ai.summary.error.config_not_found");
         break;
     case ArticleAIService::Result::UnsupportedProvider:
-        SendSSEJson(session, "error", "message", "unsupported AI provider");
+        send_status("error", "ai.summary.error.unsupported_provider");
         break;
     case ArticleAIService::Result::DbError:
-        SendSSEJson(session, "error", "message", "database error");
+        send_status("error", "ai.summary.error.database");
         break;
     case ArticleAIService::Result::ClientError:
     default:
-        SendSSEJson(session, "error", "message", "AI service call failed");
+        send_status("error", "ai.summary.error.service_failed");
         break;
     }
 

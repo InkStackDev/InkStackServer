@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "../Manager/ErrorCodeManager.hpp"
+#include "../Manager/MessageConfigManager.hpp"
 #include "../Manager/SessionManager.hpp"
 #include "../Manager/SystemSettingsManager.hpp"
 #include "../Manager/WSConnectionManager.hpp"

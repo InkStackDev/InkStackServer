@@ -1,9 +1,12 @@
 #include "DashboardActivitiesServlet.hpp"
 
+#include "../../Manager/MessageConfigManager.hpp"
 #include "../../Service/DashboardService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <ctime>
+#include <map>
+
 #include <json/json.h>
 
 DashboardActivitiesServlet::DashboardActivitiesServlet()
@@ -11,22 +14,36 @@ DashboardActivitiesServlet::DashboardActivitiesServlet()
 {
 }
 
-static std::string TimeAgo(int64_t now, int64_t ts)
+struct TimeAgoResult {
+    std::string id;
+    int32_t count = -1;
+};
+
+static TimeAgoResult TimeAgo(int64_t now, int64_t ts)
 {
     int64_t diff = now - ts;
     if (diff < 0) {
         diff = 0;
     }
     if (diff < 60) {
-        return "just now";
+        return {"dashboard.time.just_now", -1};
     }
     if (diff < 3600) {
-        return std::to_string(diff / 60) + " minutes ago";
+        return {"dashboard.time.minutes_ago", static_cast<int32_t>(diff / 60)};
     }
     if (diff < 86400) {
-        return std::to_string(diff / 3600) + " hours ago";
+        return {"dashboard.time.hours_ago", static_cast<int32_t>(diff / 3600)};
     }
-    return std::to_string(diff / 86400) + " days ago";
+    return {"dashboard.time.days_ago", static_cast<int32_t>(diff / 86400)};
+}
+
+static Json::Value ParamsToJson(const std::map<std::string, std::string>& params)
+{
+    Json::Value obj(Json::objectValue);
+    for (const auto& [key, value] : params) {
+        obj[key] = value;
+    }
+    return obj;
 }
 
 int32_t DashboardActivitiesServlet::handle(
@@ -53,14 +70,25 @@ int32_t DashboardActivitiesServlet::handle(
             break;
         }
 
+        const std::string default_lang = MessageConfigMgr::GetInstance()->DefaultLanguage();
         int64_t now = time(0);
         Json::Value list(Json::arrayValue);
         for (const auto& activity : activities) {
             Json::Value item;
             item["type"] = activity.type;
             item["title"] = activity.title;
+            item["title_id"] = activity.title_id;
+            item["params"] = ParamsToJson(activity.params);
             item["timestamp"] = activity.create_time;
-            item["time"] = TimeAgo(now, activity.create_time);
+
+            TimeAgoResult ago = TimeAgo(now, activity.create_time);
+            std::map<std::string, std::string> time_params;
+            if (ago.count >= 0) {
+                time_params["count"] = std::to_string(ago.count);
+            }
+            item["time_id"] = ago.id;
+            item["time_params"] = ParamsToJson(time_params);
+            item["time"] = MessageConfigMgr::GetInstance()->render(default_lang, ago.id, time_params);
             list.append(item);
         }
 

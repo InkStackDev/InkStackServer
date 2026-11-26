@@ -114,7 +114,7 @@ CI（GitHub Actions）：
   `PKG_ENV`（默认 `prod`）、`CLUSTER_INSTANCES`、`DEPLOY_PATH`、`CLUSTER_LOG_ROOT`。
 - `Deploy` 支持：
   - `cold`：首次全量解压并 `start all`
-  - `hot`：替换 `module/`、`errors.json`、`scripts/` 后 `rolling-restart all`
+  - `hot`：替换 `module/`、`config/`、`scripts/` 后 `rolling-restart all`
   - `module`：**只替换 `module/*.so`**（旧文件备份为 `*.so.prev`），不重启任何实例，
     由用户登录服务器自行 `clusterctl.sh reload <name>`，适合灰度验证
   - `stop`：`stop all`
