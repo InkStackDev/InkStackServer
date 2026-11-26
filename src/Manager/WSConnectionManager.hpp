@@ -173,12 +173,6 @@ public:
      */
     int32_t closeAllConnections(const std::string& notify_message = "");
 
-    /**
-     * @brief 向所有连接发送 WebSocket PING，清理发送失败的连接
-     * @return 发送失败的连接数
-     */
-    int32_t pingAll();
-
 private:
     /**
      * @brief 单设备连接

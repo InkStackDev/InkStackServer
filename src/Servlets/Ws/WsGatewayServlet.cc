@@ -115,7 +115,7 @@ int32_t WSGatewayServlet::onClose(chen::http::HttpRequest::ptr, chen::http::WSSe
     auto result = WSMgr::GetInstance()->removeConnection(session);
     if (result.removed) {
         RecordWsDisconnect();
-        INFO(logger) << "[WS] onClose: uid=" << result.user_id;
+        INFO(logger) << "[WS] onClose: uid=" << result.user_id << " device=" << result.device_id.substr(0, 12);
     }
     return 0;
 }
@@ -133,6 +133,12 @@ int32_t WSGatewayServlet::handle(chen::http::HttpRequest::ptr header, chen::http
         return -1;
     }
 
+    // 文本心跳：网页发 "ping"，服务端回 "pong"（4 字节）
+    if (msg->getData() == "ping") {
+        SendFrame(session, "pong");
+        return 0;
+    }
+
     Json::Value root;
     if (!chen::JsonUtil::FromString(root, msg->getData()) || !root.isObject()) {
         SendError(session, PARAM_INVALID, "Invalid frame");
@@ -140,14 +146,6 @@ int32_t WSGatewayServlet::handle(chen::http::HttpRequest::ptr header, chen::http
     }
 
     std::string type = root.get("type", "").asString();
-    if (type == "ping") {
-        Json::Value rsp;
-        rsp["channel"] = "system";
-        rsp["type"] = "pong";
-        SendFrame(session, chen::JsonUtil::ToString(rsp));
-        return 0;
-    }
-
     if (type == "send" || type == "read") {
         if (ChatHandler::Handle(uid, root, session) != 0) {
             SendError(session, PARAM_INVALID, "Unsupported frame type");
