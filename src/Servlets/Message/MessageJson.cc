@@ -48,7 +48,7 @@ int32_t CheckChatPermission(Result::ptr result, const Viewer& viewer)
         return USER_NOT_FOUND;
     }
     if (viewer.system_role == UserRole::USER) {
-        result->setErrno(ACCESS_DENIED, "私信仅对内部成员开放");
+        result->setErrno(ACCESS_DENIED);
         return ACCESS_DENIED;
     }
     return SUCCESS;

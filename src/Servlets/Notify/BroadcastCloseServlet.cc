@@ -37,7 +37,7 @@ int32_t BroadcastCloseServlet::handle(
         }
 
         result->setErrno(SUCCESS);
-        result->set("msg", "已关闭");
+        result->set("msg", "Closed");
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

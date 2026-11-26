@@ -73,7 +73,6 @@ public:
 private:
     std::string config_path_;
     std::string version_;
-    std::map<int32_t, std::string> keys_;        // errno → 翻译 key
     std::map<int32_t, std::string> zh_messages_; // errno → 中文消息
     std::map<int32_t, std::string> en_messages_; // errno → 英文消息
 };

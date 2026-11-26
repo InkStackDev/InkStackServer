@@ -211,7 +211,7 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
     for (size_t i = 0; i < users.size() && i < (size_t)fetch_count; i++) {
         Activity activity;
         activity.type = "user_register";
-        activity.title = "新用户 \"" + users[i]->getName() + "\" 注册了账户";
+        activity.title = "New user \"" + users[i]->getName() + "\" registered an account";
         activity.create_time = users[i]->getCreateTime();
         out.push_back(std::move(activity));
     }
@@ -226,7 +226,7 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         activity.type = "article_publish";
         auto author = UserRepository::Get(articles[i]->getUserId(), db);
         std::string author_name = author ? author->getName() : "Unknown";
-        activity.title = author_name + " 发布了新文章《" + articles[i]->getTitle() + "》";
+        activity.title = author_name + " published a new article \"" + articles[i]->getTitle() + "\"";
         activity.create_time = articles[i]->getCreateTime();
         out.push_back(std::move(activity));
     }
@@ -240,7 +240,7 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         std::string commenter_name = commenter ? commenter->getName() : "Unknown";
         auto article = ArticleRepository::Get(comment->getArticleId(), db);
         std::string article_title = article ? article->getTitle() : "Unknown";
-        activity.title = commenter_name + " 在《" + article_title + "》中发表了评论";
+        activity.title = commenter_name + " commented on \"" + article_title + "\"";
         activity.create_time = comment->getCreateTime();
         out.push_back(std::move(activity));
     }

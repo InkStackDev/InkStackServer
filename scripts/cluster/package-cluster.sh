@@ -24,7 +24,7 @@
 #
 # 前置:
 #   - 已执行 make build（bin/server、bin/module/*.so）
-#   - chen-sdk-*/lib/libchen.so、errors.json、locale/*.mo 存在
+#   - chen-sdk-*/lib/libchen.so、errors.json 存在
 #   - bin/conf/<ENV>.env 存在（渲染需要真实连接信息）
 #
 # 产物:
@@ -48,26 +48,9 @@ WS_BASE=8091
 BUS_PREFIX="1.1.2"
 ARG_ENV_FILE=""
 
-usage() { sed -n '2,37p' "$0"; }
+usage() { sed -n '2,34p' "$0"; }
 log() { echo "==> $*"; }
 die() { echo "[package][ERROR] $*" >&2; exit 1; }
-
-# 确保 gettext 目录已编译（缺失时自动尝试 ninja i18n / i18n.py build）
-ensure_mo_files() {
-    local mo_dir="$ROOT_DIR/locale/C/LC_MESSAGES"
-    if [ -f "$mo_dir/techhaven_en.mo" ] && [ -f "$mo_dir/techhaven_zh_CN.mo" ]; then
-        return 0
-    fi
-    log "locale/*.mo 缺失，尝试编译（ninja i18n / scripts/i18n.py build）"
-    if [ -d "$ROOT_DIR/build" ] && command -v ninja >/dev/null 2>&1; then
-        ninja -C "$ROOT_DIR/build" i18n >/dev/null 2>&1 || true
-    fi
-    if [ ! -f "$mo_dir/techhaven_en.mo" ] && command -v python3 >/dev/null 2>&1; then
-        python3 "$ROOT_DIR/scripts/i18n.py" --project-dir "$ROOT_DIR" build >/dev/null 2>&1 || true
-    fi
-    [ -f "$mo_dir/techhaven_en.mo" ] && [ -f "$mo_dir/techhaven_zh_CN.mo" ] && return 0
-    die "缺少 locale/C/LC_MESSAGES/*.mo：请在构建机安装 gettext 后执行 make i18n（或 ninja -C build i18n）再打包"
-}
 
 # 第一个非选项参数作为 ENV
 if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
@@ -118,7 +101,7 @@ fi
 for n in "${instance_names[@]}"; do
     case "$n" in
         ''|*[!A-Za-z0-9_-]*) die "非法实例名: '$n'（只允许字母/数字/_/-）" ;;
-        conf|module|lib|scripts|nginx|docs|locale|share|server|errors.json|VERSION)
+        conf|module|lib|scripts|nginx|docs|share|server|errors.json|VERSION)
             die "实例名 '$n' 与部署根目录的既有文件/目录冲突" ;;
     esac
 done
@@ -135,7 +118,6 @@ ENV_FILE="${ARG_ENV_FILE:-$ROOT_DIR/bin/conf/$ENV_NAME.env}"
 # ---- 前置检查 ----
 [ -x "$ROOT_DIR/bin/server" ] || die "缺少 bin/server，请先执行 make build"
 [ -f "$ROOT_DIR/errors.json" ] || die "缺少 errors.json"
-ensure_mo_files
 if [ ! -f "$ENV_FILE" ]; then
     echo "[package][ERROR] 缺少 env 文件: $ENV_FILE" >&2
     echo "  实例配置需要在打包时写入真实连接信息，请先准备 env：" >&2
@@ -179,8 +161,6 @@ done
 cp -p "$CHEN_SDK_LIB" "$STAGE_DIR/lib/libchen.so"
 
 cp -p "$ROOT_DIR/errors.json" "$STAGE_DIR/errors.json"
-mkdir -p "$STAGE_DIR/locale/C/LC_MESSAGES"
-cp -p "$ROOT_DIR/locale/C/LC_MESSAGES/"*.mo "$STAGE_DIR/locale/C/LC_MESSAGES/"
 
 # 模板 + env 示例（不打包真实 env，避免泄漏密钥）
 for tpl in "$ROOT_DIR"/bin/conf/*.yml.tpl; do

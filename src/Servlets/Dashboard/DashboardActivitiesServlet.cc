@@ -21,12 +21,12 @@ static std::string TimeAgo(int64_t now, int64_t ts)
         return "just now";
     }
     if (diff < 3600) {
-        return std::to_string(diff / 60) + "分钟前";
+        return std::to_string(diff / 60) + " minutes ago";
     }
     if (diff < 86400) {
-        return std::to_string(diff / 3600) + "小时前";
+        return std::to_string(diff / 3600) + " hours ago";
     }
-    return std::to_string(diff / 86400) + "天前";
+    return std::to_string(diff / 86400) + " days ago";
 }
 
 int32_t DashboardActivitiesServlet::handle(

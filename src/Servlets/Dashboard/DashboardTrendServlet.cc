@@ -22,7 +22,7 @@ static std::string FormatBucketDate(int64_t ts)
 
 static const char* WeekdayName(int64_t ts)
 {
-    static const char* names[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
+    static const char* names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     struct tm t;
     localtime_r(&ts, &t);
     return names[t.tm_wday];
@@ -80,7 +80,7 @@ int32_t DashboardTrendServlet::handle(
                 if (week_end > now) {
                     week_end = now;
                 }
-                item["label"] = "第" + std::to_string(i + 1) + "周";
+                item["label"] = "Week " + std::to_string(i + 1);
                 item["date"] = FormatBucketDate(bucket_ts) + " ~ " + FormatBucketDate(week_end);
             }
             item["visits"] = visits;

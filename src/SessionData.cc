@@ -29,7 +29,7 @@ void Result::setErrno(int32_t code)
 void Result::setErrno(int32_t code, const std::string& custom_msg)
 {
     code_ = code;
-    message_ = I18n::Translate(custom_msg, lang_);
+    message_ = custom_msg;
 }
 
 void Result::setErrnoFmt(int32_t code, const char* fmt, ...)
@@ -40,10 +40,9 @@ void Result::setErrnoFmt(int32_t code, const char* fmt, ...)
         return;
     }
 
-    const std::string localized = I18n::Translate(fmt, lang_);
     va_list ap;
     va_start(ap, fmt);
-    message_ = chen::StringUtil::Formatv(localized.c_str(), ap);
+    message_ = chen::StringUtil::Formatv(fmt, ap);
     va_end(ap);
 }
 

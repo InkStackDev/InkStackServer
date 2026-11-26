@@ -35,7 +35,6 @@ bool ErrorCodeManager::load(const std::string& config_path)
 
     version_ = root.get("version", "unknown").asString();
 
-    keys_.clear();
     zh_messages_.clear();
     en_messages_.clear();
 
@@ -47,13 +46,9 @@ bool ErrorCodeManager::load(const std::string& config_path)
 
     for (const auto& item : errors) {
         int32_t code = item["errno"].asInt();
-        std::string key = item.get("key", "").asString();
         std::string zh = item.get("zh", "").asString();
         std::string en = item.get("en", "").asString();
 
-        if (!key.empty()) {
-            keys_[code] = key;
-        }
         zh_messages_[code] = zh;
         en_messages_[code] = en;
     }
@@ -83,20 +78,12 @@ std::string ErrorCodeManager::getMessage(int32_t err_code, const std::string& la
     const std::string normalized = I18n::NormalizeLanguage(lang);
     const bool english = normalized == "en";
 
-    auto keyIt = keys_.find(err_code);
-    if (keyIt != keys_.end() && !keyIt->second.empty()) {
-        const std::string translated = I18n::Translate(keyIt->second, normalized.empty() ? I18n::DefaultLanguage() : normalized);
-        if (!translated.empty() && translated != keyIt->second) {
-            return translated;
-        }
-    }
-
     const auto& messages = english ? en_messages_ : zh_messages_;
     auto it = messages.find(err_code);
     if (it != messages.end()) {
         return it->second;
     }
-    return english ? "Unknown error" : "未知错误";
+    return "Unknown error";
 }
 
 std::map<int32_t, std::string> ErrorCodeManager::getAllMessages(const std::string& lang) const

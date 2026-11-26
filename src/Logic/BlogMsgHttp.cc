@@ -171,6 +171,7 @@ bool BlogMsgHttpInit(chen::http::HttpServer::ptr server)
     dp->addServlet("/api/v1/organization/repos/token", std::make_shared<OrganizationReposTokenServlet>());
     dp->addServlet("/api/v1/organization/repos", std::make_shared<OrganizationReposListServlet>());
     dp->addServlet("/api/v1/organization/repos/add", std::make_shared<OrganizationReposAddServlet>());
+    dp->addServlet("/api/v1/organization/repos/update", std::make_shared<OrganizationReposUpdateServlet>());
     dp->addServlet("/api/v1/organization/repos/sync", std::make_shared<OrganizationReposSyncServlet>());
     dp->addServlet("/api/v1/organization/repos/delete", std::make_shared<OrganizationReposDeleteServlet>());
     dp->addServlet("/api/v1/rd/check_access", std::make_shared<RdCheckAccessServlet>());

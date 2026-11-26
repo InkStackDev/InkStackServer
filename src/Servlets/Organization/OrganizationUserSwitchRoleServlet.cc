@@ -65,15 +65,15 @@ int32_t OrganizationUserSwitchRoleServlet::handle(
             if (org_name.empty()) {
                 org_name = std::to_string(org_id);
             }
-            const char* role_name = "普通成员";
+            const char* role_name = "Member";
             if (role == OrgRole::REPORTER) {
-                role_name = "报告者";
+                role_name = "Reporter";
             } else if (role == OrgRole::DEVELOPER) {
-                role_name = "开发者";
+                role_name = "Developer";
             } else if (role == OrgRole::DEV_LEAD) {
-                role_name = "研发主管";
+                role_name = "Dev Lead";
             } else if (role == OrgRole::ORG_ADMIN) {
-                role_name = "组织管理员";
+                role_name = "Organization Admin";
             }
 
             EventOrgMemberData data = {};

@@ -40,7 +40,7 @@ int32_t OrganizationReposListServlet::handle(
             break;
         }
         if (rt == OrganizationRepoService::Result::NotMember) {
-            result->setErrno(ACCESS_DENIED, "无权访问该组织");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationRepoService::Result::Ok) {

@@ -35,11 +35,11 @@ int32_t OrganizationReposTokenServlet::handle(
             break;
         }
         if (rt == OrganizationRepoService::Result::AccessDenied) {
-            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可管理仓库 Token");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationRepoService::Result::Ok) {
-            result->setErrno(DB_OPERATION_FAILED, "保存 Token 失败");
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
     } while (0);

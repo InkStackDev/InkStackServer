@@ -10,7 +10,6 @@ server                      # 业务进程（所有实例共享）
 module/libblog.so
 lib/libchen.so
 errors.json
-locale/
 conf/                       # 配置模板 + env 示例（新增实例 / 改配置后重新渲染用）
 scripts/render-instance.sh  # 追加实例或改配置后重新渲染
 scripts/clusterctl.sh       # 启停 / 状态 / 健康检查
@@ -30,7 +29,7 @@ VERSION
 | server_2 | `techhaven-server_2: master process` | 8190 | 8191 | `server_2/server.pid` | `/data/apps/server_2/logs` |
 | server_3 | `techhaven-server_3: master process` | 8290 | 8291 | `server_3/server.pid` | `/data/apps/server_3/logs` |
 
-所有实例共享部署根目录下的 `errors.json` / `locale`，以及 `share/data`（备份、导出）。
+所有实例共享部署根目录下的 `errors.json`，以及 `share/data`（备份、导出）。
 
 > **目录约定**：程序/配置目录由打包时的 `--deploy-path` 决定（默认 `/opt/techhaven`），实例目录直接放在该目录下
 > （如 `/opt/techhaven/server_1`）；
@@ -88,7 +87,6 @@ cp conf/prod.env.example conf/prod.env   # 填 MySQL / Redis / hub / 密钥
 tar xzf techhaven-cluster-<new>.tar.gz -C /tmp/new
 cp /tmp/new/module/libblog.so /opt/techhaven/module/
 cp /tmp/new/errors.json /opt/techhaven/errors.json
-rsync -a /tmp/new/locale/ /opt/techhaven/locale/
 # 若新包带了实例配置变化（实例目录直接位于部署根目录）：
 for d in /tmp/new/server_*/; do rsync -a "$d" "/opt/techhaven/$(basename "$d")/"; done
 ./scripts/clusterctl.sh rolling-restart all

@@ -23,19 +23,19 @@ int32_t OrganizationReposAddServlet::handle(
         std::string token = request->getParamAs<std::string>("token");
 
         if (name.size() > 128) {
-            result->setErrno(PARAM_INVALID, "仓库名称最长128字符");
+            result->setErrno(PARAM_INVALID);
             break;
         }
         if (url.size() > 512) {
-            result->setErrno(PARAM_INVALID, "仓库地址最长512字符");
+            result->setErrno(PARAM_INVALID);
             break;
         }
         if (url.find("github.com") == std::string::npos) {
-            result->setErrno(PARAM_INVALID, "仅支持 GitHub 仓库");
+            result->setErrno(PARAM_INVALID);
             break;
         }
         if (language.size() > 64) {
-            result->setErrno(PARAM_INVALID, "编程语言最长64字符");
+            result->setErrno(PARAM_INVALID);
             break;
         }
 
@@ -60,19 +60,23 @@ int32_t OrganizationReposAddServlet::handle(
             break;
         }
         if (rt == OrganizationRepoService::Result::NotMember) {
-            result->setErrno(ACCESS_DENIED, "无权访问该组织");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt == OrganizationRepoService::Result::AccessDenied) {
-            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可添加仓库");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt == OrganizationRepoService::Result::NameExists) {
-            result->setErrno(ORG_REPO_NAME_EXISTS, "该组织下已存在同名仓库");
+            result->setErrno(ORG_REPO_NAME_EXISTS);
+            break;
+        }
+        if (rt == OrganizationRepoService::Result::InvalidParam) {
+            result->setErrno(PARAM_INVALID);
             break;
         }
         if (rt != OrganizationRepoService::Result::Ok) {
-            result->setErrno(DB_OPERATION_FAILED, "添加仓库失败");
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 

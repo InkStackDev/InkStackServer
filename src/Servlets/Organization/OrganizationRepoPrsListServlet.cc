@@ -55,7 +55,7 @@ int32_t OrganizationRepoPrsListServlet::handle(
         }
         if (rt == OrganizationRepoPrService::ListStatus::NOT_MEMBER
             || rt == OrganizationRepoPrService::ListStatus::ACCESS_DENIED) {
-            result->setErrno(ACCESS_DENIED, "无权访问该组织");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationRepoPrService::ListStatus::OK) {

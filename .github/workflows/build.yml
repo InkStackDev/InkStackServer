@@ -60,7 +60,6 @@ jobs:
             ninja-build \
             rsync \
             python3 \
-            gettext \
             libboost-context-dev \
             libtool \
             gcc \

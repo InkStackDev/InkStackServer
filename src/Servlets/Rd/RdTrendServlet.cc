@@ -34,7 +34,7 @@ int32_t RdTrendServlet::handle(
         RdAnalyticsService::TrendResult data;
         RdAnalyticsService::Result stats_result = RdAnalyticsService::GetTrend(viewer, query, data);
         if (stats_result == RdAnalyticsService::Result::InvalidRange) {
-            result->setErrno(PARAM_INVALID, "日期范围不合法");
+            result->setErrno(PARAM_INVALID);
             break;
         }
         if (stats_result == RdAnalyticsService::Result::AccessDenied) {
@@ -42,7 +42,7 @@ int32_t RdTrendServlet::handle(
             break;
         }
         if (stats_result == RdAnalyticsService::Result::NoAccessibleOrg) {
-            result->setErrno(ACCESS_DENIED, "无权访问任何组织");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (stats_result != RdAnalyticsService::Result::Ok) {

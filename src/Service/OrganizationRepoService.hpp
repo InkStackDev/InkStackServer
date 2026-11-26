@@ -12,6 +12,7 @@
 #include "DB/OrganizationReposInfo.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,15 @@ struct OrganizationRepoInput {
     std::string token;
 };
 
+struct OrganizationRepoUpdateInput {
+    int64_t id = 0;
+    std::optional<std::string> name;
+    std::optional<std::string> description;
+    std::optional<std::string> url;
+    std::optional<std::string> language;
+    std::optional<int32_t> sort_order;
+};
+
 class OrganizationRepoService {
 public:
     enum class Result {
@@ -33,10 +43,15 @@ public:
         NameExists,
         NotMember,
         AccessDenied,
+        InvalidParam,
         DbError
     };
 
     static Result Add(const Viewer& viewer, const OrganizationRepoInput& input, DB::OrganizationReposInfo::ptr& out);
+
+    static Result Update(const Viewer& viewer,
+        const OrganizationRepoUpdateInput& input,
+        DB::OrganizationReposInfo::ptr& out);
 
     static Result Remove(const Viewer& viewer, int64_t id, int64_t org_id = 0);
 

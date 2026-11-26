@@ -103,7 +103,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 - 仍然保留的组件只允许是非数据库能力（后续可逐步改名为 Registry / Cache / Util）：
   - `WSConnectionManager`：进程内 WS 连接状态
   - `SystemSettingsManager`：进程内设置快照 + 版本校验
-  - `ErrorCodeManager`：`errors.json` 内存表与 i18n
+  - `ErrorCodeManager`：`errors.json` 内存表与按语言选择文案
   - `SessionManager`：session TTL 计算
   - `CacheUtil`：Repository 共用缓存工具
 - 已删除的纯 facade（示例）：

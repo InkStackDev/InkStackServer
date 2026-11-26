@@ -53,17 +53,17 @@ static void EventComment(const std::any& d)
     auto& type = data.type;
     std::string title, content;
     if (type == "comment_approved") {
-        title = "评论审核通过";
-        content = "你的评论「" + comment->getContent() + "」已通过审核";
+        title = "Comment approved";
+        content = "Your comment \"" + comment->getContent() + "\" has been approved.";
     } else if (type == "comment_admin_deleted") {
-        title = "评论被删除";
-        content = "你的评论「" + comment->getContent() + "」已被管理员删除";
+        title = "Comment deleted";
+        content = "Your comment \"" + comment->getContent() + "\" has been deleted by an administrator.";
     } else if (type == "comment_rejected") {
-        title = "评论未通过审核";
-        content = "你的评论「" + comment->getContent() + "」未通过审核";
+        title = "Comment rejected";
+        content = "Your comment \"" + comment->getContent() + "\" was not approved.";
     } else if (type == "comment_spam") {
-        title = "评论被标记为垃圾";
-        content = "你的评论「" + comment->getContent() + "」已被标记为垃圾评论";
+        title = "Comment marked as spam";
+        content = "Your comment \"" + comment->getContent() + "\" has been marked as spam.";
     } else {
         return;
     }
@@ -98,8 +98,8 @@ static void EventArticleReview(const std::any& d)
 
     if (data.type == "request") {
         // Notify admins and checkers about new article pending review
-        std::string title = "新的文章待审核";
-        std::string content = "「" + data.author_name + "」提交了文章「" + data.article_title + "」等待审核";
+        std::string title = "New article pending review";
+        std::string content = data.author_name + " submitted article \"" + data.article_title + "\" for review.";
 
         std::vector<int64_t> userIds;
         UserRepository::GetAllIds(userIds, true, GetDB());
@@ -131,8 +131,9 @@ static void EventArticleReview(const std::any& d)
     } else {
         bool approved = (data.type == "approved");
         const char* notif_type = approved ? "article_review_approved" : "article_review_rejected";
-        std::string title = approved ? "文章审核通过" : "文章审核未通过";
-        std::string content = "您的文章「" + data.article_title + "」" + (approved ? "已通过审核" : "未通过审核");
+        std::string title = approved ? "Article approved" : "Article rejected";
+        std::string content =
+            "Your article \"" + data.article_title + "\" " + (approved ? "has been approved." : "was not approved.");
 
         NotificationData notif_data{};
         notif_data.user_id = data.author_id;
@@ -171,9 +172,10 @@ static void EventArticleStateChanged(const std::any& d)
 {
     auto data = std::any_cast<const EventArticleStateChangedData&>(d);
 
-    std::string title = "文章状态变更";
-    std::string content = "你的文章《" + data.article_title + "》状态已被管理员变更为「"
-        + (data.new_state == ArticleStatus::PUBLISHED ? "已发布" : "私密") + "」";
+    std::string title = "Article status changed";
+    std::string content = "Your article \"" + data.article_title
+        + "\" status has been changed by an administrator to \""
+        + (data.new_state == ArticleStatus::PUBLISHED ? "Published" : "Private") + "\".";
 
     NotificationData notif_data{};
     notif_data.user_id = data.author_id;
@@ -201,8 +203,8 @@ static void EventArticlePraise(const std::any& d)
 {
     auto data = std::any_cast<const EventArticlePraiseData&>(d);
 
-    std::string notify_title = "文章点赞";
-    std::string notify_content = data.liker_name + " 赞了你的文章《" + data.article_title + "》";
+    std::string notify_title = "Article liked";
+    std::string notify_content = data.liker_name + " liked your article \"" + data.article_title + "\".";
 
     NotificationData notif_data{};
     notif_data.user_id = data.author_id;
@@ -258,11 +260,12 @@ static void EventCommentCreated(const std::any& d)
     };
 
     // notify article author
-    send_notify(data.author_id, "文章评论", data.commenter_name + " 评论了你的文章《" + data.article_title + "》");
+    send_notify(data.author_id, "Article comment",
+        data.commenter_name + " commented on your article \"" + data.article_title + "\".");
 
     // notify parent comment author on reply
     if (data.parent_comment_id > 0 && data.parent_comment_author_id > 0 && data.parent_comment_author_id != data.author_id) {
-        send_notify(data.parent_comment_author_id, "评论回复", data.commenter_name + " 回复了你的评论");
+        send_notify(data.parent_comment_author_id, "Comment reply", data.commenter_name + " replied to your comment.");
     }
 }
 
@@ -270,8 +273,8 @@ static void EventCommentPraise(const std::any& d)
 {
     auto data = std::any_cast<const EventCommentPraiseData&>(d);
 
-    std::string notify_title = "评论点赞";
-    std::string notify_content = data.liker_name + " 赞了你的评论";
+    std::string notify_title = "Comment liked";
+    std::string notify_content = data.liker_name + " liked your comment.";
 
     NotificationData notif_data{};
     notif_data.user_id = data.comment_author_id;
@@ -301,8 +304,8 @@ static void EventUserFollow(const std::any& d)
 {
     auto data = std::any_cast<const EventUserFollowData&>(d);
 
-    std::string notify_title = "新关注";
-    std::string notify_content = data.follower_name + " 关注了你";
+    std::string notify_title = "New follower";
+    std::string notify_content = data.follower_name + " followed you.";
 
     NotificationData notif_data{};
     notif_data.user_id = data.following_id;
@@ -330,14 +333,15 @@ static void EventUserAdminAction(const std::any& d)
 
     std::string title, content;
     if (data.type == "password_reset") {
-        title = "密码已被重置";
-        content = "你的账户密码已被管理员重置，请尽快修改密码";
+        title = "Password reset";
+        content = "Your account password was reset by an administrator. Please change it as soon as possible.";
     } else if (data.type == "account_recovered") {
-        title = "账户已恢复";
-        content = "你的账户已被管理员恢复，现在可以正常使用";
+        title = "Account recovered";
+        content = "Your account has been restored by an administrator and can now be used normally.";
     } else if (data.type == "account_deleted") {
-        title = "账户已被禁用";
-        content = "你的账户已被管理员禁用，如有疑问请联系管理员";
+        title = "Account disabled";
+        content = "Your account has been disabled by an administrator. Please contact an administrator if you have "
+                  "questions.";
     } else {
         return;
     }
@@ -366,8 +370,8 @@ static void EventOrgDeleted(const std::any& d)
 {
     auto data = std::any_cast<const EventOrgDeletedData&>(d);
 
-    std::string title = "组织已删除";
-    std::string content = "组织「" + data.org_name + "」已被管理员删除";
+    std::string title = "Organization deleted";
+    std::string content = "Organization \"" + data.org_name + "\" has been deleted by an administrator.";
 
     NotificationData notif_data{};
     notif_data.user_id = data.member_id;
@@ -394,8 +398,9 @@ static void EventOrgMember(const std::any& d)
     auto data = std::any_cast<const EventOrgMemberData&>(d);
 
     if (data.type == "role_change") {
-        std::string title = "组织角色变更";
-        std::string content = "您在组织「" + data.org_name + "」中的角色已被更新为" + data.new_role_name;
+        std::string title = "Organization role changed";
+        std::string content =
+            "Your role in organization \"" + data.org_name + "\" has been updated to " + data.new_role_name + ".";
 
         NotificationData notif_data{};
         notif_data.user_id = data.target_user_id;
@@ -416,8 +421,9 @@ static void EventOrgMember(const std::any& d)
             SendNotificationToUser(data.target_user_id, chen::JsonUtil::ToString(wsMsg));
         }
     } else if (data.type == "kicked") {
-        std::string title = "成员被移出组织";
-        std::string content = "「" + data.operator_name + "」将「" + data.applicant_name + "」移出了组织「" + data.org_name + "」";
+        std::string title = "Member removed from organization";
+        std::string content = data.operator_name + " removed \"" + data.applicant_name + "\" from organization \""
+            + data.org_name + "\".";
         // Notify all org admins
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelRepository::ListByOrgPages(members, data.org_id, 0, 10000, -1, true, GetDB());
@@ -445,8 +451,8 @@ static void EventOrgMember(const std::any& d)
         }
         // Notify kicked user
         {
-            std::string kicked_title = "您已被移出组织";
-            std::string kicked_content = "您已被移出组织「" + data.org_name + "」";
+            std::string kicked_title = "Removed from organization";
+            std::string kicked_content = "You have been removed from organization \"" + data.org_name + "\".";
 
             NotificationData notif_data{};
             notif_data.user_id = data.kicked_user_id;
@@ -470,8 +476,9 @@ static void EventOrgMember(const std::any& d)
     } else if (data.type == "join_request") {
         auto applicant = UserRepository::Get(data.applicant_id, GetDB());
         std::string applicant_name = applicant ? applicant->getName() : std::to_string(data.applicant_id);
-        std::string title = "新的加入申请";
-        std::string content = "用户「" + applicant_name + "」申请加入组织「" + data.org_name + "」";
+        std::string title = "New join request";
+        std::string content =
+            "User \"" + applicant_name + "\" requested to join organization \"" + data.org_name + "\".";
         std::vector<DB::OrganizationUserRelInfo::ptr> members;
         OrganizationUserRelRepository::ListByOrgPages(members, data.org_id, 0, 10000, -1, true, GetDB());
         for (auto& m : members) {
@@ -499,9 +506,10 @@ static void EventOrgMember(const std::any& d)
     } else if (data.type == "join_approved" || data.type == "join_rejected") {
         bool approved = (data.type == "join_approved");
         const char* notif_type = approved ? "org_join_approved" : "org_join_rejected";
-        std::string title = approved ? "加入申请已通过" : "加入申请被拒绝";
-        std::string content =
-            approved ? "您申请加入组织「" + data.org_name + "」的请求已通过" : "您申请加入组织「" + data.org_name + "」的请求已被拒绝";
+        std::string title = approved ? "Join request approved" : "Join request rejected";
+        std::string content = approved
+            ? "Your request to join organization \"" + data.org_name + "\" has been approved."
+            : "Your request to join organization \"" + data.org_name + "\" has been rejected.";
 
         NotificationData notif_data{};
         notif_data.user_id = data.applicant_id;
@@ -537,8 +545,9 @@ static void EventOrgApply(const std::any& d)
     auto data = std::any_cast<const EventOrgApplyData&>(d);
 
     if (data.type == "created") {
-        std::string title = "新的组织申请";
-        std::string content = "用户「" + data.applicant_name + "」申请创建组织「" + data.org_name + "」";
+        std::string title = "New organization application";
+        std::string content =
+            "User \"" + data.applicant_name + "\" applied to create organization \"" + data.org_name + "\".";
         std::vector<DB::UserInfo::ptr> admins;
         UserRepository::ListByPages(admins, 0, 10000, UserRole::ADMIN, -1, -1, true, GetDB());
         for (auto& admin : admins) {
@@ -564,8 +573,8 @@ static void EventOrgApply(const std::any& d)
             }
         }
     } else if (data.type == "approved") {
-        std::string title = "组织申请已通过";
-        std::string content = "你申请创建的组织「" + data.org_name + "」已通过审核";
+        std::string title = "Organization application approved";
+        std::string content = "Your application to create organization \"" + data.org_name + "\" has been approved.";
 
         NotificationData notif_data{};
         notif_data.user_id = data.applicant_id;
@@ -588,9 +597,10 @@ static void EventOrgApply(const std::any& d)
             SendNotificationToUser(data.applicant_id, chen::JsonUtil::ToString(wsMsg));
         }
     } else if (data.type == "rejected") {
-        std::string title = "组织申请被拒绝";
-        std::string reject_reason = data.reason.empty() ? "" : "，原因：" + data.reason;
-        std::string content = "你申请创建的组织「" + data.org_name + "」未通过审核" + reject_reason;
+        std::string title = "Organization application rejected";
+        std::string reject_reason = data.reason.empty() ? "" : " Reason: " + data.reason;
+        std::string content =
+            "Your application to create organization \"" + data.org_name + "\" was not approved." + reject_reason;
 
         NotificationData notif_data{};
         notif_data.user_id = data.applicant_id;
@@ -618,8 +628,8 @@ static void EventAssignment(const std::any& d)
     auto data = std::any_cast<const EventAssignmentData&>(d);
 
     if (data.type == "deleted") {
-        std::string title = "作业已删除";
-        std::string content = "作业「" + data.assignment_name + "」已被管理员删除";
+        std::string title = "Assignment deleted";
+        std::string content = "Assignment \"" + data.assignment_name + "\" has been deleted by an administrator.";
 
         NotificationData notif_data{};
         notif_data.user_id = data.submitter_id;
@@ -640,8 +650,9 @@ static void EventAssignment(const std::any& d)
             SendNotificationToUser(data.submitter_id, chen::JsonUtil::ToString(wsMsg));
         }
     } else if (data.type == "created") {
-        std::string title = "新作业发布";
-        std::string content = "组织发布了新作业「" + data.assignment_name + "」（" + data.subject_name + "），请及时完成";
+        std::string title = "New assignment published";
+        std::string content = "A new assignment \"" + data.assignment_name + "\" (" + data.subject_name
+            + ") has been published. Please complete it on time.";
         for (auto uid : data.member_user_ids) {
             NotificationData notif_data{};
             notif_data.user_id = uid;
@@ -671,8 +682,8 @@ static void EventAssignmentSubmitted(const std::any& d)
 {
     auto data = std::any_cast<const EventAssignmentSubmittedData&>(d);
 
-    std::string title = "作业提交通知";
-    std::string content = "用户「" + data.submitter_name + "」提交了作业「" + data.assignment_name + "」";
+    std::string title = "Assignment submitted";
+    std::string content = "User \"" + data.submitter_name + "\" submitted assignment \"" + data.assignment_name + "\".";
     for (auto admin_id : data.admin_user_ids) {
         NotificationData notif_data{};
         notif_data.user_id = admin_id;
@@ -701,20 +712,24 @@ static void EventRdAssign(const std::any& d)
 {
     auto data = std::any_cast<const EventRdAssignData&>(d);
 
-    std::string title, notif_type;
+    std::string title, notif_type, item_label;
     if (data.type == "task") {
-        title = "你有新的 Task 待处理";
+        title = "New task assigned";
         notif_type = "task_assigned";
+        item_label = "Task";
     } else if (data.type == "requirement") {
-        title = "你有新的 Requirement 待处理";
+        title = "New requirement assigned";
         notif_type = "requirement_assigned";
+        item_label = "Requirement";
     } else if (data.type == "bug") {
-        title = "你有新的 Bug 待处理";
+        title = "New bug assigned";
         notif_type = "bug_assigned";
+        item_label = "Bug";
     } else {
         return;
     }
-    std::string content = title.substr(0, title.find("待处理") - 1) + "「" + data.item_title + "」被分配给了你，请尽快处理";
+    std::string content =
+        item_label + " \"" + data.item_title + "\" has been assigned to you. Please handle it as soon as possible.";
 
     NotificationData notif_data{};
     notif_data.user_id = data.assignee_id;

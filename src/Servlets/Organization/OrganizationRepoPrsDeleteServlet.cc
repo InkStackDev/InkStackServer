@@ -32,7 +32,7 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
 
         auto rt = OrganizationRepoPrService::Remove(viewer, id);
         if (rt == OrganizationRepoPrService::DeleteStatus::PR_NOT_FOUND) {
-            result->setErrno(PARAM_INVALID, "PR 记录不存在");
+            result->setErrno(PARAM_INVALID);
             break;
         }
         if (rt == OrganizationRepoPrService::DeleteStatus::REPO_NOT_FOUND) {
@@ -44,11 +44,11 @@ int32_t OrganizationRepoPrsDeleteServlet::handle(
             break;
         }
         if (rt == OrganizationRepoPrService::DeleteStatus::ACCESS_DENIED) {
-            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除审查记录");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationRepoPrService::DeleteStatus::OK) {
-            result->setErrno(DB_OPERATION_FAILED, "删除审查记录失败");
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
     } while (0);

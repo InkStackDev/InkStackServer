@@ -41,7 +41,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
         return -1;
     }
 
-    SendSSEJson(session, "start", "message", "开始生成总结...");
+    SendSSEJson(session, "start", "message", "Generating summary...");
 
     auto on_chunk = [session](const std::string& chunk) {
         SendSSEJson(session, "chunk", "content", chunk);
@@ -54,7 +54,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
     auto rt = ArticleAIService::Summarize(viewer, article_id, on_chunk, on_error, full_text);
     switch (rt) {
     case ArticleAIService::Result::Ok:
-        SendSSEJson(session, "done", "message", "总结生成完成");
+        SendSSEJson(session, "done", "message", "Summary generated");
         return 0;
     case ArticleAIService::Result::NotLogin:
         SendSSEJson(session, "error", "message", "not login");

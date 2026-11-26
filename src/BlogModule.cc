@@ -4,7 +4,6 @@
 #include "./Config/AppConfig.hpp"
 #include "./DB/DBManager.hpp"
 #include "./Event/Events.hpp"
-#include "./I18n/I18n.hpp"
 #include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
@@ -45,10 +44,6 @@ bool BlogModule::onLoad()
     }
 
     const std::string work_path = GetServerWorkPath();
-
-    if (!I18n::Init(work_path + "/locale")) {
-        WARN(LOG_ROOT()) << "i18n unavailable, messages fall back to errors.json";
-    }
 
     const std::string errors_path = work_path + "/errors.json";
     if (!ErrorCodeMgr::GetInstance()->load(errors_path)) {

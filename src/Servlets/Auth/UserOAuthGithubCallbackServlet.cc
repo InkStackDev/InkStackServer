@@ -61,7 +61,7 @@ int32_t UserOAuthGithubCallbackServlet::handle(chen::http::HttpRequest::ptr requ
     std::string frontend_base = oauth.frontend_base;
 
     if (client_id.empty() || client_secret.empty() || callback_url.empty() || frontend_base.empty()) {
-        result->setErrno(GITHUB_OAUTH_FAILED, "GitHub OAuth 未配置");
+        result->setErrno(GITHUB_OAUTH_FAILED);
         response->setBody(result->toJsonString());
         return 0;
     }
