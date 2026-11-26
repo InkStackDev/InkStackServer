@@ -131,8 +131,10 @@ result->setErrno(errcode::ACCESS_DENIED, "custom msg");  // custom message
 
 ### Route registration:
 ```cpp
-// In BlogModule.cc → registerServlets()
-dp->addServlet("/api/v1/xxx/yyy", XX(XxxServlet));
+// BlogMsgHttp.cpp：统一用 XX 宏注册
+#define XX(path, method, servlet) dp->addServlet(path, chen::http::method, std::make_shared<servlet>());
+
+XX("/api/v1/xxx/yyy", HttpMethod::GET, XxxServlet)
 ```
 
 ### HTTP JSON 字段命名（MANDATORY）:

@@ -204,10 +204,10 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
 服务启动后可验证：
 
 ```sh
-curl -H 'Accept-Language: en-US' http://127.0.0.1:8090/api/v1/user/info
+curl -H 'Accept-Language: en-US' http://127.0.0.1:8090/api/v1/users/me
 # msg: Not logged in
 
-curl 'http://127.0.0.1:8090/api/v1/user/info?lang=zh-CN'
+curl 'http://127.0.0.1:8090/api/v1/users/me?lang=zh-CN'
 # msg: 未登录
 
 curl 'http://127.0.0.1:8090/api/v1/config?lang=en-US'

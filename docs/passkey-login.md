@@ -5,13 +5,13 @@
 ```
 未登录用户
   │
-  ├─ POST /api/v1/Auth/passkey/login/begin
+  ├─ POST /api/v1/auth/passkeys/login-options
   │      ├─ 不带 auth_id：discoverable credential 登录
   │      └─ 带 auth_id：只允许该账号已注册的 Passkey
   │
   ├─ navigator.credentials.get({ publicKey })
   │
-  └─ POST /api/v1/Auth/passkey/login/finish
+  └─ POST /api/v1/auth/passkey-assertions
          body: PublicKeyCredential.toJSON()
          └─ 校验签名并签发 SESSIONID
 ```
@@ -20,7 +20,7 @@
 
 ### begin
 
-`POST /api/v1/Auth/passkey/login/begin`
+`POST /api/v1/auth/passkeys/login-options`
 
 请求参数：
 
@@ -48,7 +48,7 @@
 
 ### finish
 
-`POST /api/v1/Auth/passkey/login/finish`
+`POST /api/v1/auth/passkey-assertions`
 
 请求体兼容浏览器 `PublicKeyCredential.toJSON()`：
 
@@ -109,7 +109,7 @@
 ## 前端示例
 
 ```js
-const begin = await fetch('/api/v1/Auth/passkey/login/begin', {
+const begin = await fetch('/api/v1/auth/passkeys/login-options', {
   method: 'POST',
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },
@@ -124,7 +124,7 @@ const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON
 
 const credential = await navigator.credentials.get({ publicKey });
 
-const finish = await fetch('/api/v1/Auth/passkey/login/finish', {
+const finish = await fetch('/api/v1/auth/passkey-assertions', {
   method: 'POST',
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },
@@ -156,8 +156,8 @@ Passkey 通常包含“持有因子 + 本地用户验证”，因此当前 Passk
 
 ## 凭据管理
 
-- `POST /api/v1/Auth/passkey/list`：列出当前用户的 Passkey。
-- `POST /api/v1/Auth/passkey/delete`：按 `id` 软删除当前用户的 Passkey。
+- `GET /api/v1/users/me/passkeys`：列出当前用户的 Passkey。
+- `DELETE /api/v1/users/me/passkeys/:id`：按 `id` 软删除当前用户的 Passkey。
 
 `list` 返回：
 

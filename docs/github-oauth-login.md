@@ -4,8 +4,8 @@
 
 整个功能很内聚，只有四个部分：**两个接口、一个绑定管理器、一张绑定表**。
 
-- **入口接口** `/api/v1/user/oauth/github`：负责把用户送到 GitHub 授权页。
-- **回调接口** `/api/v1/user/oauth/github/callback`：负责换 token、拉用户、建立本地登录态。
+- **入口接口** `/api/v1/auth/oauth/github`：负责把用户送到 GitHub 授权页。
+- **回调接口** `/api/v1/auth/oauth/github/callback`：负责换 token、拉用户、建立本地登录态。
 - **绑定管理器**：负责第三方身份与本地账号的映射查询和写入。
 - **绑定表**：记录 `provider + open_id → user_id` 的对应关系。
 

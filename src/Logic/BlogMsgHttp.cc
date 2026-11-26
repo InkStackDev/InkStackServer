@@ -12,187 +12,215 @@ bool BlogMsgHttpInit(chen::http::HttpServer::ptr server)
 
     ServletRegistrar dp(dispatch);
 
-    dp->addServlet("/api/v1/user/send_code", std::make_shared<UserSendCodeServlet>());
-    dp->addServlet("/api/v1/user/create", std::make_shared<UserCreateServlet>());
-    dp->addServlet("/api/v1/user/login", std::make_shared<UserLoginServlet>());
-    dp->addServlet("/api/v1/user/info", std::make_shared<UserInfoServlet>());
-    dp->addServlet("/api/v1/user/list", std::make_shared<UserListServlet>());
-    dp->addServlet("/api/v1/user/logout", std::make_shared<UserLogoutServlet>());
-    dp->addServlet("/api/v1/user/device/list", std::make_shared<UserDeviceListServlet>());
-    dp->addServlet("/api/v1/user/device/kick", std::make_shared<UserDeviceKickServlet>());
-    dp->addServlet("/api/v1/user/forget_passwd", std::make_shared<UserResetPasswdServlet>());
-    dp->addServlet("/api/v1/user/exists", std::make_shared<UserExistsServlet>());
-    dp->addServlet("/api/v1/user/update", std::make_shared<UserUpdateServlet>());
-    dp->addServlet("/api/v1/user/query", std::make_shared<UserQueryServlet>());
-    dp->addServlet("/api/v1/user/stats", std::make_shared<UserStatsServlet>());
-    dp->addServlet("/api/v1/user/achievements", std::make_shared<UserAchievementsServlet>());
-    dp->addServlet("/api/v1/user/ai-config", std::make_shared<UserAIConfigServlet>());
-    dp->addServlet("/api/v1/user/admin/create", std::make_shared<UserAdminCreateServlet>());
-    dp->addServlet("/api/v1/user/admin/delete", std::make_shared<UserAdminDeleteServlet>());
-    dp->addServlet("/api/v1/user/admin/recover", std::make_shared<UserAdminRecoverServlet>());
-    dp->addServlet("/api/v1/user/admin/reset_passwd", std::make_shared<UserAdminResetPasswdServlet>());
-    dp->addServlet("/api/v1/user/admin/lists", std::make_shared<UserAdminListsServlet>());
-    dp->addServlet("/api/v1/user/admin/stats", std::make_shared<UserAdminStatsServlet>());
-    dp->addServlet("/api/v1/user/admin/update", std::make_shared<UserAdminUpdateServlet>());
-    dp->addServlet("/api/v1/user/admin/detail", std::make_shared<UserAdminDetailServlet>());
-    dp->addServlet("/api/v1/user/organization/list", std::make_shared<UserOrganizationListServlet>());
-    dp->addServlet("/api/v1/user/assignment/list", std::make_shared<UserAssignmentListServlet>());
-    dp->addServlet("/api/v1/user/is_following", std::make_shared<UserIsFollowingServlet>());
-    dp->addServlet("/api/v1/user/follow", std::make_shared<UserFollowServlet>());
-    dp->addServlet("/api/v1/user/unfollow", std::make_shared<UserUnfollowServlet>());
-    dp->addServlet("/api/v1/user/following/list", std::make_shared<UserFollowingListServlet>());
-    dp->addServlet("/api/v1/user/follower/list", std::make_shared<UserFollowerListServlet>());
-    dp->addServlet("/api/v1/user/mutual_following/list", std::make_shared<UserMutualFollowingListServlet>());
-    dp->addServlet("/api/v1/user/2fa/enable", std::make_shared<User2FAEnableServlet>());
-    dp->addServlet("/api/v1/user/2fa/confirm", std::make_shared<User2FAConfirmServlet>());
-    dp->addServlet("/api/v1/user/2fa/disable", std::make_shared<User2FADisableServlet>());
-    dp->addServlet("/api/v1/user/2fa/verify", std::make_shared<User2FAVerifyServlet>());
-    dp->addServlet("/api/v1/user/2fa/reset", std::make_shared<User2FAResetServlet>());
-    dp->addServlet("/api/v1/user/2fa/recovery", std::make_shared<User2FARecoveryServlet>());
-    dp->addServlet("/api/v1/user/oauth/github", std::make_shared<UserOAuthGithubServlet>());
-    dp->addServlet("/api/v1/user/oauth/github/callback", std::make_shared<UserOAuthGithubCallbackServlet>());
-    dp->addServlet("/api/v1/auth/passkey/login/begin", std::make_shared<PasskeyLoginBeginServlet>());
-    dp->addServlet("/api/v1/auth/passkey/login/finish", std::make_shared<PasskeyLoginFinishServlet>());
-    dp->addServlet("/api/v1/auth/passkey/list", std::make_shared<PasskeyListServlet>());
-    dp->addServlet("/api/v1/auth/passkey/delete", std::make_shared<PasskeyDeleteServlet>());
-    dp->addServlet("/api/v1/auth/passkey/register/begin", std::make_shared<PasskeyRegisterBeginServlet>());
-    dp->addServlet("/api/v1/auth/passkey/register/finish", std::make_shared<PasskeyRegisterFinishServlet>());
-    dp->addServlet("/api/v1/auth/email/recovery", std::make_shared<EmailRecoveryServlet>());
-    dp->addServlet("/api/v1/notification/send", std::make_shared<NotificationSendServlet>());
-    dp->addServlet("/api/v1/notification/list", std::make_shared<NotificationListServlet>());
-    dp->addServlet("/api/v1/broadcast/list", std::make_shared<BroadcastListServlet>());
-    dp->addServlet("/api/v1/broadcast/close", std::make_shared<BroadcastCloseServlet>());
-    dp->addServlet("/api/v1/notification/unread_count", std::make_shared<NotificationUnreadCountServlet>());
-    dp->addServlet("/api/v1/notification/read", std::make_shared<NotificationReadServlet>());
-    dp->addServlet("/api/v1/notification/read_all", std::make_shared<NotificationReadAllServlet>());
-    dp->addServlet("/api/v1/messages/conversations", std::make_shared<ConversationServlet>());
-    dp->addServlet("/api/v1/messages/conversations/:id", std::make_shared<ConversationMessageServlet>());
-    dp->addServlet("/api/v1/messages/conversations/:id/read", std::make_shared<ConversationReadServlet>());
-    dp->addServlet("/api/v1/messages/conversations/:id/delete", std::make_shared<ConversationDeleteServlet>());
-    dp->addServlet("/api/v1/article/calendar", std::make_shared<ArticleCalendarServlet>());
-    dp->addServlet("/api/v1/article/admin/lists", std::make_shared<ArticleAdminListsServlet>());
-    dp->addServlet("/api/v1/article/admin/stats", std::make_shared<ArticleAdminStatsServlet>());
-    dp->addServlet("/api/v1/article/create", std::make_shared<ArticleCreateServlet>());
-    dp->addServlet("/api/v1/article/detail", std::make_shared<ArticleDetailServlet>());
-    dp->addServlet("/api/v1/article/publish", std::make_shared<ArticlePublishServlet>());
-    dp->addServlet("/api/v1/article/query", std::make_shared<ArticleQueryServlet>());
-    dp->addServlet("/api/v1/article/search", std::make_shared<ArticleSearchServlet>());
-    dp->addServlet("/api/v1/article/list_by_label", std::make_shared<ArticleListByLabelServlet>());
-    dp->addServlet("/api/v1/article/list_by_category", std::make_shared<ArticleListByCategoryServlet>());
-    dp->addServlet("/api/v1/article/delete", std::make_shared<ArticleDeleteServlet>());
-    dp->addServlet("/api/v1/article/verify", std::make_shared<ArticleVerifyServlet>());
-    dp->addServlet("/api/v1/article/update", std::make_shared<ArticleUpdateServlet>());
-    dp->addServlet("/api/v1/article/update_category", std::make_shared<ArticleUpdateCategoryServlet>());
-    dp->addServlet("/api/v1/article/switch_state", std::make_shared<ArticleSwitchStateServlet>());
-    dp->addServlet("/api/v1/article/is_praising", std::make_shared<ArticleIsPraisingServlet>());
-    dp->addServlet("/api/v1/article/praise", std::make_shared<ArticlePraiseServlet>());
-    dp->addServlet("/api/v1/article/praise/list", std::make_shared<ArticlePraiseListServlet>());
-    dp->addServlet("/api/v1/article/view", std::make_shared<ArticleViewServlet>());
-    dp->addServlet("/api/v1/article/ai-summary", std::make_shared<ArticleAISummaryServlet>());
-    dp->addServlet("/api/v1/article/comment/list", std::make_shared<CommentListServlet>());
-    dp->addServlet("/api/v1/article/comment/replies", std::make_shared<CommentRepliesServlet>());
-    dp->addServlet("/api/v1/article/comment/create", std::make_shared<CommentCreateServlet>());
-    dp->addServlet("/api/v1/article/comment/update", std::make_shared<CommentUpdateServlet>());
-    dp->addServlet("/api/v1/article/comment/delete", std::make_shared<CommentDeleteServlet>());
-    dp->addServlet("/api/v1/article/comment/praise", std::make_shared<CommentPraiseServlet>());
-    dp->addServlet("/api/v1/admin/comment/list", std::make_shared<AdminCommentListServlet>());
-    dp->addServlet("/api/v1/admin/comment/approve", std::make_shared<AdminCommentApproveServlet>());
-    dp->addServlet("/api/v1/admin/comment/reject", std::make_shared<AdminCommentRejectServlet>());
-    dp->addServlet("/api/v1/admin/comment/spam", std::make_shared<AdminCommentSpamServlet>());
-    dp->addServlet("/api/v1/admin/comment/delete", std::make_shared<AdminCommentDeleteServlet>());
-    dp->addServlet("/api/v1/admin/comment/stats", std::make_shared<AdminCommentStatsServlet>());
-    dp->addServlet("/api/v1/admin/dashboard/stats", std::make_shared<DashboardStatsServlet>());
-    dp->addServlet("/api/v1/admin/dashboard/trend", std::make_shared<DashboardTrendServlet>());
-    dp->addServlet("/api/v1/admin/dashboard/activities", std::make_shared<DashboardActivitiesServlet>());
-    dp->addServlet("/api/v1/admin/dashboard/recent-users", std::make_shared<DashboardRecentUsersServlet>());
-    dp->addServlet("/api/v1/admin/database/stats", std::make_shared<DatabaseStatsServlet>());
-    dp->addServlet("/api/v1/admin/database/backups", std::make_shared<BackupListServlet>());
-    dp->addServlet("/api/v1/admin/database/backups/create", std::make_shared<BackupCreateServlet>());
-    dp->addServlet("/api/v1/admin/database/backups/:id/delete", std::make_shared<BackupDeleteServlet>());
-    dp->addServlet("/api/v1/admin/database/backups/:id/download", std::make_shared<BackupDownloadServlet>());
-    dp->addServlet("/api/v1/admin/database/exports", std::make_shared<ExportListServlet>());
-    dp->addServlet("/api/v1/admin/database/exports/create", std::make_shared<ExportCreateServlet>());
-    dp->addServlet("/api/v1/admin/database/exports/:id/delete", std::make_shared<ExportDeleteServlet>());
-    dp->addServlet("/api/v1/admin/database/exports/:id/download", std::make_shared<ExportDownloadServlet>());
-    dp->addServlet("/api/v1/admin/database/cleanup", std::make_shared<CleanupServlet>());
-    dp->addServlet("/api/v1/category/create", std::make_shared<CategoryCreateServlet>());
-    dp->addServlet("/api/v1/category/delete", std::make_shared<CategoryDeleteServlet>());
-    dp->addServlet("/api/v1/category/query", std::make_shared<CategoryQueryServlet>());
-    dp->addServlet("/api/v1/category/admin/create", std::make_shared<CategoryAdminCreateServlet>());
-    dp->addServlet("/api/v1/category/admin/delete", std::make_shared<CategoryAdminDeleteServlet>());
-    dp->addServlet("/api/v1/category/admin/query", std::make_shared<CategoryAdminQueryServlet>());
-    dp->addServlet("/api/v1/config", std::make_shared<AppConfigServlet>());
-    dp->addServlet("/api/v1/site/settings", std::make_shared<SiteSettingsServlet>());
-    dp->addServlet("/api/v1/site/status", std::make_shared<SiteStatusServlet>());
-    dp->addServlet("/api/v1/admin/settings", std::make_shared<SystemSettingsServlet>());
-    dp->addServlet("/api/v1/help/faqs", std::make_shared<FaqsServlet>());
-    dp->addServlet("/api/v1/help/feedback", std::make_shared<FeedbackServlet>());
-    dp->addServlet("/api/v1/admin/faq/delete", std::make_shared<AdminFaqDeleteServlet>());
-    dp->addServlet("/api/v1/admin/faq/edit", std::make_shared<AdminFaqEditServlet>());
-    dp->addServlet("/api/v1/admin/feedback/list", std::make_shared<AdminFeedbackListServlet>());
-    dp->addServlet("/api/v1/admin/feedback/delete", std::make_shared<AdminFeedbackDeleteServlet>());
-    dp->addServlet("/api/v1/admin/feedback/convert", std::make_shared<AdminFeedbackConvertServlet>());
-    dp->addServlet("/api/v1/stats", std::make_shared<StatsServlet>());
-    dp->addServlet("/api/v1/admin/metrics", std::make_shared<MetricsAdminServlet>());
-    dp->addServlet("/api/v1/label/create", std::make_shared<LabelCreateServlet>());
-    dp->addServlet("/api/v1/label/delete", std::make_shared<LabelDeleteServlet>());
-    dp->addServlet("/api/v1/label/query", std::make_shared<LabelQueryServlet>());
-    dp->addServlet("/api/v1/file/download", std::make_shared<FileDownloadServlet>());
-    dp->addServlet("/api/v1/assignment/admin/lists", std::make_shared<AssignmentAdminListsServlet>());
-    dp->addServlet("/api/v1/assignment/admin/stats", std::make_shared<AssignmentAdminStatsServlet>());
-    dp->addServlet("/api/v1/assignment/create", std::make_shared<AssignmentCreateServlet>());
-    dp->addServlet("/api/v1/assignment/delete", std::make_shared<AssignmentDeleteServlet>());
-    dp->addServlet("/api/v1/assignment/detail", std::make_shared<AssignmentDetailServlet>());
-    dp->addServlet("/api/v1/assignment/submission/list", std::make_shared<AssignmentSubmissionListServlet>());
-    dp->addServlet("/api/v1/organization/admin/lists", std::make_shared<OrganizationAdminListsServlet>());
-    dp->addServlet("/api/v1/organization/admin/stats", std::make_shared<OrganizationAdminStatsServlet>());
-    dp->addServlet("/api/v1/organization/create", std::make_shared<OrganizationCreateServlet>());
-    dp->addServlet("/api/v1/organization/delete", std::make_shared<OrganizationDeleteServlet>());
-    dp->addServlet("/api/v1/organization/detail", std::make_shared<OrganizationDetailServlet>());
-    dp->addServlet("/api/v1/organization/join", std::make_shared<OrganizationJoinServlet>());
-    dp->addServlet("/api/v1/organization/join_check", std::make_shared<OrganizationJoinCheckServlet>());
-    dp->addServlet("/api/v1/organization/leave", std::make_shared<OrganizationLeaveServlet>());
-    dp->addServlet("/api/v1/organization/set_status", std::make_shared<OrganizationSetStatusServlet>());
-    dp->addServlet("/api/v1/organization/list", std::make_shared<OrganizationListServlet>());
-    dp->addServlet("/api/v1/organization/user_list", std::make_shared<OrganizationUserListServlet>());
-    dp->addServlet("/api/v1/organization/user_switch_role", std::make_shared<OrganizationUserSwitchRoleServlet>());
-    dp->addServlet("/api/v1/organization/user_kick", std::make_shared<OrganizationUserKickServlet>());
-    dp->addServlet("/api/v1/organization/assignment_create", std::make_shared<AssignmentOrganizationCreateServlet>());
-    dp->addServlet("/api/v1/organization/assignment_list", std::make_shared<OrganizationAssignmentListServlet>());
-    dp->addServlet("/api/v1/organization/apply-create", std::make_shared<OrganizationApplyCreateServlet>());
-    dp->addServlet("/api/v1/organization/apply-list", std::make_shared<OrganizationApplyListServlet>());
-    dp->addServlet("/api/v1/organization/apply-review", std::make_shared<OrganizationApplyReviewServlet>());
-    dp->addServlet("/api/v1/organization/my-applies", std::make_shared<OrganizationMyAppliesServlet>());
-    dp->addServlet("/api/v1/organization/stats", std::make_shared<OrganizationStatsServlet>());
-    dp->addServlet("/api/v1/organization/repos/prs", std::make_shared<OrganizationRepoPrsListServlet>());
-    dp->addServlet("/api/v1/organization/repos/prs/delete", std::make_shared<OrganizationRepoPrsDeleteServlet>());
-    dp->addServlet("/api/v1/organization/repos/prs/sync", std::make_shared<OrganizationRepoPrsSyncServlet>());
-    dp->addServlet("/api/v1/organization/repos/stats", std::make_shared<OrganizationReposStatsServlet>());
-    dp->addServlet("/api/v1/organization/repos/token", std::make_shared<OrganizationReposTokenServlet>());
-    dp->addServlet("/api/v1/organization/repos", std::make_shared<OrganizationReposListServlet>());
-    dp->addServlet("/api/v1/organization/repos/add", std::make_shared<OrganizationReposAddServlet>());
-    dp->addServlet("/api/v1/organization/repos/update", std::make_shared<OrganizationReposUpdateServlet>());
-    dp->addServlet("/api/v1/organization/repos/sync", std::make_shared<OrganizationReposSyncServlet>());
-    dp->addServlet("/api/v1/organization/repos/delete", std::make_shared<OrganizationReposDeleteServlet>());
-    dp->addServlet("/api/v1/rd/check_access", std::make_shared<RdCheckAccessServlet>());
-    dp->addServlet("/api/v1/rd/requirements", std::make_shared<RdRequirementServlet>());
-    dp->addServlet("/api/v1/rd/requirements/edit", std::make_shared<RdRequirementEditServlet>());
-    dp->addServlet("/api/v1/rd/requirements/detail", std::make_shared<RdRequirementDetailServlet>());
-    dp->addServlet("/api/v1/rd/requirements/delete", std::make_shared<RdRequirementDeleteServlet>());
-    dp->addServlet("/api/v1/rd/bugs", std::make_shared<RdBugServlet>());
-    dp->addServlet("/api/v1/rd/bugs/edit", std::make_shared<RdBugEditServlet>());
-    dp->addServlet("/api/v1/rd/bugs/detail", std::make_shared<RdBugDetailServlet>());
-    dp->addServlet("/api/v1/rd/bugs/delete", std::make_shared<RdBugDeleteServlet>());
-    dp->addServlet("/api/v1/rd/tasks", std::make_shared<RdTaskServlet>());
-    dp->addServlet("/api/v1/rd/tasks/edit", std::make_shared<RdTaskEditServlet>());
-    dp->addServlet("/api/v1/rd/tasks/detail", std::make_shared<RdTaskDetailServlet>());
-    dp->addServlet("/api/v1/rd/tasks/delete", std::make_shared<RdTaskDeleteServlet>());
-    dp->addServlet("/api/v1/rd/trends", std::make_shared<RdTrendServlet>());
-    dp->addServlet("/api/v1/rd/stats", std::make_shared<RdStatsServlet>());
-    dp->addServlet("/api/v1/rd/pr-distribution", std::make_shared<RdPrDistributionServlet>());
-    dp->addServlet("/api/v1/rd/my-tickets", std::make_shared<RdMyTicketsServlet>());
-    dp->addServlet("/api/v1/rd/organizations", std::make_shared<RdOrganizationsServlet>());
-    dp->addServlet("/api/v1/rd/organizations/members", std::make_shared<RdOrganizationMembersServlet>());
+#define XX(path, method, servlet) dp->addServlet(path, chen::http::method, std::make_shared<servlet>());
+
+    XX("/api/v1/auth/verification-codes", HttpMethod::POST, UserSendCodeServlet)
+    XX("/api/v1/users", HttpMethod::POST, UserCreateServlet)
+    XX("/api/v1/auth/sessions", HttpMethod::POST, UserLoginServlet)
+    XX("/api/v1/users/me", HttpMethod::GET, UserInfoServlet)
+    XX("/api/v1/users/:user_id", HttpMethod::GET, UserInfoServlet)
+    XX("/api/v1/users/ids", HttpMethod::GET, UserListServlet)
+    XX("/api/v1/auth/sessions/current", HttpMethod::DELETE, UserLogoutServlet)
+    XX("/api/v1/users/me/devices", HttpMethod::GET, UserDeviceListServlet)
+    XX("/api/v1/users/me/devices/:device_id", HttpMethod::DELETE, UserDeviceKickServlet)
+    XX("/api/v1/auth/password-resets", HttpMethod::POST, UserResetPasswdServlet)
+    XX("/api/v1/users/exists", HttpMethod::GET, UserExistsServlet)
+    XX("/api/v1/users/me", HttpMethod::PATCH, UserUpdateServlet)
+    XX("/api/v1/users", HttpMethod::GET, UserQueryServlet)
+    XX("/api/v1/users/me/stats", HttpMethod::GET, UserStatsServlet)
+    XX("/api/v1/users/:user_id/stats", HttpMethod::GET, UserStatsServlet)
+    XX("/api/v1/users/me/achievements", HttpMethod::GET, UserAchievementsServlet)
+    XX("/api/v1/users/me/ai-config", HttpMethod::GET, UserAIConfigServlet)
+    XX("/api/v1/users/me/ai-config", HttpMethod::PUT, UserAIConfigServlet)
+    XX("/api/v1/admin/users", HttpMethod::POST, UserAdminCreateServlet)
+    XX("/api/v1/admin/users/:user_id", HttpMethod::DELETE, UserAdminDeleteServlet)
+    XX("/api/v1/admin/users/recoveries", HttpMethod::POST, UserAdminRecoverServlet)
+    XX("/api/v1/admin/users/:id/password-resets", HttpMethod::POST, UserAdminResetPasswdServlet)
+    XX("/api/v1/admin/users", HttpMethod::GET, UserAdminListsServlet)
+    XX("/api/v1/admin/users/stats", HttpMethod::GET, UserAdminStatsServlet)
+    XX("/api/v1/admin/users/:user_id", HttpMethod::PATCH, UserAdminUpdateServlet)
+    XX("/api/v1/admin/users/:user_id", HttpMethod::GET, UserAdminDetailServlet)
+    XX("/api/v1/users/me/organizations", HttpMethod::GET, UserOrganizationListServlet)
+    XX("/api/v1/users/me/assignments", HttpMethod::GET, UserAssignmentListServlet)
+    XX("/api/v1/users/:user_id/following/me", HttpMethod::GET, UserIsFollowingServlet)
+    XX("/api/v1/users/:following_id/followers", HttpMethod::POST, UserFollowServlet)
+    XX("/api/v1/users/:following_id/followers/me", HttpMethod::DELETE, UserUnfollowServlet)
+    XX("/api/v1/users/me/following", HttpMethod::GET, UserFollowingListServlet)
+    XX("/api/v1/users/:user_id/following", HttpMethod::GET, UserFollowingListServlet)
+    XX("/api/v1/users/me/followers", HttpMethod::GET, UserFollowerListServlet)
+    XX("/api/v1/users/:user_id/followers", HttpMethod::GET, UserFollowerListServlet)
+    XX("/api/v1/users/me/mutual-following", HttpMethod::GET, UserMutualFollowingListServlet)
+    XX("/api/v1/users/me/2fa", HttpMethod::POST, User2FAEnableServlet)
+    XX("/api/v1/users/me/2fa/confirmations", HttpMethod::POST, User2FAConfirmServlet)
+    XX("/api/v1/users/me/2fa", HttpMethod::DELETE, User2FADisableServlet)
+    XX("/api/v1/auth/2fa/verifications", HttpMethod::POST, User2FAVerifyServlet)
+    XX("/api/v1/auth/2fa-resets", HttpMethod::POST, User2FAResetServlet)
+    XX("/api/v1/auth/recovery-code-verifications", HttpMethod::POST, User2FARecoveryServlet)
+    XX("/api/v1/auth/oauth/github", HttpMethod::GET, UserOAuthGithubServlet)
+    XX("/api/v1/auth/oauth/github/callback", HttpMethod::GET, UserOAuthGithubCallbackServlet)
+    XX("/api/v1/auth/passkeys/login-options", HttpMethod::POST, PasskeyLoginBeginServlet)
+    XX("/api/v1/auth/passkey-assertions", HttpMethod::POST, PasskeyLoginFinishServlet)
+    XX("/api/v1/users/me/passkeys", HttpMethod::GET, PasskeyListServlet)
+    XX("/api/v1/users/me/passkeys/:id", HttpMethod::DELETE, PasskeyDeleteServlet)
+    XX("/api/v1/users/me/passkeys/options", HttpMethod::POST, PasskeyRegisterBeginServlet)
+    XX("/api/v1/users/me/passkeys", HttpMethod::POST, PasskeyRegisterFinishServlet)
+    XX("/api/v1/auth/email-recoveries", HttpMethod::POST, EmailRecoveryServlet)
+    XX("/api/v1/notifications", HttpMethod::POST, NotificationSendServlet)
+    XX("/api/v1/notifications", HttpMethod::GET, NotificationListServlet)
+    XX("/api/v1/broadcasts", HttpMethod::GET, BroadcastListServlet)
+    XX("/api/v1/broadcasts/:id", HttpMethod::DELETE, BroadcastCloseServlet)
+    XX("/api/v1/notifications/unread-count", HttpMethod::GET, NotificationUnreadCountServlet)
+    XX("/api/v1/notifications", HttpMethod::PATCH, NotificationReadServlet)
+    XX("/api/v1/notifications/all", HttpMethod::PATCH, NotificationReadAllServlet)
+    XX("/api/v1/conversations", HttpMethod::GET, ConversationServlet)
+    XX("/api/v1/conversations", HttpMethod::POST, ConversationServlet)
+    XX("/api/v1/conversations/:id/messages", HttpMethod::GET, ConversationMessageServlet)
+    XX("/api/v1/conversations/:id/messages", HttpMethod::POST, ConversationMessageServlet)
+    XX("/api/v1/conversations/:id", HttpMethod::PATCH, ConversationReadServlet)
+    XX("/api/v1/conversations/:id", HttpMethod::DELETE, ConversationDeleteServlet)
+    XX("/api/v1/articles/calendar", HttpMethod::GET, ArticleCalendarServlet)
+    XX("/api/v1/admin/articles", HttpMethod::GET, ArticleAdminListsServlet)
+    XX("/api/v1/admin/articles/stats", HttpMethod::GET, ArticleAdminStatsServlet)
+    XX("/api/v1/articles", HttpMethod::POST, ArticleCreateServlet)
+    XX("/api/v1/articles/:id", HttpMethod::GET, ArticleDetailServlet)
+    XX("/api/v1/articles/:id/publications", HttpMethod::POST, ArticlePublishServlet)
+    XX("/api/v1/articles", HttpMethod::GET, ArticleQueryServlet)
+    XX("/api/v1/articles/search", HttpMethod::GET, ArticleSearchServlet)
+    XX("/api/v1/labels/:label_id/articles", HttpMethod::GET, ArticleListByLabelServlet)
+    XX("/api/v1/categories/:category_id/articles", HttpMethod::GET, ArticleListByCategoryServlet)
+    XX("/api/v1/articles", HttpMethod::DELETE, ArticleDeleteServlet)
+    XX("/api/v1/articles/:id/verifications", HttpMethod::POST, ArticleVerifyServlet)
+    XX("/api/v1/articles/:id", HttpMethod::PUT, ArticleUpdateServlet)
+    XX("/api/v1/articles/:id/categories", HttpMethod::PATCH, ArticleUpdateCategoryServlet)
+    XX("/api/v1/articles/:id/state", HttpMethod::PATCH, ArticleSwitchStateServlet)
+    XX("/api/v1/articles/:article_id/praises/me", HttpMethod::GET, ArticleIsPraisingServlet)
+    XX("/api/v1/articles/:article_id/praises", HttpMethod::POST, ArticlePraiseServlet)
+    XX("/api/v1/articles/:article_id/praises", HttpMethod::GET, ArticlePraiseListServlet)
+    XX("/api/v1/users/me/praises", HttpMethod::GET, ArticlePraiseListServlet)
+    XX("/api/v1/users/:user_id/praises", HttpMethod::GET, ArticlePraiseListServlet)
+    XX("/api/v1/articles/:article_id/views", HttpMethod::POST, ArticleViewServlet)
+    XX("/api/v1/articles/:article_id/ai-summary", HttpMethod::GET, ArticleAISummaryServlet)
+    XX("/api/v1/articles/:article_id/comments", HttpMethod::GET, CommentListServlet)
+    XX("/api/v1/comments/:comment_id/replies", HttpMethod::GET, CommentRepliesServlet)
+    XX("/api/v1/articles/:article_id/comments", HttpMethod::POST, CommentCreateServlet)
+    XX("/api/v1/comments/:id", HttpMethod::PATCH, CommentUpdateServlet)
+    XX("/api/v1/comments/:id", HttpMethod::DELETE, CommentDeleteServlet)
+    XX("/api/v1/comments/:comment_id/praises", HttpMethod::POST, CommentPraiseServlet)
+    XX("/api/v1/admin/comments", HttpMethod::GET, AdminCommentListServlet)
+    XX("/api/v1/admin/comments/approvals", HttpMethod::PATCH, AdminCommentApproveServlet)
+    XX("/api/v1/admin/comments/rejections", HttpMethod::PATCH, AdminCommentRejectServlet)
+    XX("/api/v1/admin/comments/spam", HttpMethod::PATCH, AdminCommentSpamServlet)
+    XX("/api/v1/admin/comments", HttpMethod::DELETE, AdminCommentDeleteServlet)
+    XX("/api/v1/admin/comments/stats", HttpMethod::GET, AdminCommentStatsServlet)
+    XX("/api/v1/admin/dashboard/stats", HttpMethod::GET, DashboardStatsServlet)
+    XX("/api/v1/admin/dashboard/trend", HttpMethod::GET, DashboardTrendServlet)
+    XX("/api/v1/admin/dashboard/activities", HttpMethod::GET, DashboardActivitiesServlet)
+    XX("/api/v1/admin/dashboard/recent-users", HttpMethod::GET, DashboardRecentUsersServlet)
+    XX("/api/v1/admin/database/stats", HttpMethod::GET, DatabaseStatsServlet)
+    XX("/api/v1/admin/backups", HttpMethod::GET, BackupListServlet)
+    XX("/api/v1/admin/backups", HttpMethod::POST, BackupCreateServlet)
+    XX("/api/v1/admin/backups/:id", HttpMethod::DELETE, BackupDeleteServlet)
+    XX("/api/v1/admin/backups/:id/content", HttpMethod::GET, BackupDownloadServlet)
+    XX("/api/v1/admin/exports", HttpMethod::GET, ExportListServlet)
+    XX("/api/v1/admin/exports", HttpMethod::POST, ExportCreateServlet)
+    XX("/api/v1/admin/exports/:id", HttpMethod::DELETE, ExportDeleteServlet)
+    XX("/api/v1/admin/exports/:id/content", HttpMethod::GET, ExportDownloadServlet)
+    XX("/api/v1/admin/database/cleanups", HttpMethod::POST, CleanupServlet)
+    XX("/api/v1/categories", HttpMethod::POST, CategoryCreateServlet)
+    XX("/api/v1/categories/:id", HttpMethod::PUT, CategoryCreateServlet)
+    XX("/api/v1/categories", HttpMethod::DELETE, CategoryDeleteServlet)
+    XX("/api/v1/categories", HttpMethod::GET, CategoryQueryServlet)
+    XX("/api/v1/admin/categories", HttpMethod::POST, CategoryAdminCreateServlet)
+    XX("/api/v1/admin/categories/:id", HttpMethod::PUT, CategoryAdminCreateServlet)
+    XX("/api/v1/admin/categories", HttpMethod::DELETE, CategoryAdminDeleteServlet)
+    XX("/api/v1/admin/categories", HttpMethod::GET, CategoryAdminQueryServlet)
+    XX("/api/v1/config", HttpMethod::GET, AppConfigServlet)
+    XX("/api/v1/site/settings", HttpMethod::GET, SiteSettingsServlet)
+    XX("/api/v1/site/status", HttpMethod::GET, SiteStatusServlet)
+    XX("/api/v1/admin/settings", HttpMethod::GET, SystemSettingsServlet)
+    XX("/api/v1/admin/settings", HttpMethod::PUT, SystemSettingsServlet)
+    XX("/api/v1/help/faqs", HttpMethod::GET, FaqsServlet)
+    XX("/api/v1/help/feedback", HttpMethod::POST, FeedbackServlet)
+    XX("/api/v1/admin/faqs/:id", HttpMethod::DELETE, AdminFaqDeleteServlet)
+    XX("/api/v1/admin/faqs/:id", HttpMethod::PUT, AdminFaqEditServlet)
+    XX("/api/v1/admin/feedback", HttpMethod::GET, AdminFeedbackListServlet)
+    XX("/api/v1/admin/feedback/:id", HttpMethod::DELETE, AdminFeedbackDeleteServlet)
+    XX("/api/v1/admin/feedback/:id/conversions", HttpMethod::POST, AdminFeedbackConvertServlet)
+    XX("/api/v1/stats", HttpMethod::GET, StatsServlet)
+    XX("/api/v1/admin/metrics", HttpMethod::GET, MetricsAdminServlet)
+    XX("/api/v1/labels", HttpMethod::POST, LabelCreateServlet)
+    XX("/api/v1/labels/:id", HttpMethod::PUT, LabelCreateServlet)
+    XX("/api/v1/labels", HttpMethod::DELETE, LabelDeleteServlet)
+    XX("/api/v1/labels", HttpMethod::GET, LabelQueryServlet)
+    XX("/api/v1/files/content", HttpMethod::GET, FileDownloadServlet)
+    XX("/api/v1/admin/assignments", HttpMethod::GET, AssignmentAdminListsServlet)
+    XX("/api/v1/admin/assignments/stats", HttpMethod::GET, AssignmentAdminStatsServlet)
+    XX("/api/v1/assignments", HttpMethod::POST, AssignmentCreateServlet)
+    XX("/api/v1/assignments/:id", HttpMethod::DELETE, AssignmentDeleteServlet)
+    XX("/api/v1/assignments", HttpMethod::DELETE, AssignmentDeleteServlet)
+    XX("/api/v1/assignments/:id", HttpMethod::GET, AssignmentDetailServlet)
+    XX("/api/v1/assignments/:assign_id/submissions", HttpMethod::GET, AssignmentSubmissionListServlet)
+    XX("/api/v1/admin/organizations", HttpMethod::GET, OrganizationAdminListsServlet)
+    XX("/api/v1/admin/organizations/stats", HttpMethod::GET, OrganizationAdminStatsServlet)
+    XX("/api/v1/organizations", HttpMethod::POST, OrganizationCreateServlet)
+    XX("/api/v1/organizations/:id", HttpMethod::PUT, OrganizationCreateServlet)
+    XX("/api/v1/organizations", HttpMethod::DELETE, OrganizationDeleteServlet)
+    XX("/api/v1/organizations/:id", HttpMethod::GET, OrganizationDetailServlet)
+    XX("/api/v1/organizations/:id/members", HttpMethod::POST, OrganizationJoinServlet)
+    XX("/api/v1/organizations/:org_id/membership-checks", HttpMethod::GET, OrganizationJoinCheckServlet)
+    XX("/api/v1/organizations/:id/members/me", HttpMethod::DELETE, OrganizationLeaveServlet)
+    XX("/api/v1/organizations/:id", HttpMethod::PATCH, OrganizationSetStatusServlet)
+    XX("/api/v1/organizations", HttpMethod::GET, OrganizationListServlet)
+    XX("/api/v1/organizations/:id/members", HttpMethod::GET, OrganizationUserListServlet)
+    XX("/api/v1/organizations/:org_id/members/:user_id", HttpMethod::PATCH, OrganizationUserSwitchRoleServlet)
+    XX("/api/v1/organizations/:org_id/members/:user_id", HttpMethod::DELETE, OrganizationUserKickServlet)
+    XX("/api/v1/organizations/:org_id/assignments", HttpMethod::POST, AssignmentOrganizationCreateServlet)
+    XX("/api/v1/organizations/:org_id/assignments", HttpMethod::GET, OrganizationAssignmentListServlet)
+    XX("/api/v1/organizations/applications", HttpMethod::POST, OrganizationApplyCreateServlet)
+    XX("/api/v1/organizations/applications", HttpMethod::GET, OrganizationApplyListServlet)
+    XX("/api/v1/organizations/applications/:apply_id", HttpMethod::PATCH, OrganizationApplyReviewServlet)
+    XX("/api/v1/users/me/organization-applications", HttpMethod::GET, OrganizationMyAppliesServlet)
+    XX("/api/v1/organizations/:id/stats", HttpMethod::GET, OrganizationStatsServlet)
+    XX("/api/v1/organizations/:org_id/repositories", HttpMethod::GET, OrganizationReposListServlet)
+    XX("/api/v1/organizations/:org_id/repositories", HttpMethod::POST, OrganizationReposAddServlet)
+    XX("/api/v1/repositories/:id", HttpMethod::PUT, OrganizationReposUpdateServlet)
+    XX("/api/v1/organizations/:org_id/repositories/stats", HttpMethod::GET, OrganizationReposStatsServlet)
+    XX("/api/v1/organizations/:org_id/repositories/:id", HttpMethod::DELETE, OrganizationReposDeleteServlet)
+    XX("/api/v1/repositories/:repo_id/syncs", HttpMethod::POST, OrganizationReposSyncServlet)
+    XX("/api/v1/repositories/:repo_id/token", HttpMethod::PUT, OrganizationReposTokenServlet)
+    XX("/api/v1/repositories/:repo_id/pull-requests", HttpMethod::GET, OrganizationRepoPrsListServlet)
+    XX("/api/v1/organizations/:org_id/pull-requests", HttpMethod::GET, OrganizationRepoPrsListServlet)
+    XX("/api/v1/repositories/:repo_id/pull-requests/:id", HttpMethod::DELETE, OrganizationRepoPrsDeleteServlet)
+    XX("/api/v1/pull-requests/:id", HttpMethod::DELETE, OrganizationRepoPrsDeleteServlet)
+    XX("/api/v1/repositories/:repo_id/pull-request-syncs", HttpMethod::POST, OrganizationRepoPrsSyncServlet)
+    XX("/api/v1/pull-requests/:id/syncs", HttpMethod::POST, OrganizationRepoPrsSyncServlet)
+    XX("/api/v1/rd/access", HttpMethod::GET, RdCheckAccessServlet)
+    XX("/api/v1/requirements", HttpMethod::GET, RdRequirementServlet)
+    XX("/api/v1/requirements", HttpMethod::POST, RdRequirementEditServlet)
+    XX("/api/v1/requirements/:id", HttpMethod::PUT, RdRequirementEditServlet)
+    XX("/api/v1/requirements/:id", HttpMethod::GET, RdRequirementDetailServlet)
+    XX("/api/v1/requirements", HttpMethod::DELETE, RdRequirementDeleteServlet)
+    XX("/api/v1/requirements/:id", HttpMethod::DELETE, RdRequirementDeleteServlet)
+    XX("/api/v1/bugs", HttpMethod::GET, RdBugServlet)
+    XX("/api/v1/bugs", HttpMethod::POST, RdBugEditServlet)
+    XX("/api/v1/bugs/:id", HttpMethod::PUT, RdBugEditServlet)
+    XX("/api/v1/bugs/:id", HttpMethod::GET, RdBugDetailServlet)
+    XX("/api/v1/bugs", HttpMethod::DELETE, RdBugDeleteServlet)
+    XX("/api/v1/bugs/:id", HttpMethod::DELETE, RdBugDeleteServlet)
+    XX("/api/v1/tasks", HttpMethod::GET, RdTaskServlet)
+    XX("/api/v1/tasks", HttpMethod::POST, RdTaskEditServlet)
+    XX("/api/v1/tasks/:id", HttpMethod::PUT, RdTaskEditServlet)
+    XX("/api/v1/tasks/:id", HttpMethod::GET, RdTaskDetailServlet)
+    XX("/api/v1/tasks", HttpMethod::DELETE, RdTaskDeleteServlet)
+    XX("/api/v1/tasks/:id", HttpMethod::DELETE, RdTaskDeleteServlet)
+    XX("/api/v1/rd/trends", HttpMethod::GET, RdTrendServlet)
+    XX("/api/v1/rd/stats", HttpMethod::GET, RdStatsServlet)
+    XX("/api/v1/rd/pr-distribution", HttpMethod::GET, RdPrDistributionServlet)
+    XX("/api/v1/users/me/tickets", HttpMethod::GET, RdMyTicketsServlet)
+    XX("/api/v1/rd/organizations", HttpMethod::GET, RdOrganizationsServlet)
+    XX("/api/v1/rd/organizations/:org_id/members", HttpMethod::GET, RdOrganizationMembersServlet)
+
+#undef XX
 
     return true;
 }
