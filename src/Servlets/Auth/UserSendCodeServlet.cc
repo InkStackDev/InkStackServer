@@ -1,10 +1,14 @@
 #include "UserSendCodeServlet.hpp"
 
+#include <map>
+
 #include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Log/Log.hpp>
 
 #include "../../Event/EventDefine.hpp"
+#include "../../I18n/I18n.hpp"
+#include "../../Manager/MessageConfigManager.hpp"
 #include "../../Manager/SystemSettingsManager.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
@@ -106,22 +110,26 @@ int32_t UserSendCodeServlet::handle(
         // type: 1-注册, 3-重置密码, 5-账号恢复
         bool is_register = (type == "1");
         bool is_recovery = (type == "5");
-        std::string title = " " + site_name + (is_register ? " 账号注册验证码" : (is_recovery ? " 账号恢复验证码" : " 重置密码验证码"));
-        std::string intro = is_register
-            ? ("感谢注册 " + site_name + "，请使用以下验证码完成验证：")
-            : (is_recovery ? "您正在恢复账号登录，请使用以下验证码完成验证：" : "您正在重置密码，请使用以下验证码完成验证：");
+        const std::string lang = I18n::ResolveLanguage(request);
+        const std::string kind = is_register ? "register" : (is_recovery ? "recovery" : "reset_password");
+        std::map<std::string, std::string> params;
+        params["site"] = site_name;
+        std::string title = MessageConfigMgr::GetInstance()->render(lang, "email.verification.subject." + kind, params);
+        std::string intro = MessageConfigMgr::GetInstance()->render(lang, "email.verification.intro." + kind, params);
+        std::string greeting = MessageConfigMgr::GetInstance()->render(lang, "email.verification.greeting");
+        std::string validity = MessageConfigMgr::GetInstance()->render(lang, "email.verification.validity");
+        std::string footer = MessageConfigMgr::GetInstance()->render(lang, "email.verification.footer");
         std::string code_html = std::string() + "<div style=\"max-width:480px;margin:0 auto;padding:32px 24px;"
             + "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
             + "background:#ffffff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)\">"
             + "<div style=\"text-align:center;padding-bottom:24px;border-bottom:1px solid #f0f0f0\">"
-            + "<h1 style=\"margin:0;font-size:22px;color:#1a1a1a\">" + site_name + "</h1>" + "</div>" + "<div style=\"padding:24px 0\">"
-            + "<p style=\"margin:0 0 8px;font-size:15px;color:#555\">您好，</p>"
-            + "<p style=\"margin:0 0 24px;font-size:15px;color:#555;line-height:1.6\">" + intro + "</p>"
+            + "<h1 style=\"margin:0;font-size:22px;color:#1a1a1a\">" + site_name + "</h1>" + "</div>"
+            + "<div style=\"padding:24px 0\">" + "<p style=\"margin:0 0 8px;font-size:15px;color:#555\">" + greeting
+            + "</p>" + "<p style=\"margin:0 0 24px;font-size:15px;color:#555;line-height:1.6\">" + intro + "</p>"
             + "<div style=\"background:#f7f8fa;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px\">"
-            + "<span style=\"font-size:32px;font-weight:700;letter-spacing:6px;color:#1a1a1a;font-family:'Courier New',monospace\">" + code
-            + "</span>" + "</div>" + "<p style=\"margin:0;font-size:13px;color:#999\">验证码 10 分钟内有效，请勿转发给他人。</p>" + "</div>"
-            + "<div style=\"padding-top:16px;border-top:1px solid #f0f0f0;text-align:center\">"
-            + "<p style=\"margin:0;font-size:12px;color:#bbb\">此邮件由系统自动发送，请勿回复。</p>" + "</div>" + "</div>";
+            + "<span style=\"font-size:32px;font-weight:700;letter-spacing:6px;color:#1a1a1a;font-family:'Courier New',monospace\">" + code + "</span>" + "</div>" + "<p style=\"margin:0;font-size:13px;color:#999\">" + validity + "</p>"
+            + "</div>" + "<div style=\"padding-top:16px;border-top:1px solid #f0f0f0;text-align:center\">"
+            + "<p style=\"margin:0;font-size:12px;color:#bbb\">" + footer + "</p>" + "</div>" + "</div>";
         auto mail = chen::EMail::Create(
             sys_settings->getSmtpUsername(), sys_settings->getSmtpPassword(), title, code_html, {email}, {}, {sys_settings->getFromEmail()});
         std::string smtp_host = sys_settings->getSmtpHost();

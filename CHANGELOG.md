@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## 未发布
 
+### 修复
+
+- **修复单 io 线程下全站请求超时（协程持锁跨 IO 死锁）**：`ArticleCounterService`、`ConversationService`、
+  `HubClient`、`MessageRouter`、`WSConnectionManager::Connection` 原来用 `std::mutex` 保护临界区，而临界区里
+  有 MySQL / Redis / connect / `sendMessage` 等被 hook 的调用——协程在持锁期间让出线程，另一个请求在
+  `std::mutex` 上阻塞整个调度线程，持锁协程等待的 IO 事件再也无人处理，双方互等。`io.thread_num: 1` 时
+  表现为进程还在、tick 正常，但所有请求无响应（gdb 里 io 线程停在 `futex_wait`）。
+- 新增 `src/Util/FiberMutex.hpp`：基于 `chen::FiberSemaphore` 的协程感知互斥锁，等待方让出协程而不是线程，
+  解锁方把所有权直接转交等待者；协程与普通线程可混用同一把锁（普通线程走条件变量）。上述五处已全部替换。
+
+### 适配
+
+- **chen-sdk 升级到 `1.7.0-rc6`**：`Module::getAllHttpServer()` / `getAllWSServer()` 已从框架移除，
+  `BlogModule::onServerReady()` 改为 `Application::GetInstance()->getAllServers()` + `dynamic_pointer_cast`
+  按实际类型分流（注册表里的 `type` 可能是 `http` / `http2` / `ws`，不能按字符串筛选）。
+- **构建**：不再 `add_subdirectory(chen-sdk-*)`。SDK 的 CMakeLists 用 `file(GLOB lib/*.so)` 导入库，新版 SDK 的
+  `lib/` 下有 `libchen.so` / `libchen.so.1` / `libchen.so.1.6.0` 三个文件（zip 里是三个等大副本），会映射到同一个
+  imported 目标 `chen`，configure 直接失败；改为在 `cmake/dependencies.cmake` 里显式导入 `lib/libchen.so`。
+- **打包**：`collect.sh` 与 `scripts/cluster/package-cluster.sh` 改为按 SONAME 布局落盘——只拷一份实体
+  （`libchen.so.1.6.0`），再建 `libchen.so.1` / `libchen.so` 两个相对符号链接。此前只 `cp` 了 `libchen.so`，
+  运行时 loader 按 SONAME 找 `libchen.so.1` 会启动失败；而直接整组拷贝又会把 60MB 打进包。
+- **运行**：`bin/server` 与模块需要重新 `make apply`（SDK 预编译的 server 现在 `DT_NEEDED=libchen.so.1`），
+  `LD_LIBRARY_PATH` 指向的目录里必须有完整的 `libchen.so*` 三件套。
+
 ### 新增
 
 - 新增 `Viewer` / `OrgScope` / `AccessScopeResolver` / `AccessPolicy`：入口只解析身份与粗粒度路由权限，组织数据范围统一由

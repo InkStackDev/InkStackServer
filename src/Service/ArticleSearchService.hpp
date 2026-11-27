@@ -18,6 +18,7 @@ public:
     struct Item {
         int64_t id = 0;
         std::string author;
+        std::string author_avatar;
         std::string title;
         std::string summary;
         int32_t type = 0;

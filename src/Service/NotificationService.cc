@@ -2,10 +2,14 @@
 
 #include <memory>
 
+#include <json/json.h>
+
 #include <Chen/DB/QueryBuilder.hpp>
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
+#include "../Manager/MessageConfigManager.hpp"
 #include "../Repository/NotificationQueryRepository.hpp"
 #include "../Repository/NotificationRepository.hpp"
 #include "../Util/Util.hpp"
@@ -39,8 +43,27 @@ DB::NotificationInfo::ptr NotificationService::AddNotification(const Notificatio
 
     auto info = std::make_shared<DB::NotificationInfo>();
     info->setUserId(data.user_id);
-    info->setTitle(data.title);
-    info->setContent(data.content);
+
+    std::string title = data.title;
+    std::string content = data.content;
+    const std::string default_lang = MessageConfigMgr::GetInstance()->DefaultLanguage();
+    if (!data.title_id.empty()) {
+        title = MessageConfigMgr::GetInstance()->render(default_lang, data.title_id, data.params);
+    }
+    if (!data.content_id.empty()) {
+        content = MessageConfigMgr::GetInstance()->render(default_lang, data.content_id, data.params);
+    }
+
+    Json::Value params(Json::objectValue);
+    for (const auto& [key, value] : data.params) {
+        params[key] = value;
+    }
+
+    info->setTitle(title);
+    info->setContent(content);
+    info->setTitleId(data.title_id);
+    info->setContentId(data.content_id);
+    info->setParams(chen::JsonUtil::ToString(params));
     info->setType(data.type);
     info->setSenderId(data.sender_id);
     info->setArticleId(data.article_id);

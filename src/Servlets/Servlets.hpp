@@ -157,7 +157,7 @@
 #include "Organization/OrganizationReposListServlet.hpp"
 #include "Organization/OrganizationReposStatsServlet.hpp"
 #include "Organization/OrganizationReposSyncServlet.hpp"
-#include "Organization/OrganizationReposTokenServlet.hpp"
+#include "Organization/OrganizationReposUpdateServlet.hpp"
 #include "Organization/OrganizationSetStatusServlet.hpp"
 #include "Organization/OrganizationStatsServlet.hpp"
 #include "Organization/OrganizationUserKickServlet.hpp"
@@ -186,7 +186,7 @@
 #include "Rd/RdTrendServlet.hpp"
 
 // 站点信息部分
-#include "Settings/ErrorCodesServlet.hpp"
+#include "Settings/AppConfigServlet.hpp"
 #include "Settings/SiteSettingsServlet.hpp"
 #include "Settings/SiteStatusServlet.hpp"
 #include "Settings/SystemSettingsServlet.hpp"

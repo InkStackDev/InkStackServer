@@ -45,6 +45,7 @@ int32_t OrganizationApplyListServlet::handle(
             item["id"] = apply.id;
             item["user_id"] = apply.user_id;
             item["user_name"] = apply.user_name;
+            item["user_avatar"] = apply.user_avatar;
             item["org_name"] = apply.org_name;
             item["org_type"] = apply.org_type;
             item["org_description"] = apply.org_description;

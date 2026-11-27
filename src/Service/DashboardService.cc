@@ -1,5 +1,6 @@
 #include "DashboardService.hpp"
 
+#include "../Manager/MessageConfigManager.hpp"
 #include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Repository/CommentQueryRepository.hpp"
@@ -211,7 +212,10 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
     for (size_t i = 0; i < users.size() && i < (size_t)fetch_count; i++) {
         Activity activity;
         activity.type = "user_register";
-        activity.title = "新用户 \"" + users[i]->getName() + "\" 注册了账户";
+        activity.title_id = "dashboard.activity.user_register";
+        activity.params["name"] = users[i]->getName();
+        activity.title = MessageConfigMgr::GetInstance()->render(
+            MessageConfigMgr::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
         activity.create_time = users[i]->getCreateTime();
         out.push_back(std::move(activity));
     }
@@ -226,7 +230,11 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         activity.type = "article_publish";
         auto author = UserRepository::Get(articles[i]->getUserId(), db);
         std::string author_name = author ? author->getName() : "Unknown";
-        activity.title = author_name + " 发布了新文章《" + articles[i]->getTitle() + "》";
+        activity.title_id = "dashboard.activity.article_publish";
+        activity.params["author"] = author_name;
+        activity.params["title"] = articles[i]->getTitle();
+        activity.title = MessageConfigMgr::GetInstance()->render(
+            MessageConfigMgr::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
         activity.create_time = articles[i]->getCreateTime();
         out.push_back(std::move(activity));
     }
@@ -240,7 +248,11 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         std::string commenter_name = commenter ? commenter->getName() : "Unknown";
         auto article = ArticleRepository::Get(comment->getArticleId(), db);
         std::string article_title = article ? article->getTitle() : "Unknown";
-        activity.title = commenter_name + " 在《" + article_title + "》中发表了评论";
+        activity.title_id = "dashboard.activity.comment_create";
+        activity.params["commenter"] = commenter_name;
+        activity.params["title"] = article_title;
+        activity.title = MessageConfigMgr::GetInstance()->render(
+            MessageConfigMgr::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
         activity.create_time = comment->getCreateTime();
         out.push_back(std::move(activity));
     }

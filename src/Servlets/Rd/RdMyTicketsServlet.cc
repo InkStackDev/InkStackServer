@@ -74,6 +74,7 @@ int32_t RdMyTicketsServlet::handle(
             row["priority"] = PriorityToString(item.priority);
             row["creator"] = item.creator;
             row["creator_id"] = item.creator_id;
+            row["creator_avatar"] = item.creator_avatar;
             row["assignee"] = item.assignee;
             row["assignee_avatar"] = item.assignee_avatar;
             row["assignee_id"] = item.assignee_id;

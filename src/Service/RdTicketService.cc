@@ -28,6 +28,7 @@ void FillBase(RdTicketService::Item& item, const Info& info, chen::IDB::ptr db)
 
     auto creator = UserRepository::Get(item.creator_id, db);
     item.creator = creator ? creator->getName() : "";
+    item.creator_avatar = creator ? creator->getAvatar() : "";
     auto assignee = UserRepository::Get(item.assignee_id, db);
     item.assignee = assignee ? assignee->getName() : "";
     item.assignee_avatar = assignee ? assignee->getAvatar() : "";

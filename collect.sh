@@ -32,26 +32,6 @@ for lib in "$ROOT_DIR"/chen-sdk-*/lib/libchen.so; do
     fi
 done
 
-# 确保 gettext 目录已编译（缺失时自动尝试 ninja i18n / i18n.py build）
-log() { echo "==> $*"; }
-die() { echo "[collect][ERROR] $*" >&2; exit 1; }
-
-ensure_mo_files() {
-    local mo_dir="$ROOT_DIR/locale/C/LC_MESSAGES"
-    if [ -f "$mo_dir/techhaven_en.mo" ] && [ -f "$mo_dir/techhaven_zh_CN.mo" ]; then
-        return 0
-    fi
-    log "locale/*.mo 缺失，尝试编译（ninja i18n / scripts/i18n.py build）"
-    if [ -d "$ROOT_DIR/build" ] && command -v ninja >/dev/null 2>&1; then
-        ninja -C "$ROOT_DIR/build" i18n >/dev/null 2>&1 || true
-    fi
-    if [ ! -f "$mo_dir/techhaven_en.mo" ] && command -v python3 >/dev/null 2>&1; then
-        python3 "$ROOT_DIR/scripts/i18n.py" --project-dir "$ROOT_DIR" build >/dev/null 2>&1 || true
-    fi
-    [ -f "$mo_dir/techhaven_en.mo" ] && [ -f "$mo_dir/techhaven_zh_CN.mo" ] && return 0
-    die "缺少 locale/C/LC_MESSAGES/*.mo：请在构建机安装 gettext 后执行 make i18n（或 ninja -C build i18n）再打包"
-}
-
 # 预检
 check_file() {
     local path="$1"
@@ -66,8 +46,7 @@ if [ -z "$CHEN_SDK_LIB" ]; then
     echo "错误: 找不到 chen-sdk-*/lib/libchen.so" >&2
     exit 1
 fi
-check_file "$ROOT_DIR/errors.json"
-ensure_mo_files
+check_file "$ROOT_DIR/config"
 
 shopt -s nullglob
 module_sos=("$ROOT_DIR"/bin/module/*.so)
@@ -113,13 +92,21 @@ chmod +x "$STAGE_DIR/server"
 for so in "${module_sos[@]}"; do
     cp "$so" "$STAGE_DIR/module/"
 done
-cp "$CHEN_SDK_LIB" "$STAGE_DIR/lib/"
+# 运行库要按 SONAME 布局落盘：loader 找的是 libchen.so.1，不是 libchen.so。
+# SDK zip 里三个文件名是三个等大副本（各 20MB），这里只放一份实体，其余建相对符号链接。
+lib_src="$(dirname "$CHEN_SDK_LIB")"
+lib_real="$(ls "$lib_src"/libchen.so.*.* 2>/dev/null | head -1)"
+[ -n "$lib_real" ] || lib_real="$CHEN_SDK_LIB"
+lib_real_name="$(basename "$lib_real")"
+lib_major="${lib_real_name#libchen.so.}"
+lib_major="${lib_major%%.*}"
+cp -pL "$lib_real" "$STAGE_DIR/lib/$lib_real_name"
+ln -sf "$lib_real_name" "$STAGE_DIR/lib/libchen.so.$lib_major"
+ln -sf "libchen.so.$lib_major" "$STAGE_DIR/lib/libchen.so"
+echo "  运行库: $lib_real_name + libchen.so.$lib_major + libchen.so"
 
-# 4. 拷贝错误码与国际化目录
-cp "$ROOT_DIR/errors.json" "$STAGE_DIR/errors.json"
-mkdir -p "$STAGE_DIR/locale/C/LC_MESSAGES"
-cp "$ROOT_DIR/locale/C/LC_MESSAGES/"*.mo "$STAGE_DIR/locale/C/LC_MESSAGES/"
-echo "  复制国际化目录 locale/"
+# 4. 拷贝错误码
+cp -R "$ROOT_DIR/config" "$STAGE_DIR/config"
 
 # 5. 打包
 tar czf "$PKG_NAME" -C "$STAGE_DIR" .

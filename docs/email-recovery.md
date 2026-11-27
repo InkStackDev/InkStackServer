@@ -7,10 +7,10 @@
 ## 流程
 
 ```
-POST /api/v1/user/send_code        type=5
+POST /api/v1/auth/verification-codes        type=5
   └─ 发送 6 位验证码到邮箱，Redis 有效期 10 分钟
 
-POST /api/v1/Auth/email/recovery
+POST /api/v1/auth/email-recoveries
   ├─ 校验 email + auth_code
   ├─ 撤销该用户全部旧会话
   └─ 签发新的 SESSIONID
@@ -20,7 +20,7 @@ POST /api/v1/Auth/email/recovery
 
 复用现有接口：
 
-`POST /api/v1/user/send_code`
+`POST /api/v1/auth/verification-codes`
 
 | 参数    | 必填 | 说明                         |
 |---------|------|------------------------------|
@@ -32,7 +32,7 @@ POST /api/v1/Auth/email/recovery
 
 ## 恢复登录
 
-`POST /api/v1/Auth/email/recovery`
+`POST /api/v1/auth/email-recoveries`
 
 请求参数：
 
@@ -87,14 +87,14 @@ POST /api/v1/Auth/email/recovery
 ## 前端示例
 
 ```js
-await fetch('/api/v1/user/send_code', {
+await fetch('/api/v1/auth/verification-codes', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({email, type: '5', agent: 'web'})
 });
 
-const result = await fetch('/api/v1/Auth/email/recovery', {
+const result = await fetch('/api/v1/auth/email-recoveries', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},

@@ -9,13 +9,14 @@
 
 #include "../Repository/ConversationMessageRepository.hpp"
 #include "../Repository/ConversationRepository.hpp"
+#include "../Util/FiberMutex.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
 namespace {
 /// 会话读改写锁（未读数、隐藏标志），避免同一 worker 内并发丢更新
-std::mutex g_conversation_mutex;
+FiberMutex g_conversation_mutex;
 } // namespace
 
 DB::ConversationInfo::ptr ConversationService::GetOrCreate(int64_t uid_a, int64_t uid_b)
@@ -23,7 +24,7 @@ DB::ConversationInfo::ptr ConversationService::GetOrCreate(int64_t uid_a, int64_
     if (uid_a <= 0 || uid_b <= 0) {
         return nullptr;
     }
-    std::lock_guard<std::mutex> lock(g_conversation_mutex);
+    FiberMutex::Lock lock(g_conversation_mutex);
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "GetOrCreate: get db failed";
@@ -115,7 +116,7 @@ DB::ConversationMessageInfo::ptr ConversationService::SendMessage(int64_t conver
     int64_t sender_id,
     const std::string& text)
 {
-    std::lock_guard<std::mutex> lock(g_conversation_mutex);
+    FiberMutex::Lock lock(g_conversation_mutex);
     auto db = GetDB();
     if (!db) {
         ERROR(logger) << "SendMessage: get db failed";
@@ -184,7 +185,7 @@ DB::ConversationMessageInfo::ptr ConversationService::SendMessage(int64_t conver
 
 bool ConversationService::MarkRead(int64_t conversation_id, int64_t uid)
 {
-    std::lock_guard<std::mutex> lock(g_conversation_mutex);
+    FiberMutex::Lock lock(g_conversation_mutex);
     auto db = GetDB();
     if (!db) {
         return false;
@@ -215,7 +216,7 @@ bool ConversationService::MarkRead(int64_t conversation_id, int64_t uid)
 
 bool ConversationService::DeleteForUser(int64_t conversation_id, int64_t uid)
 {
-    std::lock_guard<std::mutex> lock(g_conversation_mutex);
+    FiberMutex::Lock lock(g_conversation_mutex);
     auto db = GetDB();
     if (!db) {
         return false;

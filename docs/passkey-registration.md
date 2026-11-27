@@ -5,12 +5,12 @@
 ```
 已登录用户
   │
-  ├─ POST /api/v1/Auth/passkey/register/begin
+  ├─ POST /api/v1/users/me/passkeys/options
   │      └─ 返回 PublicKeyCredentialCreationOptions
   │
   ├─ navigator.credentials.create({ publicKey })
   │
-  └─ POST /api/v1/Auth/passkey/register/finish
+  └─ POST /api/v1/users/me/passkeys
          body: PublicKeyCredential.toJSON()
          └─ 校验并写入 user_passkey
 ```
@@ -19,7 +19,7 @@
 
 ### begin
 
-`POST /api/v1/Auth/passkey/register/begin`
+`POST /api/v1/users/me/passkeys/options`
 
 请求参数：
 
@@ -53,7 +53,7 @@
 
 ### finish
 
-`POST /api/v1/Auth/passkey/register/finish`
+`POST /api/v1/users/me/passkeys`
 
 请求体兼容浏览器 `PublicKeyCredential.toJSON()`：
 
@@ -88,7 +88,7 @@
 ## 前端示例
 
 ```js
-const begin = await fetch('/api/v1/Auth/passkey/register/begin', {
+const begin = await fetch('/api/v1/users/me/passkeys/options', {
   method: 'POST',
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },
@@ -103,7 +103,7 @@ const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON
 
 const credential = await navigator.credentials.create({ publicKey });
 
-const finish = await fetch('/api/v1/Auth/passkey/register/finish', {
+const finish = await fetch('/api/v1/users/me/passkeys', {
   method: 'POST',
   credentials: 'include',
   headers: { 'Content-Type': 'application/json' },

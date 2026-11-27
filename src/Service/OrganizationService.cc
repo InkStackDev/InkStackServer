@@ -126,6 +126,9 @@ OrganizationService::Result OrganizationService::GetDetail(const Viewer& viewer,
     out.type = org->getType();
     out.status = org->getStatus();
     out.owner_id = org->getOwnerId();
+    auto owner = UserRepository::Get(out.owner_id, db);
+    out.owner_name = owner ? owner->getName() : "";
+    out.owner_avatar = owner ? owner->getAvatar() : "";
     out.is_owner = viewer.user_id == org->getOwnerId();
 
     auto rel = OrganizationUserRelRepository::GetByOrgAndUser(org_id, viewer.user_id, db);
@@ -275,6 +278,7 @@ bool OrganizationService::ListOrganizations(int32_t status,
         item.status = org->getStatus();
         item.member_count =
             OrganizationUserRelRepository::CountByOrg(org->getId(), OrgMemberStatus::APPROVED, true, db);
+        item.created_at = org->getCreateTime();
         out.push_back(std::move(item));
     }
     return true;
@@ -418,6 +422,7 @@ OrganizationService::ListResult OrganizationService::ListApplies(const Viewer& v
         item.user_id = apply->getUserId();
         auto user = UserRepository::Get(item.user_id, db);
         item.user_name = user ? user->getName() : "";
+        item.user_avatar = user ? user->getAvatar() : "";
         item.org_name = apply->getOrgName();
         item.org_type = apply->getOrgType();
         item.org_description = apply->getOrgDescription();
@@ -457,6 +462,7 @@ OrganizationService::ListResult OrganizationService::ListMyApplies(int64_t user_
         item.user_id = apply->getUserId();
         auto user = UserRepository::Get(item.user_id, db);
         item.user_name = user ? user->getName() : "";
+        item.user_avatar = user ? user->getAvatar() : "";
         item.org_name = apply->getOrgName();
         item.org_type = apply->getOrgType();
         item.org_description = apply->getOrgDescription();

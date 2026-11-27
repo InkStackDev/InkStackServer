@@ -2,28 +2,16 @@
 
 #include <algorithm>
 #include <cctype>
-#include <filesystem>
-#include <system_error>
+#include <cstdlib>
 #include <utility>
+#include <vector>
 
-#include <libintl.h>
-#include <locale.h>
-
-#include <Chen/Log/Log.hpp>
 #include <Chen/Util/StringUtil.hpp>
 
 #include "../Manager/SystemSettingsManager.hpp"
 
-static chen::Logger::ptr logger = LOG_ROOT();
-
-constexpr const char* kDomainPrefix = "techhaven_";
-constexpr const char* kDefaultLanguage = "zh_CN";
+constexpr const char* kDefaultLanguage = "zh-CN";
 const std::string kTrimChars = " \t\r\n\v\f";
-
-std::string DomainFor(const std::string& language)
-{
-    return std::string(kDomainPrefix) + language;
-}
 
 double ParseQuality(const std::string& value)
 {
@@ -114,12 +102,6 @@ std::string BestFromAcceptLanguage(const std::string& header)
     return candidates.empty() ? "" : candidates.front().language;
 }
 
-const std::vector<std::string>& I18n::SupportedLanguages()
-{
-    static const std::vector<std::string> s_languages = {"en", "zh_CN"};
-    return s_languages;
-}
-
 std::string I18n::DefaultLanguage()
 {
     return kDefaultLanguage;
@@ -134,64 +116,12 @@ std::string I18n::NormalizeLanguage(std::string_view language)
     std::replace(value.begin(), value.end(), '_', '-');
 
     if (value == "zh" || value.rfind("zh-", 0) == 0) {
-        return "zh_CN";
+        return "zh-CN";
     }
     if (value == "en" || value.rfind("en-", 0) == 0) {
-        return "en";
+        return "en-US";
     }
     return "";
-}
-
-bool I18n::Init(const std::string& locale_dir)
-{
-    std::error_code ec;
-    const bool exists = std::filesystem::is_directory(locale_dir, ec);
-    if (!exists) {
-        WARN(logger) << "i18n locale directory not found: " << locale_dir;
-    }
-
-    const char* currentLocale = setlocale(LC_MESSAGES, nullptr);
-    if (!currentLocale || std::string(currentLocale) != "C") {
-        if (!setlocale(LC_MESSAGES, "C")) {
-            WARN(logger) << "setlocale(LC_MESSAGES, C) failed";
-        }
-    }
-
-    bool ok = exists;
-    for (const auto& language : SupportedLanguages()) {
-        const std::string domain = DomainFor(language);
-        if (!bindtextdomain(domain.c_str(), locale_dir.c_str())) {
-            WARN(logger) << "bindtextdomain failed: " << domain << " -> " << locale_dir;
-            ok = false;
-        }
-        if (!bind_textdomain_codeset(domain.c_str(), "UTF-8")) {
-            WARN(logger) << "bind_textdomain_codeset failed: " << domain;
-            ok = false;
-        }
-    }
-
-    INFO(logger) << "i18n initialized, locale_dir=" << locale_dir;
-    return ok;
-}
-
-std::string I18n::Translate(std::string_view msgid, std::string_view language)
-{
-    if (msgid.empty()) {
-        return "";
-    }
-
-    std::string normalized = NormalizeLanguage(language);
-    if (normalized.empty()) {
-        normalized = DefaultLanguage();
-    }
-
-    const std::string domain = DomainFor(normalized);
-    const std::string key(msgid);
-    const char* translated = dgettext(domain.c_str(), key.c_str());
-    if (!translated) {
-        return key;
-    }
-    return std::string(translated);
 }
 
 std::string I18n::ResolveLanguage(chen::http::HttpRequest::ptr request)

@@ -3,8 +3,6 @@
 #include "../../Service/OrganizationService.hpp"
 #include "../../Util/Util.hpp"
 
-#include <climits>
-
 OrganizationListServlet::OrganizationListServlet()
     : BlogLoginedServlet("OrganizationListServlet")
 {
@@ -36,6 +34,7 @@ int32_t OrganizationListServlet::handle(
             item["type"] = org.type;
             item["description"] = org.description;
             item["count"] = org.member_count;
+            item["created_at"] = org.created_at;
             list.append(item);
         }
         result->set("list", list);

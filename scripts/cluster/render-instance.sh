@@ -27,7 +27,7 @@
 #   <root>/NAME/instance.env
 #
 # 说明:
-#   - server.work_path 指向部署根目录（errors.json / locale / uploads 共享）
+#   - server.work_path 指向部署根目录（config / uploads 共享）
 #   - 每个实例的 pid 文件、日志、data 路径互不影响
 #
 set -euo pipefail
@@ -82,7 +82,7 @@ ROOT="$(cd "$ROOT" && pwd)"
 [ -n "$NAME" ] || { echo "错误: 缺少 --name" >&2; exit 2; }
 case "$NAME" in
     *[!A-Za-z0-9_-]*) echo "错误: 非法 --name '$NAME'（只允许字母/数字/_/-）" >&2; exit 2 ;;
-    conf|module|lib|scripts|nginx|docs|locale|share|server|errors.json|VERSION)
+    conf|module|lib|scripts|nginx|docs|share|server|config|VERSION)
         echo "错误: --name '$NAME' 与部署根目录的既有文件/目录冲突" >&2; exit 2 ;;
 esac
 [ -n "$ARG_INSTANCE_ID" ] || { echo "错误: 缺少 --instance-id" >&2; exit 2; }

@@ -8,7 +8,7 @@ public:
 
     ServletRegistrar* operator->();
 
-    void addServlet(const std::string& uri, chen::http::Servlet::ptr servlet);
+    void addServlet(const std::string& uri, chen::http::HttpMethod method, chen::http::Servlet::ptr servlet);
 
 private:
     chen::http::ServletDispatch::ptr dispatch_;

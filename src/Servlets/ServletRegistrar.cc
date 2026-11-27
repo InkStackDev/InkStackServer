@@ -14,7 +14,9 @@ ServletRegistrar* ServletRegistrar::operator->()
     return this;
 }
 
-void ServletRegistrar::addServlet(const std::string& uri, chen::http::Servlet::ptr servlet)
+void ServletRegistrar::addServlet(const std::string& uri,
+    chen::http::HttpMethod method,
+    chen::http::Servlet::ptr servlet)
 {
     if (!dispatch_ || !servlet) {
         return;
@@ -23,5 +25,5 @@ void ServletRegistrar::addServlet(const std::string& uri, chen::http::Servlet::p
     if (slt) {
         slt->setRoute(uri);
     }
-    dispatch_->addServlet(uri, servlet);
+    dispatch_->addServlet(uri, method, servlet);
 }

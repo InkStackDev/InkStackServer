@@ -4,7 +4,7 @@
 
 #include "Auth/AuthService.hpp"
 #include "I18n/I18n.hpp"
-#include "Manager/ErrorCodeManager.hpp"
+#include "Manager/MessageConfigManager.hpp"
 #include "Metrics/MetricsService.hpp"
 #include "Util/Util.hpp"
 
@@ -23,13 +23,13 @@ Result::Result(int32_t code, const std::string& m)
 void Result::setErrno(int32_t code)
 {
     code_ = code;
-    message_ = ErrorCodeMgr::GetInstance()->getMessage(code, lang_);
+    message_ = MessageConfigMgr::GetInstance()->getError(lang_, code);
 }
 
 void Result::setErrno(int32_t code, const std::string& custom_msg)
 {
     code_ = code;
-    message_ = I18n::Translate(custom_msg, lang_);
+    message_ = custom_msg;
 }
 
 void Result::setErrnoFmt(int32_t code, const char* fmt, ...)
@@ -40,10 +40,9 @@ void Result::setErrnoFmt(int32_t code, const char* fmt, ...)
         return;
     }
 
-    const std::string localized = I18n::Translate(fmt, lang_);
     va_list ap;
     va_start(ap, fmt);
-    message_ = chen::StringUtil::Formatv(localized.c_str(), ap);
+    message_ = chen::StringUtil::Formatv(fmt, ap);
     va_end(ap);
 }
 

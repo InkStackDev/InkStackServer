@@ -199,11 +199,9 @@ case "$MODE" in
         log "热更新模块: $tmp/module/*.so -> $DEPLOY_PATH/module/"
         mkdir -p "$DEPLOY_PATH/module"
         mv "$tmp"/module/*.so "$DEPLOY_PATH/module/"
-        mv "$tmp/errors.json" "$DEPLOY_PATH/errors.json"
-        if [ -d "$tmp/locale" ]; then
-            log "热更新国际化目录: $tmp/locale -> $DEPLOY_PATH/locale"
-            rm -rf "$DEPLOY_PATH/locale"
-            mv "$tmp/locale" "$DEPLOY_PATH/locale"
+        if [ -d "$tmp/config" ]; then
+            rm -rf "$DEPLOY_PATH/config"
+            mv "$tmp/config" "$DEPLOY_PATH/config"
         fi
 
         # 优先向 master 发 SIGHUP（触发 master fork 新 worker，不依赖 pid 文件/work_path）

@@ -22,7 +22,7 @@ int32_t ExportListServlet::handle(
         std::string status = request->getParam("status");
         int32_t page = 1, pageSize = 15;
         request->checkGetParamAs("page", page);
-        request->checkGetParamAs("pageSize", pageSize);
+        request->checkGetParamAs("page_size", pageSize);
         if (page < 1)
             page = 1;
         if (pageSize < 1)

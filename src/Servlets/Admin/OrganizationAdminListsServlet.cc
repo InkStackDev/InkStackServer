@@ -37,6 +37,7 @@ int32_t OrganizationAdminListsServlet::handle(
             item["type"] = org.type;
             item["description"] = org.description;
             item["count"] = org.member_count;
+            item["created_at"] = org.created_at;
             list.append(item);
         }
         result->set("list", list);

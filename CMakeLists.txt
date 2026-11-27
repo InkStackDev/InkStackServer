@@ -16,7 +16,5 @@ create_server_module(blog
     dbproxy_data
 )
 
-add_dependencies(blog i18n)
-
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/module)

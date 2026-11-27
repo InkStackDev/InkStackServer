@@ -18,6 +18,20 @@ static chen::Logger::ptr logger = LOG_ROOT();
 
 namespace {
 
+std::string NormalizeRepoPath(std::string path)
+{
+    while (!path.empty() && path.back() == '/') {
+        path.pop_back();
+    }
+    if (path.size() > 4 && path.substr(path.size() - 4) == ".git") {
+        path = path.substr(0, path.size() - 4);
+    }
+    while (!path.empty() && path.back() == '/') {
+        path.pop_back();
+    }
+    return path;
+}
+
 /// 从仓库 URL 提取 owner/repo
 std::string ExtractGithubRepo(const std::string& url)
 {
@@ -27,9 +41,7 @@ std::string ExtractGithubRepo(const std::string& url)
         if (!path.empty() && path[0] == '/') {
             path = path.substr(1);
         }
-        if (path.size() > 4 && path.substr(path.size() - 4) == ".git") {
-            path = path.substr(0, path.size() - 4);
-        }
+        path = NormalizeRepoPath(path);
         if (!path.empty()) {
             return path;
         }
@@ -41,11 +53,28 @@ std::string ExtractGithubRepo(const std::string& url)
     if (pos == std::string::npos) {
         return "";
     }
-    std::string path = url.substr(pos + marker.size());
-    if (path.size() > 4 && path.substr(path.size() - 4) == ".git") {
-        path = path.substr(0, path.size() - 4);
-    }
-    return path;
+    return NormalizeRepoPath(url.substr(pos + marker.size()));
+}
+
+bool ValidRepoName(const std::string& name)
+{
+    return !name.empty() && name.size() <= 128;
+}
+
+bool ValidRepoUrl(const std::string& url)
+{
+    return !url.empty() && url.size() <= 512 && url.find("github.com") != std::string::npos
+        && !ExtractGithubRepo(url).empty();
+}
+
+bool ValidRepoLanguage(const std::string& language)
+{
+    return language.size() <= 64;
+}
+
+bool ValidRepoDescription(const std::string& description)
+{
+    return description.size() <= 1024;
 }
 
 void MarkFailed(int64_t repo_id)
@@ -74,6 +103,10 @@ OrganizationRepoService::Result OrganizationRepoService::Add(const Viewer& viewe
     out.reset();
     if (!viewer.valid()) {
         return Result::AccessDenied;
+    }
+    if (!ValidRepoName(input.name) || !ValidRepoUrl(input.url) || !ValidRepoLanguage(input.language)
+        || !ValidRepoDescription(input.description)) {
+        return Result::InvalidParam;
     }
     auto db = GetDB();
     if (!db) {
@@ -125,6 +158,57 @@ OrganizationRepoService::Result OrganizationRepoService::Add(const Viewer& viewe
     return Result::Ok;
 }
 
+OrganizationRepoService::Result OrganizationRepoService::Update(const Viewer& viewer,
+    const OrganizationRepoUpdateInput& input,
+    DB::OrganizationReposInfo::ptr& out)
+{
+    out.reset();
+    if (!viewer.valid()) {
+        return Result::AccessDenied;
+    }
+    if (input.id <= 0 || !ValidRepoUrl(input.url)) {
+        return Result::InvalidParam;
+    }
+    auto db = GetDB();
+    if (!db) {
+        return Result::DbError;
+    }
+    auto info = OrganizationRepoRepository::Get(input.id, db);
+    if (!info) {
+        return Result::NotFound;
+    }
+    OrgScope scope;
+    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
+        return Result::DbError;
+    }
+    if (!viewer.is_platform_admin && !scope.allows(info->getOrgId(), OrgRole::MEMBER)) {
+        return Result::NotMember;
+    }
+    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, info->getOrgId())) {
+        return Result::AccessDenied;
+    }
+
+    if (input.url != info->getUrl()) {
+        info->setUrl(input.url);
+        info->setGithubFullName(ExtractGithubRepo(input.url));
+        info->setSyncStatus("idle");
+        info->setPrSyncStatus("idle");
+        info->setPrSyncedAt(0);
+    }
+    if (input.token) {
+        info->setToken(*input.token);
+    }
+    info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
+
+    if (!OrganizationRepoRepository::Update(info, db)) {
+        ERROR(logger) << "OrganizationRepoService::Update failed, id=" << input.id;
+        return Result::DbError;
+    }
+    OrganizationRepoRepository::Put(info);
+    out = info;
+    return Result::Ok;
+}
+
 OrganizationRepoService::Result OrganizationRepoService::Remove(const Viewer& viewer, int64_t id, int64_t org_id)
 {
     if (!viewer.valid()) {
@@ -154,44 +238,6 @@ OrganizationRepoService::Result OrganizationRepoService::Remove(const Viewer& vi
     }
     OrganizationRepoRepository::Evict(id);
     OrganizationRepoRepository::InvalidateOrgCount(info->getOrgId());
-    return Result::Ok;
-}
-
-OrganizationRepoService::Result OrganizationRepoService::UpdateToken(const Viewer& viewer,
-    int64_t id,
-    const std::string& token,
-    DB::OrganizationReposInfo::ptr& out)
-{
-    out.reset();
-    if (!viewer.valid()) {
-        return Result::AccessDenied;
-    }
-    auto db = GetDB();
-    if (!db) {
-        return Result::DbError;
-    }
-    auto info = OrganizationRepoRepository::Get(id, db);
-    if (!info) {
-        return Result::NotFound;
-    }
-    OrgScope scope;
-    if (!AccessScopeResolver::ResolveOrgs(scope, viewer, db)) {
-        return Result::DbError;
-    }
-    if (!viewer.is_platform_admin && !scope.allows(info->getOrgId(), OrgRole::MEMBER)) {
-        return Result::NotMember;
-    }
-    if (!AccessPolicy::CanManageOrgRepos(viewer, scope, info->getOrgId())) {
-        return Result::AccessDenied;
-    }
-    info->setToken(token);
-    info->setUpdateTime(chen::TimeUtil::GetCurrentSec());
-    if (!OrganizationRepoRepository::Update(info, db)) {
-        ERROR(logger) << "OrganizationRepoService::UpdateToken failed, id=" << id;
-        return Result::DbError;
-    }
-    OrganizationRepoRepository::Put(info);
-    out = info;
     return Result::Ok;
 }
 

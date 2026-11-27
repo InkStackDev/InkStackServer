@@ -13,7 +13,7 @@ Web 后台设计，注重性能、可扩展性和易维护性。
 - 自研 ORM（XML 配置，自动生成 C++ 数据访问层）
 - chen-sdk 基础库
 - master/worker 多进程 + 多线程/协程
-- GNU gettext 国际化
+- config/<lang>.json 驱动的中英文错误码与消息模板
 
 ## 主要功能
 - 用户注册、登录、权限管理
@@ -27,10 +27,10 @@ Web 后台设计，注重性能、可扩展性和易维护性。
 ├── bin/                # server 可执行文件、module/*.so、conf/ 运行配置
 ├── chen-sdk-<ver>/     # chen 框架 SDK（头文件、libchen.so、模块文档）
 ├── cmake/              # 构建辅助脚本
+├── config/             # 多语言配置（errors + messages）
 ├── dbproxy/            # ORM 表结构 XML（xml/）与生成数据访问层（data/）
 ├── deps/               # 三方依赖（构建期使用）
 ├── docs/               # 功能与流程文档
-├── locale/             # gettext 翻译
 ├── protocol/           # 协议定义
 ├── scripts/            # 部署脚本
 ├── src/                # 业务代码（Manager/Servlets 等）
@@ -52,6 +52,9 @@ Web 后台设计，注重性能、可扩展性和易维护性。
    ```
 4. 运行（在仓库根目录，配置位于 `bin/conf/`）：
    ```sh
+   # loader 按 SONAME 找 libchen.so.1，本地运行要把 SDK 的 lib 目录加进搜索路径（部署包里是 ./lib）
+   export LD_LIBRARY_PATH="$(echo "$PWD"/chen-sdk-*/lib):$LD_LIBRARY_PATH"
+
    ./bin/server -s    # 前台运行
    ./bin/server -d    # 守护进程
    ```
@@ -77,8 +80,7 @@ cp bin/conf/prod.env.example bin/conf/prod.env
 
 ## 部署打包
 
-`collect.sh` 会收集部署所需文件并打包为 tar.gz（结构与生产目录一致：`server` / `module` / `lib` / `conf` / `errors.json` /
-`locale`）：
+`collect.sh` 会收集部署所需文件并打包为 tar.gz（结构与生产目录一致：`server` / `module` / `lib` / `conf` / `config`）：
 
 ```sh
 # 打包生产配置（配置值含部署路径 WORK_PATH 全部取自 bin/conf/prod.env）
@@ -138,11 +140,11 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
 
 部署服务器为 **amd64**；**手动触发** `.github/workflows/deploy.yml`（可选择**分支或 tag** 运行），只需选 `mode`：
 
-| 模式             | 行为                                                                                                                                                                      |
-|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cold`（冷启动） | 停服 → 清空运行目录 → 解压产物 → 用 `CONFIG_DIR` 覆盖 `conf/` → `LD_LIBRARY_PATH=./lib ./server -d`                                                                       |
-| `hot`（热启动）  | 解压产物到临时目录 → 同步 `conf/`（设置 `CONFIG_DIR` 时）→ 替换 `module/*.so`、`errors.json`、`locale/` → 向 master 发 `SIGHUP`（fork 新 worker，旧 worker drain 后退出） |
-| `stop`（停服）   | 进入运行目录执行 `./server -s stop`（SIGTERM 优雅关闭）                                                                                                                   |
+| 模式             | 行为                                                                                                                                                       |
+|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cold`（冷启动） | 停服 → 清空运行目录 → 解压产物 → 用 `CONFIG_DIR` 覆盖 `conf/` → `LD_LIBRARY_PATH=./lib ./server -d`                                                        |
+| `hot`（热启动）  | 解压产物到临时目录 → 同步 `conf/`（设置 `CONFIG_DIR` 时）→ 替换 `module/*.so`、`config/` → 向 master 发 `SIGHUP`（fork 新 worker，旧 worker drain 后退出） |
+| `stop`（停服）   | 进入运行目录执行 `./server -s stop`（SIGTERM 优雅关闭）                                                                                                    |
 
 产物来源按所选 ref 自动判定：
 - **tag** → 取该 tag 的 GitHub Release 资产 `techhaven-server-<tag>-amd64.tar.gz`；
@@ -154,7 +156,7 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
 **Variables**：`DEPLOY_PATH`（运行目录）、`CONFIG_DIR`（冷启动覆盖用的配置目录）
 
 > 注意：`CONFIG_DIR` 内 `system.yml` 的 `server.work_path`（及日志/字典路径）必须指向 `DEPLOY_PATH`。cold 会清空运行目录（含日志）；hot
-> 只替换模块、`errors.json` 和 `locale/`，如果改了 `server`、`libchen.so` 或端口/监听地址等启动期配置，必须走 cold。`SIGHUP`
+> 只替换模块和 `config/`，如果改了 `server`、`libchen.so` 或端口/监听地址等启动期配置，必须走 cold。`SIGHUP`
 > 只是在 master 下 fork 新 worker，不会让 master 重新绑定端口。
 
 ## 依赖管理
@@ -163,7 +165,11 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
 
 ```json
 {
-  "chen-sdk": { "repo": "Chen-Christins/chen", "version": "1.7.0-rc4", "arch": "auto" },
+  "chen-sdk": {
+    "repo": "Chen-Christins/chen",
+    "version": "1.7.0-rc6",
+    "arch": "auto"
+  },
   "thirdparty": { "repo": "Chen-Christins/chen", "tag": "v1.0.0", "asset": "deps-{arch}.zip" }
 }
 ```
@@ -192,35 +198,27 @@ CI 生产配置由 **GitHub Secrets/Variables** 注入（见 workflow 的 `Prepa
   server 内的静态副本重复；部署机也无需安装这些库。
 - 架构按主机自动识别（`dependencies.json` 的 `arch=auto`）：mac(arm64) / Linux(amd64) 各自 `./deps.py sync` 即可，无需软链；如需固定，用 `./deps.py use <version> --arch <arch>` 改配置。
 
-## 国际化（i18n）
+## 语言与错误码
 
-- 语言解析顺序：`?lang=` → `Accept-Language` → 系统设置 `language` → `zh_CN`。
-- 当前支持 `zh_CN`、`en`。
-- 错误码消息：`errors.json` 提供 errno/key 与兜底，`locale/po/*.po` 提供 gettext 翻译，运行时加载 `locale/C/LC_MESSAGES/techhaven_<lang>.mo`。
-- 自定义消息：`result->setErrno(ec, "literal")`；带参数使用 `result->setErrnoFmt(ec, "param %s is required", param)`。
-- 新增或修改消息后：
-
-```sh
-ninja i18n-sync    # 重新提取源码消息并合并 PO
-# 编辑 locale/po/en.po、locale/po/zh_CN.po
-ninja i18n-check   # 校验 POT/PO 完整性及占位符
-```
-
-- `.mo` 由构建自动生成到 `locale/C/LC_MESSAGES/`（已 gitignore）。
-- 构建依赖：Linux 安装 `gettext`（提供 `xgettext` / `msgfmt` / `msgmerge` / `msginit`）；运行时使用 glibc gettext，无需额外库。
-- 部署包会包含 `locale/C/LC_MESSAGES/*.mo`；热部署会同步 `locale/` 目录。
+- 语言解析顺序：`?lang=` → `Accept-Language` → 系统设置 `language` → `zh-CN`。
+- 当前支持 `zh-CN`、`en-US`。
+- 语言配置：`config/<lang>.json` 是唯一来源，包含 `errors`（按 errno）和 `messages`（消息模板）两部分。
+- 客户端通过 `GET /api/v1/config?lang=zh-CN` 拉取配置，并挂到前端 i18next 的 `backend` 命名空间。
+- 后端只发送消息 ID 和参数，不再硬编码中英文用户消息。
+- 部署包包含 `config/`，热部署同步 `config/` 和模块。
+- HTTP JSON 字段统一使用 `snake_case`；WebAuthn 标准字段（如 `clientDataJSON`）按协议规范保留。
 
 服务启动后可验证：
 
 ```sh
-curl -H 'Accept-Language: en-US' http://127.0.0.1:8090/api/v1/user/info
+curl -H 'Accept-Language: en-US' http://127.0.0.1:8090/api/v1/users/me
 # msg: Not logged in
 
-curl 'http://127.0.0.1:8090/api/v1/user/info?lang=zh-CN'
+curl 'http://127.0.0.1:8090/api/v1/users/me?lang=zh-CN'
 # msg: 未登录
 
-curl 'http://127.0.0.1:8090/api/v1/error-codes?lang=en'
-# data: 英文错误码表
+curl 'http://127.0.0.1:8090/api/v1/config?lang=en-US'
+# data: 英文 errors + messages
 ```
 
 ## 相关文档

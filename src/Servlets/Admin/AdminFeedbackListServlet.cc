@@ -4,7 +4,7 @@
 
 #include <Chen/Log/Log.hpp>
 #include "../../Service/FeedbackService.hpp"
-#include "../../Repository/UserRepository.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../Util/Util.hpp"
 
@@ -43,6 +43,14 @@ int32_t AdminFeedbackListServlet::handle(
             v["content"] = i->getContent();
             v["contact"] = i->getContact();
             v["created_at"] = static_cast<int64_t>(i->getCreateTime() * 1000);
+
+            int64_t user_id = i->getUserId();
+            v["user_id"] = user_id;
+            UserQueryService::Brief user;
+            UserQueryService::GetUserBrief(user_id, user);
+            v["user_name"] = user.name;
+            v["user_avatar"] = user.avatar;
+
             list.append(v);
         }
 

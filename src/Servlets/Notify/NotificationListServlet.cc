@@ -1,9 +1,12 @@
 #include "NotificationListServlet.hpp"
 
 #include "../../Service/NotificationService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+
+#include <Chen/Util/JsonUtil.hpp>
 
 NotificationListServlet::NotificationListServlet()
     : BlogLoginedServlet("NotificationListServlet")
@@ -39,7 +42,22 @@ int32_t NotificationListServlet::handle(
             item["id"] = n->getId();
             item["title"] = n->getTitle();
             item["content"] = n->getContent();
+            item["title_id"] = n->getTitleId();
+            item["content_id"] = n->getContentId();
+            Json::Value params(Json::objectValue);
+            if (!n->getParams().empty()) {
+                chen::JsonUtil::FromString(params, n->getParams());
+            }
+            item["params"] = params;
             item["type"] = n->getType();
+
+            int64_t sender_id = n->getSenderId();
+            item["sender_id"] = sender_id;
+
+            UserQueryService::Brief sender;
+            UserQueryService::GetUserBrief(sender_id, sender);
+            item["sender_name"] = sender.name;
+            item["sender_avatar"] = sender.avatar;
 
             const std::string& item_type = n->getType();
             int64_t target_id = n->getArticleId();

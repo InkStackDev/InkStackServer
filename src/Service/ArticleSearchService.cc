@@ -33,6 +33,7 @@ bool ArticleSearchService::Search(const tagSearchQuery& query, Result& out)
         Item item;
         item.id = article->getId();
         item.author = user ? user->getName() : "";
+        item.author_avatar = user ? user->getAvatar() : "";
         item.title = article->getTitle();
         item.summary = article->getContent().substr(0, 100);
         item.type = article->getType();

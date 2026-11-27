@@ -10,6 +10,7 @@
 #include "DB/NotificationInfo.hpp"
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,9 @@ struct NotificationData {
     int64_t user_id = 0;
     std::string title;
     std::string content;
+    std::string title_id;
+    std::string content_id;
+    std::map<std::string, std::string> params;
     std::string type;
     int64_t sender_id = 0;
     int64_t article_id = 0;

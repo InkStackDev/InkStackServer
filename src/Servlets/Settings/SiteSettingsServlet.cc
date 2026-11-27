@@ -23,18 +23,18 @@ int32_t SiteSettingsServlet::handle(
             result->setErrno(SETTINGS_NOT_LOADED);
             break;
         }
-        result->set("siteName", settings->getSiteName());
-        result->set("siteDescription", settings->getSiteDescription());
-        result->set("siteKeywords", settings->getSiteKeywords());
-        result->set("siteIcon", settings->getSiteIcon());
-        result->set("siteLogo", settings->getSiteLogo());
+        result->set("site_name", settings->getSiteName());
+        result->set("site_description", settings->getSiteDescription());
+        result->set("site_keywords", settings->getSiteKeywords());
+        result->set("site_icon", settings->getSiteIcon());
+        result->set("site_logo", settings->getSiteLogo());
         result->set("favicon", settings->getFavicon());
         result->set("timezone", settings->getTimezone());
         result->set("language", settings->getLanguage());
-        result->set("enableRegistration", settings->getEnableRegistration() ? true : false);
-        result->set("maintenanceMode", settings->getMaintenanceMode() ? true : false);
-        result->set("allowComments", settings->getAllowComments() ? true : false);
-        result->set("moderateComments", settings->getModerateComments() ? true : false);
+        result->set("enable_registration", settings->getEnableRegistration() ? true : false);
+        result->set("maintenance_mode", settings->getMaintenanceMode() ? true : false);
+        result->set("allow_comments", settings->getAllowComments() ? true : false);
+        result->set("moderate_comments", settings->getModerateComments() ? true : false);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

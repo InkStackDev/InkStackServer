@@ -1,9 +1,12 @@
 #include "DashboardTrendServlet.hpp"
 
+#include "../../Manager/MessageConfigManager.hpp"
 #include "../../Service/DashboardService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <ctime>
+#include <map>
+
 #include <json/json.h>
 
 DashboardTrendServlet::DashboardTrendServlet()
@@ -20,12 +23,29 @@ static std::string FormatBucketDate(int64_t ts)
     return buf;
 }
 
-static const char* WeekdayName(int64_t ts)
+static const char* WeekdayKey(int64_t ts)
 {
-    static const char* names[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
+    static const char* keys[] = {
+        "dashboard.weekday.sun",
+        "dashboard.weekday.mon",
+        "dashboard.weekday.tue",
+        "dashboard.weekday.wed",
+        "dashboard.weekday.thu",
+        "dashboard.weekday.fri",
+        "dashboard.weekday.sat",
+    };
     struct tm t;
     localtime_r(&ts, &t);
-    return names[t.tm_wday];
+    return keys[t.tm_wday];
+}
+
+static Json::Value ParamsToJson(const std::map<std::string, std::string>& params)
+{
+    Json::Value obj(Json::objectValue);
+    for (const auto& [key, value] : params) {
+        obj[key] = value;
+    }
+    return obj;
 }
 
 int32_t DashboardTrendServlet::handle(
@@ -55,6 +75,7 @@ int32_t DashboardTrendServlet::handle(
             break;
         }
 
+        const std::string default_lang = MessageConfigMgr::GetInstance()->DefaultLanguage();
         int64_t now = time(0);
         int64_t total_visits = 0;
         int64_t max_visits = 0;
@@ -70,7 +91,14 @@ int32_t DashboardTrendServlet::handle(
 
             Json::Value item;
             if (period == 7) {
-                item["label"] = WeekdayName(bucket_ts);
+                struct tm t;
+                localtime_r(&bucket_ts, &t);
+                std::map<std::string, std::string> empty_params;
+                const std::string label_id = WeekdayKey(bucket_ts);
+                item["weekday"] = t.tm_wday;
+                item["label_id"] = label_id;
+                item["label_params"] = ParamsToJson(empty_params);
+                item["label"] = MessageConfigMgr::GetInstance()->render(default_lang, label_id, empty_params);
                 item["date"] = FormatBucketDate(bucket_ts);
             } else if (period == 30) {
                 item["label"] = FormatBucketDate(bucket_ts);
@@ -80,7 +108,12 @@ int32_t DashboardTrendServlet::handle(
                 if (week_end > now) {
                     week_end = now;
                 }
-                item["label"] = "第" + std::to_string(i + 1) + "周";
+                std::map<std::string, std::string> params;
+                params["index"] = std::to_string(i + 1);
+                item["week_index"] = i + 1;
+                item["label_id"] = "dashboard.week";
+                item["label_params"] = ParamsToJson(params);
+                item["label"] = MessageConfigMgr::GetInstance()->render(default_lang, "dashboard.week", params);
                 item["date"] = FormatBucketDate(bucket_ts) + " ~ " + FormatBucketDate(week_end);
             }
             item["visits"] = visits;

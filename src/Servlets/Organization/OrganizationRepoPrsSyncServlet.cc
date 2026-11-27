@@ -91,7 +91,7 @@ int32_t OrganizationRepoPrsSyncServlet::handle(
             break;
         }
         if (access == OrganizationRepoService::Result::AccessDenied) {
-            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可同步 PR");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (access != OrganizationRepoService::Result::Ok) {

@@ -47,7 +47,7 @@ int32_t UserOAuthGithubServlet::handle(chen::http::HttpRequest::ptr request,
         std::string client_id = oauth.client_id;
         std::string callback_url = oauth.callback_url;
         if (client_id.empty() || callback_url.empty()) {
-            result->setErrno(GITHUB_OAUTH_FAILED, "GitHub OAuth 未配置");
+            result->setErrno(GITHUB_OAUTH_FAILED);
             break;
         }
 

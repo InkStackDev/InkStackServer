@@ -26,19 +26,19 @@ int32_t OrganizationReposDeleteServlet::handle(
 
         auto rt = OrganizationRepoService::Remove(viewer, id, org_id);
         if (rt == OrganizationRepoService::Result::NotFound) {
-            result->setErrno(ORG_REPO_NOT_FOUND, "仓库不存在");
+            result->setErrno(ORG_REPO_NOT_FOUND);
             break;
         }
         if (rt == OrganizationRepoService::Result::NotMember) {
-            result->setErrno(ACCESS_DENIED, "无权访问该组织");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt == OrganizationRepoService::Result::AccessDenied) {
-            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可删除仓库");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationRepoService::Result::Ok) {
-            result->setErrno(DB_OPERATION_FAILED, "删除仓库失败");
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
     } while (0);

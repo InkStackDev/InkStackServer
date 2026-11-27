@@ -27,6 +27,7 @@ public:
         int64_t id = 0;
         int64_t user_id = 0;
         std::string author;
+        std::string author_avatar;
         std::string title;
         std::string summary;
         int32_t type = 0;

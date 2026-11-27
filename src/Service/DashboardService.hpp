@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,8 @@ public:
     struct Activity {
         std::string type;
         std::string title;
+        std::string title_id;
+        std::map<std::string, std::string> params;
         int64_t create_time = 0;
     };
 

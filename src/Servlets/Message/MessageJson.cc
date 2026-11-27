@@ -8,7 +8,7 @@
 void BuildMessageJson(Json::Value& json, DB::ConversationMessageInfo::ptr msg, int64_t uid)
 {
     json["id"] = msg->getId();
-    json["fromMe"] = (msg->getSenderId() == uid);
+    json["from_me"] = (msg->getSenderId() == uid);
     json["text"] = msg->getContent();
     json["create_time"] = msg->getCreateTime();
 }
@@ -25,6 +25,7 @@ void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, in
     UserQueryService::Brief peer;
     UserQueryService::GetUserBrief(peer_id, peer);
     json["name"] = peer.name;
+    json["avatar"] = peer.avatar;
 
     json["last_time"] = conv->getLastMessageTime();
     json["unread"] = unread;
@@ -33,7 +34,7 @@ void BuildConversationJson(Json::Value& json, DB::ConversationInfo::ptr conv, in
     if (conv->getLastMessageId() > 0) {
         Json::Value last;
         last["id"] = conv->getLastMessageId();
-        last["fromMe"] = (conv->getLastSenderId() == uid);
+        last["from_me"] = (conv->getLastSenderId() == uid);
         last["text"] = conv->getLastMessage();
         last["create_time"] = conv->getLastMessageTime();
         arr.append(last);
@@ -48,7 +49,7 @@ int32_t CheckChatPermission(Result::ptr result, const Viewer& viewer)
         return USER_NOT_FOUND;
     }
     if (viewer.system_role == UserRole::USER) {
-        result->setErrno(ACCESS_DENIED, "私信仅对内部成员开放");
+        result->setErrno(ACCESS_DENIED);
         return ACCESS_DENIED;
     }
     return SUCCESS;

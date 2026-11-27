@@ -29,7 +29,7 @@ int32_t CleanupServlet::handle(
         }
 
         result->set("cleaned", backup_count + export_count);
-        result->set("freedBytes", freed_bytes);
+        result->set("freed_bytes", freed_bytes);
         result->setErrno(SUCCESS);
     } while (0);
 

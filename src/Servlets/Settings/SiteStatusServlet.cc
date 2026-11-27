@@ -23,7 +23,7 @@ int32_t SiteStatusServlet::handle(
             result->setErrno(SETTINGS_NOT_LOADED);
             break;
         }
-        result->set("maintenanceMode", settings->getMaintenanceMode() ? true : false);
+        result->set("maintenance_mode", settings->getMaintenanceMode() ? true : false);
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

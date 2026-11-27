@@ -4,12 +4,11 @@
 #include "./Config/AppConfig.hpp"
 #include "./DB/DBManager.hpp"
 #include "./Event/Events.hpp"
-#include "./I18n/I18n.hpp"
 #include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
-#include "./Manager/ErrorCodeManager.hpp"
+#include "./Manager/MessageConfigManager.hpp"
 #include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
 #include "./Metrics/MetricsService.hpp"
@@ -23,6 +22,7 @@
 
 #include <vector>
 
+#include <Chen/Application.hpp>
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Log/Log.hpp>
@@ -46,13 +46,9 @@ bool BlogModule::onLoad()
 
     const std::string work_path = GetServerWorkPath();
 
-    if (!I18n::Init(work_path + "/locale")) {
-        WARN(LOG_ROOT()) << "i18n unavailable, messages fall back to errors.json";
-    }
-
-    const std::string errors_path = work_path + "/errors.json";
-    if (!ErrorCodeMgr::GetInstance()->load(errors_path)) {
-        ERROR(LOG_ROOT()) << "failed to load error codes: " << errors_path;
+    const std::string config_path = work_path + "/config";
+    if (!MessageConfigMgr::GetInstance()->load(config_path)) {
+        ERROR(LOG_ROOT()) << "failed to load message config: " << config_path;
         return false;
     }
 
@@ -122,36 +118,39 @@ uint64_t BlogModule::getTickIntervalMs()
 
 bool BlogModule::onServerReady()
 {
+    std::vector<chen::TcpServer::ptr> all_servers;
+    chen::Application::GetInstance()->getAllServers(all_servers);
+
     std::vector<chen::http::HttpServer::ptr> http_servers;
-    getAllHttpServer(http_servers);
+    std::vector<chen::http::WSServer::ptr> ws_servers;
+    for (auto& server : all_servers) {
+        if (auto hs = std::dynamic_pointer_cast<chen::http::HttpServer>(server)) {
+            http_servers.push_back(hs);
+            continue;
+        }
+        if (auto ws = std::dynamic_pointer_cast<chen::http::WSServer>(server)) {
+            ws_servers.push_back(ws);
+        }
+    }
 
     if (http_servers.empty()) {
         ERROR(LOG_ROOT()) << "No HTTP server found";
         return false;
     }
 
-    std::vector<chen::http::WSServer::ptr> ws_servers;
-    getAllWSServer(ws_servers);
-
     if (ws_servers.empty()) {
         ERROR(LOG_ROOT()) << "No WS server found";
         return false;
     }
 
-    for (auto& i : http_servers) {
-        const auto hs = std::dynamic_pointer_cast<chen::http::HttpServer>(i);
-        ASSERT_RET(hs, false);
-
+    for (auto& hs : http_servers) {
         if (!BlogMsgHttpInit(hs)) {
             ERROR(LOG_ROOT()) << "BlogMsgHttpInit failed";
             return false;
         }
     }
 
-    for (auto& i : ws_servers) {
-        auto ws = std::dynamic_pointer_cast<chen::http::WSServer>(i);
-        ASSERT_RET(ws, false);
-
+    for (auto& ws : ws_servers) {
         if (!BlogMsgWSInit(ws)) {
             ERROR(LOG_ROOT()) << "BlogMsgWSInit failed";
             return false;

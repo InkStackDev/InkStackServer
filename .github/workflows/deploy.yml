@@ -3,7 +3,7 @@ name: Deploy
 # 手动触发：部署集群包（唯一的发行形态，instances=1 即单实例）
 #
 #   cold   : 停止现有实例 → 解压完整包到 DEPLOY_PATH → 启动全部实例（首次部署 / 全量覆盖）
-#   hot    : 只替换 module/*.so、errors.json、locale/、scripts/ → rolling-restart all
+#   hot    : 只替换 module/*.so、config/、scripts/ → rolling-restart all
 #   module : 只替换 module/*.so（旧文件备份为 *.so.prev），不重启任何实例；
 #            由用户自己上服务器 reload 指定实例，适合灰度验证
 #   stop   : clusterctl stop all
@@ -220,11 +220,9 @@ jobs:
                   cp -f "$so" "$DEPLOY_PATH/module/$base.new"
                   mv -f "$DEPLOY_PATH/module/$base.new" "$DEPLOY_PATH/module/$base"
                 done
-                cp -f "$tmp/errors.json" "$DEPLOY_PATH/errors.json.new"
-                mv -f "$DEPLOY_PATH/errors.json.new" "$DEPLOY_PATH/errors.json"
-                if [ -d "$tmp/locale" ]; then
-                  mkdir -p "$DEPLOY_PATH/locale"
-                  rsync -a --delete "$tmp/locale/" "$DEPLOY_PATH/locale/"
+                if [ -d "$tmp/config" ]; then
+                  rm -rf "$DEPLOY_PATH/config"
+                  cp -R "$tmp/config" "$DEPLOY_PATH/config"
                 fi
                 cp -f "$tmp"/scripts/*.sh "$DEPLOY_PATH/scripts/"
                 chmod +x "$DEPLOY_PATH/scripts/"*.sh

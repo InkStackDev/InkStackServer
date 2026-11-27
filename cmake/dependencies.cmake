@@ -29,58 +29,20 @@ else()
     message(WARNING "deps/ 未就绪，运行 ./deps.py sync 下载三方依赖（头文件/静态库）")
 endif()
 
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-add_subdirectory(${CHEN_SDK_DIR})
-unset(CMAKE_FIND_PACKAGE_PREFER_CONFIG)
+# SDK 1.7.0 起 lib/ 下有 libchen.so / libchen.so.1 / libchen.so.1.6.0 三个文件（SDK zip 里是三个
+# 等大副本，不是链接）。SDK 自带的 CMakeLists 用 file(GLOB lib/*.so) 逐个 add_library(IMPORTED)，
+# 三个文件会算出同一个目标名 chen，configure 阶段直接报 “another target with the same name
+# already exists”。所以这里不再 add_subdirectory(SDK)，改为显式导入真正的库文件。
+set(CHEN_LIBRARY ${CHEN_SDK_DIR}/lib/libchen.so)
+if (NOT EXISTS "${CHEN_LIBRARY}")
+    message(FATAL_ERROR "找不到 ${CHEN_LIBRARY}，请先执行 ./deps.py sync")
+endif ()
+if (NOT TARGET chen)
+    add_library(chen SHARED IMPORTED GLOBAL)
+    set_target_properties(chen PROPERTIES
+            IMPORTED_LOCATION ${CHEN_LIBRARY}
+            INTERFACE_INCLUDE_DIRECTORIES ${CHEN_SDK_DIR}/include
+    )
+endif ()
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/dbproxy/data)
-
-# i18n: GNU gettext catalogs
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
-find_program(MSGFMT_EXECUTABLE msgfmt)
-if(NOT MSGFMT_EXECUTABLE)
-    message(WARNING "msgfmt not found; install gettext to compile locale catalogs")
-endif()
-
-set(I18N_MSGFMT_ARG "")
-if(MSGFMT_EXECUTABLE)
-    set(I18N_MSGFMT_ARG --msgfmt "${MSGFMT_EXECUTABLE}")
-endif()
-
-set(I18N_SCRIPT ${PROJECT_SOURCE_DIR}/scripts/i18n.py)
-set(I18N_PO_DIR ${PROJECT_SOURCE_DIR}/locale/po)
-set(I18N_MO_DIR ${PROJECT_SOURCE_DIR}/locale/C/LC_MESSAGES)
-set(I18N_PO_FILES ${I18N_PO_DIR}/en.po ${I18N_PO_DIR}/zh_CN.po)
-set(I18N_MO_FILES ${I18N_MO_DIR}/techhaven_en.mo ${I18N_MO_DIR}/techhaven_zh_CN.mo)
-
-add_custom_command(
-    OUTPUT ${I18N_MO_FILES}
-    COMMAND ${Python3_EXECUTABLE} ${I18N_SCRIPT}
-            --project-dir ${PROJECT_SOURCE_DIR} ${I18N_MSGFMT_ARG} check
-    COMMAND ${Python3_EXECUTABLE} ${I18N_SCRIPT}
-            --project-dir ${PROJECT_SOURCE_DIR} ${I18N_MSGFMT_ARG} build
-    DEPENDS ${I18N_PO_FILES} ${I18N_SCRIPT}
-            ${PROJECT_SOURCE_DIR}/errors.json
-            ${PROJECT_SOURCE_DIR}/locale/techhaven.pot
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Checking and building gettext catalogs"
-    VERBATIM
-)
-
-add_custom_target(i18n DEPENDS ${I18N_MO_FILES})
-
-add_custom_target(i18n-check
-    COMMAND ${Python3_EXECUTABLE} ${I18N_SCRIPT}
-            --project-dir ${PROJECT_SOURCE_DIR} ${I18N_MSGFMT_ARG} check
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Checking gettext catalogs"
-    VERBATIM
-)
-
-add_custom_target(i18n-sync
-    COMMAND ${Python3_EXECUTABLE} ${I18N_SCRIPT}
-            --project-dir ${PROJECT_SOURCE_DIR} sync
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Syncing gettext catalogs"
-    VERBATIM
-)

@@ -2,8 +2,8 @@
     <columns>
         <column name="id" type="int64" auto_increment="true" desc="主键id"/>
         <column name="user_id" type="int64" desc="接收用户id"/>
-        <column name="title" type="string" length="128" desc="通知标题"/>
-        <column name="content" type="text" desc="通知内容"/>
+        <column name="title" type="string" length="128" desc="通知标题（回退文案）"/>
+        <column name="content" type="text" desc="通知内容（回退文案）"/>
         <column name="type" type="string" length="32" desc="通知类型: system/announcement/article"/>
         <column name="sender_id" type="int64" desc="发送者id(0=系统)"/>
         <column name="article_id" type="int64" desc="关联文章ID"/>
@@ -17,6 +17,9 @@
         <column name="level" type="string" length="16" desc="广播级别: info/warning/danger"/>
         <column name="start_time" type="int64" default="0" desc="广播开始时间(Unix秒), 0=即时"/>
         <column name="end_time" type="int64" default="0" desc="广播结束时间(Unix秒), 0=手动关闭"/>
+        <column name="title_id" type="string" length="128" desc="通知标题消息 ID"/>
+        <column name="content_id" type="string" length="128" desc="通知内容消息 ID"/>
+        <column name="params" type="text" desc="消息模板参数 JSON"/>
     </columns>
     <indexs>
         <index name="pk" cols="id" type="pk"/>

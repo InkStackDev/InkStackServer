@@ -1,18 +1,20 @@
+/**
+ * @file AppConfigServlet.hpp
+ * @brief 客户端语言配置接口
+ * @author Christins
+ * @date 2026-11-26
+ * @copyright Apache 2.0
+ */
 #pragma once
 
 #include "../BlogServlet.hpp"
 
 #include "../../SessionData.hpp"
 
-/**
- * @brief 错误码下发接口
- * GET /api/v1/error-codes?lang=zh-CN
- * 返回指定语言的错误码映射表，前端缓存后用于 errno → 消息的转换
- */
-class ErrorCodesServlet : public BlogServlet {
+class AppConfigServlet : public BlogServlet {
 public:
-    typedef std::shared_ptr<ErrorCodesServlet> ptr;
-    ErrorCodesServlet();
+    typedef std::shared_ptr<AppConfigServlet> ptr;
+    AppConfigServlet();
 
 protected:
     int32_t handle(

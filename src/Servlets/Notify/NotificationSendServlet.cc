@@ -71,6 +71,12 @@ int32_t NotificationSendServlet::handle(
         notif["article_id"] = article_id;
         notif["comment_id"] = comment_id;
         notif["create_time"] = (int64_t)time(0);
+        notif["sender_id"] = uid;
+        UserQueryService::Brief sender;
+        if (UserQueryService::GetUserBrief(uid, sender)) {
+            notif["sender_name"] = sender.name;
+            notif["sender_avatar"] = sender.avatar;
+        }
         if (is_broadcast) {
             notif["is_broadcast"] = 1;
             notif["level"] = level;

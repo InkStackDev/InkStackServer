@@ -9,7 +9,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-static const char* kSystemPrompt = "你是一个专业的文章总结助手。";
+static const char* kSystemPrompt = "You are a professional article summarization assistant.";
 
 ArticleAIService::Result ArticleAIService::Summarize(const Viewer& viewer,
     int64_t article_id,
@@ -61,8 +61,9 @@ ArticleAIService::Result ArticleAIService::Summarize(const Viewer& viewer,
         return Result::ConfigNotFound;
     }
 
-    std::string prompt = "请用简洁的中文总结以下文章的核心内容，控制在200字以内：\n\n"
-                         "标题："
+    std::string prompt =
+        "Please summarize the core content of the following article concisely in English, within 200 words:\n\n"
+        "Title: "
         + title + "\n\n" + content;
 
     auto error = LlmClient::StreamChat(config, kSystemPrompt, prompt, on_chunk, on_error, full_text);

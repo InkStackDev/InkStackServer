@@ -30,7 +30,7 @@ are going to use (§0.2).**
 
 ### 0.2 SDK 文档必读
 
-**写任何业务代码前，必须先读 SDK 自带文档。** SDK 目录形如 `chen-sdk-<version>/`（如 `chen-sdk-1.7.0-rc4/`），由
+**写任何业务代码前，必须先读 SDK 自带文档。** SDK 目录形如 `chen-sdk-<version>/`（如 `chen-sdk-1.7.0-rc6/`），由
 `./deps.py sync` 下载、版本号会变，用通配路径引用：
 
 1. `chen-sdk-*/docs/framework-first.md` — 框架优先：能力对照表、分领域规则、反模式自查、Review 清单
@@ -125,15 +125,28 @@ int32_t XxxServlet::handle(request, response, session, result) {
 
 ### Error reporting:
 ```cpp
-result->setErrno(errcode::NOT_LOGIN);                    // fixed message from errors.json
+result->setErrno(errcode::NOT_LOGIN);                    // fixed message from config/<lang>.json errors
 result->setErrno(errcode::ACCESS_DENIED, "custom msg");  // custom message
 ```
 
 ### Route registration:
 ```cpp
-// In BlogModule.cc → registerServlets()
-dp->addServlet("/api/v1/xxx/yyy", XX(XxxServlet));
+// BlogMsgHttp.cpp：统一用 XX 宏注册
+#define XX(path, method, servlet) dp->addServlet(path, chen::http::method, std::make_shared<servlet>());
+
+XX("/api/v1/xxx/yyy", HttpMethod::GET, XxxServlet)
 ```
+
+### HTTP JSON 字段命名（MANDATORY）:
+
+- 所有 HTTP 请求/响应 JSON 字段统一使用 `snake_case`，包括：
+  - `result->set("field_name", ...)`
+  - `json["field_name"] = ...`
+  - `request->getParam("field_name")` / `getParamAs` / `checkGetParamAs` / `hasParam`
+- 禁止新增 camelCase JSON key，例如 `siteName`、`pageSize`、`fromMe`。
+- 前端在 service 层做 `snake_case -> camelCase` 映射；后端只负责收发 snake_case。
+- 例外：WebAuthn 标准字段（如 `clientDataJSON`、`attestationObject`、`rawId`）按协议规范保留 camelCase。
+- 新增/修改接口时自查：源码中 WebAuthn 之外不应出现 camelCase 的 HTTP JSON key。
 
 ## 3. File Header Comments
 
@@ -214,7 +227,7 @@ When adding a new feature:
 3. **Servlet** (`src/Servlets/<Domain>/`) — follow handler pattern above
 4. **Includes** — update `src/Include/Managers.hpp`, `src/Servlets/Servlets.hpp`
 5. **Registration** — `BlogModule.cc`: table create, migrate, servlet route
-6. **Error codes** — `src/ErrorCodes.hpp` + `errors.json`
+6. **Error codes** — `src/ErrorCodes.hpp` + `config/<lang>.json` 的 `errors`
 
 ## 6. Code Style Quick Reference
 

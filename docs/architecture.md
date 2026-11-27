@@ -103,7 +103,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 - 仍然保留的组件只允许是非数据库能力（后续可逐步改名为 Registry / Cache / Util）：
   - `WSConnectionManager`：进程内 WS 连接状态
   - `SystemSettingsManager`：进程内设置快照 + 版本校验
-  - `ErrorCodeManager`：`errors.json` 内存表与 i18n
+  - `MessageConfigManager`：`config/<lang>.json` 内存表、错误码与消息模板
   - `SessionManager`：session TTL 计算
   - `CacheUtil`：Repository 共用缓存工具
 - 已删除的纯 facade（示例）：
@@ -144,7 +144,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 5. 外部调用放 `src/Client/`，Service 只调用 Client
 6. `src/Servlets/` 只做参数/粗粒度路由鉴权/响应/事件
 7. 更新 `src/Include/Managers.hpp`（如需兼容旧入口）
-8. 新错误码同时更新 `src/ErrorCodes.hpp` 与 `errors.json`
+8. 新错误码同时更新 `src/ErrorCodes.hpp` 与 `config/zh-CN.json`、`config/en-US.json` 的 `errors`
 9. 涉及跨 worker 状态时，确认已使用 Redis/JobRunner/MessageRouter
 10. 多实例部署前过一遍 [`multi-instance.md`](multi-instance.md)：Redis 高可用、共享存储、实例标识、`use_lease` 选择
 

@@ -443,7 +443,7 @@ bool CollectClusterMetrics(Json::Value& out)
     }
     out = Json::Value(Json::objectValue);
     out["metrics"] = std::move(list);
-    out["instanceCount"] = snapshots.size();
+    out["instance_count"] = snapshots.size();
     out["degraded"] = degraded;
     return true;
 }

@@ -1,9 +1,12 @@
 #include "BroadcastListServlet.hpp"
 
 #include "../../Service/NotificationService.hpp"
+#include "../../Service/UserQueryService.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
+
+#include <Chen/Util/JsonUtil.hpp>
 
 BroadcastListServlet::BroadcastListServlet()
     : BlogServlet("BroadcastListServlet")
@@ -38,8 +41,23 @@ int32_t BroadcastListServlet::handle(
             item["id"] = info->getId();
             item["title"] = info->getTitle();
             item["content"] = info->getContent();
+            item["title_id"] = info->getTitleId();
+            item["content_id"] = info->getContentId();
+            Json::Value params(Json::objectValue);
+            if (!info->getParams().empty()) {
+                chen::JsonUtil::FromString(params, info->getParams());
+            }
+            item["params"] = params;
             item["type"] = info->getType();
             item["level"] = info->getLevel();
+
+            int64_t sender_id = info->getSenderId();
+            item["sender_id"] = sender_id;
+            UserQueryService::Brief sender;
+            UserQueryService::GetUserBrief(sender_id, sender);
+            item["sender_name"] = sender.name;
+            item["sender_avatar"] = sender.avatar;
+
             item["start_time"] = info->getStartTime();
             item["end_time"] = info->getEndTime();
             item["create_time"] = info->getCreateTime();

@@ -9,7 +9,7 @@
  *   XX  = 模块号 (00=成功, 01=通用, 02=用户, 03=文章, ...)
  *   YYY = 模块内错误序号 (001-999)
  *
- * 与 errors.json 保持同步
+ * 与 config/<lang>.json 的 errors 保持一致
  */
 #pragma once
 

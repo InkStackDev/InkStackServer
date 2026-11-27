@@ -17,6 +17,7 @@ public:
         int64_t id = 0;
         int64_t user_id = 0;
         std::string author;
+        std::string author_avatar;
         std::string email;
         int32_t author_role = 0;
         bool has_author = false;

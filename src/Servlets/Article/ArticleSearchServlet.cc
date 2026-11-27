@@ -69,6 +69,7 @@ int32_t ArticleSearchServlet::handle(
             Json::Value row;
             row["id"] = item.id;
             row["author"] = item.author;
+            row["author_avatar"] = item.author_avatar;
             row["title"] = item.title;
             row["summary"] = item.summary;
             row["type"] = item.type;

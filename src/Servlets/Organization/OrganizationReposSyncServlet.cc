@@ -34,11 +34,11 @@ int32_t OrganizationReposSyncServlet::handle(
             break;
         }
         if (rt == OrganizationRepoService::Result::AccessDenied) {
-            result->setErrno(ACCESS_DENIED, "仅研发主管及以上角色可触发仓库同步");
+            result->setErrno(ACCESS_DENIED);
             break;
         }
         if (rt != OrganizationRepoService::Result::Ok) {
-            result->setErrno(DB_OPERATION_FAILED, "同步失败");
+            result->setErrno(DB_OPERATION_FAILED);
             break;
         }
 
