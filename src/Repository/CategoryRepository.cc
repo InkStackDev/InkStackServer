@@ -197,7 +197,8 @@ int64_t CategoryRepository::ListByPages(std::vector<ListItem>& out,
         return 0;
     }
     qb->select("c.id, c.user_id, c.name, c.url, c.icon, c.color, c.description, c.parent_id, c.status, "
-               "c.create_time, c.update_time, COUNT(a.id) AS article_count, COALESCE(SUM(a.views), 0) AS view_count");
+               "c.create_time, c.update_time, COUNT(a.id) AS article_count, CAST(COALESCE(SUM(a.views), 0) AS SIGNED) "
+               "AS view_count");
     qb->join("LEFT", "article_category_rel acr", "acr.category_id = c.id AND acr.is_deleted = 0");
     qb->join("LEFT", "article a", "a.id = acr.article_id");
     qb->whereIf(is_valid, "c.is_deleted", "=", (int64_t)0);
@@ -288,7 +289,7 @@ CategoryRepository::Stats CategoryRepository::GetStats(chen::IDB::ptr conn)
     {
         auto qb = DB::CategoryInfoDao::newQuery("c");
         if (qb) {
-            qb->select("COALESCE(SUM(a.views), 0)");
+            qb->select("CAST(COALESCE(SUM(a.views), 0) AS SIGNED)");
             qb->join("INNER", "article_category_rel acr", "acr.category_id = c.id AND acr.is_deleted = 0");
             qb->join("LEFT", "article a", "a.id = acr.article_id");
             qb->where("c.is_deleted", "=", (int64_t)0);
