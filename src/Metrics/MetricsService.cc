@@ -19,7 +19,7 @@
 
 #include "../Config/AppConfig.hpp"
 #include "../Message/MessageRouter.hpp"
-#include "../Manager/WSConnectionManager.hpp"
+#include "../Message/WSConnectionRegistry.hpp"
 #include "../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -129,7 +129,7 @@ void Init(
     });
 
     registry->getGaugeFunc("blog_ws_online_devices", "Online WebSocket devices", {}, []() -> int64_t {
-        auto* manager = WSMgr::GetInstance();
+        auto* manager = WSRegistry::GetInstance();
         if (!manager) {
             return 0;
         }

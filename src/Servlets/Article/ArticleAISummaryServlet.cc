@@ -3,7 +3,7 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Domain/UserTypes.hpp"
 #include "../../I18n/I18n.hpp"
-#include "../../Manager/MessageConfigManager.hpp"
+#include "../../I18n/MessageCatalog.hpp"
 #include "../../Service/ArticleAIService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -26,7 +26,7 @@ int32_t ArticleAISummaryServlet::onConnect(chen::http::HttpRequest::ptr request,
         Json::Value msg;
         msg["type"] = type;
         msg["message_id"] = message_id;
-        msg["message"] = MessageConfigMgr::GetInstance()->render(lang, message_id);
+        msg["message"] = MessageCatalogRegistry::GetInstance()->render(lang, message_id);
         session->sendEvent(chen::JsonUtil::ToString(msg));
     };
 

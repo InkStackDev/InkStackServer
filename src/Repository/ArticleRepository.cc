@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "../Cache/EntityCache.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 struct ArticleRepositoryCodec {
     static DB::ArticleInfo::ptr Decode(const Json::Value& v)

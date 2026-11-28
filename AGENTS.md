@@ -206,7 +206,7 @@ master fork 新 worker
   `onDeactivate` flush。
 - drain 窗口内新旧 worker 会同时运行，旧 worker 的 tick 定时器在 drain 超时后才取消，`onTick` 必须幂等；定时发布、清理、广播等操作建议加
   Redis 锁或做幂等。
-- master 不加载业务模块，也不应访问模块单例（如 `ArticleMgr`、`WSMgr`）。
+- master 不加载业务模块，也不应访问模块单例（如 `ArticleRepository`、`WSRegistry`）。
 
 ### EventBus / 回调清理规则（多进程）
 
@@ -223,9 +223,10 @@ master fork 新 worker
 When adding a new feature:
 
 1. **XML table** (`dbproxy/xml/`) — define table schema, then `make orm`
-2. **Manager** (`src/Manager/`) — singleton + LRU cache + CRUD methods + null checks
+2. **State/Service** — 进程内状态放 `src/Cache`、`src/I18n`、`src/Message`；业务用例放 `src/Service`；不要新增
+   `src/Manager/`
 3. **Servlet** (`src/Servlets/<Domain>/`) — follow handler pattern above
-4. **Includes** — update `src/Include/Managers.hpp`, `src/Servlets/Servlets.hpp`
+4. **Includes** — update `src/Servlets/Servlets.hpp`
 5. **Registration** — `BlogModule.cc`: table create, migrate, servlet route
 6. **Error codes** — `src/ErrorCodes.hpp` + `config/<lang>.json` 的 `errors`
 
@@ -234,7 +235,7 @@ When adding a new feature:
 | Element                                    | Convention                                                          |
 |--------------------------------------------|---------------------------------------------------------------------|
 | Files (headers / sources)                  | `PascalCase.hpp` / `PascalCase.cc`                                  |
-| Directories (modules)                      | `PascalCase` (`Manager`, `Servlets/Article`, `Auth/WebAuthn`)       |
+| Directories (modules)                      | `PascalCase` (`Service`, `Servlets/Article`, `Auth/WebAuthn`)       |
 | Namespaces                                 | 不允许。仅 `chen` 特化例外，禁止匿名 `namespace {}` 与 `xxx_detail` |
 | Classes                                    | `PascalCase`                                                        |
 | Member variables (class private/protected) | `snake_case_`                                                       |

@@ -13,7 +13,7 @@
 
 /**
  * @brief WebSocket 消息路由
- * @details 业务只依赖本接口，不直接碰 WSConnectionManager。
+ * @details 业务只依赖本接口，不直接碰 WSConnectionRegistry。
  *          连接所在 worker 直接投递；当前 worker 没有目标连接时，通过 Redis 收件箱
  *          转给持有连接的 worker。长连接本身仍由接入的 worker 全程处理，不经过 RPC。
  */
@@ -71,7 +71,7 @@ public:
     virtual bool IsDeviceOnline(const std::string& device_id) = 0;
 
     /**
-     * @brief 连接建立/断开回调（由 WSConnectionManager 触发）
+     * @brief 连接建立/断开回调（由 WSConnectionRegistry 触发）
      * @param added true 新增，false 断开
      * @param old_user_id 同一 device_id 被替换时的旧用户，0 表示无
      */

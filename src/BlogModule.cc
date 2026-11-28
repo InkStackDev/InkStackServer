@@ -4,13 +4,13 @@
 #include "./Config/AppConfig.hpp"
 #include "./DB/DBManager.hpp"
 #include "./Event/Events.hpp"
+#include "./I18n/MessageCatalog.hpp"
 #include "./Job/JobRunner.hpp"
 #include "./Logic/BlogMsgFromBot.hpp"
 #include "./Logic/BlogMsgHttp.hpp"
 #include "./Logic/BlogMsgWS.hpp"
-#include "./Manager/MessageConfigManager.hpp"
-#include "./Manager/WSConnectionManager.hpp"
 #include "./Message/MessageRouter.hpp"
+#include "./Message/WSConnectionRegistry.hpp"
 #include "./Metrics/MetricsService.hpp"
 #include "./Search/SearchSync.hpp"
 #include "./Service/ArticleCounterService.hpp"
@@ -19,6 +19,7 @@
 #include "./Service/NotificationService.hpp"
 #include "./Service/OrganizationRepoPrService.hpp"
 #include "./Service/OrganizationRepoService.hpp"
+#include "./Service/SystemSettingsService.hpp"
 #include "./Service/UserService.hpp"
 
 #include <functional>
@@ -58,7 +59,7 @@ bool BlogModule::onLoad()
     const std::string work_path = GetServerWorkPath();
 
     const std::string config_path = work_path + "/config";
-    if (!MessageConfigMgr::GetInstance()->load(config_path)) {
+    if (!MessageCatalogRegistry::GetInstance()->load(config_path)) {
         ERROR(LOG_ROOT()) << "failed to load message config: " << config_path;
         return false;
     }
@@ -77,6 +78,11 @@ bool BlogModule::onLoad()
         ERROR(LOG_ROOT()) << "redis pool unavailable: " << GetRedisPoolName();
     } else {
         INFO(LOG_ROOT()) << "redis pool ready: " << GetRedisPoolName();
+    }
+
+    // 预热系统设置快照，避免首批请求触发同步加载
+    if (!SystemSettingsServiceRegistry::GetInstance()->get()) {
+        ERROR(LOG_ROOT()) << "failed to preload system settings";
     }
     return true;
 }
@@ -117,8 +123,8 @@ bool BlogModule::onDeactivate()
         ArticleCounterService::FlushDirty();
     });
     // 热重载/关机：让客户端主动重连到新 worker，避免一直挂到 drain 超时
-    RunShutdownStep("WSMgr::closeAllConnections", []() {
-        WSMgr::GetInstance()->closeAllConnections(
+    RunShutdownStep("WSRegistry::closeAllConnections", []() {
+        WSRegistry::GetInstance()->closeAllConnections(
             R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
     });
     INFO(LOG_ROOT()) << "shutdown: onDeactivate done";
@@ -129,6 +135,11 @@ void BlogModule::onTick()
 {
     static uint32_t tick = 0;
     ++tick;
+
+    // 1s 校验一次系统设置版本（内部按 1s 限流）
+    if (tick % 10 == 0) {
+        SystemSettingsServiceRegistry::GetInstance()->refreshIfStale();
+    }
 
     // 5s 发布一次本进程指标快照（供集群聚合读取）
     if (tick % 50 == 0) {

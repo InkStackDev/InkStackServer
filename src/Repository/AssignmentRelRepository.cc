@@ -1,6 +1,6 @@
 #include "AssignmentRelRepository.hpp"
 
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 static std::string OrgAssignKey(int64_t org_id, int64_t assignment_id)
 {

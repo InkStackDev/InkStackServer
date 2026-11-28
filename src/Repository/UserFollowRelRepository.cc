@@ -8,7 +8,7 @@
 #include <Chen/Log/Log.hpp>
 
 #include "../Cache/EntityCache.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 

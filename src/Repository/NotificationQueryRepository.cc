@@ -4,7 +4,7 @@
 #include <Chen/Util/TypeUtil.hpp>
 
 #include "../Config/AppConfig.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 #include "../Util/Util.hpp"
 #include "NotificationRepository.hpp"
 

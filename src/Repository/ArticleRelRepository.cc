@@ -2,7 +2,7 @@
 
 #include <Chen/DB/Redis.hpp>
 
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 static std::string CategoryKey(int64_t article_id, int64_t category_id)
 {

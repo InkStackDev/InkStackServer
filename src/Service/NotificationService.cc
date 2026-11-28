@@ -9,7 +9,7 @@
 #include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/TimeUtil.hpp>
 
-#include "../Manager/MessageConfigManager.hpp"
+#include "../I18n/MessageCatalog.hpp"
 #include "../Repository/NotificationQueryRepository.hpp"
 #include "../Repository/NotificationRepository.hpp"
 #include "../Util/Util.hpp"
@@ -42,12 +42,12 @@ DB::NotificationInfo::ptr NotificationService::AddNotification(const Notificatio
 
     std::string title = data.title;
     std::string content = data.content;
-    const std::string default_lang = MessageConfigMgr::GetInstance()->DefaultLanguage();
+    const std::string default_lang = MessageCatalogRegistry::GetInstance()->DefaultLanguage();
     if (!data.title_id.empty()) {
-        title = MessageConfigMgr::GetInstance()->render(default_lang, data.title_id, data.params);
+        title = MessageCatalogRegistry::GetInstance()->render(default_lang, data.title_id, data.params);
     }
     if (!data.content_id.empty()) {
-        content = MessageConfigMgr::GetInstance()->render(default_lang, data.content_id, data.params);
+        content = MessageCatalogRegistry::GetInstance()->render(default_lang, data.content_id, data.params);
     }
 
     Json::Value params(Json::objectValue);

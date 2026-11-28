@@ -8,8 +8,8 @@
 
 #include "../../Event/EventDefine.hpp"
 #include "../../I18n/I18n.hpp"
-#include "../../Manager/MessageConfigManager.hpp"
-#include "../../Manager/SystemSettingsManager.hpp"
+#include "../../I18n/MessageCatalog.hpp"
+#include "../../Service/SystemSettingsService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
 #include "../../Service/UserService.hpp"
@@ -80,7 +80,7 @@ int32_t UserSendCodeServlet::handle(
         }
 
         // 检查 SMTP 配置（在写 DB 之前校验，避免产生无效验证码）
-        auto sys_settings = SystemSettingsMgr::GetInstance()->get();
+        auto sys_settings = SystemSettingsServiceRegistry::GetInstance()->get();
         if (!sys_settings || sys_settings->getSmtpHost().empty() || sys_settings->getSmtpPort() <= 0 || sys_settings->getSmtpPort() > 65535) {
             result->setErrno(SMTP_NOT_CONFIGURED);
             break;
@@ -114,11 +114,13 @@ int32_t UserSendCodeServlet::handle(
         const std::string kind = is_register ? "register" : (is_recovery ? "recovery" : "reset_password");
         std::map<std::string, std::string> params;
         params["site"] = site_name;
-        std::string title = MessageConfigMgr::GetInstance()->render(lang, "email.verification.subject." + kind, params);
-        std::string intro = MessageConfigMgr::GetInstance()->render(lang, "email.verification.intro." + kind, params);
-        std::string greeting = MessageConfigMgr::GetInstance()->render(lang, "email.verification.greeting");
-        std::string validity = MessageConfigMgr::GetInstance()->render(lang, "email.verification.validity");
-        std::string footer = MessageConfigMgr::GetInstance()->render(lang, "email.verification.footer");
+        std::string title =
+            MessageCatalogRegistry::GetInstance()->render(lang, "email.verification.subject." + kind, params);
+        std::string intro =
+            MessageCatalogRegistry::GetInstance()->render(lang, "email.verification.intro." + kind, params);
+        std::string greeting = MessageCatalogRegistry::GetInstance()->render(lang, "email.verification.greeting");
+        std::string validity = MessageCatalogRegistry::GetInstance()->render(lang, "email.verification.validity");
+        std::string footer = MessageCatalogRegistry::GetInstance()->render(lang, "email.verification.footer");
         std::string code_html = std::string() + "<div style=\"max-width:480px;margin:0 auto;padding:32px 24px;"
             + "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
             + "background:#ffffff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)\">"

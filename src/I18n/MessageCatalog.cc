@@ -1,5 +1,6 @@
-#include "MessageConfigManager.hpp"
+#include "MessageCatalog.hpp"
 
+#include <utility>
 #include <vector>
 
 #include <Chen/Log/Log.hpp>
@@ -7,43 +8,42 @@
 #include <Chen/Util/JsonUtil.hpp>
 #include <Chen/Util/StringUtil.hpp>
 
-#include "../I18n/I18n.hpp"
+#include "I18n.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-MessageConfigManager::MessageConfigManager()
+MessageCatalog::MessageCatalog()
+    : data_()
 {
 }
 
-bool MessageConfigManager::load(const std::string& dir)
+bool MessageCatalog::load(const std::string& dir)
 {
-    dir_ = dir;
-    configs_.clear();
-
     std::vector<std::string> files;
     chen::FSUtil::ListAllFile(files, dir, ".json");
     if (files.empty()) {
-        ERROR(logger) << "MessageConfigManager: no language config found in " << dir;
+        ERROR(logger) << "MessageCatalog: no language config found in " << dir;
         return false;
     }
 
+    auto data = std::make_shared<CatalogData>();
     for (const auto& file : files) {
         const std::string content = chen::FSUtil::ReadFileToString(file);
         if (content.empty()) {
-            ERROR(logger) << "MessageConfigManager: failed to read " << file;
+            ERROR(logger) << "MessageCatalog: failed to read " << file;
             continue;
         }
 
         Json::Value root;
         if (!chen::JsonUtil::FromString(root, content) || !root.isObject()) {
-            ERROR(logger) << "MessageConfigManager: invalid JSON " << file;
+            ERROR(logger) << "MessageCatalog: invalid JSON " << file;
             continue;
         }
 
         const std::string declared_lang = root.get("lang", "").asString();
         const std::string normalized = I18n::NormalizeLanguage(declared_lang);
         if (normalized.empty()) {
-            ERROR(logger) << "MessageConfigManager: invalid lang in " << file << " lang=" << declared_lang;
+            ERROR(logger) << "MessageCatalog: invalid lang in " << file << " lang=" << declared_lang;
             continue;
         }
 
@@ -54,57 +54,56 @@ bool MessageConfigManager::load(const std::string& dir)
             root["messages"] = Json::Value(Json::objectValue);
         }
 
-        configs_[normalized] = root;
-        INFO(logger) << "MessageConfigManager: loaded " << file << " lang=" << normalized
-                     << " errors=" << root["errors"].size() << " messages=" << root["messages"].size();
+        auto config = std::make_shared<Json::Value>(std::move(root));
+        data->configs[normalized] = config;
+        INFO(logger) << "MessageCatalog: loaded " << file << " lang=" << normalized
+                     << " errors=" << (*config)["errors"].size() << " messages=" << (*config)["messages"].size();
     }
 
-    if (configs_.find(DefaultLanguage()) == configs_.end()) {
-        ERROR(logger) << "MessageConfigManager: default language " << DefaultLanguage() << " not found in " << dir;
+    if (data->configs.find(DefaultLanguage()) == data->configs.end()) {
+        ERROR(logger) << "MessageCatalog: default language " << DefaultLanguage() << " not found in " << dir;
         return false;
     }
 
-    INFO(logger) << "MessageConfigManager: loaded " << configs_.size() << " languages from " << dir;
+    const size_t count = data->configs.size();
+    data_.store(std::shared_ptr<const CatalogData>(std::move(data)));
+    INFO(logger) << "MessageCatalog: loaded " << count << " languages from " << dir;
     return true;
 }
 
-bool MessageConfigManager::reload()
-{
-    if (dir_.empty()) {
-        ERROR(logger) << "MessageConfigManager: no config dir, cannot reload";
-        return false;
-    }
-    return load(dir_);
-}
-
-std::string MessageConfigManager::DefaultLanguage() const
+std::string MessageCatalog::DefaultLanguage() const
 {
     return I18n::DefaultLanguage();
 }
 
-const Json::Value* MessageConfigManager::findConfig(const std::string& lang) const
+MessageCatalog::ConfigPtr MessageCatalog::findConfig(const std::string& lang) const
 {
+    auto data = data_.load();
+    if (!data) {
+        return nullptr;
+    }
+
     std::string normalized = I18n::NormalizeLanguage(lang);
     if (normalized.empty()) {
         normalized = DefaultLanguage();
     }
 
-    auto it = configs_.find(normalized);
-    if (it != configs_.end()) {
-        return &it->second;
+    auto it = data->configs.find(normalized);
+    if (it != data->configs.end()) {
+        return it->second;
     }
 
-    auto def = configs_.find(DefaultLanguage());
-    if (def != configs_.end()) {
-        return &def->second;
+    auto def = data->configs.find(DefaultLanguage());
+    if (def != data->configs.end()) {
+        return def->second;
     }
     return nullptr;
 }
 
-std::string MessageConfigManager::getError(const std::string& lang, int32_t err_code) const
+std::string MessageCatalog::getError(const std::string& lang, int32_t err_code) const
 {
     const std::string key = std::to_string(err_code);
-    const Json::Value* config = findConfig(lang);
+    auto config = findConfig(lang);
 
     if (config) {
         const Json::Value& errors = (*config)["errors"];
@@ -123,38 +122,38 @@ std::string MessageConfigManager::getError(const std::string& lang, int32_t err_
     return "Unknown error";
 }
 
-Json::Value MessageConfigManager::getErrors(const std::string& lang) const
+Json::Value MessageCatalog::getErrors(const std::string& lang) const
 {
-    const Json::Value* config = findConfig(lang);
+    auto config = findConfig(lang);
     if (config && (*config)["errors"].isObject()) {
         return (*config)["errors"];
     }
     return Json::Value(Json::objectValue);
 }
 
-Json::Value MessageConfigManager::getMessages(const std::string& lang) const
+Json::Value MessageCatalog::getMessages(const std::string& lang) const
 {
-    const Json::Value* config = findConfig(lang);
+    auto config = findConfig(lang);
     if (config && (*config)["messages"].isObject()) {
         return (*config)["messages"];
     }
     return Json::Value(Json::objectValue);
 }
 
-Json::Value MessageConfigManager::getConfig(const std::string& lang) const
+Json::Value MessageCatalog::getConfig(const std::string& lang) const
 {
-    const Json::Value* config = findConfig(lang);
+    auto config = findConfig(lang);
     if (config) {
         return *config;
     }
     return Json::Value(Json::objectValue);
 }
 
-std::string MessageConfigManager::render(const std::string& lang,
+std::string MessageCatalog::render(const std::string& lang,
     const std::string& key,
     const std::map<std::string, std::string>& params) const
 {
-    const Json::Value* config = findConfig(lang);
+    auto config = findConfig(lang);
     std::string text;
 
     if (config) {
@@ -175,7 +174,7 @@ std::string MessageConfigManager::render(const std::string& lang,
     }
 
     if (text.empty()) {
-        WARN(logger) << "MessageConfigManager: missing message key=" << key << " lang=" << lang;
+        WARN(logger) << "MessageCatalog: missing message key=" << key << " lang=" << lang;
         return key;
     }
 
@@ -185,11 +184,17 @@ std::string MessageConfigManager::render(const std::string& lang,
     return text;
 }
 
-std::string MessageConfigManager::getVersion(const std::string& lang) const
+std::string MessageCatalog::getVersion(const std::string& lang) const
 {
-    const Json::Value* config = findConfig(lang);
+    auto config = findConfig(lang);
     if (config) {
-        return (*config).get("version", "unknown").asString();
+        return config->get("version", "unknown").asString();
     }
     return "unknown";
+}
+
+size_t MessageCatalog::getLanguageCount() const
+{
+    auto data = data_.load();
+    return data ? data->configs.size() : 0;
 }

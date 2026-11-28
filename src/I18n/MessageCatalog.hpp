@@ -1,12 +1,13 @@
 /**
- * @file MessageConfigManager.hpp
- * @brief 语言配置管理：加载 config/<lang>.json，提供错误码与消息模板
+ * @file MessageCatalog.hpp
+ * @brief 语言配置目录：加载 config/<lang>.json，提供错误码与消息模板
  * @author Christins
  * @date 2026-11-26
  * @copyright Apache 2.0
  */
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -17,23 +18,19 @@
 
 #include <Chen/Util/Singleton.hpp>
 
-class MessageConfigManager {
+class MessageCatalog {
 public:
-    typedef std::shared_ptr<MessageConfigManager> ptr;
+    typedef std::shared_ptr<MessageCatalog> ptr;
+    typedef std::shared_ptr<const Json::Value> ConfigPtr;
 
-    MessageConfigManager();
+    MessageCatalog();
 
     /**
      * @brief 加载 config 目录下的所有语言 JSON
      * @param dir config 目录绝对路径
-     * @return 是否加载成功
+     * @return 是否加载成功；失败时保留旧快照
      */
     bool load(const std::string& dir);
-
-    /**
-     * @brief 重新加载（用于热更新）
-     */
-    bool reload();
 
     /**
      * @brief 获取错误码文案
@@ -70,7 +67,7 @@ public:
     /**
      * @brief 已加载语言数量
      */
-    size_t getLanguageCount() const { return configs_.size(); }
+    size_t getLanguageCount() const;
 
     /**
      * @brief 默认语言
@@ -78,10 +75,13 @@ public:
     std::string DefaultLanguage() const;
 
 private:
-    const Json::Value* findConfig(const std::string& lang) const;
+    struct CatalogData {
+        std::map<std::string, ConfigPtr> configs;
+    };
 
-    std::string dir_;
-    std::map<std::string, Json::Value> configs_;
+    ConfigPtr findConfig(const std::string& lang) const;
+
+    std::atomic<std::shared_ptr<const CatalogData>> data_;
 };
 
-typedef chen::Singleton<MessageConfigManager> MessageConfigMgr;
+typedef chen::Singleton<MessageCatalog> MessageCatalogRegistry;

@@ -11,10 +11,10 @@
 | 跨实例 WS 下行      | `src/Message/MessageRouter.cc`            | Redis presence（`ws:device:*` / `ws:user:*`）+ 每 worker 收件箱 + 心跳 + 死实例清理 |
 | 跨实例踢人 / 广播   | `src/Message/MessageRouter.cc`            | `CloseDevice` / `CloseUser` / `Broadcast` 均通过收件箱投递                          |
 | 实体缓存            | `src/Cache/EntityCache.hpp`               | 全部走 Redis `cache:obj:*`，不使用进程内 LRU，实例间天然一致                        |
-| 列表 / 计数缓存     | `src/Manager/CacheUtil.cc`                | `cache:count:*` / `cache:list:*`，配合 Redis 版本号失效                             |
+| 列表 / 计数缓存     | `src/Cache/CacheUtil.cc`                  | `cache:count:*` / `cache:list:*`，配合 Redis 版本号失效                             |
 | 定时任务互斥        | `src/Job/RedisLease.cc`                   | `SET NX EX` + token 校验删除，默认任务全局只跑一份                                  |
 | 浏览去重 / 点赞关系 | `src/Service/ArticleCounterService.cc`    | Redis `art:view:*`、`pra_*` / `fav_*` 哈希                                          |
-| 系统设置 / 通知版本 | `src/Manager/SystemSettingsManager.cc` 等 | Redis 版本号做跨实例失效                                                            |
+| 系统设置 / 通知版本 | `src/Service/SystemSettingsService.cc` 等 | Redis 版本号做跨实例失效                                                            |
 | 滚动发布            | `src/BlogModule.cc`                       | SIGQUIT → 停止 accept → drain → 关闭 WS，旧 worker 不会被硬断连                     |
 
 ## 2. 部署前必须保证
@@ -196,7 +196,7 @@ UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites
 
 - 设备从实例 A 重连到实例 B 的短暂窗口内，A 上的旧连接可能仍会收到一份下行消息；客户端按消息 id 去重即可。
 - WebSocket 连接本身仍绑定在接入的 worker 上，跨实例只传下行消息，不做连接迁移。
-- `metrics` 与 `WSConnectionManager` 的计数都是进程内状态，不做跨实例汇总。
+- `metrics` 与 `WSConnectionRegistry` 的计数都是进程内状态，不做跨实例汇总。
 
 ## 7. 关闭卡死（graceful shutdown exceeded）排查
 
@@ -221,7 +221,7 @@ UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites
 ```
 shutdown: onDeactivate begin
 shutdown: ArticleCounterService::FlushDirty done in 3ms
-shutdown: WSMgr::closeAllConnections done in 12ms
+shutdown: WSRegistry::closeAllConnections done in 12ms
 shutdown: onDeactivate done
 shutdown: onUnload begin
 shutdown: JobRunner::StopAll done in 0ms

@@ -11,11 +11,11 @@
 #include "../SessionData.hpp"
 #include "../Message/MessageRouter.hpp"
 #include "../Config/AuthConfig.hpp"
-#include "../Manager/SessionManager.hpp"
 #include "../Repository/UserRepository.hpp"
 #include "../Util/Util.hpp"
-#include "SessionStore.hpp"
 #include "../Domain/UserTypes.hpp"
+#include "SessionStore.hpp"
+#include "SessionTtl.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
@@ -120,7 +120,7 @@ AuthContext AuthService::Resolve(chen::http::HttpRequest::ptr request, chen::htt
 
     int64_t now = chen::TimeUtil::GetCurrentSec();
     if (touch && now - info.last_seen >= 60) {
-        if (!SessionStore::Touch(session_id, info, GetSessionTTL(), conf.session_absolute_ttl)) {
+        if (!SessionStore::Touch(session_id, info, GetSessionTtlSeconds(), conf.session_absolute_ttl)) {
             CloseWsForSession(session_id, "session_expired");
             chen::http::SessionDataMgr::GetInstance()->del(session_id);
             if (response) {
@@ -153,7 +153,7 @@ int32_t AuthService::IssueSession(
 
     const AuthConf conf = GetAuthConf();
 
-    int64_t idle_ttl = GetSessionTTL();
+    int64_t idle_ttl = GetSessionTtlSeconds();
     int64_t absolute_ttl = conf.session_absolute_ttl;
 
     std::string ip;

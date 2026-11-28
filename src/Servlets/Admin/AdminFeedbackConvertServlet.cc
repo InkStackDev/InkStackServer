@@ -1,6 +1,5 @@
 #include "AdminFeedbackConvertServlet.hpp"
 
-#include "../../Include/Managers.hpp"
 #include "../../Service/BugService.hpp"
 #include "../../Service/FaqService.hpp"
 #include "../../Service/FeedbackService.hpp"

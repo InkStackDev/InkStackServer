@@ -1,6 +1,6 @@
 #include "ChatHandler.hpp"
 
-#include "../../Manager/WSConnectionManager.hpp"
+#include "../../Message/WSConnectionRegistry.hpp"
 #include "../Message/MessageJson.hpp"
 
 #include <Chen/Log/Log.hpp>
@@ -32,7 +32,7 @@ static void SendChatError(chen::http::WSSession::ptr session,
     err["errstr"] = errstr;
 
     std::string message = chen::JsonUtil::ToString(err);
-    if (WSMgr::GetInstance()->sendToSession(session, message) != 0) {
+    if (WSRegistry::GetInstance()->sendToSession(session, message) != 0) {
         session->sendMessage(message);
     }
 }
@@ -101,7 +101,7 @@ static int32_t HandleSend(int64_t uid, const Json::Value& root, chen::http::WSSe
         BuildMessageJson(mj, msg_info, uid);
         ack["message"] = mj;
         ack["recipient_online"] = MessageRouter::Get()->IsUserOnline(peer_id);
-        WSMgr::GetInstance()->sendToSession(session, chen::JsonUtil::ToString(ack));
+        WSRegistry::GetInstance()->sendToSession(session, chen::JsonUtil::ToString(ack));
     }
 
     // 推送给接收方所有设备

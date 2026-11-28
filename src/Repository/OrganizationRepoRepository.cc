@@ -7,7 +7,7 @@
 
 #include "../Cache/EntityCache.hpp"
 #include "../Config/AppConfig.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 #include "../Util/Util.hpp"
 
 struct OrganizationRepoRepositoryCodec {

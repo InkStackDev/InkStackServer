@@ -7,7 +7,6 @@
  */
 #include "AdminFaqEditServlet.hpp"
 
-#include "../../Include/Managers.hpp"
 #include "../../Util/Util.hpp"
 
 #include <Chen/Log/Log.hpp>

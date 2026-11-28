@@ -1,5 +1,5 @@
 /**
- * @file WSConnectionManager.hpp
+ * @file WSConnectionRegistry.hpp
  * @brief 统一 WebSocket 连接管理（一设备一连接）
  * @author Christins
  * @date 2026-11-11
@@ -27,7 +27,7 @@
  * @details 以 device_id 为主键管理连接，一个设备只保留一条长连接。
  *          支持同一用户多设备、按用户/设备/会话发送、在线人数统计和连接关闭。
  */
-class WSConnectionManager {
+class WSConnectionRegistry {
 public:
     /**
      * @brief 添加连接结果
@@ -65,10 +65,18 @@ public:
     using ConnectionObserver =
         std::function<void(bool added, int64_t user_id, const std::string& device_id, int64_t old_user_id)>;
 
+    /// 在线人数变化回调（连接表锁释放后调用，用于跨 worker 广播 presence）
+    using PresenceCallback = std::function<void()>;
+
     /**
      * @brief 安装连接生命周期观察者（MessageRouter 使用）
      */
     void setConnectionObserver(ConnectionObserver observer);
+
+    /**
+     * @brief 安装在线人数变化回调（MessageRouter 使用）
+     */
+    void setPresenceCallback(PresenceCallback callback);
 
     /**
      * @brief 导出当前本 worker 的连接快照（uid + device_id）
@@ -164,11 +172,6 @@ public:
     bool closeUser(int64_t user_id, const std::string& notify_message = "");
 
     /**
-     * @brief 广播当前在线人数
-     */
-    void broadcastPresence();
-
-    /**
      * @brief 关闭所有连接（worker drain / 热重载）
      * @param notify_message 关闭前发送的消息，为空则不发送
      * @return 关闭的连接数
@@ -204,6 +207,11 @@ private:
      */
     void notifyConnection(bool added, int64_t user_id, const std::string& device_id, int64_t old_user_id) const;
 
+    /**
+     * @brief 通知在线人数变化（在释放连接表锁之后调用）
+     */
+    void notifyPresenceChanged() const;
+
 private:
     /// device_id -> connection
     std::unordered_map<std::string, Connection::ptr> devices_;
@@ -213,16 +221,10 @@ private:
     std::unordered_map<const chen::http::WSSession*, Connection::ptr> session_devices_;
     /// 连接生命周期观察者
     ConnectionObserver observer_;
+    /// 在线人数变化回调
+    PresenceCallback presence_callback_;
 
     mutable std::shared_mutex mutex_;
 };
 
-/**
- * @brief 为下行 JSON 添加 channel 字段
- * @param message 原始 JSON 字符串
- * @param channel system/notification/presence/chat
- * @return 添加 channel 后的 JSON；解析失败时原样返回
- */
-std::string BuildChannelMessage(const std::string& message, const std::string& channel);
-
-typedef chen::Singleton<WSConnectionManager> WSMgr;
+typedef chen::Singleton<WSConnectionRegistry> WSRegistry;

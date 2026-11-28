@@ -39,3 +39,4 @@ tools
 *.sql*
 dbproxy/data
 *upload*
+.archify

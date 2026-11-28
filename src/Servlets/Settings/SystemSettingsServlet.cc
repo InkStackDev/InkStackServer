@@ -2,7 +2,7 @@
 
 #include <Chen/Log/Log.hpp>
 
-#include "../../Manager/SystemSettingsManager.hpp"
+#include "../../Service/SystemSettingsService.hpp"
 #include "../../Util/Util.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -71,7 +71,7 @@ int32_t SystemSettingsServlet::handle(
         auto method = request->getMethod();
 
         if (method == chen::http::HttpMethod::GET) {
-            auto settings = SystemSettingsMgr::GetInstance()->get();
+            auto settings = SystemSettingsServiceRegistry::GetInstance()->get();
             if (!settings) {
                 result->setErrno(SETTINGS_NOT_LOADED);
                 break;
@@ -80,7 +80,7 @@ int32_t SystemSettingsServlet::handle(
             BuildSettingsJson(data, settings);
             result->setData(data);
         } else if (method == chen::http::HttpMethod::PUT) {
-            auto info = SystemSettingsMgr::GetInstance()->clone();
+            auto info = SystemSettingsServiceRegistry::GetInstance()->clone();
             if (!info) {
                 result->setErrno(SETTINGS_NOT_LOADED);
                 break;
@@ -197,7 +197,7 @@ int32_t SystemSettingsServlet::handle(
 
             info->setUpdatedAt(time(0));
 
-            if (!SystemSettingsMgr::GetInstance()->update(info)) {
+            if (!SystemSettingsServiceRegistry::GetInstance()->update(info)) {
                 result->setErrno(SETTINGS_SAVE_FAILED);
                 break;
             }

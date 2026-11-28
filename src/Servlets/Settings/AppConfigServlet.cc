@@ -3,7 +3,7 @@
 #include <json/json.h>
 
 #include "../../I18n/I18n.hpp"
-#include "../../Manager/MessageConfigManager.hpp"
+#include "../../I18n/MessageCatalog.hpp"
 
 AppConfigServlet::AppConfigServlet()
     : BlogServlet("AppConfigServlet")
@@ -20,12 +20,12 @@ int32_t AppConfigServlet::handle(chen::http::HttpRequest::ptr request,
     do {
         const std::string lang = I18n::ResolveLanguage(request);
 
-        if (MessageConfigMgr::GetInstance()->getLanguageCount() == 0) {
+        if (MessageCatalogRegistry::GetInstance()->getLanguageCount() == 0) {
             result->setErrno(SETTINGS_NOT_LOADED);
             break;
         }
 
-        Json::Value config = MessageConfigMgr::GetInstance()->getConfig(lang);
+        Json::Value config = MessageCatalogRegistry::GetInstance()->getConfig(lang);
         if (!config.isObject() || config.empty()) {
             result->setErrno(SETTINGS_NOT_LOADED);
             break;

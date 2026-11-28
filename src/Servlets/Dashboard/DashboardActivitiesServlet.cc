@@ -1,6 +1,6 @@
 #include "DashboardActivitiesServlet.hpp"
 
-#include "../../Manager/MessageConfigManager.hpp"
+#include "../../I18n/MessageCatalog.hpp"
 #include "../../Service/DashboardService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -70,7 +70,7 @@ int32_t DashboardActivitiesServlet::handle(
             break;
         }
 
-        const std::string default_lang = MessageConfigMgr::GetInstance()->DefaultLanguage();
+        const std::string default_lang = MessageCatalogRegistry::GetInstance()->DefaultLanguage();
         int64_t now = time(0);
         Json::Value list(Json::arrayValue);
         for (const auto& activity : activities) {
@@ -88,7 +88,7 @@ int32_t DashboardActivitiesServlet::handle(
             }
             item["time_id"] = ago.id;
             item["time_params"] = ParamsToJson(time_params);
-            item["time"] = MessageConfigMgr::GetInstance()->render(default_lang, ago.id, time_params);
+            item["time"] = MessageCatalogRegistry::GetInstance()->render(default_lang, ago.id, time_params);
             list.append(item);
         }
 

@@ -19,7 +19,8 @@
 #include <Chen/Util/TypeUtil.hpp>
 
 #include "../Config/AppConfig.hpp"
-#include "../Manager/WSConnectionManager.hpp"
+#include "WSConnectionRegistry.hpp"
+#include "WSMessage.hpp"
 #include "../Util/FiberMutex.hpp"
 
 static chen::Logger::ptr logger = LOG_ROOT();
@@ -172,10 +173,10 @@ public:
     int32_t SendToUser(int64_t user_id, const std::string& message) override
     {
         if (!started_.load()) {
-            return WSMgr::GetInstance()->sendToUser(user_id, message);
+            return WSRegistry::GetInstance()->sendToUser(user_id, message);
         }
 
-        int32_t local = WSMgr::GetInstance()->sendToUser(user_id, message);
+        int32_t local = WSRegistry::GetInstance()->sendToUser(user_id, message);
         bool queued = false;
 
         auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "smembers %s", UserKey(user_id).c_str());
@@ -208,9 +209,9 @@ public:
     int32_t SendToDevice(const std::string& device_id, const std::string& message) override
     {
         if (!started_.load()) {
-            return WSMgr::GetInstance()->sendToDevice(device_id, message);
+            return WSRegistry::GetInstance()->sendToDevice(device_id, message);
         }
-        if (WSMgr::GetInstance()->sendToDevice(device_id, message) == 0) {
+        if (WSRegistry::GetInstance()->sendToDevice(device_id, message) == 0) {
             return 0;
         }
 
@@ -229,7 +230,7 @@ public:
 
     void CloseDevice(const std::string& device_id, const std::string& message) override
     {
-        if (WSMgr::GetInstance()->closeDevice(device_id, message)) {
+        if (WSRegistry::GetInstance()->closeDevice(device_id, message)) {
             return;
         }
         if (!started_.load()) {
@@ -252,7 +253,7 @@ public:
 
     void CloseUser(int64_t user_id, const std::string& message) override
     {
-        WSMgr::GetInstance()->closeUser(user_id, message);
+        WSRegistry::GetInstance()->closeUser(user_id, message);
         if (!started_.load()) {
             return;
         }
@@ -288,7 +289,7 @@ public:
 
     void Broadcast(const std::string& message) override
     {
-        WSMgr::GetInstance()->broadcast(message);
+        WSRegistry::GetInstance()->broadcast(message);
         if (!started_.load()) {
             return;
         }
@@ -319,7 +320,7 @@ public:
         if (count >= 0) {
             return count;
         }
-        return WSMgr::GetInstance()->onlineUserCount();
+        return WSRegistry::GetInstance()->onlineUserCount();
     }
 
     void BroadcastPresence() override
@@ -333,12 +334,12 @@ public:
 
     bool IsUserOnline(int64_t user_id) override
     {
-        if (!started_.load() || WSMgr::GetInstance()->isUserOnline(user_id)) {
-            return WSMgr::GetInstance()->isUserOnline(user_id);
+        if (!started_.load() || WSRegistry::GetInstance()->isUserOnline(user_id)) {
+            return WSRegistry::GetInstance()->isUserOnline(user_id);
         }
         auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "smembers %s", UserKey(user_id).c_str());
         if (!rpy || rpy->type != REDIS_REPLY_ARRAY) {
-            return WSMgr::GetInstance()->isUserOnline(user_id);
+            return WSRegistry::GetInstance()->isUserOnline(user_id);
         }
         for (size_t i = 0; i < rpy->elements; ++i) {
             if (!rpy->element[i] || !rpy->element[i]->str) {
@@ -360,15 +361,15 @@ public:
 
     bool IsDeviceOnline(const std::string& device_id) override
     {
-        if (!started_.load() || WSMgr::GetInstance()->isDeviceOnline(device_id)) {
-            return WSMgr::GetInstance()->isDeviceOnline(device_id);
+        if (!started_.load() || WSRegistry::GetInstance()->isDeviceOnline(device_id)) {
+            return WSRegistry::GetInstance()->isDeviceOnline(device_id);
         }
         std::string owner;
         if (!GetString(DeviceKey(device_id), owner)) {
-            return WSMgr::GetInstance()->isDeviceOnline(device_id);
+            return WSRegistry::GetInstance()->isDeviceOnline(device_id);
         }
         if (owner == worker_id_) {
-            return WSMgr::GetInstance()->isDeviceOnline(device_id);
+            return WSRegistry::GetInstance()->isDeviceOnline(device_id);
         }
         return WorkerAlive(owner);
     }
@@ -470,7 +471,7 @@ private:
             GetRedisPoolName(), "zadd %s %lld %s", kWorkersKey, static_cast<long long>(now), worker_id_.c_str());
 
         std::vector<std::pair<int64_t, std::string>> devices;
-        WSMgr::GetInstance()->snapshot(devices);
+        WSRegistry::GetInstance()->snapshot(devices);
         for (const auto& item : devices) {
             AddPresence(item.first, item.second);
         }
@@ -523,15 +524,15 @@ private:
             std::string kind = root["k"].asString();
             std::string message = root["msg"].asString();
             if (kind == "user") {
-                WSMgr::GetInstance()->sendToUser(root["uid"].asInt64(), message);
+                WSRegistry::GetInstance()->sendToUser(root["uid"].asInt64(), message);
             } else if (kind == "device") {
-                WSMgr::GetInstance()->sendToDevice(root["device"].asString(), message);
+                WSRegistry::GetInstance()->sendToDevice(root["device"].asString(), message);
             } else if (kind == "broadcast") {
-                WSMgr::GetInstance()->broadcast(message);
+                WSRegistry::GetInstance()->broadcast(message);
             } else if (kind == "close_device") {
-                WSMgr::GetInstance()->closeDevice(root["device"].asString(), message);
+                WSRegistry::GetInstance()->closeDevice(root["device"].asString(), message);
             } else if (kind == "close_user") {
-                WSMgr::GetInstance()->closeUser(root["uid"].asInt64(), message);
+                WSRegistry::GetInstance()->closeUser(root["uid"].asInt64(), message);
             }
         }
     }
@@ -549,12 +550,18 @@ static MessageRouter::ptr g_router;
 static void InstallObserver(const MessageRouter::ptr& router)
 {
     std::weak_ptr<MessageRouter> weak = router;
-    WSMgr::GetInstance()->setConnectionObserver(
+    auto registry = WSRegistry::GetInstance();
+    registry->setConnectionObserver(
         [weak](bool added, int64_t user_id, const std::string& device_id, int64_t old_user_id) {
             if (auto current = weak.lock()) {
                 current->OnConnection(added, user_id, device_id, old_user_id);
             }
         });
+    registry->setPresenceCallback([weak]() {
+        if (auto current = weak.lock()) {
+            current->BroadcastPresence();
+        }
+    });
 }
 
 MessageRouter::ptr MessageRouter::Get()
@@ -579,7 +586,9 @@ void MessageRouter::Init()
 void MessageRouter::Shutdown()
 {
     FiberMutex::Lock lock(g_router_mutex);
-    WSMgr::GetInstance()->setConnectionObserver(nullptr);
+    auto registry = WSRegistry::GetInstance();
+    registry->setConnectionObserver(nullptr);
+    registry->setPresenceCallback(nullptr);
     if (g_router) {
         g_router->Stop();
         g_router.reset();

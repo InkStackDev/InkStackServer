@@ -1,6 +1,6 @@
 #include "DashboardService.hpp"
 
-#include "../Manager/MessageConfigManager.hpp"
+#include "../I18n/MessageCatalog.hpp"
 #include "../Repository/ArticleQueryRepository.hpp"
 #include "../Repository/ArticleRepository.hpp"
 #include "../Repository/CommentQueryRepository.hpp"
@@ -210,8 +210,8 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         activity.type = "user_register";
         activity.title_id = "dashboard.activity.user_register";
         activity.params["name"] = users[i]->getName();
-        activity.title = MessageConfigMgr::GetInstance()->render(
-            MessageConfigMgr::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
+        activity.title = MessageCatalogRegistry::GetInstance()->render(
+            MessageCatalogRegistry::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
         activity.create_time = users[i]->getCreateTime();
         out.push_back(std::move(activity));
     }
@@ -229,8 +229,8 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         activity.title_id = "dashboard.activity.article_publish";
         activity.params["author"] = author_name;
         activity.params["title"] = articles[i]->getTitle();
-        activity.title = MessageConfigMgr::GetInstance()->render(
-            MessageConfigMgr::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
+        activity.title = MessageCatalogRegistry::GetInstance()->render(
+            MessageCatalogRegistry::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
         activity.create_time = articles[i]->getCreateTime();
         out.push_back(std::move(activity));
     }
@@ -247,8 +247,8 @@ bool DashboardService::GetActivities(int32_t limit, std::vector<Activity>& out)
         activity.title_id = "dashboard.activity.comment_create";
         activity.params["commenter"] = commenter_name;
         activity.params["title"] = article_title;
-        activity.title = MessageConfigMgr::GetInstance()->render(
-            MessageConfigMgr::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
+        activity.title = MessageCatalogRegistry::GetInstance()->render(
+            MessageCatalogRegistry::GetInstance()->DefaultLanguage(), activity.title_id, activity.params);
         activity.create_time = comment->getCreateTime();
         out.push_back(std::move(activity));
     }

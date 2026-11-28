@@ -1,7 +1,7 @@
 #include "BroadcastCloseServlet.hpp"
 
 #include "../../I18n/I18n.hpp"
-#include "../../Manager/MessageConfigManager.hpp"
+#include "../../I18n/MessageCatalog.hpp"
 #include "../../Service/NotificationService.hpp"
 #include "../../Util/Util.hpp"
 
@@ -40,7 +40,8 @@ int32_t BroadcastCloseServlet::handle(
 
         result->setErrno(SUCCESS);
         result->set("msg_id", "broadcast.closed");
-        result->set("msg", MessageConfigMgr::GetInstance()->render(I18n::ResolveLanguage(request), "broadcast.closed"));
+        result->set(
+            "msg", MessageCatalogRegistry::GetInstance()->render(I18n::ResolveLanguage(request), "broadcast.closed"));
     } while (0);
     response->setBody(result->toJsonString());
     return 0;

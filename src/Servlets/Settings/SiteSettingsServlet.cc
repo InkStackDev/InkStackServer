@@ -1,6 +1,6 @@
 #include "SiteSettingsServlet.hpp"
 
-#include "../../Manager/SystemSettingsManager.hpp"
+#include "../../Service/SystemSettingsService.hpp"
 
 #include <Chen/Log/Log.hpp>
 
@@ -18,7 +18,7 @@ int32_t SiteSettingsServlet::handle(
     Result::ptr result)
 {
     do {
-        auto settings = SystemSettingsMgr::GetInstance()->get();
+        auto settings = SystemSettingsServiceRegistry::GetInstance()->get();
         if (!settings) {
             result->setErrno(SETTINGS_NOT_LOADED);
             break;

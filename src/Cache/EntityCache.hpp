@@ -15,7 +15,7 @@
 
 #include <Chen/Util/JsonUtil.hpp>
 
-#include "../Manager/CacheUtil.hpp"
+#include "CacheUtil.hpp"
 
 /**
  * @brief 单实体缓存策略

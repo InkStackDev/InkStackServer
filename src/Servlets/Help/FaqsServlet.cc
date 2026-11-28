@@ -1,6 +1,6 @@
 #include "FaqsServlet.hpp"
 
-#include "../../Include/Managers.hpp"
+#include <json/json.h>
 
 #include <Chen/Log/Log.hpp>
 #include "../../Service/FaqService.hpp"
@@ -39,7 +39,6 @@ int32_t FaqsServlet::handle(
         }
         result->setData(data);
     } while (0);
-    DEBUG(logger) << "FaqsServlet handle result: " << result->toJsonString();
     response->setBody(result->toJsonString());
     return 0;
 }

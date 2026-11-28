@@ -33,7 +33,7 @@ Web 后台设计，注重性能、可扩展性和易维护性。
 ├── docs/               # 功能与流程文档
 ├── protocol/           # 协议定义
 ├── scripts/            # 部署脚本
-├── src/                # 业务代码（Manager/Servlets 等）
+├── src/                # 业务代码（Service/Servlets 等）
 ├── tools/              # 运维/诊断工具
 ├── build/              # 构建输出
 └── Makefile            # 构建入口（make / make orm / make dist）

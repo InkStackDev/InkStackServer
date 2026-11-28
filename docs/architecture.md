@@ -29,11 +29,12 @@ Service 的策略决定。外部网络调用统一走 Client，Repository 不直
 | `src/Access/`              | 访问者身份到数据范围/策略的解析                                    | 拼 SQL、返回 errcode、依赖 Servlet                                       |
 | `src/Repository/`          | 本地存储取数、数据范围、分页、计数、`EntityCache` 读写             | 调用外部 API、开启事务、跨聚合业务规则、发通知/事件                      |
 | `src/Client/`              | 外部系统适配、网络治理、DTO 映射、错误分类                         | 访问 DB、开启事务、业务规则、返回 `Result`/errcode                       |
-| `src/Manager/`             | 兼容 facade、进程内只读状态、WS/路由等非 DB 能力                   | 新增业务逻辑、手写 Redis 对象缓存、`ParseRow`                            |
-| `src/Cache/`               | 缓存模板与缓存工具                                                 | 业务规则                                                                 |
+| `src/I18n/`                | 语言目录（`config/<lang>.json`）、语言解析                         | 业务规则、DB/Redis 访问                                                  |
+| `src/Message/`             | WS 连接注册表、消息路由、下行消息包装                              | 业务规则、DB/Redis 业务状态                                              |
+| `src/Cache/`               | 缓存模板、缓存工具、进程内只读快照                                 | 业务规则、DB/Redis 访问                                                  |
 
 **依赖方向**：Servlet/Event → Service → Repository / Client。Repository 不得反向 include Service 或 Client；Client 不得
-include Repository；Manager 可以调用 Repository，但 Service 不应依赖 Manager。
+include Repository；`Cache` / `I18n` / `Message` / `Auth` 中的进程内组件不得反向依赖 Service。
 
 **数据权限分层**：
 
@@ -97,15 +98,16 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
   写本地 → commit 后刷缓存。
 - 外部 API 的 JSON 不越过 Client 边界，Service 不直接读厂商字段。
 
-## 5. Manager 约定
+## 5. 进程内状态组件约定
 
-- **纯数据库 facade 一律删除**，不再新增 Manager。新代码直接调用 Service / Repository。
-- 仍然保留的组件只允许是非数据库能力（后续可逐步改名为 Registry / Cache / Util）：
-  - `WSConnectionManager`：进程内 WS 连接状态
-  - `SystemSettingsManager`：进程内设置快照 + 版本校验
-  - `MessageConfigManager`：`config/<lang>.json` 内存表、错误码与消息模板
-  - `SessionManager`：session TTL 计算
-  - `CacheUtil`：Repository 共用缓存工具
+- **`src/Manager/` 已删除，不再新增 Manager**。纯数据库 facade 直接调用 Service / Repository；
+  进程内状态按用途放到 `Cache` / `I18n` / `Message` / `Auth`。
+- 当前保留的进程内组件只允许非数据库能力：
+    - `WSConnectionRegistry`（`src/Message/`）：进程内 WS 连接状态；presence 通过回调交给 `MessageRouter`
+    - `SystemSettingsStore`（`src/Cache/`）+ `SystemSettingsService`（`src/Service/`）：只读快照与 DB/版本校验分离
+    - `MessageCatalog`（`src/I18n/`）：`config/<lang>.json` 内存表、错误码与消息模板
+    - `SessionTtl`（`src/Auth/`）：session TTL 计算
+    - `CacheUtil`（`src/Cache/`）：Repository 共用缓存工具
 - 已删除的纯 facade（示例）：
   - 基础：`BadgeManager`、`FaqManager`、`FeedbackManager`、`ResourceManager`、`UserOAuthManager`、
     `OrganizationApplyManager`、`UserAIConfigManager`、`AssignmentUserRelManager`
@@ -118,7 +120,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
     （枚举已迁至 `src/Domain/RdTypes.hpp`）
   - 账号/记录：`PasskeyManager`、`BackupRecordManager`、`ExportRecordManager`、`UserFollowRelManager`
   - 用户/私信/通知：`UserManager`、`MessageManager`、`NotificationManager`
-- 现有 Manager 中不得再出现：
+- 这些组件中不得再出现：
   - `static ... ParseRow(...)`
   - 手写 `RedisCacheGet` / `RedisCacheSetex` / JSON codec
   - 分页/统计 SQL
@@ -131,7 +133,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
     - 写操作后 `INCR` 版本号，key 自动切换到新版本
 - 跨 worker 一致性：
     - 不要依赖进程内单例保存可变业务状态；需要共享的放 Redis/MySQL。
-    - 系统设置通过 `settings:version` 做秒级校验后重载。
+    - 系统设置通过 `settings:version` 做秒级校验，`SystemSettingsService` 在 `onTick` 中按 1s 限流刷新快照。
     - 后台任务用 `JobRunner` + `RedisLease`，保证多 worker 只跑一份。
 - 长连接只留在接入 worker，跨 worker 投递走 `MessageRouter`，不要把 WS 连接代理成 RPC。
 
@@ -143,7 +145,7 @@ include Repository；Manager 可以调用 Repository，但 Service 不应依赖 
 4. `src/Service/` 新增 `XxxService`，处理事务、命令级鉴权、缓存刷新
 5. 外部调用放 `src/Client/`，Service 只调用 Client
 6. `src/Servlets/` 只做参数/粗粒度路由鉴权/响应/事件
-7. 更新 `src/Include/Managers.hpp`（如需兼容旧入口）
+7. 新增 Servlet 时更新 `src/Servlets/Servlets.hpp`
 8. 新错误码同时更新 `src/ErrorCodes.hpp` 与 `config/zh-CN.json`、`config/en-US.json` 的 `errors`
 9. 涉及跨 worker 状态时，确认已使用 Redis/JobRunner/MessageRouter
 10. 多实例部署前过一遍 [`multi-instance.md`](multi-instance.md)：Redis 高可用、共享存储、实例标识、`use_lease` 选择
@@ -159,8 +161,8 @@ rg 'GetDB\(\)' src/Servlets
 # Repository 之外不应出现网关 DAO
 rg 'DB::[A-Za-z]+InfoDao::' src --glob '!src/Repository/**' --glob '!src/DB/DBManager.cc'
 
-# Manager 不应再有手写缓存/ParseRow
-rg 'ParseRow|RedisCacheGet|RedisCacheSetex' src/Manager
+# 进程内状态组件不应再有手写缓存/ParseRow
+rg 'ParseRow|RedisCacheGet|RedisCacheSetex' src/Cache src/I18n src/Message
 
 # 入口层不应直接查成员关系/拼报表 SQL
 rg 'GetByOrgAndUser|OrganizationUserRelRepository::ListByUser' src/Servlets

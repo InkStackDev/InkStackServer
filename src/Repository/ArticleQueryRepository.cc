@@ -5,7 +5,7 @@
 #include <Chen/Util/TimeUtil.hpp>
 #include <Chen/Util/TypeUtil.hpp>
 
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 #include "ArticleRepository.hpp"
 
 constexpr int32_t kStateChecking = 1;

@@ -9,7 +9,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Config/AppConfig.hpp"
 #include "../Domain/OrganizationTypes.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 #include "../Util/Util.hpp"
 #include "DB/OrganizationUserRelInfo.hpp"
 

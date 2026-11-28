@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "../Cache/EntityCache.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 struct CommentRepositoryCodec {
     static DB::CommentInfo::ptr Decode(const Json::Value& v)

@@ -3,13 +3,12 @@
 #include "../../Event/EventDefine.hpp"
 #include "../../Service/AdminCommentService.hpp"
 #include "../../Service/CommentService.hpp"
+#include "../../Domain/CommentTypes.hpp"
 #include "../../Util/Util.hpp"
 
 #include <json/json.h>
 
 #include <sstream>
-#include "../../Domain/CommentTypes.hpp"
-#include "../../Domain/UserTypes.hpp"
 
 AdminCommentApproveServlet::AdminCommentApproveServlet()
     : BlogAdminServlet("AdminCommentApproveServlet")

@@ -6,7 +6,7 @@
 #include <Chen/DB/Redis.hpp>
 
 #include "../Cache/EntityCache.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 constexpr int32_t kStatusPending = 0;
 constexpr int32_t kStatusApproved = 1;

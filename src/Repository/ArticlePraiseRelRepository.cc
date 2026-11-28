@@ -5,7 +5,7 @@
 #include <Chen/DB/Redis.hpp>
 
 #include "../Cache/EntityCache.hpp"
-#include "../Manager/CacheUtil.hpp"
+#include "../Cache/CacheUtil.hpp"
 
 struct ArticlePraiseRelRepositoryCodec {
     static DB::ArticlePraiseRelInfo::ptr Decode(const Json::Value& v)

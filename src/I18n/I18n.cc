@@ -8,7 +8,7 @@
 
 #include <Chen/Util/StringUtil.hpp>
 
-#include "../Manager/SystemSettingsManager.hpp"
+#include "../Cache/SystemSettingsStore.hpp"
 
 constexpr const char* kDefaultLanguage = "zh-CN";
 const std::string kTrimChars = " \t\r\n\v\f";
@@ -139,7 +139,7 @@ std::string I18n::ResolveLanguage(chen::http::HttpRequest::ptr request)
         }
     }
 
-    auto settings = SystemSettingsMgr::GetInstance()->get();
+    auto settings = SystemSettingsStoreRegistry::GetInstance()->get();
     if (settings) {
         std::string normalized = NormalizeLanguage(settings->getLanguage());
         if (!normalized.empty()) {

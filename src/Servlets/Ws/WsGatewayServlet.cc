@@ -3,7 +3,7 @@
 #include "../../Auth/AuthService.hpp"
 #include "../../Auth/SessionStore.hpp"
 #include "../../ErrorCodes.hpp"
-#include "../../Manager/WSConnectionManager.hpp"
+#include "../../Message/WSConnectionRegistry.hpp"
 #include "../../Message/MessageRouter.hpp"
 #include "../../Metrics/MetricsService.hpp"
 #include "../../SessionData.hpp"
@@ -21,7 +21,7 @@ static void SendFrame(chen::http::WSSession::ptr session, const std::string& mes
     if (!session || !session->isConnected()) {
         return;
     }
-    if (WSMgr::GetInstance()->sendToSession(session, message) != 0) {
+    if (WSRegistry::GetInstance()->sendToSession(session, message) != 0) {
         session->sendMessage(message);
     }
 }
@@ -77,16 +77,16 @@ int32_t WSGatewayServlet::onConnect(chen::http::HttpRequest::ptr header, chen::h
         return -1;
     }
 
-    auto result = WSMgr::GetInstance()->addConnection(uid, device_id, session, false);
+    auto result = WSRegistry::GetInstance()->addConnection(uid, device_id, session, false);
     RecordWsConnect(true, "");
     if (result.replaced_session && result.replaced_session != session) {
         Json::Value replaced;
         replaced["channel"] = "system";
         replaced["type"] = "replaced";
         replaced["reason"] = "connected_elsewhere";
-        WSMgr::GetInstance()->closeSession(result.replaced_session, chen::JsonUtil::ToString(replaced));
+        WSRegistry::GetInstance()->closeSession(result.replaced_session, chen::JsonUtil::ToString(replaced));
         // 旧连接 onClose 不一定会立刻触发，这里主动清理旧 session 映射
-        WSMgr::GetInstance()->removeConnection(result.replaced_session);
+        WSRegistry::GetInstance()->removeConnection(result.replaced_session);
         INFO(logger) << "[WS] replace old connection: uid=" << uid << " device=" << device_id.substr(0, 12);
     }
 
@@ -112,7 +112,7 @@ int32_t WSGatewayServlet::onClose(chen::http::HttpRequest::ptr, chen::http::WSSe
         return 0;
     }
 
-    auto result = WSMgr::GetInstance()->removeConnection(session);
+    auto result = WSRegistry::GetInstance()->removeConnection(session);
     if (result.removed) {
         RecordWsDisconnect();
         INFO(logger) << "[WS] onClose: uid=" << result.user_id << " device=" << result.device_id.substr(0, 12);
@@ -128,7 +128,7 @@ int32_t WSGatewayServlet::handle(chen::http::HttpRequest::ptr header, chen::http
 
     int64_t uid = 0;
     std::string device_id;
-    if (!WSMgr::GetInstance()->getIdentity(session, uid, device_id)) {
+    if (!WSRegistry::GetInstance()->getIdentity(session, uid, device_id)) {
         SendError(session, NOT_LOGIN, "Not logged in");
         return -1;
     }

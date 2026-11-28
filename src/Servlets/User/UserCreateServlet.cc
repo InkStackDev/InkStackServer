@@ -3,7 +3,7 @@
 #include <Chen/Config/Config.hpp>
 #include <Chen/DB/Redis.hpp>
 
-#include "../../Manager/SystemSettingsManager.hpp"
+#include "../../Service/SystemSettingsService.hpp"
 #include "../../Service/UserService.hpp"
 #include "../../Util/Util.hpp"
 #include "../../Config/AppConfig.hpp"
@@ -41,7 +41,7 @@ int32_t UserCreateServlet::handle(
         }
 
         // 根据系统设置决定是否需要校验邮箱验证码
-        auto sys_settings = SystemSettingsMgr::GetInstance()->get();
+        auto sys_settings = SystemSettingsServiceRegistry::GetInstance()->get();
         bool require_verification = true;
         if (sys_settings) {
             require_verification = sys_settings->getRequireEmailVerification() != 0;
