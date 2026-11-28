@@ -18,9 +18,7 @@
 #include <set>
 #include <utility>
 
-namespace {
-
-int32_t CountToLevel(int32_t count)
+static int32_t CountToLevel(int32_t count)
 {
     if (count <= 0) {
         return 0;
@@ -36,8 +34,6 @@ int32_t CountToLevel(int32_t count)
     }
     return 4;
 }
-
-} // namespace
 
 bool UserStatsService::GetStats(int64_t uid, Stats& out)
 {

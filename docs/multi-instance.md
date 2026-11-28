@@ -197,3 +197,79 @@ UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites
 - 设备从实例 A 重连到实例 B 的短暂窗口内，A 上的旧连接可能仍会收到一份下行消息；客户端按消息 id 去重即可。
 - WebSocket 连接本身仍绑定在接入的 worker 上，跨实例只传下行消息，不做连接迁移。
 - `metrics` 与 `WSConnectionManager` 的计数都是进程内状态，不做跨实例汇总。
+
+## 7. 关闭卡死（graceful shutdown exceeded）排查
+
+现象：日志出现
+
+```
+[ERROR] [system] src/WorkerRuntime.cc:169 graceful shutdown exceeded 6000ms, forcing exit
+        (possible deadlock in unload/scheduler stop)
+```
+
+### 7.1 先理解这条日志的含义
+
+6000ms 是 `server.worker_shutdown_timeout_ms` 的**看门狗预算**，不是 `join` 的超时。SDK 的关闭链路
+（`WorkerManager::stop()` → `TimerManager::cancelAllTimers()` → 每个 `Scheduler::stop()` → `Thread::join()`）里没有任何
+超时参数，所以这条日志的含义是「已经卡死，6 秒后被强杀」，而不是「关得慢」。因此调大 `worker_shutdown_timeout_ms`
+只是把强杀推迟，不解决问题；`server.drain_timeout_ms`（默认 3000）控制的是停止 accept 后等待在途请求的时间，与它无关。
+
+### 7.2 业务侧是否已经关干净
+
+`BlogModule::onDeactivate` / `onUnload` 每一步都有耗时日志：
+
+```
+shutdown: onDeactivate begin
+shutdown: ArticleCounterService::FlushDirty done in 3ms
+shutdown: WSMgr::closeAllConnections done in 12ms
+shutdown: onDeactivate done
+shutdown: onUnload begin
+shutdown: JobRunner::StopAll done in 0ms
+...
+shutdown: onUnload done
+```
+
+- 出现 `shutdown: onUnload done` 后再超时：业务侧已经关干净（计数已落库、WS 已断），强杀只影响退出观感，
+  数据一致性无影响；
+- 最后一条是 `shutdown: <step> begin` 而没有对应的 `done`：卡在这一步，按步骤名定位；
+- 一条 `shutdown:` 都没有、却出现 `stopping WorkerMgr...`（SDK 日志）：说明已经进入 SDK 的调度器关闭阶段。
+
+### 7.3 采栈定位
+
+```
+# 终端 A
+scripts/watch_shutdown.sh
+
+# 终端 B
+bin/server -s
+```
+
+脚本在日志出现 `stopping WorkerMgr` 后连续采样 worker 的全部线程栈，输出到
+`/tmp/shutdown_bt_<pid>_<时间>.txt`。判定方式：
+
+| 采样结果                                                         | 结论                                          |
+|------------------------------------------------------------------|-----------------------------------------------|
+| 只有一个线程停在 `Thread::join` / `futex_wait`，且回溯到业务函数 | 业务协程没退出（WS 关闭、长任务、FiberMutex） |
+| 多个线程都在 join，被 join 的线程自己停在 `epoll_wait` / idle    | SDK 的调度器关闭问题，需要带栈上报            |
+| 没有 gdb，退化采样里所有线程都停在 `futex`                       | 同上，进一步用 `gstack` 取用户态栈            |
+
+服务与 gdb 需要同用户（`ptrace_scope=1` 时同用户即可）。机器上没有 gdb 时脚本会退化成读
+`/proc/<pid>/task/*/wchan`，只能区分「等锁」还是「等 IO」。
+
+脚本的两个行为要注意：
+
+- 只认**脚本启动之后**新写入的日志；历史日志里已有的 `stopping WorkerMgr` 不会误触发（否则上一轮的关闭记录会立刻命中）。
+  所以先起脚本、再触发重启即可，脚本可以先于服务启动；
+- 关闭很快时 worker 已经退出，只会打印 `worker 已退出：这次关闭没有卡住，无需采样`——这正好可以当对照组用：
+  同一台机器上跑 10 次，如果 10 次都是这句，说明卡死不是必然路径。
+
+### 7.4 本项目里已知可能拖长关闭的任务
+
+关闭时会先 `JobRunner::StopAll()`（只取消定时器，不等待在跑的任务），所以如果某个任务正在执行，线程要等它自己跑完：
+
+- `org:repo_sync` / `org:pr_sync`：调 GitHub API（`OrganizationRepoService::SyncAll` /
+  `OrganizationRepoPrService::SyncAll`），单次耗时没有上界；
+- `article:daily_recommend`：候选池最多 300 篇，还要对 `buffer_size * 3` 篇查评论数（N+1）；
+- `notify:broadcast_cleanup`。
+
+如果采栈确认卡在这些任务里，优先缩短它们的单次耗时（批量取评论数、给外部请求加超时），而不是调大关闭预算。

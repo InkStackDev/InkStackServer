@@ -16,23 +16,21 @@
 #include <utility>
 #include <vector>
 
-namespace {
-
 using Entity = RdStatsQueryRepository::Entity;
 using Result = RdAnalyticsService::Result;
 using TrendPoint = RdAnalyticsService::TrendPoint;
 
-time_t ParseDate(const std::string& date)
+static time_t ParseDate(const std::string& date)
 {
     return chen::TimeUtil::Str2Time(date.c_str(), "%Y-%m-%d");
 }
 
-std::string FormatDate(time_t t)
+static std::string FormatDate(time_t t)
 {
     return chen::TimeUtil::Time2StrSec(t, "%Y-%m-%d");
 }
 
-std::string GroupKey(time_t t, const std::string& granularity)
+static std::string GroupKey(time_t t, const std::string& granularity)
 {
     if (granularity == "week") {
         return FormatDate(chen::TimeUtil::GetWeekStart(t));
@@ -43,7 +41,7 @@ std::string GroupKey(time_t t, const std::string& granularity)
     return FormatDate(t);
 }
 
-std::vector<time_t> BuildDatePoints(time_t start, time_t end, const std::string& granularity)
+static std::vector<time_t> BuildDatePoints(time_t start, time_t end, const std::string& granularity)
 {
     std::vector<time_t> points;
     time_t cursor = start;
@@ -63,7 +61,7 @@ std::vector<time_t> BuildDatePoints(time_t start, time_t end, const std::string&
     return points;
 }
 
-Result ResolveScope(const Viewer& viewer, int64_t org_id, OrgScope& scope, chen::IDB::ptr& db)
+static Result ResolveScope(const Viewer& viewer, int64_t org_id, OrgScope& scope, chen::IDB::ptr& db)
 {
     if (!viewer.valid()) {
         return Result::AccessDenied;
@@ -88,7 +86,7 @@ Result ResolveScope(const Viewer& viewer, int64_t org_id, OrgScope& scope, chen:
     return Result::Ok;
 }
 
-void AddDailyCounts(std::map<std::string, TrendPoint>& series,
+static void AddDailyCounts(std::map<std::string, TrendPoint>& series,
     const std::vector<std::pair<std::string, int64_t>>& rows,
     const std::string& granularity,
     int64_t TrendPoint::* field)
@@ -101,8 +99,6 @@ void AddDailyCounts(std::map<std::string, TrendPoint>& series,
         }
     }
 }
-
-} // namespace
 
 RdAnalyticsService::Result RdAnalyticsService::GetTrend(const Viewer& viewer, const TrendQuery& query, TrendResult& out)
 {

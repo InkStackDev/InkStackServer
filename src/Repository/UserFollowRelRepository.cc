@@ -12,9 +12,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-struct UserFollowCodec {
+struct UserFollowRelRepositoryCodec {
     static DB::UserFollowRelInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::UserFollowRelInfo>();
@@ -29,14 +27,12 @@ struct UserFollowCodec {
     }
 };
 
-const EntityCache<DB::UserFollowRelInfo, UserFollowCodec> g_follow_cache{{"flw", 300}};
+const EntityCache<DB::UserFollowRelInfo, UserFollowRelRepositoryCodec> g_follow_cache{{"flw", 300}};
 
-std::string FollowKey(int64_t follower_id, int64_t following_id)
+static std::string FollowKey(int64_t follower_id, int64_t following_id)
 {
     return "flw:" + std::to_string(follower_id) + ":" + std::to_string(following_id);
 }
-
-} // namespace
 
 DB::UserFollowRelInfo::ptr UserFollowRelRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

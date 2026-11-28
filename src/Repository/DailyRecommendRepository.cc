@@ -13,16 +13,16 @@ bool DailyRecommendRepository::HasDate(const std::string& recommend_date, chen::
     if (!qb) {
         return false;
     }
-    qb->select("r.id");
+    // 只做存在性判断，用 count 标量，避免按整行解析（ParseRow 需要全列）
+    qb->select("count(*) as total");
     qb->where("r.recommend_date", "=", recommend_date);
-    qb->limit(1);
 
-    std::vector<DB::ArticleDailyRecommendInfo::ptr> rows;
-    if (DB::ArticleDailyRecommendInfoDao::QueryByBuilder(rows, qb, conn) != 0) {
+    int64_t total = 0;
+    if (qb->queryScalarInt64(total, conn) != 0) {
         ERROR(logger) << "DailyRecommendRepository::HasDate failed, date=" << recommend_date;
         return false;
     }
-    return !rows.empty();
+    return total > 0;
 }
 
 bool DailyRecommendRepository::ListByDate(const std::string& recommend_date,

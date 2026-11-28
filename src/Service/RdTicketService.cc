@@ -10,10 +10,8 @@
 #include <climits>
 #include <utility>
 
-namespace {
-
 template <typename Info>
-void FillBase(RdTicketService::Item& item, const Info& info, chen::IDB::ptr db)
+static void FillBase(RdTicketService::Item& item, const Info& info, chen::IDB::ptr db)
 {
     item.id = info->getId();
     item.title = info->getTitle();
@@ -35,8 +33,6 @@ void FillBase(RdTicketService::Item& item, const Info& info, chen::IDB::ptr db)
     auto org = OrganizationRepository::Get(item.org_id, db);
     item.org_name = org ? org->getName() : "";
 }
-
-} // namespace
 
 RdTicketService::Result RdTicketService::ListMine(const Viewer& viewer,
     const std::string& type,

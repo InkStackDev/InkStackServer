@@ -11,17 +11,13 @@
 #include <ctime>
 #include <utility>
 
-namespace {
-
-int64_t PctChange(int64_t cur, int64_t prev)
+static int64_t PctChange(int64_t cur, int64_t prev)
 {
     if (prev == 0) {
         return cur > 0 ? 100 : 0;
     }
     return (cur - prev) * 100 / prev;
 }
-
-} // namespace
 
 bool DashboardService::GetStats(Stats& out)
 {

@@ -7,9 +7,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct UserAIConfigCodec {
+struct UserAIConfigRepositoryCodec {
     static DB::UserAiConfigInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::UserAiConfigInfo>();
@@ -27,14 +25,12 @@ struct UserAIConfigCodec {
     }
 };
 
-const EntityCache<DB::UserAiConfigInfo, UserAIConfigCodec> g_ai_config_cache{{"ai_cfg", 300}};
+const EntityCache<DB::UserAiConfigInfo, UserAIConfigRepositoryCodec> g_ai_config_cache{{"ai_cfg", 300}};
 
-std::string UserKey(int64_t user_id)
+static std::string UserKey(int64_t user_id)
 {
     return "ai_cfg:uid:" + std::to_string(user_id);
 }
-
-} // namespace
 
 DB::UserAiConfigInfo::ptr UserAIConfigRepository::GetByUserId(int64_t user_id, chen::IDB::ptr conn)
 {

@@ -33,8 +33,13 @@ All notable changes to this project will be documented in this file.
 - 新增每日推荐接口 `GET /api/v1/articles/daily`：后台任务每天生成一次榜单快照（近 30 天已发布文章的浏览量 /
   点赞 / 收藏 / 评论热度，乘时效半衰期衰减与日期扰动，再做作者、标签多样性约束），落 `article_daily_recommend`
   表后按名次读取；登录用户在全局榜基础上按关注的作者与兴趣标签重排、过滤已赞已收藏，结果按 `user + date` 在
-  Redis 缓存 5 分钟。规则权重集中在 `recommend` 配置节点，见 `src/Config/RecommendConfig.hpp` 与
+  Redis 缓存 5 分钟。窗口内没有文章时兜底到全量已发布文章（时效衰减有 5% 下限），整站没有已发布文章时返回空列表。
+  规则权重集中在 `recommend` 配置节点，见 `src/Config/RecommendConfig.hpp` 与
   `docs/daily-recommend.md`。
+- 新增关闭阶段分步耗时日志（`BlogModule::onDeactivate` / `onUnload` 每步输出
+  `shutdown: <step> begin` / `shutdown: <step> done in Nms`）与 `scripts/watch_shutdown.sh`，用于定位偶发的
+  `graceful shutdown exceeded 6000ms`：超时后能直接看出卡在哪一步，或采到卡住时的线程栈。排查步骤见
+  `docs/multi-instance.md` §7。
 - 新增 `Viewer` / `OrgScope` / `AccessScopeResolver` / `AccessPolicy`：入口只解析身份与粗粒度路由权限，组织数据范围统一由
   Service 解析、QueryRepository 在 SQL 中应用；空范围按无权限处理，不再退化成全量。
 - 新增 `RdStatsQueryRepository` / `RdAnalyticsService`：研发趋势、概览与 PR 分布统计从 Servlet 迁移到 Service +

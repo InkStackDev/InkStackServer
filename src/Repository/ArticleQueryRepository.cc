@@ -8,11 +8,9 @@
 #include "../Manager/CacheUtil.hpp"
 #include "ArticleRepository.hpp"
 
-namespace {
 constexpr int32_t kStateChecking = 1;
 constexpr int32_t kStatePublished = 2;
 constexpr int32_t kStateRejected = 3;
-} // namespace
 
 bool ArticleQueryRepository::ListByUserId(std::vector<DB::ArticleInfo::ptr>& infos,
     int64_t user_id,

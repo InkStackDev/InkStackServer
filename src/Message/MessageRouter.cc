@@ -24,8 +24,6 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
 constexpr int kPollIntervalMs = 50;
 constexpr int kMaxPollPerTick = 200;
 constexpr int kHeartbeatIntervalMs = 10000;
@@ -34,35 +32,35 @@ constexpr int kDeviceTtlSec = 120;
 constexpr int kInboxTtlSec = 120;
 constexpr int kWorkerDevicesTtlSec = 3600;
 
-const char* kWorkersKey = "ws:workers";
-const char* kOnlineUsersKey = "ws:online:users";
+static const char* kWorkersKey = "ws:workers";
+static const char* kOnlineUsersKey = "ws:online:users";
 
-std::string UserKey(int64_t uid)
+static std::string UserKey(int64_t uid)
 {
     return "ws:user:" + std::to_string(uid);
 }
 
-std::string DeviceKey(const std::string& device_id)
+static std::string DeviceKey(const std::string& device_id)
 {
     return "ws:device:" + device_id;
 }
 
-std::string WorkerDevicesKey(const std::string& worker_id)
+static std::string WorkerDevicesKey(const std::string& worker_id)
 {
     return "ws:worker_devices:" + worker_id;
 }
 
-std::string InboxKey(const std::string& worker_id)
+static std::string InboxKey(const std::string& worker_id)
 {
     return "ws:inbox:" + worker_id;
 }
 
-std::string Member(int64_t uid, const std::string& device_id)
+static std::string Member(int64_t uid, const std::string& device_id)
 {
     return std::to_string(uid) + ":" + device_id;
 }
 
-bool GetString(const std::string& key, std::string& out)
+static bool GetString(const std::string& key, std::string& out)
 {
     auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", key.c_str());
     if (!rpy || rpy->type != REDIS_REPLY_STRING || !rpy->str) {
@@ -72,7 +70,7 @@ bool GetString(const std::string& key, std::string& out)
     return true;
 }
 
-int64_t GetCard(const std::string& key)
+static int64_t GetCard(const std::string& key)
 {
     auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "scard %s", key.c_str());
     if (!rpy || rpy->type != REDIS_REPLY_INTEGER) {
@@ -81,7 +79,7 @@ int64_t GetCard(const std::string& key)
     return rpy->integer;
 }
 
-bool DelIfEquals(const std::string& key, const std::string& expected)
+static bool DelIfEquals(const std::string& key, const std::string& expected)
 {
     static const char* kScript = "if redis.call('get', KEYS[1]) == ARGV[1] then "
                                  "return redis.call('del', KEYS[1]) end return 0";
@@ -89,7 +87,10 @@ bool DelIfEquals(const std::string& key, const std::string& expected)
     return rpy && rpy->type == REDIS_REPLY_INTEGER && rpy->integer > 0;
 }
 
-Json::Value MakePayload(const std::string& kind, int64_t uid, const std::string& device_id, const std::string& message)
+static Json::Value MakePayload(const std::string& kind,
+    int64_t uid,
+    const std::string& device_id,
+    const std::string& message)
 {
     Json::Value v;
     v["k"] = kind;
@@ -103,7 +104,7 @@ Json::Value MakePayload(const std::string& kind, int64_t uid, const std::string&
     return v;
 }
 
-bool ParseMember(const std::string& value, int64_t& uid, std::string& device_id)
+static bool ParseMember(const std::string& value, int64_t& uid, std::string& device_id)
 {
     auto pos = value.find(':');
     if (pos == std::string::npos || pos == 0 || pos + 1 >= value.size()) {
@@ -117,9 +118,9 @@ bool ParseMember(const std::string& value, int64_t& uid, std::string& device_id)
     return !device_id.empty();
 }
 
-class RedisMessageRouter : public MessageRouter {
+class MessageRouterRedis : public MessageRouter {
 public:
-    RedisMessageRouter()
+    MessageRouterRedis()
         : worker_id_(std::to_string(GetServerInstanceId()) + ":" + std::to_string(::getpid()))
     {
     }
@@ -545,10 +546,10 @@ private:
     chen::Timer::ptr heartbeat_timer_;
 };
 
-FiberMutex g_router_mutex;
-MessageRouter::ptr g_router;
+static FiberMutex g_router_mutex;
+static MessageRouter::ptr g_router;
 
-void InstallObserver(const MessageRouter::ptr& router)
+static void InstallObserver(const MessageRouter::ptr& router)
 {
     std::weak_ptr<MessageRouter> weak = router;
     WSMgr::GetInstance()->setConnectionObserver(
@@ -559,13 +560,11 @@ void InstallObserver(const MessageRouter::ptr& router)
         });
 }
 
-} // namespace
-
 MessageRouter::ptr MessageRouter::Get()
 {
     FiberMutex::Lock lock(g_router_mutex);
     if (!g_router) {
-        g_router = std::make_shared<RedisMessageRouter>();
+        g_router = std::make_shared<MessageRouterRedis>();
         g_router->Start();
         InstallObserver(g_router);
     }

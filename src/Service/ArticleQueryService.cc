@@ -15,9 +15,7 @@
 
 #include <utility>
 
-namespace {
-
-void FillCategories(std::vector<ArticleQueryService::CategoryBrief>& out, int64_t article_id, chen::IDB::ptr db)
+static void FillCategories(std::vector<ArticleQueryService::CategoryBrief>& out, int64_t article_id, chen::IDB::ptr db)
 {
     out.clear();
     std::vector<DB::ArticleCategoryRelInfo::ptr> rels;
@@ -31,7 +29,7 @@ void FillCategories(std::vector<ArticleQueryService::CategoryBrief>& out, int64_
     }
 }
 
-void FillLabels(std::vector<ArticleQueryService::CategoryBrief>& out, int64_t article_id, chen::IDB::ptr db)
+static void FillLabels(std::vector<ArticleQueryService::CategoryBrief>& out, int64_t article_id, chen::IDB::ptr db)
 {
     out.clear();
     std::vector<DB::ArticleLabelRelInfo::ptr> rels;
@@ -45,7 +43,7 @@ void FillLabels(std::vector<ArticleQueryService::CategoryBrief>& out, int64_t ar
     }
 }
 
-bool FillListItem(ArticleQueryService::ListItem& item,
+static bool FillListItem(ArticleQueryService::ListItem& item,
     const DB::ArticleInfo::ptr& article,
     bool with_details,
     chen::IDB::ptr db)
@@ -72,8 +70,6 @@ bool FillListItem(ArticleQueryService::ListItem& item,
     }
     return true;
 }
-
-} // namespace
 
 bool ArticleQueryService::ListByUser(int64_t user_id,
     int64_t offset,

@@ -21,12 +21,22 @@
 #include "./Service/OrganizationRepoService.hpp"
 #include "./Service/UserService.hpp"
 
+#include <functional>
 #include <vector>
 
 #include <Chen/Application.hpp>
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+
+void RunShutdownStep(const char* stage, const std::function<void()>& step)
+{
+    const auto start_us = chen::TimeUtil::GetCurrentUs();
+    INFO(LOG_ROOT()) << "shutdown: " << stage << " begin";
+    step();
+    INFO(LOG_ROOT()) << "shutdown: " << stage << " done in " << (chen::TimeUtil::GetCurrentUs() - start_us) << "us";
+}
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -73,23 +83,45 @@ bool BlogModule::onLoad()
 
 bool BlogModule::onUnload()
 {
-    JobRunner::StopAll();
-    ArticleCounterService::FlushDirty();
-    HubClient::Shutdown();
-    SearchSyncMgr::GetInstance()->stop();
-    MessageRouter::Shutdown();
-
-    chen::RedisMgr::GetInstance()->freeAll();
-    chen::FoxThreadMgr::GetInstance()->stop();
+    INFO(LOG_ROOT()) << "shutdown: onUnload begin";
+    RunShutdownStep("JobRunner::StopAll", []() {
+        JobRunner::StopAll();
+    });
+    RunShutdownStep("ArticleCounterService::FlushDirty", []() {
+        ArticleCounterService::FlushDirty();
+    });
+    RunShutdownStep("HubClient::Shutdown", []() {
+        HubClient::Shutdown();
+    });
+    RunShutdownStep("SearchSyncMgr::stop", []() {
+        SearchSyncMgr::GetInstance()->stop();
+    });
+    RunShutdownStep("MessageRouter::Shutdown", []() {
+        MessageRouter::Shutdown();
+    });
+    RunShutdownStep("RedisMgr::freeAll", []() {
+        chen::RedisMgr::GetInstance()->freeAll();
+    });
+    RunShutdownStep("FoxThreadMgr::stop", []() {
+        chen::FoxThreadMgr::GetInstance()->stop();
+    });
+    INFO(LOG_ROOT()) << "shutdown: onUnload done";
     return true;
 }
 
 bool BlogModule::onDeactivate()
 {
+    INFO(LOG_ROOT()) << "shutdown: onDeactivate begin";
     // 停止接受请求后先把内存脏计数落库，再关闭长连接
-    ArticleCounterService::FlushDirty();
+    RunShutdownStep("ArticleCounterService::FlushDirty", []() {
+        ArticleCounterService::FlushDirty();
+    });
     // 热重载/关机：让客户端主动重连到新 worker，避免一直挂到 drain 超时
-    WSMgr::GetInstance()->closeAllConnections(R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
+    RunShutdownStep("WSMgr::closeAllConnections", []() {
+        WSMgr::GetInstance()->closeAllConnections(
+            R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
+    });
+    INFO(LOG_ROOT()) << "shutdown: onDeactivate done";
     return true;
 }
 

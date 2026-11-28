@@ -5,9 +5,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct AssignmentCodec {
+struct AssignmentRepositoryCodec {
     static DB::AssignmentInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::AssignmentInfo>();
@@ -28,14 +26,12 @@ struct AssignmentCodec {
     }
 };
 
-const EntityCache<DB::AssignmentInfo, AssignmentCodec> g_assignment_cache{{"asg", 120}};
+const EntityCache<DB::AssignmentInfo, AssignmentRepositoryCodec> g_assignment_cache{{"asg", 120}};
 
-std::string NameKey(const std::string& subject_name, const std::string& name)
+static std::string NameKey(const std::string& subject_name, const std::string& name)
 {
     return "assign:name:" + subject_name + ":" + name;
 }
-
-} // namespace
 
 DB::AssignmentInfo::ptr AssignmentRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

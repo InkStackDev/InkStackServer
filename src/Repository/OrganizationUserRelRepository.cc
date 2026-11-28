@@ -8,8 +8,6 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
 constexpr int32_t kStatusPending = 0;
 constexpr int32_t kStatusApproved = 1;
 constexpr int32_t kStatusExited = 3;
@@ -17,7 +15,7 @@ constexpr int32_t kStatusRejected = 2;
 constexpr int32_t kRoleMember = 1;
 constexpr int32_t kRoleOrgAdmin = 5;
 
-struct OrgUserRelCodec {
+struct OrganizationUserRelRepositoryCodec {
     static DB::OrganizationUserRelInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::OrganizationUserRelInfo>();
@@ -34,14 +32,12 @@ struct OrgUserRelCodec {
     }
 };
 
-const EntityCache<DB::OrganizationUserRelInfo, OrgUserRelCodec> g_org_user_cache{{"org_usr", 120}};
+const EntityCache<DB::OrganizationUserRelInfo, OrganizationUserRelRepositoryCodec> g_org_user_cache{{"org_usr", 120}};
 
-std::string OrgUserKey(int64_t org_id, int64_t user_id)
+static std::string OrgUserKey(int64_t org_id, int64_t user_id)
 {
     return "org_usr:" + std::to_string(org_id) + ":" + std::to_string(user_id);
 }
-
-} // namespace
 
 DB::OrganizationUserRelInfo::ptr OrganizationUserRelRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

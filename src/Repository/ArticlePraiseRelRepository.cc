@@ -7,9 +7,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct ArticlePraiseCodec {
+struct ArticlePraiseRelRepositoryCodec {
     static DB::ArticlePraiseRelInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::ArticlePraiseRelInfo>();
@@ -24,14 +22,12 @@ struct ArticlePraiseCodec {
     }
 };
 
-const EntityCache<DB::ArticlePraiseRelInfo, ArticlePraiseCodec> g_article_praise_cache{{"apra", 300}};
+const EntityCache<DB::ArticlePraiseRelInfo, ArticlePraiseRelRepositoryCodec> g_article_praise_cache{{"apra", 300}};
 
-std::string UserArticleKey(int64_t user_id, int64_t article_id)
+static std::string UserArticleKey(int64_t user_id, int64_t article_id)
 {
     return "pra:" + std::to_string(user_id) + ":" + std::to_string(article_id);
 }
-
-} // namespace
 
 DB::ArticlePraiseRelInfo::ptr ArticlePraiseRelRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

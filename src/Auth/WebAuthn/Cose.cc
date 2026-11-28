@@ -9,7 +9,6 @@
 
 // SDK 只封装了 RSA-SHA256(PEM) 验签；WebAuthn 还需要 ES256/EdDSA 和 COSE 原始公钥，
 // 因此这里直接使用 OpenSSL，避免把 EVP_PKEY 再转成 PEM。
-namespace {
 
 constexpr int32_t kCoseKtyOkp = 1;
 constexpr int32_t kCoseKtyEc2 = 2;
@@ -21,7 +20,7 @@ constexpr int32_t kCoseCrvP256 = 1;
 constexpr int32_t kCoseCrvEd25519 = 6;
 constexpr const char* kEcGroupName = "prime256v1";
 
-bool CheckPublicKey(EVP_PKEY* pkey)
+static bool CheckPublicKey(EVP_PKEY* pkey)
 {
     if (!pkey) {
         return false;
@@ -36,7 +35,7 @@ bool CheckPublicKey(EVP_PKEY* pkey)
     return ok;
 }
 
-std::shared_ptr<EVP_PKEY> BuildEcP256Key(const std::string& x, const std::string& y)
+static std::shared_ptr<EVP_PKEY> BuildEcP256Key(const std::string& x, const std::string& y)
 {
     if (x.size() != 32 || y.size() != 32) {
         return nullptr;
@@ -85,7 +84,7 @@ std::shared_ptr<EVP_PKEY> BuildEcP256Key(const std::string& x, const std::string
     return std::shared_ptr<EVP_PKEY>(pkey, EVP_PKEY_free);
 }
 
-std::shared_ptr<EVP_PKEY> BuildRsaKey(const std::string& n, const std::string& e)
+static std::shared_ptr<EVP_PKEY> BuildRsaKey(const std::string& n, const std::string& e)
 {
     if (n.size() < 256 || e.empty()) {
         return nullptr;
@@ -136,7 +135,7 @@ std::shared_ptr<EVP_PKEY> BuildRsaKey(const std::string& n, const std::string& e
     return std::shared_ptr<EVP_PKEY>(pkey, EVP_PKEY_free);
 }
 
-std::shared_ptr<EVP_PKEY> BuildEd25519Key(const std::string& x)
+static std::shared_ptr<EVP_PKEY> BuildEd25519Key(const std::string& x)
 {
     if (x.size() != 32) {
         return nullptr;
@@ -147,8 +146,6 @@ std::shared_ptr<EVP_PKEY> BuildEd25519Key(const std::string& x)
     }
     return std::shared_ptr<EVP_PKEY>(pkey, EVP_PKEY_free);
 }
-
-} // namespace
 
 bool ParseCoseKey(const std::string& cbor, CoseKey& out)
 {

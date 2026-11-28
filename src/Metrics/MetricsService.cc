@@ -40,18 +40,14 @@ chen::metrics::Counter* s_ws_connect_total = nullptr;
 chen::metrics::Counter* s_ws_disconnect_total = nullptr;
 std::map<std::string, chen::metrics::Counter*> s_ws_connect_fail;
 
-namespace {
-
 /// 路由指标 key：路径与方法用不可见分隔符拼接，避免与真实路径冲突
-std::string RouteKey(const std::string& route, const std::string& method)
+static std::string RouteKey(const std::string& route, const std::string& method)
 {
     std::string key = route;
     key += '\x1f';
     key += method;
     return key;
 }
-
-} // namespace
 
 void Init(
     const std::string& name,
@@ -201,16 +197,14 @@ void RecordRequest(const RouteMetrics& route_metrics, uint64_t used_us, int32_t 
     }
 }
 
-namespace {
-
 /// 快照 TTL：实例异常退出后最多 60s 从聚合里消失
 constexpr int kSnapshotTtlSec = 60;
-const char* kSnapshotIndexKey = "metrics:instances";
-const char* kSnapshotPrefix = "metrics:inst:";
+static const char* kSnapshotIndexKey = "metrics:instances";
+static const char* kSnapshotPrefix = "metrics:inst:";
 
-std::atomic<int64_t> s_last_degraded_warn_sec{0};
+static std::atomic<int64_t> s_last_degraded_warn_sec{0};
 
-std::string SnapshotKey()
+static std::string SnapshotKey()
 {
     return std::string(kSnapshotPrefix) + std::to_string(GetServerInstanceId()) + ":" + std::to_string(getpid());
 }
@@ -218,7 +212,7 @@ std::string SnapshotKey()
 /**
  * @brief 是否为路由级指标（labels 里带 route）
  */
-bool IsRouteScoped(const Json::Value& item)
+static bool IsRouteScoped(const Json::Value& item)
 {
     return item.isMember("labels") && item["labels"].isObject() && item["labels"].isMember("route");
 }
@@ -229,7 +223,7 @@ bool IsRouteScoped(const Json::Value& item)
  *          直接跳过零值可以把快照体积压到“有流量的路由数”量级；
  *          聚合侧缺失即视作 0，语义不变。
  */
-bool IsEmptyRouteMetric(const Json::Value& item)
+static bool IsEmptyRouteMetric(const Json::Value& item)
 {
     if (!IsRouteScoped(item)) {
         return false;
@@ -246,7 +240,7 @@ bool IsEmptyRouteMetric(const Json::Value& item)
 /**
  * @brief 渲染本进程快照并裁剪零值路由指标
  */
-bool BuildSnapshot(Json::Value& out)
+static bool BuildSnapshot(Json::Value& out)
 {
     auto* registry = chen::metrics::RegistryMgr::GetInstance();
     if (!registry) {
@@ -270,7 +264,7 @@ bool BuildSnapshot(Json::Value& out)
     return true;
 }
 
-std::string LabelsKey(const Json::Value& labels)
+static std::string LabelsKey(const Json::Value& labels)
 {
     std::string key;
     if (!labels.isObject()) {
@@ -285,29 +279,29 @@ std::string LabelsKey(const Json::Value& labels)
     return key;
 }
 
-enum class MergeMode {
+enum class MetricsServiceMergeMode {
     Sum,
     Max,
     Min,
     First
 };
 
-MergeMode ModeFor(const std::string& name)
+static MetricsServiceMergeMode ModeFor(const std::string& name)
 {
     if (name == "blog_info") {
-        return MergeMode::First;
+        return MetricsServiceMergeMode::First;
     }
     if (name == "blog_online_users" || name.rfind("blog_system_memory_", 0) == 0
         || name == "blog_metrics_snapshot_age_seconds") {
-        return MergeMode::Max;
+        return MetricsServiceMergeMode::Max;
     }
     if (name == "blog_process_uptime_seconds") {
-        return MergeMode::Min;
+        return MetricsServiceMergeMode::Min;
     }
-    return MergeMode::Sum;
+    return MetricsServiceMergeMode::Sum;
 }
 
-void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& item)
+static void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& item)
 {
     const std::string name = item["name"].asString();
     std::string key = name;
@@ -320,8 +314,8 @@ void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& it
         return;
     }
 
-    MergeMode mode = ModeFor(name);
-    if (mode == MergeMode::First) {
+    MetricsServiceMergeMode mode = ModeFor(name);
+    if (mode == MetricsServiceMergeMode::First) {
         return;
     }
 
@@ -352,15 +346,13 @@ void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& it
     const int64_t lhs = dst.isMember("value") ? dst["value"].asInt64() : 0;
     const int64_t rhs = item.isMember("value") ? item["value"].asInt64() : 0;
     int64_t value = lhs + rhs;
-    if (mode == MergeMode::Max) {
+    if (mode == MetricsServiceMergeMode::Max) {
         value = std::max(lhs, rhs);
-    } else if (mode == MergeMode::Min) {
+    } else if (mode == MetricsServiceMergeMode::Min) {
         value = std::min(lhs, rhs);
     }
     dst["value"] = Json::Value::Int64(value);
 }
-
-} // namespace
 
 void PublishSnapshot()
 {

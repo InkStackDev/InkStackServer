@@ -8,9 +8,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct CategoryCodec {
+struct CategoryRepositoryCodec {
     static DB::CategoryInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::CategoryInfo>();
@@ -31,14 +29,14 @@ struct CategoryCodec {
     }
 };
 
-const EntityCache<DB::CategoryInfo, CategoryCodec> g_category_cache{{"cat2", 300}};
+const EntityCache<DB::CategoryInfo, CategoryRepositoryCodec> g_category_cache{{"cat2", 300}};
 
-std::string UserNameKey(int64_t user_id, const std::string& name)
+static std::string UserNameKey(int64_t user_id, const std::string& name)
 {
     return "cat:uid_name:" + std::to_string(user_id) + ":" + name;
 }
 
-std::vector<int64_t> CollectKeywordIds(const std::string& keyword, chen::IDB::ptr conn)
+static std::vector<int64_t> CollectKeywordIds(const std::string& keyword, chen::IDB::ptr conn)
 {
     std::set<int64_t> ids;
     {
@@ -70,7 +68,7 @@ std::vector<int64_t> CollectKeywordIds(const std::string& keyword, chen::IDB::pt
     return {ids.begin(), ids.end()};
 }
 
-std::string SortColumn(const std::string& sort_by)
+static std::string SortColumn(const std::string& sort_by)
 {
     if (sort_by == "created_at") {
         return "c.create_time";
@@ -84,12 +82,10 @@ std::string SortColumn(const std::string& sort_by)
     return "c.name";
 }
 
-std::string SortDirection(const std::string& sort_order)
+static std::string SortDirection(const std::string& sort_order)
 {
     return sort_order == "desc" ? "DESC" : "ASC";
 }
-
-} // namespace
 
 DB::CategoryInfo::ptr CategoryRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

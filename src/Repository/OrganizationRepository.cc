@@ -13,9 +13,7 @@
 #include "../Util/Util.hpp"
 #include "DB/OrganizationUserRelInfo.hpp"
 
-namespace {
-
-struct OrganizationCodec {
+struct OrganizationRepositoryCodec {
     static DB::OrganizationInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::OrganizationInfo>();
@@ -33,17 +31,15 @@ struct OrganizationCodec {
     }
 };
 
-const EntityCache<DB::OrganizationInfo, OrganizationCodec> g_org_cache{{"org", 120}};
+const EntityCache<DB::OrganizationInfo, OrganizationRepositoryCodec> g_org_cache{{"org", 120}};
 
-std::string NameKey(const std::string& name)
+static std::string NameKey(const std::string& name)
 {
     return "org:name:" + name;
 }
 
 constexpr int32_t kStatusInactive = 0;
 constexpr int32_t kStatusActive = 1;
-
-} // namespace
 
 DB::OrganizationInfo::ptr OrganizationRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

@@ -19,9 +19,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-std::map<std::string, std::string> BuildHeaders(const std::string& token, const GitHubConf& conf)
+static std::map<std::string, std::string> BuildHeaders(const std::string& token, const GitHubConf& conf)
 {
     std::map<std::string, std::string> headers;
     headers["Accept"] = "application/vnd.github.v3+json";
@@ -33,7 +31,7 @@ std::map<std::string, std::string> BuildHeaders(const std::string& token, const 
     return headers;
 }
 
-bool IsRateLimited(const chen::http::HttpResponse::ptr& response)
+static bool IsRateLimited(const chen::http::HttpResponse::ptr& response)
 {
     if (!response) {
         return false;
@@ -48,7 +46,7 @@ bool IsRateLimited(const chen::http::HttpResponse::ptr& response)
     return false;
 }
 
-bool DoRequestWithRetry(chen::http::HttpMethod method,
+static bool DoRequestWithRetry(chen::http::HttpMethod method,
     const std::string& url,
     const std::map<std::string, std::string>& headers,
     const std::string& request_body,
@@ -152,7 +150,7 @@ bool DoRequestWithRetry(chen::http::HttpMethod method,
     return false;
 }
 
-bool DoGetWithRetry(const std::string& url,
+static bool DoGetWithRetry(const std::string& url,
     const std::string& token,
     int64_t timeout_ms,
     ClientError& error,
@@ -164,7 +162,7 @@ bool DoGetWithRetry(const std::string& url,
     return DoRequestWithRetry(chen::http::HttpMethod::GET, url, headers, "", timeout_ms, error, body, link_header);
 }
 
-std::string GetNextPageUrl(const std::string& link_header)
+static std::string GetNextPageUrl(const std::string& link_header)
 {
     size_t pos = 0;
     while (pos < link_header.size()) {
@@ -190,7 +188,7 @@ std::string GetNextPageUrl(const std::string& link_header)
     return "";
 }
 
-std::string JsonStr(const Json::Value& value, const char* key)
+static std::string JsonStr(const Json::Value& value, const char* key)
 {
     if (!value.isMember(key) || !value[key].isString()) {
         return "";
@@ -198,7 +196,7 @@ std::string JsonStr(const Json::Value& value, const char* key)
     return value[key].asString();
 }
 
-int64_t JsonTime(const Json::Value& value, const char* key)
+static int64_t JsonTime(const Json::Value& value, const char* key)
 {
     if (!value.isMember(key) || !value[key].isString()) {
         return 0;
@@ -206,7 +204,7 @@ int64_t JsonTime(const Json::Value& value, const char* key)
     return chen::TimeUtil::Str2Time(value[key].asCString());
 }
 
-void ParsePullRequest(const Json::Value& value, GitHubPullRequest& pr)
+static void ParsePullRequest(const Json::Value& value, GitHubPullRequest& pr)
 {
     if (!value.isObject()) {
         return;
@@ -243,8 +241,6 @@ void ParsePullRequest(const Json::Value& value, GitHubPullRequest& pr)
         pr.changed_files = value["changed_files"].asInt();
     }
 }
-
-} // namespace
 
 ClientResult<GitHubRepoInfo> GitHubClient::GetRepo(const std::string& token, const std::string& repo_path)
 {

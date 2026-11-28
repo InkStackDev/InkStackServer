@@ -69,6 +69,8 @@ score = hot * exp(-ln2 * age_days / half_life_days) * jitter
 - 评论数只对排序靠前的候选补齐（`buffer_size * 3` 篇），避免对整个候选池做 N+1 查询。
 
 候选池：近 `candidate_days` 天、`state = 2`（已发布）、未删除的文章，按 `views` 倒序取前 `candidate_pool` 篇。
+窗口内一篇都没有时（冷启动、长期停更）自动兜底：去掉时间限制，从全量已发布文章里按同一规则挑，
+日志会打一条 `fallback to all published` 的 WARN。兜底时时效衰减有 5% 下限，避免老文章得分全部归零。
 
 选榜时再做多样性约束：同一作者最多 `max_per_author` 篇、同一标签最多 `max_per_label` 篇，
 依次贪心挑选直到 `buffer_size` 篇。
@@ -101,6 +103,9 @@ score = hot * exp(-ln2 * age_days / half_life_days) * jitter
 `candidate_pool` / `half_life_days` / `weight_*` / `max_per_author` / `max_per_label` /
 `follow_boost` / `label_boost` / `cache_ttl_sec` / `cache_key`。
 配置在模块 `.so` 静态初始化阶段注册，热重载后下一次读取即生效（下一次任务触发 / 下一次请求）。
+所有 key 都是可选的，省略的项保留 `RecommendConf` 里的默认值；不要用 `node[key].IsScalar()` 直接判断存在性——
+yaml-cpp 0.8 对缺失 key 返回的是 invalid node，任何 `Type()`/`IsXxx()` 调用都会抛
+`invalid node; first invalid key: "xxx"`，导致整个节点被丢弃。
 
 `follow_boost`、`label_boost` 与 `score` 同单位（`score` 是放大 1000 倍后取整的整数），
 默认 30000 相当于把热度分抬高 30，量级上约等于数百次浏览。
@@ -110,3 +115,9 @@ score = hot * exp(-ln2 * age_days / half_life_days) * jitter
 - 没有曝光/阅读历史表，个性化只能基于点赞、收藏与关注，无法做「看过的不再推」。
 - 评论数逐篇查询，仅在生成快照时发生（每天一次），不在请求路径上。
 - 跨天切换的那一刻，个性化缓存 key 里带日期，不会读到昨天的榜单；但旧 key 要等 `cache_ttl_sec` 过期才消失。
+- 候选池按 `publish_time >= 今天-N 天` 过滤，`publish_time` 是 `DATETIME` 列，比较必须用
+  `Time2StrSec` 格式化后的时间字符串；传 unix 秒会被 MySQL 当成数字比日期，条件永不成立。
+- 窗口内没有文章时会兜底到全量已发布文章；只有整站一篇已发布文章都没有时，接口才返回
+  `errno: 0` + 空 `articles`（不是错误），前端展示「今天的推荐还在生成中」，
+  此时每个请求都会尝试重建快照，等到有已发布文章后自然出现。
+- 兜底池里如果 `publish_time` 为 0（历史数据没写发布时间），时效分统一按下限 0.05 计，排序实际由热度决定。

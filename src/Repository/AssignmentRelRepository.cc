@@ -2,19 +2,15 @@
 
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-std::string OrgAssignKey(int64_t org_id, int64_t assignment_id)
+static std::string OrgAssignKey(int64_t org_id, int64_t assignment_id)
 {
     return "assign_org:" + std::to_string(org_id) + ":" + std::to_string(assignment_id);
 }
 
-std::string AssignUserKey(int64_t assignment_id, int64_t user_id)
+static std::string AssignUserKey(int64_t assignment_id, int64_t user_id)
 {
     return "assign_usr:" + std::to_string(assignment_id) + ":" + std::to_string(user_id);
 }
-
-} // namespace
 
 DB::AssignmentOrganizationRelInfo::ptr AssignmentOrganizationRelRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

@@ -9,6 +9,7 @@
 
 #include <Chen/Config/Config.hpp>
 
+#include <cstdint>
 #include <sstream>
 #include <string>
 
@@ -73,6 +74,22 @@ struct RecommendConf {
     }
 };
 
+/**
+ * @brief 读取可选的标量配置项，缺失时保留结构体里的默认值
+ * @note 不能直接写 node[key].IsScalar()：yaml-cpp 0.8 在 key 缺失时返回 invalid node，
+ *       任何 Type()/IsXxx() 调用都会抛 InvalidNode（invalid node; first invalid key: "xxx"），
+ *       进而让 ConfigVar::fromString 打印异常并放弃整个节点的赋值。
+ */
+template <typename T>
+void ReadRecommendScalar(const YAML::Node& node, const char* key, T& value)
+{
+    const YAML::Node item = node[key];
+    if (!item.IsDefined() || !item.IsScalar()) {
+        return;
+    }
+    value = chen::LexicalCast<std::string, T>()(item.Scalar());
+}
+
 namespace chen {
 
 template <>
@@ -85,63 +102,25 @@ public:
         if (!node.IsMap()) {
             return conf;
         }
-        if (node["enabled"].IsScalar()) {
-            conf.enabled = LexicalCast<std::string, bool>()(node["enabled"].Scalar());
-        }
-        if (node["personalize"].IsScalar()) {
-            conf.personalize = LexicalCast<std::string, bool>()(node["personalize"].Scalar());
-        }
-        if (node["exclude_interacted"].IsScalar()) {
-            conf.exclude_interacted = LexicalCast<std::string, bool>()(node["exclude_interacted"].Scalar());
-        }
-        if (node["daily_count"].IsScalar()) {
-            conf.daily_count = LexicalCast<std::string, int32_t>()(node["daily_count"].Scalar());
-        }
-        if (node["buffer_size"].IsScalar()) {
-            conf.buffer_size = LexicalCast<std::string, int32_t>()(node["buffer_size"].Scalar());
-        }
-        if (node["candidate_days"].IsScalar()) {
-            conf.candidate_days = LexicalCast<std::string, int32_t>()(node["candidate_days"].Scalar());
-        }
-        if (node["candidate_pool"].IsScalar()) {
-            conf.candidate_pool = LexicalCast<std::string, int32_t>()(node["candidate_pool"].Scalar());
-        }
-        if (node["half_life_days"].IsScalar()) {
-            conf.half_life_days = LexicalCast<std::string, int32_t>()(node["half_life_days"].Scalar());
-        }
-        if (node["weight_views"].IsScalar()) {
-            conf.weight_views = LexicalCast<std::string, int32_t>()(node["weight_views"].Scalar());
-        }
-        if (node["weight_praise"].IsScalar()) {
-            conf.weight_praise = LexicalCast<std::string, int32_t>()(node["weight_praise"].Scalar());
-        }
-        if (node["weight_favorites"].IsScalar()) {
-            conf.weight_favorites = LexicalCast<std::string, int32_t>()(node["weight_favorites"].Scalar());
-        }
-        if (node["weight_comments"].IsScalar()) {
-            conf.weight_comments = LexicalCast<std::string, int32_t>()(node["weight_comments"].Scalar());
-        }
-        if (node["weight_editor"].IsScalar()) {
-            conf.weight_editor = LexicalCast<std::string, int32_t>()(node["weight_editor"].Scalar());
-        }
-        if (node["max_per_author"].IsScalar()) {
-            conf.max_per_author = LexicalCast<std::string, int32_t>()(node["max_per_author"].Scalar());
-        }
-        if (node["max_per_label"].IsScalar()) {
-            conf.max_per_label = LexicalCast<std::string, int32_t>()(node["max_per_label"].Scalar());
-        }
-        if (node["follow_boost"].IsScalar()) {
-            conf.follow_boost = LexicalCast<std::string, int32_t>()(node["follow_boost"].Scalar());
-        }
-        if (node["label_boost"].IsScalar()) {
-            conf.label_boost = LexicalCast<std::string, int32_t>()(node["label_boost"].Scalar());
-        }
-        if (node["cache_ttl_sec"].IsScalar()) {
-            conf.cache_ttl_sec = LexicalCast<std::string, int32_t>()(node["cache_ttl_sec"].Scalar());
-        }
-        if (node["cache_key"].IsScalar()) {
-            conf.cache_key = node["cache_key"].Scalar();
-        }
+        ReadRecommendScalar(node, "enabled", conf.enabled);
+        ReadRecommendScalar(node, "personalize", conf.personalize);
+        ReadRecommendScalar(node, "exclude_interacted", conf.exclude_interacted);
+        ReadRecommendScalar(node, "daily_count", conf.daily_count);
+        ReadRecommendScalar(node, "buffer_size", conf.buffer_size);
+        ReadRecommendScalar(node, "candidate_days", conf.candidate_days);
+        ReadRecommendScalar(node, "candidate_pool", conf.candidate_pool);
+        ReadRecommendScalar(node, "half_life_days", conf.half_life_days);
+        ReadRecommendScalar(node, "weight_views", conf.weight_views);
+        ReadRecommendScalar(node, "weight_praise", conf.weight_praise);
+        ReadRecommendScalar(node, "weight_favorites", conf.weight_favorites);
+        ReadRecommendScalar(node, "weight_comments", conf.weight_comments);
+        ReadRecommendScalar(node, "weight_editor", conf.weight_editor);
+        ReadRecommendScalar(node, "max_per_author", conf.max_per_author);
+        ReadRecommendScalar(node, "max_per_label", conf.max_per_label);
+        ReadRecommendScalar(node, "follow_boost", conf.follow_boost);
+        ReadRecommendScalar(node, "label_boost", conf.label_boost);
+        ReadRecommendScalar(node, "cache_ttl_sec", conf.cache_ttl_sec);
+        ReadRecommendScalar(node, "cache_key", conf.cache_key);
         return conf;
     }
 };

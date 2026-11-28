@@ -10,9 +10,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-struct UserCodec {
+struct UserRepositoryCodec {
     static DB::UserInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::UserInfo>();
@@ -41,9 +39,7 @@ struct UserCodec {
     }
 };
 
-const EntityCache<DB::UserInfo, UserCodec> g_user_cache{{"usr", 120}};
-
-} // namespace
+const EntityCache<DB::UserInfo, UserRepositoryCodec> g_user_cache{{"usr", 120}};
 
 DB::UserInfo::ptr UserRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

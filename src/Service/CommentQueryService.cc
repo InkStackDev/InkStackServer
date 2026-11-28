@@ -11,9 +11,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace {
-
-CommentQueryService::Item BuildItem(const DB::CommentInfo::ptr& comment,
+static CommentQueryService::Item BuildItem(const DB::CommentInfo::ptr& comment,
     const std::unordered_map<int64_t, std::vector<DB::CommentInfo::ptr>>* children,
     int64_t viewer_uid,
     chen::IDB::ptr db)
@@ -45,8 +43,6 @@ CommentQueryService::Item BuildItem(const DB::CommentInfo::ptr& comment,
     }
     return item;
 }
-
-} // namespace
 
 CommentQueryService::ListResult CommentQueryService::ListTree(int64_t article_id,
     int64_t viewer_uid,

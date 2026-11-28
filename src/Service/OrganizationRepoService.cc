@@ -16,9 +16,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-std::string NormalizeRepoPath(std::string path)
+static std::string NormalizeRepoPath(std::string path)
 {
     while (!path.empty() && path.back() == '/') {
         path.pop_back();
@@ -33,7 +31,7 @@ std::string NormalizeRepoPath(std::string path)
 }
 
 /// 从仓库 URL 提取 owner/repo
-std::string ExtractGithubRepo(const std::string& url)
+static std::string ExtractGithubRepo(const std::string& url)
 {
     auto uri = chen::Uri::Create(url);
     if (uri) {
@@ -56,28 +54,28 @@ std::string ExtractGithubRepo(const std::string& url)
     return NormalizeRepoPath(url.substr(pos + marker.size()));
 }
 
-bool ValidRepoName(const std::string& name)
+static bool ValidRepoName(const std::string& name)
 {
     return !name.empty() && name.size() <= 128;
 }
 
-bool ValidRepoUrl(const std::string& url)
+static bool ValidRepoUrl(const std::string& url)
 {
     return !url.empty() && url.size() <= 512 && url.find("github.com") != std::string::npos
         && !ExtractGithubRepo(url).empty();
 }
 
-bool ValidRepoLanguage(const std::string& language)
+static bool ValidRepoLanguage(const std::string& language)
 {
     return language.size() <= 64;
 }
 
-bool ValidRepoDescription(const std::string& description)
+static bool ValidRepoDescription(const std::string& description)
 {
     return description.size() <= 1024;
 }
 
-void MarkFailed(int64_t repo_id)
+static void MarkFailed(int64_t repo_id)
 {
     auto db = GetDB();
     if (!db) {
@@ -93,8 +91,6 @@ void MarkFailed(int64_t repo_id)
         OrganizationRepoRepository::Put(repo);
     }
 }
-
-} // namespace
 
 OrganizationRepoService::Result OrganizationRepoService::Add(const Viewer& viewer,
     const OrganizationRepoInput& input,

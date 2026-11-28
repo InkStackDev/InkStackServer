@@ -11,9 +11,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-ClientError MapStatus(int status)
+static ClientError MapStatus(int status)
 {
     if (status == 401 || status == 403) {
         return ClientError::Unauthorized;
@@ -30,7 +28,7 @@ ClientError MapStatus(int status)
     return ClientError::Unknown;
 }
 
-void Backoff(const LlmConfig& config, int attempt)
+static void Backoff(const LlmConfig& config, int attempt)
 {
     int64_t backoff = config.backoff_ms * (attempt + 1);
     if (backoff > 5000) {
@@ -40,8 +38,6 @@ void Backoff(const LlmConfig& config, int attempt)
         usleep((useconds_t)(backoff * 1000));
     }
 }
-
-} // namespace
 
 ClientError LlmClient::StreamChat(const LlmConfig& config,
     const std::string& system_prompt,

@@ -4,11 +4,9 @@
 
 #include "../Cache/EntityCache.hpp"
 
-namespace {
-
 constexpr int32_t kStatusApproved = 1;
 
-struct OrgRepoPrCodec {
+struct OrganizationRepoPrRepositoryCodec {
     static DB::OrganizationRepoPrsInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::OrganizationRepoPrsInfo>();
@@ -37,9 +35,7 @@ struct OrgRepoPrCodec {
     }
 };
 
-const EntityCache<DB::OrganizationRepoPrsInfo, OrgRepoPrCodec> g_org_pr_cache{{"org_pr", 300}};
-
-} // namespace
+const EntityCache<DB::OrganizationRepoPrsInfo, OrganizationRepoPrRepositoryCodec> g_org_pr_cache{{"org_pr", 300}};
 
 DB::OrganizationRepoPrsInfo::ptr OrganizationRepoPrRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

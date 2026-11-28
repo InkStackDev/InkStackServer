@@ -22,7 +22,6 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
 constexpr int32_t kOrgInactive = 0;
 constexpr int32_t kOrgActive = 1;
 
@@ -36,7 +35,6 @@ constexpr int32_t kRoleOrgAdmin = 5;
 constexpr int32_t kApplyPending = 0;
 constexpr int32_t kApplyApproved = 1;
 constexpr int32_t kApplyRejected = 2;
-} // namespace
 
 bool OrganizationService::ListUserOrganizations(const Viewer& viewer, std::vector<UserOrganizationView>& out)
 {

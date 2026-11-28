@@ -16,9 +16,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-bool UpdateReadState(const std::vector<DB::NotificationInfo::ptr>& infos, int64_t now, chen::IDB::ptr conn)
+static bool UpdateReadState(const std::vector<DB::NotificationInfo::ptr>& infos, int64_t now, chen::IDB::ptr conn)
 {
     for (const auto& info : infos) {
         info->setIsRead(1);
@@ -30,8 +28,6 @@ bool UpdateReadState(const std::vector<DB::NotificationInfo::ptr>& infos, int64_
     }
     return true;
 }
-
-} // namespace
 
 DB::NotificationInfo::ptr NotificationService::AddNotification(const NotificationData& data)
 {

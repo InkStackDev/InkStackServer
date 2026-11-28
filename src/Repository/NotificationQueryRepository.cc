@@ -8,14 +8,12 @@
 #include "../Util/Util.hpp"
 #include "NotificationRepository.hpp"
 
-namespace {
-
-std::string VersionKey(int64_t user_id)
+static std::string VersionKey(int64_t user_id)
 {
     return "notif:ver:" + std::to_string(user_id);
 }
 
-int64_t GetVersion(int64_t user_id)
+static int64_t GetVersion(int64_t user_id)
 {
     auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", VersionKey(user_id).c_str());
     if (!rpy || !rpy->str) {
@@ -24,12 +22,10 @@ int64_t GetVersion(int64_t user_id)
     return chen::TypeUtil::Atoi(rpy->str);
 }
 
-std::string TypeKey(const std::string& type)
+static std::string TypeKey(const std::string& type)
 {
     return type.empty() ? "all" : type;
 }
-
-} // namespace
 
 void NotificationQueryRepository::ListByUser(std::vector<DB::NotificationInfo::ptr>& results,
     int64_t user_id,
