@@ -18,9 +18,9 @@ BlogServlet::BlogServlet(const std::string& name)
 {
 }
 
-void BlogServlet::setRoute(const std::string& route)
+void BlogServlet::setRoute(const std::string& route, const std::string& method)
 {
-    const RouteMetrics& route_metrics = GetRouteMetrics(route);
+    const RouteMetrics route_metrics = GetRouteMetrics(route, method);
 
     requests_metric_ = route_metrics.requests;
     errors_metric_ = route_metrics.errors;

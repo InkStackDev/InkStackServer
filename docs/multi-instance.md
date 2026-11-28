@@ -169,9 +169,13 @@ UPDATE article SET views = views + ?, praise = praise + ?, favorites = favorites
 
 - 每个实例每 5s 把本进程 `Registry::RenderJson()` 快照写入 Redis：
   `metrics:inst:<instance_id>:<pid>`（TTL 60s），并用 zset `metrics:instances` 维护存活列表。
+  写入前会裁掉零值的路由级指标（`route` 标签下 count/value 为 0），聚合侧缺失即视作 0。
+- 路由指标以 `route` + `method` 两个标签区分，同一路径的 GET / POST / DELETE 各自独立统计。
 - `/api/v1/admin/metrics` 汇总所有存活实例：counter / gauge / histogram 求和；`blog_info` 取实例编号最小的一份
-  （PID 稳定）；`blog_online_users`、系统内存取最大；运行时长取最小。响应结构仍是 `{ "metrics": [...] }`，
-  额外带 `instanceCount` 与 `degraded`。
+  （PID 稳定）；`blog_online_users`、系统内存取最大；运行时长取最小。响应结构为
+  `{ "metrics": [...], "helps": { name: help }, "instance_count": N, "degraded": bool }`：
+  help 按指标名去重后放在顶层 `helps`，不再逐条内联。
+- 路由 QPS 不再注册 gauge，由消费方用 `requests / blog_process_uptime_seconds`（或两次轮询的差值）自行计算。
 - Redis 不可用时退化为只返回当前实例的指标，并置 `degraded=true`；前端会提示指标聚合不完整。
 - Prometheus 侧仍按实例抓取；`blog_info` 的 `pid` 标签可用于区分实例。
 - 跨实例在线人数来自 Redis `ws:online:users`，`blog_online_users` 在任意实例上都一致。

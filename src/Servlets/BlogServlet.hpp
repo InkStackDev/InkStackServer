@@ -11,7 +11,7 @@ class BlogServlet : public chen::http::Servlet {
 public:
     BlogServlet(const std::string& name);
 
-    void setRoute(const std::string& route);
+    void setRoute(const std::string& route, const std::string& method);
 
     int32_t handle(
         chen::http::HttpRequest::ptr request,

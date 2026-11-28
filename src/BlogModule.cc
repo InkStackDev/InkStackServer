@@ -97,9 +97,8 @@ void BlogModule::onTick()
     static uint32_t tick = 0;
     ++tick;
 
-    // 5s 采样一次路由 QPS
+    // 5s 发布一次本进程指标快照（供集群聚合读取）
     if (tick % 50 == 0) {
-        SampleRates();
         PublishSnapshot();
     }
 

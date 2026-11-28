@@ -1,5 +1,6 @@
 #include "ServletRegistrar.hpp"
 
+#include <Chen/Http/Http.hpp>
 #include <Chen/Http/Servlet.hpp>
 
 #include "BlogServlet.hpp"
@@ -23,7 +24,8 @@ void ServletRegistrar::addServlet(const std::string& uri,
     }
     auto slt = std::dynamic_pointer_cast<BlogServlet>(servlet);
     if (slt) {
-        slt->setRoute(uri);
+        const char* method_str = chen::http::HttpMethodToString(method);
+        slt->setRoute(uri, method_str ? method_str : "UNKNOWN");
     }
     dispatch_->addServlet(uri, method, servlet);
 }

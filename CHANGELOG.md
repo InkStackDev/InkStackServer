@@ -152,6 +152,11 @@ All notable changes to this project will be documented in this file.
 
 ### 变更
 
+- **不兼容变更**：`/api/v1/admin/metrics` 的路由指标补上 `method` 标签——同一路径的 GET / POST / DELETE 此前共用一组
+  series，错误率与耗时互相稀释；现在按 `route` + `method` 独立统计，series 由 151 增至 204。每条 metric 不再内联
+  `help`，改由顶层 `helps`（按指标名去重）提供；零值路由指标不再输出；移除 `blog_http_route_avg_qps_milli` 与
+  `blog_http_route_recent_qps_milli` 两个派生 gauge，QPS 由消费方按 `requests / blog_process_uptime_seconds`
+  或两次轮询差值计算。
 - **不兼容变更**：移除 `/ws/v1/notification`、`/ws/v1/presence`、`/ws/v1/messages`，统一改为 `/ws/v1/session`。
 - **不兼容变更**：所有 WebSocket 下行 JSON 顶层新增 `channel` 字段。
 - **不兼容变更**：同一 `device_id`（`SHA256(SESSIONID)`）只保留一条连接，后连接顶掉前连接并返回 `replaced` 帧。
