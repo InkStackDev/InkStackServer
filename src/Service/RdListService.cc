@@ -7,9 +7,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-bool ResolveScope(const Viewer& viewer, OrgScope& scope, chen::IDB::ptr& db)
+static bool ResolveScope(const Viewer& viewer, OrgScope& scope, chen::IDB::ptr& db)
 {
     if (!viewer.valid()) {
         return false;
@@ -23,8 +21,6 @@ bool ResolveScope(const Viewer& viewer, OrgScope& scope, chen::IDB::ptr& db)
     }
     return true;
 }
-
-} // namespace
 
 bool RdListService::ListTasks(const Viewer& viewer,
     int64_t org_id,

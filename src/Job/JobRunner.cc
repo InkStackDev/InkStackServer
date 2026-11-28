@@ -29,13 +29,9 @@ struct JobRunner::State {
     int64_t last_skip_log_sec = 0;
 };
 
-namespace {
-
-std::mutex g_job_mutex;
-std::vector<std::shared_ptr<JobRunner::State>> g_jobs;
-bool g_job_started = false;
-
-} // namespace
+static std::mutex g_job_mutex;
+static std::vector<std::shared_ptr<JobRunner::State>> g_jobs;
+static bool g_job_started = false;
 
 void JobRunner::Register(Job job)
 {

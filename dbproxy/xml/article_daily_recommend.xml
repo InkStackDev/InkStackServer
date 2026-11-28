@@ -1,0 +1,18 @@
+<table name="article_daily_recommend" namespace="DB" desc="每日推荐快照表">
+    <columns>
+        <column name="id" type="int64" auto_increment="true" desc="主键ID"/>
+        <column name="recommend_date" type="string" length="16" desc="推荐日期，格式 YYYY-MM-DD"/>
+        <column name="article_id" type="int64" desc="文章ID"/>
+        <column name="rank_no" type="int32" desc="榜单名次，从 1 开始"/>
+        <column name="score" type="int64" desc="推荐得分，放大 1000 倍取整"/>
+        <column name="reason" type="string" length="128" desc="推荐理由标识，逗号分隔"/>
+        <column name="create_time" type="datetime" default="current_timestamp" desc="创建时间"/>
+        <column name="update_time" type="datetime" update="current_timestamp" desc="更新时间"/>
+    </columns>
+    <indexs>
+        <index name="pk" cols="id" type="pk"/>
+        <index name="uniq_date_rank" cols="recommend_date,rank_no" type="uniq"/>
+        <index name="uniq_date_article" cols="recommend_date,article_id" type="uniq"/>
+        <index name="idx_date" cols="recommend_date" type="index"/>
+    </indexs>
+</table>

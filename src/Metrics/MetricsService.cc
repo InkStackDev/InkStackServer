@@ -25,19 +25,12 @@
 static chen::Logger::ptr logger = LOG_ROOT();
 
 /**
- * @brief 路由指标运行态
- * @details 由 s_routes 持有，生命周期与进程一致，GaugeFunc 回调持有其裸指针
+ * @brief 路由指标注册表：key 为 `route` + `method`
+ * @details 指标对象由 registry 持有、生命周期与进程一致，这里只缓存指针，
+ *          避免每条请求都走 registry 的加锁查找。
  */
-struct RouteState {
-    RouteMetrics metrics;
-    uint64_t start_ms = 0;
-    uint64_t sampled_at_ms = 0;
-    uint64_t sampled_requests = 0;
-    std::atomic<int64_t> recent_qps_milli{0};
-};
-
 std::mutex s_mutex;
-std::unordered_map<std::string, std::unique_ptr<RouteState>> s_routes;
+std::unordered_map<std::string, RouteMetrics> s_routes;
 std::vector<chen::http::HttpServer::ptr> s_http_servers;
 std::vector<chen::http::WSServer::ptr> s_ws_servers;
 uint64_t s_start_ms = 0;
@@ -46,6 +39,15 @@ std::atomic<int64_t> s_last_publish_sec{0};
 chen::metrics::Counter* s_ws_connect_total = nullptr;
 chen::metrics::Counter* s_ws_disconnect_total = nullptr;
 std::map<std::string, chen::metrics::Counter*> s_ws_connect_fail;
+
+/// 路由指标 key：路径与方法用不可见分隔符拼接，避免与真实路径冲突
+static std::string RouteKey(const std::string& route, const std::string& method)
+{
+    std::string key = route;
+    key += '\x1f';
+    key += method;
+    return key;
+}
 
 void Init(
     const std::string& name,
@@ -151,16 +153,18 @@ void Init(
     }
 }
 
-RouteMetrics GetRouteMetrics(const std::string& route)
+RouteMetrics GetRouteMetrics(const std::string& route, const std::string& method)
 {
     if (route.empty()) {
         return {};
     }
 
+    const std::string key = RouteKey(route, method);
+
     std::lock_guard lock(s_mutex);
-    auto it = s_routes.find(route);
+    auto it = s_routes.find(key);
     if (it != s_routes.end()) {
-        return it->second->metrics;
+        return it->second;
     }
 
     auto* registry = chen::metrics::RegistryMgr::GetInstance();
@@ -168,38 +172,16 @@ RouteMetrics GetRouteMetrics(const std::string& route)
         return {};
     }
 
-    const chen::metrics::Labels labels = {{"route", route}};
+    const chen::metrics::Labels labels = {{"route", route}, {"method", method}};
 
-    auto state = std::make_unique<RouteState>();
-    state->start_ms = chen::TimeUtil::GetCurrentMs();
-    state->sampled_at_ms = state->start_ms;
-    state->metrics.requests = registry->getCounter("blog_http_requests_total", "Blog HTTP requests total", labels);
-    state->metrics.errors = registry->getCounter("blog_http_errors_total", "Blog HTTP error responses total", labels);
-    state->metrics.duration = registry->getHistogram("blog_http_request_duration_seconds", "Blog HTTP request duration in seconds", labels);
+    RouteMetrics metrics;
+    metrics.requests = registry->getCounter("blog_http_requests_total", "Blog HTTP requests total", labels);
+    metrics.errors = registry->getCounter("blog_http_errors_total", "Blog HTTP error responses total", labels);
+    metrics.duration =
+        registry->getHistogram("blog_http_request_duration_seconds", "Blog HTTP request duration in seconds", labels);
 
-    RouteState* raw = state.get();
-    registry->getGaugeFunc("blog_http_route_avg_qps_milli", "Blog HTTP route average QPS since start multiplied by 1000", labels, [raw]() -> int64_t {
-        if (!raw->metrics.requests) {
-            return 0;
-        }
-        const uint64_t now = chen::TimeUtil::GetCurrentMs();
-        const uint64_t elapsed_ms = now > raw->start_ms ? now - raw->start_ms : 0;
-        if (!elapsed_ms) {
-            return 0;
-        }
-        const double qps = static_cast<double>(raw->metrics.requests->value()) * 1000.0 / static_cast<double>(elapsed_ms);
-        return static_cast<int64_t>(qps * 1000.0);
-    });
-
-    registry->getGaugeFunc(
-        "blog_http_route_recent_qps_milli", "Blog HTTP route QPS in the latest sampling window multiplied by 1000", labels, [raw]() -> int64_t {
-            return raw->recent_qps_milli.load(std::memory_order_relaxed);
-        });
-
-    const RouteMetrics result = state->metrics;
-    s_routes.emplace(route, std::move(state));
-
-    return result;
+    s_routes.emplace(key, metrics);
+    return metrics;
 }
 
 void RecordRequest(const RouteMetrics& route_metrics, uint64_t used_us, int32_t err)
@@ -215,44 +197,74 @@ void RecordRequest(const RouteMetrics& route_metrics, uint64_t used_us, int32_t 
     }
 }
 
-void SampleRates()
-{
-    const uint64_t now = chen::TimeUtil::GetCurrentMs();
-
-    std::lock_guard lock(s_mutex);
-    for (auto& item : s_routes) {
-        auto& state = item.second;
-        if (!state->metrics.requests) {
-            continue;
-        }
-        const uint64_t total = state->metrics.requests->value();
-        const uint64_t elapsed_ms = now > state->sampled_at_ms ? now - state->sampled_at_ms : 0;
-        if (elapsed_ms > 0) {
-            const uint64_t delta = total >= state->sampled_requests ? total - state->sampled_requests : total;
-            const double qps = static_cast<double>(delta) * 1000.0 / static_cast<double>(elapsed_ms);
-            state->recent_qps_milli.store(qps * 1000.0, std::memory_order_relaxed);
-        }
-        state->sampled_requests = total;
-        state->sampled_at_ms = now;
-    }
-}
-
-
-namespace {
-
 /// 快照 TTL：实例异常退出后最多 60s 从聚合里消失
 constexpr int kSnapshotTtlSec = 60;
-const char* kSnapshotIndexKey = "metrics:instances";
-const char* kSnapshotPrefix = "metrics:inst:";
+static const char* kSnapshotIndexKey = "metrics:instances";
+static const char* kSnapshotPrefix = "metrics:inst:";
 
-std::atomic<int64_t> s_last_degraded_warn_sec{0};
+static std::atomic<int64_t> s_last_degraded_warn_sec{0};
 
-std::string SnapshotKey()
+static std::string SnapshotKey()
 {
     return std::string(kSnapshotPrefix) + std::to_string(GetServerInstanceId()) + ":" + std::to_string(getpid());
 }
 
-std::string LabelsKey(const Json::Value& labels)
+/**
+ * @brief 是否为路由级指标（labels 里带 route）
+ */
+static bool IsRouteScoped(const Json::Value& item)
+{
+    return item.isMember("labels") && item["labels"].isObject() && item["labels"].isMember("route");
+}
+
+/**
+ * @brief 路由级指标的空值裁剪
+ * @details 路由在注册时就建好 series，但绝大多数接口在任意时刻都是 0 流量。
+ *          直接跳过零值可以把快照体积压到“有流量的路由数”量级；
+ *          聚合侧缺失即视作 0，语义不变。
+ */
+static bool IsEmptyRouteMetric(const Json::Value& item)
+{
+    if (!IsRouteScoped(item)) {
+        return false;
+    }
+    if (item.isMember("count")) {
+        return item["count"].asUInt64() == 0;
+    }
+    if (item.isMember("value")) {
+        return item["value"].asInt64() == 0;
+    }
+    return false;
+}
+
+/**
+ * @brief 渲染本进程快照并裁剪零值路由指标
+ */
+static bool BuildSnapshot(Json::Value& out)
+{
+    auto* registry = chen::metrics::RegistryMgr::GetInstance();
+    if (!registry) {
+        return false;
+    }
+    if (!chen::JsonUtil::FromString(out, registry->RenderJson())) {
+        return false;
+    }
+    if (!out.isMember("metrics") || !out["metrics"].isArray()) {
+        return false;
+    }
+
+    Json::Value filtered(Json::arrayValue);
+    for (const auto& item : out["metrics"]) {
+        if (!item.isObject() || IsEmptyRouteMetric(item)) {
+            continue;
+        }
+        filtered.append(item);
+    }
+    out["metrics"] = std::move(filtered);
+    return true;
+}
+
+static std::string LabelsKey(const Json::Value& labels)
 {
     std::string key;
     if (!labels.isObject()) {
@@ -267,29 +279,29 @@ std::string LabelsKey(const Json::Value& labels)
     return key;
 }
 
-enum class MergeMode {
+enum class MetricsServiceMergeMode {
     Sum,
     Max,
     Min,
     First
 };
 
-MergeMode ModeFor(const std::string& name)
+static MetricsServiceMergeMode ModeFor(const std::string& name)
 {
     if (name == "blog_info") {
-        return MergeMode::First;
+        return MetricsServiceMergeMode::First;
     }
     if (name == "blog_online_users" || name.rfind("blog_system_memory_", 0) == 0
         || name == "blog_metrics_snapshot_age_seconds") {
-        return MergeMode::Max;
+        return MetricsServiceMergeMode::Max;
     }
     if (name == "blog_process_uptime_seconds") {
-        return MergeMode::Min;
+        return MetricsServiceMergeMode::Min;
     }
-    return MergeMode::Sum;
+    return MetricsServiceMergeMode::Sum;
 }
 
-void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& item)
+static void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& item)
 {
     const std::string name = item["name"].asString();
     std::string key = name;
@@ -302,8 +314,8 @@ void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& it
         return;
     }
 
-    MergeMode mode = ModeFor(name);
-    if (mode == MergeMode::First) {
+    MetricsServiceMergeMode mode = ModeFor(name);
+    if (mode == MetricsServiceMergeMode::First) {
         return;
     }
 
@@ -334,20 +346,18 @@ void MergeItem(std::map<std::string, Json::Value>& merged, const Json::Value& it
     const int64_t lhs = dst.isMember("value") ? dst["value"].asInt64() : 0;
     const int64_t rhs = item.isMember("value") ? item["value"].asInt64() : 0;
     int64_t value = lhs + rhs;
-    if (mode == MergeMode::Max) {
+    if (mode == MetricsServiceMergeMode::Max) {
         value = std::max(lhs, rhs);
-    } else if (mode == MergeMode::Min) {
+    } else if (mode == MetricsServiceMergeMode::Min) {
         value = std::min(lhs, rhs);
     }
     dst["value"] = Json::Value::Int64(value);
 }
 
-} // namespace
-
 void PublishSnapshot()
 {
-    auto* registry = chen::metrics::RegistryMgr::GetInstance();
-    if (!registry) {
+    Json::Value snapshot;
+    if (!BuildSnapshot(snapshot)) {
         return;
     }
 
@@ -357,7 +367,8 @@ void PublishSnapshot()
     const std::string cleanup_before = std::to_string(chen::TimeUtil::GetCurrentSec() - kSnapshotTtlSec * 2);
 
     using RedisArgs = std::vector<std::string>;
-    auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"setex", key, ttl, registry->RenderJson()});
+    auto rpy =
+        chen::RedisUtil::Cmd(GetRedisPoolName(), RedisArgs{"setex", key, ttl, chen::JsonUtil::ToString(snapshot)});
     if (rpy) {
         s_last_publish_sec.store(chen::TimeUtil::GetCurrentSec(), std::memory_order_relaxed);
     }
@@ -380,7 +391,7 @@ bool CollectClusterMetrics(Json::Value& out)
     std::vector<Snapshot> snapshots;
 
     Json::Value own;
-    if (!chen::JsonUtil::FromString(own, registry->RenderJson())) {
+    if (!BuildSnapshot(own)) {
         return false;
     }
     snapshots.push_back({SnapshotKey(), std::move(own)});
@@ -437,12 +448,21 @@ bool CollectClusterMetrics(Json::Value& out)
         }
     }
 
+    // help 是编译期常量，按指标名去重后单独返回，避免每条 series 重复携带
     Json::Value list(Json::arrayValue);
+    Json::Value helps(Json::objectValue);
     for (auto& entry : merged) {
-        list.append(std::move(entry.second));
+        Json::Value item = std::move(entry.second);
+        const std::string name = item["name"].asString();
+        if (!helps.isMember(name)) {
+            helps[name] = item["help"].asString();
+        }
+        item.removeMember("help");
+        list.append(std::move(item));
     }
     out = Json::Value(Json::objectValue);
     out["metrics"] = std::move(list);
+    out["helps"] = std::move(helps);
     out["instance_count"] = snapshots.size();
     out["degraded"] = degraded;
     return true;

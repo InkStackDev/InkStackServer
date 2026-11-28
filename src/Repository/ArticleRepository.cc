@@ -5,9 +5,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct ArticleCodec {
+struct ArticleRepositoryCodec {
     static DB::ArticleInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::ArticleInfo>();
@@ -31,9 +29,7 @@ struct ArticleCodec {
     }
 };
 
-const EntityCache<DB::ArticleInfo, ArticleCodec> g_article_cache{{"art", 300}};
-
-} // namespace
+const EntityCache<DB::ArticleInfo, ArticleRepositoryCodec> g_article_cache{{"art", 300}};
 
 DB::ArticleInfo::ptr ArticleRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

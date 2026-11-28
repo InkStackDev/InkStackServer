@@ -4,9 +4,7 @@
 
 #include "../Cache/EntityCache.hpp"
 
-namespace {
-
-struct OrganizationApplyCodec {
+struct OrganizationApplyRepositoryCodec {
     static DB::OrganizationApplyInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::OrganizationApplyInfo>();
@@ -25,9 +23,7 @@ struct OrganizationApplyCodec {
     }
 };
 
-const EntityCache<DB::OrganizationApplyInfo, OrganizationApplyCodec> g_apply_cache{{"org_apply", 60}};
-
-} // namespace
+const EntityCache<DB::OrganizationApplyInfo, OrganizationApplyRepositoryCodec> g_apply_cache{{"org_apply", 60}};
 
 DB::OrganizationApplyInfo::ptr OrganizationApplyRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

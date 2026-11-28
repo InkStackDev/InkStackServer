@@ -14,12 +14,10 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
 /**
  * @brief 按 input 填充作业字段；返回是否新建/复活了记录
  */
-bool ApplyInput(const AssignmentInput& input, DB::AssignmentInfo::ptr& info)
+static bool ApplyInput(const AssignmentInput& input, DB::AssignmentInfo::ptr& info)
 {
     bool created = false;
     int64_t now = chen::TimeUtil::GetCurrentSec();
@@ -50,8 +48,6 @@ bool ApplyInput(const AssignmentInput& input, DB::AssignmentInfo::ptr& info)
     info->setUpdateTime(now);
     return created;
 }
-
-} // namespace
 
 AssignmentService::CreateResult AssignmentService::CreateOrUpdate(const AssignmentInput& input,
     DB::AssignmentInfo::ptr& out)

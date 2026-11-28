@@ -16,20 +16,18 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
 /// 注册失败重试间隔：热重载时 peer_id 会被旧 worker 短暂占用
 constexpr uint64_t kRegisterRetryMs = 5000;
 constexpr uint64_t kDefaultReconnectMs = 5000;
 
-FiberMutex g_mutex;
-chen::rpc::RpcClient::ptr g_client;
-bool g_registered = false;
-uint64_t g_last_connect_attempt_ms = 0;
-uint64_t g_last_register_attempt_ms = 0;
-HubClient::ConnectedCallback g_connected_cb;
+static FiberMutex g_mutex;
+static chen::rpc::RpcClient::ptr g_client;
+static bool g_registered = false;
+static uint64_t g_last_connect_attempt_ms = 0;
+static uint64_t g_last_register_attempt_ms = 0;
+static HubClient::ConnectedCallback g_connected_cb;
 
-bool ConnectLocked()
+static bool ConnectLocked()
 {
     const RpcConf conf = GetRpcConf();
     if (!conf.enabled || conf.hub_address.empty()) {
@@ -56,8 +54,6 @@ bool ConnectLocked()
     INFO(logger) << "rpc hub connected, hub=" << conf.hub_address << " bus_id=" << conf.bus_id.toString();
     return true;
 }
-
-} // namespace
 
 void HubClient::SetConnectedCallback(ConnectedCallback cb)
 {

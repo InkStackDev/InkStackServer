@@ -14,10 +14,8 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
 /// 会话读改写锁（未读数、隐藏标志），避免同一 worker 内并发丢更新
-FiberMutex g_conversation_mutex;
-} // namespace
+static FiberMutex g_conversation_mutex;
 
 DB::ConversationInfo::ptr ConversationService::GetOrCreate(int64_t uid_a, int64_t uid_b)
 {

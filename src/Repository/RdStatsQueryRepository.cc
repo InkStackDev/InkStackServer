@@ -7,8 +7,6 @@
 
 #include <Chen/DB/QueryBuilder.hpp>
 
-namespace {
-
 const char* TableName(RdStatsQueryRepository::Entity entity)
 {
     switch (entity) {
@@ -22,7 +20,7 @@ const char* TableName(RdStatsQueryRepository::Entity entity)
     return "requirement";
 }
 
-chen::QueryBuilder::ptr CreateBase(const OrgScope& scope,
+static chen::QueryBuilder::ptr CreateBase(const OrgScope& scope,
     int64_t org_id,
     RdStatsQueryRepository::Entity entity,
     time_t start,
@@ -44,14 +42,14 @@ chen::QueryBuilder::ptr CreateBase(const OrgScope& scope,
     return qb;
 }
 
-void AddMinStatus(const chen::QueryBuilder::ptr& qb, int32_t min_status)
+static void AddMinStatus(const chen::QueryBuilder::ptr& qb, int32_t min_status)
 {
     if (min_status >= 0) {
         qb->where("status", ">=", (int64_t)min_status);
     }
 }
 
-void AddOpenCond(const chen::QueryBuilder::ptr& qb, RdStatsQueryRepository::Entity entity)
+static void AddOpenCond(const chen::QueryBuilder::ptr& qb, RdStatsQueryRepository::Entity entity)
 {
     switch (entity) {
     case RdStatsQueryRepository::Entity::Requirement:
@@ -65,8 +63,6 @@ void AddOpenCond(const chen::QueryBuilder::ptr& qb, RdStatsQueryRepository::Enti
         break;
     }
 }
-
-} // namespace
 
 bool RdStatsQueryRepository::CountCreated(const OrgScope& scope,
     int64_t org_id,

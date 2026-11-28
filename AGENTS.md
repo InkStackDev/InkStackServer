@@ -231,21 +231,27 @@ When adding a new feature:
 
 ## 6. Code Style Quick Reference
 
-| Element                                    | Convention                                                    |
-|--------------------------------------------|---------------------------------------------------------------|
-| Files (headers / sources)                  | `PascalCase.hpp` / `PascalCase.cc`                            |
-| Directories (modules)                      | `PascalCase` (`Manager`, `Servlets/Article`, `Auth/WebAuthn`) |
-| Namespaces                                 | none (except `chen` specializations / anonymous namespaces)   |
-| Classes                                    | `PascalCase`                                                  |
-| Member variables (class private/protected) | `snake_case_`                                                 |
-| Member variables (struct public)           | `snake_case`                                                  |
-| Static members / constants                 | `kPascalCase`                                                 |
-| Local variables / parameters               | `snake_case`                                                  |
-| Member functions                           | `camelCase`                                                   |
-| Static functions / global functions        | `PascalCase`                                                  |
-| Macros                                     | `UPPER_SNAKE_CASE`                                            |
-| Brace (class/namespace)                    | same line                                                     |
-| Brace (function)                           | new line                                                      |
-| Brace (if/for/while)                       | same line, never omit                                         |
-| Null pointer                               | `nullptr` (never `NULL` or `0`)                               |
-| Indent                                     | 4 spaces (no tabs)                                            |
+| Element                                    | Convention                                                          |
+|--------------------------------------------|---------------------------------------------------------------------|
+| Files (headers / sources)                  | `PascalCase.hpp` / `PascalCase.cc`                                  |
+| Directories (modules)                      | `PascalCase` (`Manager`, `Servlets/Article`, `Auth/WebAuthn`)       |
+| Namespaces                                 | 不允许。仅 `chen` 特化例外，禁止匿名 `namespace {}` 与 `xxx_detail` |
+| Classes                                    | `PascalCase`                                                        |
+| Member variables (class private/protected) | `snake_case_`                                                       |
+| Member variables (struct public)           | `snake_case`                                                        |
+| Static members / constants                 | `kPascalCase`                                                       |
+| Local variables / parameters               | `snake_case`                                                        |
+| Member functions                           | `camelCase`                                                         |
+| Static functions / global functions        | `PascalCase`                                                        |
+| Macros                                     | `UPPER_SNAKE_CASE`                                                  |
+| Brace (class/namespace)                    | same line                                                           |
+| Brace (function)                           | new line                                                            |
+| Brace (if/for/while)                       | same line, never omit                                               |
+| Null pointer                               | `nullptr` (never `NULL` or `0`)                                     |
+| Indent                                     | 4 spaces (no tabs)                                                  |
+
+**命名空间规范（MANDATORY）**：业务代码里不写 `namespace`（包括匿名命名空间、`detail` / `xxx_detail`
+这类辅助命名空间，也不要为了“作用域整洁”再包一层）。文件内的辅助函数一律用 `static` 提供内部链接；辅助类型（struct / class /
+enum / using）直接用全局名字，命名加文件前缀（例如 `src/Message/MessageRouter.cc` 里的 `Registry` 写成
+`struct MessageRouterRegistry`），避免不同编译单元之间同名类型 ODR 冲突。只有 `chen` 命名空间的特化（`LexicalCast` /
+`LogFormatter` 等）可以出现 `namespace chen {}`。

@@ -26,23 +26,21 @@ static const int kViewDedupTTL = 10 * 60;
 
 static FiberMutex g_counter_mutex;
 
-namespace {
-
 /**
  * @brief 进程内待刷盘计数增量
  * @details 多实例部署时每个实例各持一份增量，`FlushDirty` 用
  *          `views = views + ?` 增量写库，避免多实例之间用绝对值互相覆盖。
  */
-struct CounterDelta {
+struct ArticleCounterServiceDelta {
     int64_t views = 0;
     int64_t praise = 0;
     int64_t favorites = 0;
 };
 
-std::shared_mutex g_deltas_mutex;
-std::map<int64_t, CounterDelta> g_deltas;
+static std::shared_mutex g_deltas_mutex;
+static std::map<int64_t, ArticleCounterServiceDelta> g_deltas;
 
-void AddDelta(int64_t id, int64_t views, int64_t praise, int64_t favorites)
+static void AddDelta(int64_t id, int64_t views, int64_t praise, int64_t favorites)
 {
     if (id <= 0 || (views == 0 && praise == 0 && favorites == 0)) {
         return;
@@ -58,7 +56,7 @@ void AddDelta(int64_t id, int64_t views, int64_t praise, int64_t favorites)
 }
 
 /// 刷盘失败时把增量合并回本地，等待下一轮重试
-void MergeDeltas(const std::map<int64_t, CounterDelta>& deltas)
+static void MergeDeltas(const std::map<int64_t, ArticleCounterServiceDelta>& deltas)
 {
     if (deltas.empty()) {
         return;
@@ -75,7 +73,7 @@ void MergeDeltas(const std::map<int64_t, CounterDelta>& deltas)
     }
 }
 
-bool AddViews(uint64_t id, const std::string& cookie_id)
+static bool AddViews(uint64_t id, const std::string& cookie_id)
 {
     std::string key = "art:view:" + std::to_string(id) + ":" + cookie_id;
     auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "set %s 1 ex %d nx", key.c_str(), kViewDedupTTL);
@@ -84,8 +82,6 @@ bool AddViews(uint64_t id, const std::string& cookie_id)
     }
     return rpy->type != REDIS_REPLY_NIL;
 }
-
-} // namespace
 
 bool ArticleCounterService::IncViews(uint64_t id, const std::string& cookie_id, uint64_t user_id)
 {
@@ -334,7 +330,7 @@ void ArticleCounterService::SyncStatsFromDB()
 
 void ArticleCounterService::FlushDirty()
 {
-    std::map<int64_t, CounterDelta> deltas;
+    std::map<int64_t, ArticleCounterServiceDelta> deltas;
     {
         std::unique_lock<std::shared_mutex> lock(g_deltas_mutex);
         deltas.swap(g_deltas);
@@ -365,7 +361,7 @@ void ArticleCounterService::FlushDirty()
         return;
     }
 
-    std::map<int64_t, CounterDelta> failed;
+    std::map<int64_t, ArticleCounterServiceDelta> failed;
     for (const auto& [id, delta] : deltas) {
         if (delta.views == 0 && delta.praise == 0 && delta.favorites == 0) {
             continue;

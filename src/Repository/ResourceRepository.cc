@@ -7,9 +7,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct ResourceCodec {
+struct ResourceRepositoryCodec {
     static DB::ResourceInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::ResourceInfo>();
@@ -31,14 +29,12 @@ struct ResourceCodec {
     }
 };
 
-const EntityCache<DB::ResourceInfo, ResourceCodec> g_resource_cache{{"res", 300}};
+const EntityCache<DB::ResourceInfo, ResourceRepositoryCodec> g_resource_cache{{"res", 300}};
 
-std::string PathKey(const std::string& path)
+static std::string PathKey(const std::string& path)
 {
     return "res:path:" + path;
 }
-
-} // namespace
 
 DB::ResourceInfo::ptr ResourceRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

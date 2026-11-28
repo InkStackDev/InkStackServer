@@ -7,12 +7,10 @@
 // SDK 没有 WebAuthn 使用的 CBOR 解码器；这里只实现 attestationObject/authData
 // 需要的最小子集，遇到不支持的容器会直接拒绝。
 
-namespace {
-
 constexpr int kMaxDepth = 16;
 constexpr uint64_t kMaxContainerSize = 4096;
 
-bool ReadByte(const std::string& data, size_t& pos, uint8_t& value)
+static bool ReadByte(const std::string& data, size_t& pos, uint8_t& value)
 {
     if (pos >= data.size()) {
         return false;
@@ -21,7 +19,7 @@ bool ReadByte(const std::string& data, size_t& pos, uint8_t& value)
     return true;
 }
 
-bool ReadUint(const std::string& data, size_t& pos, size_t count, uint64_t& value)
+static bool ReadUint(const std::string& data, size_t& pos, size_t count, uint64_t& value)
 {
     if (count > 8 || pos + count > data.size()) {
         return false;
@@ -33,7 +31,7 @@ bool ReadUint(const std::string& data, size_t& pos, size_t count, uint64_t& valu
     return true;
 }
 
-bool ReadLength(const std::string& data, size_t& pos, uint8_t additional, uint64_t& value)
+static bool ReadLength(const std::string& data, size_t& pos, uint8_t additional, uint64_t& value)
 {
     if (additional < 24) {
         value = additional;
@@ -53,7 +51,7 @@ bool ReadLength(const std::string& data, size_t& pos, uint8_t additional, uint64
     }
 }
 
-bool DecodeItem(const std::string& data, size_t& pos, CborValue& out, int depth)
+static bool DecodeItem(const std::string& data, size_t& pos, CborValue& out, int depth)
 {
     if (depth > kMaxDepth) {
         return false;
@@ -190,8 +188,6 @@ bool DecodeItem(const std::string& data, size_t& pos, CborValue& out, int depth)
         return false;
     }
 }
-
-} // namespace
 
 const CborValue* CborValue::Get(const std::string& key) const
 {

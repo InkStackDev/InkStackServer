@@ -10,9 +10,7 @@
 #include "../Manager/CacheUtil.hpp"
 #include "../Util/Util.hpp"
 
-namespace {
-
-struct CommentPraiseCodec {
+struct CommentPraiseRepositoryCodec {
     static DB::CommentPraiseRelInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::CommentPraiseRelInfo>();
@@ -27,19 +25,17 @@ struct CommentPraiseCodec {
     }
 };
 
-const EntityCache<DB::CommentPraiseRelInfo, CommentPraiseCodec> g_praise_cache{{"cpra", 300}};
+const EntityCache<DB::CommentPraiseRelInfo, CommentPraiseRepositoryCodec> g_praise_cache{{"cpra", 300}};
 
-std::string UserCommentKey(int64_t user_id, int64_t comment_id)
+static std::string UserCommentKey(int64_t user_id, int64_t comment_id)
 {
     return "cpra:" + std::to_string(user_id) + ":" + std::to_string(comment_id);
 }
 
-void InvalidateCount(int64_t comment_id)
+static void InvalidateCount(int64_t comment_id)
 {
     chen::RedisUtil::Cmd(GetRedisPoolName(), "del cache:count:cpra:cnt:%lld", (long long)comment_id);
 }
-
-} // namespace
 
 DB::CommentPraiseRelInfo::ptr CommentPraiseRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

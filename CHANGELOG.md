@@ -13,6 +13,14 @@ All notable changes to this project will be documented in this file.
   表现为进程还在、tick 正常，但所有请求无响应（gdb 里 io 线程停在 `futex_wait`）。
 - 新增 `src/Util/FiberMutex.hpp`：基于 `chen::FiberSemaphore` 的协程感知互斥锁，等待方让出协程而不是线程，
   解锁方把所有权直接转交等待者；协程与普通线程可混用同一把锁（普通线程走条件变量）。上述五处已全部替换。
+- **关闭阶段不再向 Redis 发清理命令**：`MessageRouter::Stop()` 取消定时器后又调 `CleanupWorker(worker_id_)`，
+  会连发 `smembers` / `del` / `zrem` 多条同步往返；此时模块正在卸载、连接池随即 `freeAll()`，只要还有一条
+  命令在途，hiredis 释放连接时就补 NULL 回调（旧版框架还会跨线程释放，直接触发
+  `async.c:467 redisProcessCallbacks` 断言）。现在 `Stop()` 只取消定时器，残留状态交给自愈路径：
+  `ws:inbox:<worker_id>` 由心跳续期（`kInboxTtlSec`）且下一次 `Start()` 会先清空，`ws:workers` 里的本条记录
+  超过 `kWorkerTtlSec` 后由存活 worker 的心跳扫描（`Heartbeat` 的 `zrangebyscore` + `CleanupWorker`）回收，
+  presence 随之摘除。
+  需配合新版 chen（`~FoxRedis` 把释放派发回连接所属事件循环）一起使用。
 
 ### 适配
 
@@ -30,6 +38,16 @@ All notable changes to this project will be documented in this file.
 
 ### 新增
 
+- 新增每日推荐接口 `GET /api/v1/articles/daily`：后台任务每天生成一次榜单快照（近 30 天已发布文章的浏览量 /
+  点赞 / 收藏 / 评论热度，乘时效半衰期衰减与日期扰动，再做作者、标签多样性约束），落 `article_daily_recommend`
+  表后按名次读取；登录用户在全局榜基础上按关注的作者与兴趣标签重排、过滤已赞已收藏，结果按 `user + date` 在
+  Redis 缓存 5 分钟。窗口内没有文章时兜底到全量已发布文章（时效衰减有 5% 下限），整站没有已发布文章时返回空列表。
+  规则权重集中在 `recommend` 配置节点，见 `src/Config/RecommendConfig.hpp` 与
+  `docs/daily-recommend.md`。
+- 新增关闭阶段分步耗时日志（`BlogModule::onDeactivate` / `onUnload` 每步输出
+  `shutdown: <step> begin` / `shutdown: <step> done in Nms`）与 `scripts/watch_shutdown.sh`，用于定位偶发的
+  `graceful shutdown exceeded 6000ms`：超时后能直接看出卡在哪一步，或采到卡住时的线程栈。排查步骤见
+  `docs/multi-instance.md` §7。
 - 新增 `Viewer` / `OrgScope` / `AccessScopeResolver` / `AccessPolicy`：入口只解析身份与粗粒度路由权限，组织数据范围统一由
   Service 解析、QueryRepository 在 SQL 中应用；空范围按无权限处理，不再退化成全量。
 - 新增 `RdStatsQueryRepository` / `RdAnalyticsService`：研发趋势、概览与 PR 分布统计从 Servlet 迁移到 Service +
@@ -152,6 +170,11 @@ All notable changes to this project will be documented in this file.
 
 ### 变更
 
+- **不兼容变更**：`/api/v1/admin/metrics` 的路由指标补上 `method` 标签——同一路径的 GET / POST / DELETE 此前共用一组
+  series，错误率与耗时互相稀释；现在按 `route` + `method` 独立统计，series 由 151 增至 204。每条 metric 不再内联
+  `help`，改由顶层 `helps`（按指标名去重）提供；零值路由指标不再输出；移除 `blog_http_route_avg_qps_milli` 与
+  `blog_http_route_recent_qps_milli` 两个派生 gauge，QPS 由消费方按 `requests / blog_process_uptime_seconds`
+  或两次轮询差值计算。
 - **不兼容变更**：移除 `/ws/v1/notification`、`/ws/v1/presence`、`/ws/v1/messages`，统一改为 `/ws/v1/session`。
 - **不兼容变更**：所有 WebSocket 下行 JSON 顶层新增 `channel` 字段。
 - **不兼容变更**：同一 `device_id`（`SHA256(SESSIONID)`）只保留一条连接，后连接顶掉前连接并返回 `replaced` 帧。

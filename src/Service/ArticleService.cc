@@ -27,9 +27,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-bool SyncCategoryRels(int64_t article_id,
+static bool SyncCategoryRels(int64_t article_id,
     int64_t uid,
     const std::vector<int64_t>& category_ids,
     chen::IDB::ptr db,
@@ -94,7 +92,7 @@ bool SyncCategoryRels(int64_t article_id,
     return true;
 }
 
-bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, chen::IDB::ptr db, int64_t now)
+static bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, chen::IDB::ptr db, int64_t now)
 {
     std::set<int64_t> new_ids(label_ids.begin(), label_ids.end());
     for (auto it = new_ids.begin(); it != new_ids.end();) {
@@ -155,7 +153,7 @@ bool SyncLabelRels(int64_t article_id, const std::vector<int64_t>& label_ids, ch
     return true;
 }
 
-bool SyncArticleRelations(int64_t article_id,
+static bool SyncArticleRelations(int64_t article_id,
     int64_t uid,
     const std::vector<int64_t>& category_ids,
     const std::vector<int64_t>& label_ids,
@@ -164,8 +162,6 @@ bool SyncArticleRelations(int64_t article_id,
 {
     return SyncCategoryRels(article_id, uid, category_ids, db, now) && SyncLabelRels(article_id, label_ids, db, now);
 }
-
-} // namespace
 
 ArticleService::DeleteArticlesResult ArticleService::DeleteArticles(int64_t uid,
     const std::vector<int64_t>& ids,

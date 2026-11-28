@@ -11,9 +11,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-void CollectDescendants(const std::map<int64_t, std::vector<DB::CategoryInfo::ptr>>& children,
+static void CollectDescendants(const std::map<int64_t, std::vector<DB::CategoryInfo::ptr>>& children,
     int64_t id,
     std::set<DB::CategoryInfo::ptr>& out)
 {
@@ -28,8 +26,6 @@ void CollectDescendants(const std::map<int64_t, std::vector<DB::CategoryInfo::pt
         CollectDescendants(children, child->getId(), out);
     }
 }
-
-} // namespace
 
 CategoryService::Result CategoryService::CreateOrUpdate(const CategoryInput& input,
     int64_t requester_uid,

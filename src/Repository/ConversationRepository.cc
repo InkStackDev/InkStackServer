@@ -5,9 +5,7 @@
 
 #include "../Cache/EntityCache.hpp"
 
-namespace {
-
-struct ConversationCodec {
+struct ConversationRepositoryCodec {
     static DB::ConversationInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::ConversationInfo>();
@@ -30,9 +28,7 @@ struct ConversationCodec {
     }
 };
 
-const EntityCache<DB::ConversationInfo, ConversationCodec> g_conversation_cache{{"conv", 300}};
-
-} // namespace
+const EntityCache<DB::ConversationInfo, ConversationRepositoryCodec> g_conversation_cache{{"conv", 300}};
 
 DB::ConversationInfo::ptr ConversationRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

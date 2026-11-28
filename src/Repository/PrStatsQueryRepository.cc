@@ -10,9 +10,11 @@
 #include <functional>
 #include <string>
 
-namespace {
-
-void AddBaseConds(const chen::QueryBuilder::ptr& qb, const OrgScope& scope, int64_t org_id, time_t start, time_t end)
+static void AddBaseConds(const chen::QueryBuilder::ptr& qb,
+    const OrgScope& scope,
+    int64_t org_id,
+    time_t start,
+    time_t end)
 {
     qb->join("INNER", "organization_repos repos", "prs.repo_id = repos.id");
     ApplyOrgScope(qb, "repos.org_id", scope, OrgRole::REPORTER);
@@ -25,7 +27,7 @@ void AddBaseConds(const chen::QueryBuilder::ptr& qb, const OrgScope& scope, int6
     }
 }
 
-bool CountWithBase(const OrgScope& scope,
+static bool CountWithBase(const OrgScope& scope,
     int64_t org_id,
     time_t start,
     time_t end,
@@ -47,8 +49,6 @@ bool CountWithBase(const OrgScope& scope,
     }
     return qb->executeCount(out, conn) == 0;
 }
-
-} // namespace
 
 bool PrStatsQueryRepository::CountByDay(std::vector<std::pair<std::string, int64_t>>& rows,
     const OrgScope& scope,

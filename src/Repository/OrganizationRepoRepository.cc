@@ -10,9 +10,7 @@
 #include "../Manager/CacheUtil.hpp"
 #include "../Util/Util.hpp"
 
-namespace {
-
-struct OrgRepoCodec {
+struct OrganizationRepoRepositoryCodec {
     static DB::OrganizationReposInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::OrganizationReposInfo>();
@@ -36,9 +34,7 @@ struct OrgRepoCodec {
     }
 };
 
-const EntityCache<DB::OrganizationReposInfo, OrgRepoCodec> g_org_repo_cache{{"org_repo", 300}};
-
-} // namespace
+const EntityCache<DB::OrganizationReposInfo, OrganizationRepoRepositoryCodec> g_org_repo_cache{{"org_repo", 300}};
 
 DB::OrganizationReposInfo::ptr OrganizationRepoRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

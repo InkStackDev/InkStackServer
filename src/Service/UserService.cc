@@ -25,9 +25,7 @@ std::string UserService::GenerateToken()
     return chen::EncryptorUtil::MD5(chen::RandomUtil::RandString(32));
 }
 
-namespace {
-
-std::string BuildOAuthAccount(chen::IDB::ptr db, const std::string& open_id, const std::string& login)
+static std::string BuildOAuthAccount(chen::IDB::ptr db, const std::string& open_id, const std::string& login)
 {
     if (IsValidAccount(login) && !UserRepository::GetByAccount(login, db)) {
         return login;
@@ -56,7 +54,7 @@ std::string BuildOAuthAccount(chen::IDB::ptr db, const std::string& open_id, con
     return candidate;
 }
 
-std::string BuildOAuthName(chen::IDB::ptr db,
+static std::string BuildOAuthName(chen::IDB::ptr db,
     const std::string& open_id,
     const std::string& uname,
     const std::string& login)
@@ -77,8 +75,6 @@ std::string BuildOAuthName(chen::IDB::ptr db,
     }
     return candidate;
 }
-
-} // namespace
 
 DB::UserInfo::ptr UserService::Get(int64_t uid)
 {

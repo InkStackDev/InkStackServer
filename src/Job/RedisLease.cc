@@ -15,17 +15,15 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
 /// 租约失败日志节流：Redis 故障时每 60s 只打一条，避免每个任务每轮刷屏
 constexpr int64_t kWarnIntervalSec = 60;
 
-std::mutex g_warn_mutex;
-int64_t g_last_warn_sec = 0;
+static std::mutex g_warn_mutex;
+static int64_t g_last_warn_sec = 0;
 /// 是否处于“Redis 不可用”状态，用于恢复时只打一条 INFO
-bool g_unavailable = false;
+static bool g_unavailable = false;
 
-void NoteUnavailable(const std::string& name)
+static void NoteUnavailable(const std::string& name)
 {
     int64_t now = chen::TimeUtil::GetCurrentSec();
     std::lock_guard lock(g_warn_mutex);
@@ -38,7 +36,7 @@ void NoteUnavailable(const std::string& name)
                  << kWarnIntervalSec << "s)";
 }
 
-void NoteAvailable()
+static void NoteAvailable()
 {
     if (!g_unavailable) {
         return;
@@ -50,8 +48,6 @@ void NoteAvailable()
         INFO(logger) << "redis lease available again";
     }
 }
-
-} // namespace
 
 RedisLease::RedisLease(std::string name, int ttl_sec)
     : name_(std::move(name))

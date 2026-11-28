@@ -15,9 +15,7 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
-void InvalidateAfterChange(const DB::CommentInfo::ptr& info)
+static void InvalidateAfterChange(const DB::CommentInfo::ptr& info)
 {
     if (!info) {
         return;
@@ -28,8 +26,6 @@ void InvalidateAfterChange(const DB::CommentInfo::ptr& info)
         CommentQueryRepository::InvalidateReplies(info->getParentId());
     }
 }
-
-} // namespace
 
 CommentService::CreateCommentResult CommentService::CreateComment(const CreateCommentInput& input,
     DB::CommentInfo::ptr& out)

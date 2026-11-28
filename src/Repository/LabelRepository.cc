@@ -5,9 +5,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct LabelCodec {
+struct LabelRepositoryCodec {
     static DB::LabelInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::LabelInfo>();
@@ -24,14 +22,12 @@ struct LabelCodec {
     }
 };
 
-const EntityCache<DB::LabelInfo, LabelCodec> g_label_cache{{"lbl", 300}};
+const EntityCache<DB::LabelInfo, LabelRepositoryCodec> g_label_cache{{"lbl", 300}};
 
-std::string UserNameKey(int64_t user_id, const std::string& name)
+static std::string UserNameKey(int64_t user_id, const std::string& name)
 {
     return "lbl:uid_name:" + std::to_string(user_id) + ":" + name;
 }
-
-} // namespace
 
 DB::LabelInfo::ptr LabelRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

@@ -1,9 +1,7 @@
 #include "RecordRepository.hpp"
 
-namespace {
-
 template <typename Dao, typename Info>
-bool ListRecordsByPages(std::vector<typename Info::ptr>& results,
+static bool ListRecordsByPages(std::vector<typename Info::ptr>& results,
     int64_t& total,
     const std::string& search,
     const std::string& type,
@@ -30,7 +28,7 @@ bool ListRecordsByPages(std::vector<typename Info::ptr>& results,
 }
 
 template <typename Dao, typename Info>
-void ListDeletedBeforeImpl(std::vector<typename Info::ptr>& results, int64_t deadline, chen::IDB::ptr conn)
+static void ListDeletedBeforeImpl(std::vector<typename Info::ptr>& results, int64_t deadline, chen::IDB::ptr conn)
 {
     if (!conn) {
         return;
@@ -43,8 +41,6 @@ void ListDeletedBeforeImpl(std::vector<typename Info::ptr>& results, int64_t dea
     qb->where("create_time", "<", deadline);
     Dao::QueryByBuilder(results, qb, conn);
 }
-
-} // namespace
 
 DB::BackupRecordInfo::ptr BackupRecordRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

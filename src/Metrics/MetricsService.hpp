@@ -1,6 +1,6 @@
 /**
  * @file MetricsService.hpp
- * @brief 服务运行指标注册、路由埋点与 QPS 采样
+ * @brief 服务运行指标注册、路由埋点与快照聚合
  * @author Christins
  * @date 2026-11-08
  * @copyright Apache 2.0
@@ -18,9 +18,9 @@
 
 /**
  * @brief 单个路由的请求指标
- * @note 同时注册 QPS 指标（值为 QPS × 1000）：
- *       - blog_http_route_avg_qps_milli：启动以来平均 QPS
- *       - blog_http_route_recent_qps_milli：最近一个采样窗口 QPS
+ * @note 只暴露累计量（请求数 / 错误数 / 耗时直方图）。QPS 属于派生值，
+ *       由消费方用 requests 与 blog_process_uptime_seconds 自行计算，
+ *       不再逐路由注册 gauge，避免快照体积随路由数线性膨胀。
  */
 struct RouteMetrics {
     chen::metrics::Counter* requests = nullptr;
@@ -53,7 +53,9 @@ void PublishSnapshot();
  *          counter / gauge / histogram 默认求和；blog_info 取实例编号最小的一份；
  *          blog_online_users 取最大；系统内存取最大；运行时长取最小。
  *          Redis 不可用或部分快照读取失败时仍返回本进程数据，并置 `degraded=true`。
- * @param[out] out { "metrics": [ ... ], "instanceCount": N, "degraded": bool }
+ * @param[out] out { "metrics": [ ... ], "helps": { name: help }, "instance_count": N, "degraded": bool }
+ * @note 每条 metric 不再内联 help（同名指标只保留一份，放顶层 helps），
+ *       且零值路由指标会被裁剪，消费方缺失即视作 0。
  */
 bool CollectClusterMetrics(Json::Value& out);
 
@@ -71,9 +73,12 @@ void RecordWsDisconnect();
 
 /**
  * @brief 获取指定路由的指标，首次调用时完成注册
+ * @details 指标以 `route` + `method` 两个标签区分：同一路径的 GET / POST / DELETE
+ *          是不同 handler，必须独立统计，否则错误率与耗时会互相稀释。
  * @param route 注册路由模板（如 /api/v1/messages/conversations/:id）
+ * @param method HTTP 方法字符串（如 GET / POST）
  */
-RouteMetrics GetRouteMetrics(const std::string& route);
+RouteMetrics GetRouteMetrics(const std::string& route, const std::string& method);
 
 /**
  * @brief 记录一次请求
@@ -82,8 +87,3 @@ RouteMetrics GetRouteMetrics(const std::string& route);
  * @param err 业务错误码，0 表示成功
  */
 void RecordRequest(const RouteMetrics& route_metrics, uint64_t used_us, int32_t err);
-
-/**
- * @brief 采样最近窗口 QPS，由模块定时器周期性调用
- */
-void SampleRates();

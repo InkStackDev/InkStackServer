@@ -4,9 +4,7 @@
 
 #include "../Cache/EntityCache.hpp"
 
-namespace {
-
-struct NotificationCodec {
+struct NotificationRepositoryCodec {
     static DB::NotificationInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::NotificationInfo>();
@@ -35,9 +33,7 @@ struct NotificationCodec {
     }
 };
 
-const EntityCache<DB::NotificationInfo, NotificationCodec> g_notification_cache{{"notif", 120}};
-
-} // namespace
+const EntityCache<DB::NotificationInfo, NotificationRepositoryCodec> g_notification_cache{{"notif", 120}};
 
 DB::NotificationInfo::ptr NotificationRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

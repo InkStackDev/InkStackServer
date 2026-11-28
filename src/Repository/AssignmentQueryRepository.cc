@@ -1,10 +1,8 @@
 #include "AssignmentQueryRepository.hpp"
 
-namespace {
 constexpr int32_t kStatusDraft = 0;
 constexpr int32_t kStatusActive = 1;
 constexpr int32_t kStatusInactive = 2;
-} // namespace
 
 uint64_t AssignmentQueryRepository::ListByPages(std::vector<DB::AssignmentInfo::ptr>& infos,
     uint64_t offset,

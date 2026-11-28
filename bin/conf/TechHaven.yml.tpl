@@ -31,6 +31,39 @@ search:
   snapshot_rpc_timeout_ms: 10000
   dirty_key: search:dirty
 
+# 每日推荐配置
+recommend:
+  # 是否启用每日推荐接口与快照任务
+  enabled: true
+  # 是否对登录用户做个性化重排（关注作者加权、兴趣标签加权、过滤已赞已收藏）
+  personalize: true
+  exclude_interacted: true
+  # 每日返回条数与落库候选条数（候选要给个性化重排留余量）
+  daily_count: 6
+  buffer_size: 40
+  # 候选池：近 N 天已发布文章，按浏览量倒序取前 M 篇
+  candidate_days: 30
+  candidate_pool: 300
+  # 时效衰减半衰期（天）
+  half_life_days: 7
+  # 热度权重
+  weight_views: 10
+  weight_praise: 30
+  weight_favorites: 50
+  weight_comments: 40
+  # 编辑加权（article.weight）权重
+  weight_editor: 20
+  # 多样性上限
+  max_per_author: 2
+  max_per_label: 3
+  # 个性化加分：关注作者 / 每命中一个兴趣标签
+  follow_boost: 30000
+  label_boost: 5000
+  # 登录用户推荐结果缓存时间（秒）
+  cache_ttl_sec: 300
+  # 推荐结果缓存 key 前缀，真实 key 为 "<prefix>:<date>" 与 "<prefix>:<date>:u:<uid>"
+  cache_key: blog:daily_recommend
+
 # GitHub API 客户端配置（组织仓库/PR 同步）
 github:
   api_base: https://api.github.com

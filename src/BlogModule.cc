@@ -15,17 +15,28 @@
 #include "./Search/SearchSync.hpp"
 #include "./Service/ArticleCounterService.hpp"
 #include "./Service/ArticleScheduleService.hpp"
+#include "./Service/DailyRecommendService.hpp"
 #include "./Service/NotificationService.hpp"
 #include "./Service/OrganizationRepoPrService.hpp"
 #include "./Service/OrganizationRepoService.hpp"
 #include "./Service/UserService.hpp"
 
+#include <functional>
 #include <vector>
 
 #include <Chen/Application.hpp>
 #include <Chen/DB/Redis.hpp>
 #include <Chen/Http/SessionData.hpp>
 #include <Chen/Log/Log.hpp>
+#include <Chen/Util/TimeUtil.hpp>
+
+void RunShutdownStep(const char* stage, const std::function<void()>& step)
+{
+    const auto start_us = chen::TimeUtil::GetCurrentUs();
+    INFO(LOG_ROOT()) << "shutdown: " << stage << " begin";
+    step();
+    INFO(LOG_ROOT()) << "shutdown: " << stage << " done in " << (chen::TimeUtil::GetCurrentUs() - start_us) << "us";
+}
 
 BlogModule::BlogModule()
     : Module("Blog", "1.0.8", "blog_module")
@@ -72,23 +83,45 @@ bool BlogModule::onLoad()
 
 bool BlogModule::onUnload()
 {
-    JobRunner::StopAll();
-    ArticleCounterService::FlushDirty();
-    HubClient::Shutdown();
-    SearchSyncMgr::GetInstance()->stop();
-    MessageRouter::Shutdown();
-
-    chen::RedisMgr::GetInstance()->freeAll();
-    chen::FoxThreadMgr::GetInstance()->stop();
+    INFO(LOG_ROOT()) << "shutdown: onUnload begin";
+    RunShutdownStep("JobRunner::StopAll", []() {
+        JobRunner::StopAll();
+    });
+    RunShutdownStep("ArticleCounterService::FlushDirty", []() {
+        ArticleCounterService::FlushDirty();
+    });
+    RunShutdownStep("HubClient::Shutdown", []() {
+        HubClient::Shutdown();
+    });
+    RunShutdownStep("SearchSyncMgr::stop", []() {
+        SearchSyncMgr::GetInstance()->stop();
+    });
+    RunShutdownStep("MessageRouter::Shutdown", []() {
+        MessageRouter::Shutdown();
+    });
+    RunShutdownStep("RedisMgr::freeAll", []() {
+        chen::RedisMgr::GetInstance()->freeAll();
+    });
+    RunShutdownStep("FoxThreadMgr::stop", []() {
+        chen::FoxThreadMgr::GetInstance()->stop();
+    });
+    INFO(LOG_ROOT()) << "shutdown: onUnload done";
     return true;
 }
 
 bool BlogModule::onDeactivate()
 {
+    INFO(LOG_ROOT()) << "shutdown: onDeactivate begin";
     // 停止接受请求后先把内存脏计数落库，再关闭长连接
-    ArticleCounterService::FlushDirty();
+    RunShutdownStep("ArticleCounterService::FlushDirty", []() {
+        ArticleCounterService::FlushDirty();
+    });
     // 热重载/关机：让客户端主动重连到新 worker，避免一直挂到 drain 超时
-    WSMgr::GetInstance()->closeAllConnections(R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
+    RunShutdownStep("WSMgr::closeAllConnections", []() {
+        WSMgr::GetInstance()->closeAllConnections(
+            R"({"channel":"system","type":"reloading","reason":"server_reloading"})");
+    });
+    INFO(LOG_ROOT()) << "shutdown: onDeactivate done";
     return true;
 }
 
@@ -97,9 +130,8 @@ void BlogModule::onTick()
     static uint32_t tick = 0;
     ++tick;
 
-    // 5s 采样一次路由 QPS
+    // 5s 发布一次本进程指标快照（供集群聚合读取）
     if (tick % 50 == 0) {
-        SampleRates();
         PublishSnapshot();
     }
 
@@ -229,6 +261,20 @@ bool BlogModule::onServerUp()
         .run =
             []() {
                 OrganizationRepoPrService::SyncAll();
+            },
+    });
+
+    // 每日推荐快照：10 分钟检查一次，跨实例/跨重启全局 3 小时最多生成一次；
+    // 任务体按“当天快照是否已存在”幂等，跨天时第一次检查就会补上当天榜单
+    JobRunner::Register(JobRunner::Job{
+        .name = "article:daily_recommend",
+        .interval_ms = 10 * 60 * 1000,
+        .lease_ttl_sec = 10 * 60,
+        .run_immediately = true,
+        .dedup_interval_ms = 3 * 60 * 60 * 1000,
+        .run =
+            []() {
+                DailyRecommendService::EnsureSnapshot(DailyRecommendService::Today());
             },
     });
 

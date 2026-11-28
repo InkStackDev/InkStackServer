@@ -11,17 +11,16 @@
 #include "../Util/Util.hpp"
 #include "CommentRepository.hpp"
 
-namespace {
 constexpr int32_t kStatusPending = 1;
 constexpr int32_t kStatusApproved = 2;
 constexpr int32_t kStatusSpam = 4;
 
-std::string ArticleVersionKey(int64_t article_id)
+static std::string ArticleVersionKey(int64_t article_id)
 {
     return "cmt:art:ver:" + std::to_string(article_id);
 }
 
-int64_t GetArticleVersion(int64_t article_id)
+static int64_t GetArticleVersion(int64_t article_id)
 {
     auto rpy = chen::RedisUtil::Cmd(GetRedisPoolName(), "get %s", ArticleVersionKey(article_id).c_str());
     if (!rpy || !rpy->str) {
@@ -29,7 +28,6 @@ int64_t GetArticleVersion(int64_t article_id)
     }
     return chen::TypeUtil::Atoi(rpy->str);
 }
-} // namespace
 
 void CommentQueryRepository::ListAllByArticle(std::vector<DB::CommentInfo::ptr>& results,
     int64_t article_id,

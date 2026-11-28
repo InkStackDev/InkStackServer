@@ -4,21 +4,17 @@
 
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-std::string CategoryKey(int64_t article_id, int64_t category_id)
+static std::string CategoryKey(int64_t article_id, int64_t category_id)
 {
     return "acr:" + std::to_string(article_id) + ":" + std::to_string(category_id);
 }
 
-std::string LabelKey(int64_t article_id, int64_t label_id)
+static std::string LabelKey(int64_t article_id, int64_t label_id)
 {
     return "alr:" + std::to_string(article_id) + ":" + std::to_string(label_id);
 }
 
 constexpr int32_t kStatePublished = 2;
-
-} // namespace
 
 DB::ArticleCategoryRelInfo::ptr ArticleCategoryRelRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

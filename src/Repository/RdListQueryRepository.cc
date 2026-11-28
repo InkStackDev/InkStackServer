@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-namespace {
-
 const char* TaskColumns()
 {
     return "t.id, t.org_id, t.title, t.description, t.priority, t.status, t.creator_id, t.assignee_id, "
@@ -30,7 +28,7 @@ const char* BugColumns()
            "b.create_time, b.update_time";
 }
 
-std::string JoinInt64(const std::vector<int64_t>& values)
+static std::string JoinInt64(const std::vector<int64_t>& values)
 {
     std::string out;
     for (size_t i = 0; i < values.size(); ++i) {
@@ -42,7 +40,7 @@ std::string JoinInt64(const std::vector<int64_t>& values)
     return out;
 }
 
-void ApplyTaskVisibility(const chen::QueryBuilder::ptr& qb, const Viewer& viewer, const OrgScope& scope)
+static void ApplyTaskVisibility(const chen::QueryBuilder::ptr& qb, const Viewer& viewer, const OrgScope& scope)
 {
     if (scope.isAll()) {
         return;
@@ -71,15 +69,13 @@ void ApplyTaskVisibility(const chen::QueryBuilder::ptr& qb, const Viewer& viewer
     qb->whereSQL(cond, (int64_t)viewer.user_id);
 }
 
-void ApplyCommonFilters(const chen::QueryBuilder::ptr& qb,
+static void ApplyCommonFilters(const chen::QueryBuilder::ptr& qb,
     const std::string& alias,
     const RdListQueryRepository::Filter& filter)
 {
     qb->whereIf(filter.status >= 0, alias + ".status", "=", (int64_t)filter.status);
     qb->whereIf(filter.priority >= 0, alias + ".priority", "=", (int64_t)filter.priority);
 }
-
-} // namespace
 
 bool RdListQueryRepository::ListTasks(std::vector<DB::TaskInfo::ptr>& out,
     int64_t& total,

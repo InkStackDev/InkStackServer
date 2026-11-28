@@ -7,6 +7,7 @@
 
 #include "../Config/AppConfig.hpp"
 #include "DB/ArticleCategoryRelInfo.hpp"
+#include "DB/ArticleDailyRecommendInfo.hpp"
 #include "DB/ArticleInfo.hpp"
 #include "DB/ArticleLabelRelInfo.hpp"
 #include "DB/ArticlePraiseRelInfo.hpp"
@@ -67,6 +68,7 @@ bool DBManager::CreateAllTables()
         XX(CategoryInfoDao, "category")
         XX(LabelInfoDao, "label")
         XX(ArticleCategoryRelInfoDao, "article_category_rel")
+        XX(ArticleDailyRecommendInfoDao, "article_daily_recommend")
         XX(ArticleLabelRelInfoDao, "article_label_rel")
         XX(AssignmentInfoDao, "assignment")
         XX(OrganizationApplyInfoDao, "organization_apply")
@@ -126,6 +128,7 @@ bool DBManager::MigrateAllTables()
         XX(CategoryInfoDao)
         XX(LabelInfoDao)
         XX(ArticleCategoryRelInfoDao)
+        XX(ArticleDailyRecommendInfoDao)
         XX(ArticleLabelRelInfoDao)
         XX(AssignmentInfoDao)
         XX(OrganizationApplyInfoDao)

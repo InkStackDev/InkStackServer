@@ -5,9 +5,7 @@
 #include "../Cache/EntityCache.hpp"
 #include "../Manager/CacheUtil.hpp"
 
-namespace {
-
-struct CommentCodec {
+struct CommentRepositoryCodec {
     static DB::CommentInfo::ptr Decode(const Json::Value& v)
     {
         auto info = std::make_shared<DB::CommentInfo>();
@@ -29,9 +27,7 @@ struct CommentCodec {
     }
 };
 
-const EntityCache<DB::CommentInfo, CommentCodec> g_comment_cache{{"cmt", 300}};
-
-} // namespace
+const EntityCache<DB::CommentInfo, CommentRepositoryCodec> g_comment_cache{{"cmt", 300}};
 
 DB::CommentInfo::ptr CommentRepository::Get(int64_t id, chen::IDB::ptr conn)
 {

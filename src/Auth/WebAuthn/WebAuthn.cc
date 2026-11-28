@@ -16,8 +16,6 @@
 
 static chen::Logger::ptr logger = LOG_ROOT();
 
-namespace {
-
 constexpr const char* kRegistrationChallengePrefix = "webauthn:reg:";
 constexpr const char* kAuthenticationChallengePrefix = "webauthn:auth:";
 
@@ -29,14 +27,14 @@ constexpr uint8_t kFlagAt = 0x40;
 constexpr size_t kMaxCredentialIdB64 = 512;
 constexpr const char* kTrimChars = "/ \t\r\n";
 
-struct ClientData {
+struct WebAuthnClientData {
     std::string type;
     std::string challenge;
     std::string origin;
     bool cross_origin = false;
 };
 
-struct AuthData {
+struct WebAuthnAuthData {
     std::string rp_id_hash;
     uint8_t flags = 0;
     uint32_t sign_count = 0;
@@ -45,13 +43,16 @@ struct AuthData {
     std::string cose_key;
 };
 
-std::string ChallengeKey(const std::string& prefix, int64_t uid, const std::string& challenge)
+static std::string ChallengeKey(const std::string& prefix, int64_t uid, const std::string& challenge)
 {
     std::string scope = uid ? chen::TypeUtil::ToString(uid) : "anon";
     return prefix + scope + ":" + challenge;
 }
 
-bool StoreChallenge(const std::string& prefix, int64_t uid, const std::string& challenge, const std::string& value)
+static bool StoreChallenge(const std::string& prefix,
+    int64_t uid,
+    const std::string& challenge,
+    const std::string& value)
 {
     const WebAuthnConf conf = GetWebAuthnConf();
 
@@ -64,7 +65,7 @@ bool StoreChallenge(const std::string& prefix, int64_t uid, const std::string& c
     return rpy != nullptr;
 }
 
-bool ConsumeChallenge(const std::string& prefix, int64_t uid, const std::string& challenge, std::string& value)
+static bool ConsumeChallenge(const std::string& prefix, int64_t uid, const std::string& challenge, std::string& value)
 {
     value.clear();
     if (challenge.empty()) {
@@ -81,7 +82,7 @@ bool ConsumeChallenge(const std::string& prefix, int64_t uid, const std::string&
     return found;
 }
 
-bool ParseClientData(const std::string& json, ClientData& out)
+static bool ParseClientData(const std::string& json, WebAuthnClientData& out)
 {
     Json::Value root;
     if (!chen::JsonUtil::FromString(root, json) || !root.isObject()) {
@@ -101,7 +102,7 @@ bool ParseClientData(const std::string& json, ClientData& out)
     return true;
 }
 
-bool ParseAuthDataHeader(const std::string& data, AuthData& out)
+static bool ParseAuthDataHeader(const std::string& data, WebAuthnAuthData& out)
 {
     if (data.size() < 37) {
         return false;
@@ -114,7 +115,7 @@ bool ParseAuthDataHeader(const std::string& data, AuthData& out)
     return true;
 }
 
-bool ParseRegistrationData(const std::string& data, AuthData& out)
+static bool ParseRegistrationData(const std::string& data, WebAuthnAuthData& out)
 {
     if (!ParseAuthDataHeader(data, out) || !(out.flags & kFlagAt)) {
         return false;
@@ -145,8 +146,6 @@ bool ParseRegistrationData(const std::string& data, AuthData& out)
     out.cose_key = remaining.substr(0, consumed);
     return true;
 }
-
-} // namespace
 
 bool WebAuthnService::IsConfigured()
 {
@@ -307,7 +306,7 @@ int32_t WebAuthnService::VerifyRegistration(int64_t uid, const Json::Value& cred
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
-    ClientData client_data;
+    WebAuthnClientData client_data;
     if (!ParseClientData(client_data_json, client_data)) {
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
@@ -346,7 +345,7 @@ int32_t WebAuthnService::VerifyRegistration(int64_t uid, const Json::Value& cred
         INFO(logger) << "webauthn registration fmt=" << fmt->bytes << " uid=" << uid;
     }
 
-    AuthData auth_data;
+    WebAuthnAuthData auth_data;
     if (!ParseRegistrationData(auth_data_value->bytes, auth_data)) {
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
@@ -536,7 +535,7 @@ int32_t WebAuthnService::VerifyAuthentication(
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
-    ClientData client_data;
+    WebAuthnClientData client_data;
     if (!ParseClientData(client_data_json, client_data)) {
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
@@ -566,7 +565,7 @@ int32_t WebAuthnService::VerifyAuthentication(
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
 
-    AuthData auth_data;
+    WebAuthnAuthData auth_data;
     if (!ParseAuthDataHeader(auth_data_raw, auth_data)) {
         return WEBAUTHN_INVALID_CREDENTIAL;
     }
