@@ -13,6 +13,14 @@ All notable changes to this project will be documented in this file.
   表现为进程还在、tick 正常，但所有请求无响应（gdb 里 io 线程停在 `futex_wait`）。
 - 新增 `src/Util/FiberMutex.hpp`：基于 `chen::FiberSemaphore` 的协程感知互斥锁，等待方让出协程而不是线程，
   解锁方把所有权直接转交等待者；协程与普通线程可混用同一把锁（普通线程走条件变量）。上述五处已全部替换。
+- **关闭阶段不再向 Redis 发清理命令**：`MessageRouter::Stop()` 取消定时器后又调 `CleanupWorker(worker_id_)`，
+  会连发 `smembers` / `del` / `zrem` 多条同步往返；此时模块正在卸载、连接池随即 `freeAll()`，只要还有一条
+  命令在途，hiredis 释放连接时就补 NULL 回调（旧版框架还会跨线程释放，直接触发
+  `async.c:467 redisProcessCallbacks` 断言）。现在 `Stop()` 只取消定时器，残留状态交给自愈路径：
+  `ws:inbox:<worker_id>` 由心跳续期（`kInboxTtlSec`）且下一次 `Start()` 会先清空，`ws:workers` 里的本条记录
+  超过 `kWorkerTtlSec` 后由存活 worker 的心跳扫描（`Heartbeat` 的 `zrangebyscore` + `CleanupWorker`）回收，
+  presence 随之摘除。
+  需配合新版 chen（`~FoxRedis` 把释放派发回连接所属事件循环）一起使用。
 
 ### 适配
 

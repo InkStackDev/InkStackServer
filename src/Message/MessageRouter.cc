@@ -166,7 +166,6 @@ public:
             heartbeat_timer_->cancel();
             heartbeat_timer_.reset();
         }
-        CleanupWorker(worker_id_);
         INFO(logger) << "redis message router stopped, worker=" << worker_id_;
     }
 
@@ -480,8 +479,7 @@ private:
             GetRedisPoolName(), "expire %s %d", WorkerDevicesKey(worker_id_).c_str(), kWorkerDevicesTtlSec);
         chen::RedisUtil::Cmd(GetRedisPoolName(), "expire %s %d", InboxKey(worker_id_).c_str(), kInboxTtlSec);
 
-        auto stale = chen::RedisUtil::Cmd(
-            GetRedisPoolName(), "zrangebyscore %s -inf %lld", kWorkersKey, static_cast<long long>(now - kWorkerTtlSec));
+        auto stale = chen::RedisUtil::Cmd(GetRedisPoolName(), "zrangebyscore %s -inf %lld", kWorkersKey, now - kWorkerTtlSec);
         if (stale && stale->type == REDIS_REPLY_ARRAY) {
             for (size_t i = 0; i < stale->elements; ++i) {
                 if (!stale->element[i] || !stale->element[i]->str) {
@@ -493,8 +491,7 @@ private:
                 }
             }
         }
-        chen::RedisUtil::Cmd(GetRedisPoolName(), "zremrangebyscore %s -inf %lld", kWorkersKey,
-            static_cast<long long>(now - kWorkerTtlSec));
+        chen::RedisUtil::Cmd(GetRedisPoolName(), "zremrangebyscore %s -inf %lld", kWorkersKey, now - kWorkerTtlSec);
     }
 
     bool Enqueue(const std::string& worker_id, const Json::Value& payload)
