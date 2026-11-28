@@ -15,6 +15,7 @@
 #include "./Search/SearchSync.hpp"
 #include "./Service/ArticleCounterService.hpp"
 #include "./Service/ArticleScheduleService.hpp"
+#include "./Service/DailyRecommendService.hpp"
 #include "./Service/NotificationService.hpp"
 #include "./Service/OrganizationRepoPrService.hpp"
 #include "./Service/OrganizationRepoService.hpp"
@@ -228,6 +229,20 @@ bool BlogModule::onServerUp()
         .run =
             []() {
                 OrganizationRepoPrService::SyncAll();
+            },
+    });
+
+    // 每日推荐快照：10 分钟检查一次，跨实例/跨重启全局 3 小时最多生成一次；
+    // 任务体按“当天快照是否已存在”幂等，跨天时第一次检查就会补上当天榜单
+    JobRunner::Register(JobRunner::Job{
+        .name = "article:daily_recommend",
+        .interval_ms = 10 * 60 * 1000,
+        .lease_ttl_sec = 10 * 60,
+        .run_immediately = true,
+        .dedup_interval_ms = 3 * 60 * 60 * 1000,
+        .run =
+            []() {
+                DailyRecommendService::EnsureSnapshot(DailyRecommendService::Today());
             },
     });
 

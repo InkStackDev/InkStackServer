@@ -31,6 +31,7 @@
 #include "Article/ArticleAISummaryServlet.hpp"
 #include "Article/ArticleCalendarServlet.hpp"
 #include "Article/ArticleCreateServlet.hpp"
+#include "Article/ArticleDailyRecommendServlet.hpp"
 #include "Article/ArticleDeleteServlet.hpp"
 #include "Article/ArticleDetailServlet.hpp"
 #include "Article/ArticleIsPraisingServlet.hpp"
